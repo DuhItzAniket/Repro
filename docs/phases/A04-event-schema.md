@@ -5,7 +5,7 @@
 | **Stage** | A — Foundation |
 | **Status** | done |
 | **Depends on** | A02 (developed on top of A03's gates) |
-| **Branch / PR** | `phase/A04-event-schema` · PR link in ROADMAP phase log |
+| **Branch / PR** | `phase/A04-event-schema` · [#4](https://github.com/DuhItzAniket/Repro/pull/4) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
