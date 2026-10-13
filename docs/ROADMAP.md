@@ -620,3 +620,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | A06 | 2026-10-13 | [#6](https://github.com/DuhItzAniket/Repro/pull/6) | CI: lint / test×2 / security (gitleaks, licence allow-list) / dependency review; SHA pins; Dependabot |
 | A07 | 2026-10-13 | [#7](https://github.com/DuhItzAniket/Repro/pull/7) | Log validator/normaliser CLI, golden logs, Hypothesis/fast-check, deterministic fixture repos |
 | A08 | 2026-10-13 | [#8](https://github.com/DuhItzAniket/Repro/pull/8) | Measured: tracer overhead (budget 200 → ~baseline), Docker L3 on Windows, offline provisioning 0.79 s |
+| Gate A | 2026-10-13 | [#9](https://github.com/DuhItzAniket/Repro/pull/9) | Stage A complete; release v0.1.0 ([gate record](phases/A-gate.md)) |

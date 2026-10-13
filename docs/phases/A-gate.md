@@ -17,8 +17,8 @@
 ## CI matrix
 | OS | Python | Node | Result | Run |
 |---|---|---|---|---|
-| ubuntu-latest | 3.13 (`.python-version`) | 24 (`.node-version`) | pass | see the gate PR checks |
-| windows-latest | 3.13 | 24 | pass | see the gate PR checks |
+| ubuntu-latest | 3.13 (`.python-version`) | 24 (`.node-version`) | pass | [#9 checks](https://github.com/DuhItzAniket/Repro/pull/9/checks) |
+| windows-latest | 3.13 | 24 | pass | [#9 checks](https://github.com/DuhItzAniket/Repro/pull/9/checks) |
 
 Typical full CI wall clock: about 1.5–2 minutes (PR #6: 1 min 49 s; `main` after #7: 1 min 27 s).
 
