@@ -12,7 +12,7 @@
 | CI green on `ubuntu-latest` and `windows-latest` from a clean clone | pass | Required checks `lint`, `test (ubuntu-latest)`, `test (windows-latest)`, `security` green on every merged PR (#1–#8) and on this gate PR. A local clean clone also passed (A02) |
 | A schema change regenerates TS and Pydantic types | pass | `pnpm gen` / `uv run repro-events-codegen` (A05). A05 changed the schema twice (`VerdictValue` rename, `type: object` on registry branches) and regenerated both outputs |
 | CI fails on drift | pass | `repro-events-codegen --check` in the `lint` job plus `test_generated_files_are_up_to_date`. Demonstrated failing on a stale docstring during A05 |
-| Spike results recorded in ADRs and phase records | pass | `spikes/A08/RESULTS.md`; "Measured" sections in ADR-0004 and ADR-0005; `docs/phases/A08-spikes.md` |
+| Spike results recorded in ADRs and phase records | pass | `spikes/A08/RESULTS.md` (Windows, Linux containers, and a Linux host via CI run 38429323214); "Measured" sections in ADR-0004 and ADR-0005; `docs/phases/A08-spikes.md` |
 
 ## CI matrix
 | OS | Python | Node | Result | Run |
@@ -74,7 +74,7 @@ Typical full CI wall clock: about 1.5–2 minutes (PR #6: 1 min 49 s; `main` aft
 | Schema files not yet packaged inside the `repro-events` wheel | H05 |
 | Only the `honest-fix` fixture exists | each phase adds the fixtures it asserts |
 | Tracer overhead measured on microbenchmarks only | E01 |
-| Linux-host spike numbers come from a shared CI VM | indicative only. Recorded under `spikes/A08/results/linux-gha/` |
+| Linux-host spike numbers come from a shared CI VM | indicative only. Recorded in `spikes/A08/results/linux-gha/` and RESULTS.md §4. They agree with the local results |
 
 ## Research log entries
 `docs/paper/LOG.md`: 2026-10-13 A01 (research baseline), A04 (evidence-constrained output by
