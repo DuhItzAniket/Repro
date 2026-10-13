@@ -47,5 +47,13 @@ export default defineConfig({
   test: {
     // Playwright specs (e2e/) run in their own runner.
     exclude: [...configDefaults.exclude, "e2e/**"],
+    // SDLC.md §5: the projections and the store are at least 90% covered (`pnpm coverage`).
+    coverage: {
+      provider: "v8",
+      include: ["src/model/**"],
+      exclude: ["**/*.test.ts", "src/model/test-support.ts"],
+      thresholds: { lines: 90, statements: 90, functions: 90 },
+      reporter: ["text-summary"],
+    },
   },
 });

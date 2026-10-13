@@ -13,7 +13,7 @@
 | Stage | Name | Phases | Release | Outcome |
 |---|---|---|---|---|
 | **A** | Foundation | A01–A08 | v0.1.0 | Monorepo, schema-as-contract, CI on Windows + Linux, risks measured |
-| **B** | Cockpit on fixtures | B01–B12 | v0.2.0 | Complete animated cockpit driven only by a recorded event log |
+| **B** | Cockpit on fixtures | B01–B13 | v0.2.0 | Complete animated cockpit driven only by a recorded event log |
 | **C** | Engine core & live stream | C01–C08 | v0.3.0 | `repro run` shows a real repo's graph and blast radius live |
 | **D** | Sandboxed two-sided execution | D01–D07 | v0.4.0 | Selected tests run on base and head in isolation, with outcome, test-change and perf evidence |
 | **E** | Behaviour evidence | E01–E07 | v0.5.0 | A silent behaviour change is caught with no failing test |
@@ -124,7 +124,9 @@ ADRs or phase records.
 **Goal:** the complete visual product, driven only by a recorded event log, built to the
 DESIGN.md spec and performance budget.
 
-**Gate B:** side by side with the reference frame at 6 s, it reads as the same visual family.
+**Gate B (passed 2026-10-14, v0.2.0, record: [`phases/B-gate.md`](phases/B-gate.md); the mid-laptop
+60 fps check is still owed by the owner):** side by side with the reference frame at 6 s, it
+reads as the same visual family.
 The reference log replays at ×1 at 60 fps on a mid laptop (measured, with the method recorded).
 Scrubbing and all speeds work. All panels are driven only by events. Visual-regression,
 allocation and bundle-size gates are active in CI.
