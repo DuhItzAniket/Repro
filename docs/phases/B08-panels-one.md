@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B02, B03 |
-| **Branch / PR** | `phase/B08-panels-one` · PR pending |
+| **Branch / PR** | `phase/B08-panels-one` · [#19](https://github.com/DuhItzAniket/Repro/pull/19) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
