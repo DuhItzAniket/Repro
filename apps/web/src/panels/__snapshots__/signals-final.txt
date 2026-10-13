@@ -1,0 +1,81 @@
+text "PASS RATE" 0,2 400 8px #6e6e6e a1
+text "0.75" 0,12 400 8px #d6d6d6 a1
+rect 64,25 266x1 #232323 a1
+rect 209,3 1x22 #b48f9c a1
+rect 214,3 1x22 #3a3a3a a1
+rect 220,3 1x22 #3a3a3a a1
+moveTo 66,3
+lineTo 69,3
+lineTo 76,3
+lineTo 81,3
+lineTo 85,7.4
+lineTo 89,6.7
+lineTo 93,6.1
+lineTo 97,5.8
+lineTo 101,5.8
+lineTo 106,5.8
+lineTo 110,5.8
+lineTo 123,5.8
+lineTo 126,3
+lineTo 130,5.8
+lineTo 176,5.8
+lineTo 180,5.8
+lineTo 184,5.8
+lineTo 195,8.5
+lineTo 200,8.5
+lineTo 205,8.5
+lineTo 209,11.3
+lineTo 214,8.5
+lineTo 220,8.5
+stroke #d6d6d6 w1 a1
+text "DRIFT" 0,32 400 8px #6e6e6e a1
+text "0.31" 0,42 400 8px #d6d6d6 a1
+rect 64,55 266x1 #232323 a1
+rect 75,33 1x22 #3a3a3a a1
+rect 96,33 1x22 #3a3a3a a1
+rect 161,33 1x22 #3a3a3a a1
+moveTo 64,55
+lineTo 65,55
+lineTo 67,55
+lineTo 68,55
+lineTo 71,52.8
+lineTo 72,51
+lineTo 73,49.9
+lineTo 75,48.7
+lineTo 82,47.7
+lineTo 84,46.8
+lineTo 87,46.8
+lineTo 94,44
+lineTo 95,41.3
+lineTo 96,39.9
+lineTo 98,38.5
+lineTo 103,38.5
+lineTo 104,38.5
+lineTo 107,38.5
+lineTo 108,39.9
+lineTo 115,42.6
+lineTo 119,44
+lineTo 124,44
+lineTo 125,48.1
+lineTo 177,49.5
+lineTo 178,50.9
+lineTo 181,49.5
+lineTo 182,49.5
+lineTo 183,48.1
+stroke #d6d6d6 w1 a1
+text "PERF Δ" 0,62 400 8px #6e6e6e a1
+text "+0%" 0,72 400 8px #d6d6d6 a1
+rect 64,74 266x1 #232323 a1
+rect 318,63 1x22 #3a3a3a a1
+rect 330,63 1x22 #3a3a3a a1
+moveTo 248,84.6
+lineTo 265,84.6
+lineTo 283,84.1
+lineTo 300,84.4
+lineTo 318,85
+lineTo 320,74
+lineTo 323,74
+lineTo 325,74
+lineTo 327,74
+lineTo 330,74
+stroke #d6d6d6 w1 a1

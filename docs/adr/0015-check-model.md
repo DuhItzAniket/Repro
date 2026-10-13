@@ -48,7 +48,9 @@ Two facts constrain the definition:
      *(Precision added in B02.)*
 4. `CHECKS` counts all checks. `FLAGGED` counts flagged results. The index footer reads
    `N checks / P passed / F flagged`, followed by `/ U unassessed` and `/ R pending` when those
-   are non-zero. One projection computes all of them.
+   are non-zero. One projection computes all of them. *(B09: the index's rows, how checks
+   relate to them, and the row status words are defined in DESIGN.md panel 8; its columns are
+   this projection's checks, so the matrix counts what the footer counts.)*
 
 ## Alternatives considered
 | Option | Why not |

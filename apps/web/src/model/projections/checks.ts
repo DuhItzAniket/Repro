@@ -49,7 +49,8 @@ export type CheckKind =
 
 type CheckEvent = Extract<ReproEvent, { kind: CheckKind }>;
 
-const CHECK_KINDS: ReadonlySet<string> = new Set<CheckKind>([
+/** The result-bearing event kinds (ADR-0015 §1). */
+export const CHECK_KINDS: readonly CheckKind[] = [
   "diff.outcome",
   "diff.tests",
   "diff.behaviour",
@@ -58,9 +59,12 @@ const CHECK_KINDS: ReadonlySet<string> = new Set<CheckKind>([
   "diff.deps",
   "diff.perf",
   "invariant.result",
-]);
+];
 
-export const isCheckEvent = (event: ReproEvent): event is CheckEvent => CHECK_KINDS.has(event.kind);
+const CHECK_KIND_SET: ReadonlySet<string> = new Set(CHECK_KINDS);
+
+export const isCheckEvent = (event: ReproEvent): event is CheckEvent =>
+  CHECK_KIND_SET.has(event.kind);
 
 /** Payloads that say the check could not be compared (ADR-0015 §3). */
 function notAssessable(event: CheckEvent): boolean {

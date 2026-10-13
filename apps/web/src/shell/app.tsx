@@ -51,12 +51,16 @@ export interface AppProps {
   executionSides?: Signal<ExecutionSides>;
 }
 
-/** Panels drawn on a Canvas 2D (B08; the second row arrives in B09). */
+/** Panels drawn on a Canvas 2D (B08, B09): all eight. */
 export const CANVAS_PANELS: ReadonlySet<string> = new Set([
   "feed",
   "execution",
   "workspace",
   "behaviour",
+  "routes",
+  "signals",
+  "dispatch",
+  "index",
 ]);
 
 export function App({ layout, view, hud, callouts, executionSides }: AppProps) {

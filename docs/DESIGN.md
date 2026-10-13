@@ -154,17 +154,33 @@ caption bottom-left in `--text-dim` (the reference uses these, e.g.
    runs disagree (A ≠ A′) are unstable, masked in `--flag-deep` and not counted. Under them, a
    histogram strip of diff counts per module. Footer: "same input / different output".
 5. **Change routes** — table: FILE · SYMBOL · TEST · CHECK, each a pill whose fill shows
-   progress. Footer: "diff → symbols → tests → checks".
+   progress. Footer: "diff → symbols → tests → checks". One row per changed symbol. The step a
+   route has reached is the pill: TEST fills as its tests finish on HEAD, CHECK as its checks
+   resolve, with a white underline while in progress. A test routes to a symbol it was
+   selected for, to a change its selected symbols call (≤ 3 hops), or to a module-level change
+   of a module its test module imports (ARCHITECTURE §13).
 6. **Signals** — three live waveforms: PASS RATE, BEHAVIOUR DRIFT, PERF Δ. Footer:
-   "illustrative until run completes" while partial.
+   "illustrative until run completes" while partial. PASS RATE is the share of the last 8 HEAD
+   finishes that passed; DRIFT the share of the last 16 stable base/head sample pairs that
+   differ; PERF Δ is head/base − 1 per repetition. Ticks mark the checks that resolve each
+   signal, placed at the data point they are about; the time axis spans the series.
 7. **Agents / dispatch** — 2 columns × 6 rows: `id  role  [progress bar]` + tiny status under
    the bar (working / waiting / done / flagged). Flagged bars tinted `--flag-deep`. Footer:
-   "independent jobs / shared event bus".
+   "independent jobs / shared event bus". An agent is flagged when it failed or contradicted
+   a claim; a working agent's status also names its tool.
 8. **Change × check index** — dot matrix: rows = claims/changes, columns = checks; filled =
    passed, rose = flagged, hollow = unassessed, dim = pending review (ADR-0015). Right column:
    status word (verified / flagged / review). Footer: "28 checks / 20 passed / 4 flagged /
    4 unassessed". (Header counters and this footer always come from the same projection, so
    they can never disagree.)
+   - Rows: each claim, then changed symbols no claim covers (grouped by file), then "other"
+     for checks related to neither.
+   - A check that names a symbol relates to the rows covering that symbol. Other checks relate
+     through their file or a routed test. A claim also relates to every check its verdict cites.
+   - Status: a claim is flagged if contradicted or any related check is flagged, verified if
+     supported with nothing pending, otherwise review. An unclaimed change is flagged or review,
+     never verified. When checks outnumber the columns, a column covers adjacent checks and
+     shows the most urgent related result.
 
 Clicking any row/cell/node **focuses** it: the stage pans/highlights, and a side drawer opens
 with the evidence (raw diff, trace samples, verdict text). The drawer is the only "normal UI"
