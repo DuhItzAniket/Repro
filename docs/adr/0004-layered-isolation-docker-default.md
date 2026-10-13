@@ -47,3 +47,17 @@ Other findings:
   share it, so the *diff* stays valid. The platform is recorded on the card.
 - Container start-up and volume copies add latency. Phase D02 measures this and caches
   environment images keyed by lockfile digest.
+
+## Measured (A08, 2026-10-13)
+`spikes/A08/RESULTS.md` §2–3. Docker Desktop 29.8.2 (WSL2) on Windows 11 Home:
+- **Network:** `--network none` blocks network for real (`ENETUNREACH`, and DNS fails).
+- **Per-container cost:** about 0.3–0.9 s.
+- **Provisioning:** offline `uv sync --locked` from a warm cache volume takes 0.79 s for
+  pallets/click, against 9.9 s cold, with no network needed.
+
+Two required adjustments:
+1. Docker's `--tmpfs` defaults to `noexec`, which broke 3 click tests that execute files from
+   `tmp_path`. **`/tmp` must be mounted with `exec`.**
+2. Missing system tools in slim images (e.g. `less`) cause failures identical on base and head.
+   These must be reported as environment or pre-existing items, never as gap, and D03 needs a
+   documented base image.

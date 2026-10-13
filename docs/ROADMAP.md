@@ -52,7 +52,7 @@ ADRs or phase records.
 | A05 | Schema codegen & drift gate | M | A04 | done |
 | A06 | CI pipeline & repository security | M | A03, A05 | done |
 | A07 | Test-harness foundations & golden-log tooling | M | A05 | done |
-| A08 | Feasibility spikes | M | A02 | planned |
+| A08 | Feasibility spikes | M | A02 | done |
 
 **A01 · Research, architecture & plan baseline**
 - Deliverables: verified research notes (`docs/research/`), research synthesis, product
@@ -301,14 +301,18 @@ rlimits, timeouts, kill and cleanup, `sandbox.ready` with isolation level. Audit
 detection. *Accept:* fork-bomb, memory-hog and timeout fixtures are contained. Detected network
 and subprocess attempts become evidence.
 
-**D02** Docker backend: `--network none`, read-only root, cap-drop, non-root, limits, snapshot
-volumes. Capability detection in `repro doctor`. *Accept:* escape suite (raw `_socket`,
+**D02** Docker backend: `--network none`, read-only root, `/tmp` tmpfs mounted **`exec`** (A08:
+the default `noexec` breaks real suites), cap-drop, non-root, limits, snapshot volumes. Capability detection in `repro doctor`. *Accept:* escape suite (raw `_socket`,
 `ctypes`, subprocess `curl`, writes outside the work dir, host `.git` tampering) is blocked at
 L3. The card reports `network: enforced` only here.
 
 **D03** Project-type detection (uv / poetry / pdm / requirements / setup.py), same interpreter on
 both sides (≥ 3.12, explicit), provisioning in the sandbox with index-only egress or offline
-wheels, `--link-mode copy`, env cache keyed by lock digest, `environment_failed` path.
+wheels, `--link-mode copy`, env cache keyed by lock digest, `environment_failed` path. A08
+measured offline `uv sync` from a warm cache at 0.79 s vs 9.9 s cold, so the design is a
+cache-populating step followed by offline installs. A documented base image with common CLI
+tools is needed, because missing tools (A08: `less`) cause base-and-head failures that must
+surface as environment items.
 *Accept:* five fixture project types provision on both OSes. A broken install gives
 UNVERIFIABLE with a reason, never a crash.
 
@@ -614,3 +618,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | A05 | 2026-10-13 | [#5](https://github.com/DuhItzAniket/Repro/pull/5) | In-house TS + Pydantic codegen (ADR-0014), three-validator equivalence tests, CI drift gate |
 | A06 | 2026-10-13 | [#6](https://github.com/DuhItzAniket/Repro/pull/6) | CI: lint / test×2 / security (gitleaks, licence allow-list) / dependency review; SHA pins; Dependabot |
 | A07 | 2026-10-13 | [#7](https://github.com/DuhItzAniket/Repro/pull/7) | Log validator/normaliser CLI, golden logs, Hypothesis/fast-check, deterministic fixture repos |
+| A08 | 2026-10-13 | [#8](https://github.com/DuhItzAniket/Repro/pull/8) | Measured: tracer overhead (budget 200 → ~baseline), Docker L3 on Windows, offline provisioning 0.79 s |
