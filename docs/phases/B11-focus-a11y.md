@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B10 |
-| **Branch / PR** | `phase/B11-focus-a11y` · PR pending |
+| **Branch / PR** | `phase/B11-focus-a11y` · [#22](https://github.com/DuhItzAniket/Repro/pull/22) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
