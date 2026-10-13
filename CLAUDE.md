@@ -99,7 +99,14 @@ pnpm test               # Vitest across JS packages
 pnpm build              # production build of apps/web
 uv run pytest           # Python tests
 uv run repro --version  # engine CLI (subcommands arrive in C01)
+
+pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply
+uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)
+uv run ruff format      # Python format (--check in CI)
+uv run mypy             # strict type check of engine, bench and tests
 ```
+
+Optional: `uvx pre-commit install` enables local hooks for Ruff and Biome.
 
 CI (`.github/workflows/ci.yml`) runs the same commands from a clean checkout on Ubuntu and
 Windows, with `--frozen-lockfile` / `--locked`.

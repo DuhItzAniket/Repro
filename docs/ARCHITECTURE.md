@@ -509,3 +509,4 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
 | [0010](adr/0010-evaluation-methodology.md) | Evaluation on fresh SWE-format tasks against execution-aware baselines | accepted |
 | [0011](adr/0011-motion-safety.md) | Wall-clock-clamped motion and a flash governor | accepted |
 | [0012](adr/0012-card-as-attestation.md) | Export the card as an in-toto attestation | accepted |
+| [0013](adr/0013-python-quality-tooling.md) | Python quality tooling: Ruff and mypy (strict) | accepted |

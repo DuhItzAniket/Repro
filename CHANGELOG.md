@@ -16,6 +16,8 @@ All notable changes to this project are documented here. The format follows
 - CI workflow: clean-checkout install, typecheck, tests, build and CLI smoke test on Ubuntu
   and Windows. [A02]
 - Apache-2.0 `LICENSE` and `NOTICE`. [A02]
+- Quality gates: Ruff (lint + format) and strict mypy for Python (ADR-0013), Biome for
+  TS/JSON, `pnpm lint`, an optional local pre-commit config, and a required CI `lint` job. [A03]
 
 ### Changed
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent

@@ -11,7 +11,7 @@
 | [TEST_STRATEGY.md](TEST_STRATEGY.md) | Test layers, fixture repositories, CI tiers, agent evaluation |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Assets, adversaries, trust boundaries, threats and mitigations |
 | [process/SDLC.md](process/SDLC.md) | How work flows: phases, stage gates, Definition of Done, branching, privacy |
-| [adr/](adr/) | Architecture Decision Records (0001–0012) |
+| [adr/](adr/) | Architecture Decision Records (0001–0013) |
 | [phases/](phases/) | Per-phase records: what shipped, evidence, gaps |
 | [paper/](paper/README.md) | Research-paper tracker, evaluation protocol, research log, bibliography |
 | [research/](research/README.md) | Detailed source-tagged research notes (six tracks) |
