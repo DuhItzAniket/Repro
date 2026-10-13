@@ -36,6 +36,7 @@ import { type Callout, CalloutTracker } from "./stage/streams/callouts";
 import { streakLayer } from "./stage/streams/layers";
 import { webLayers } from "./stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "./stage/web/layout-service";
+import { installTestHook } from "./test-hook";
 
 const root = document.getElementById("app");
 if (root === null) throw new Error("Repro: #app root element is missing from index.html");
@@ -50,6 +51,8 @@ const view = createShellView();
 const layout = signal(computeLayout(window.innerWidth, window.innerHeight));
 
 const params = new URLSearchParams(window.location.search);
+/** `?test`: the visual-regression mode (fixed DPR, `window.__reproTest`; B12). */
+const testMode = params.has("test");
 const hud = params.has("hud") ? signal<HudSnapshot | null>(null) : undefined;
 const callouts = signal<readonly Callout[]>([]);
 const executionSides = signal<ExecutionSides>("both");
@@ -127,7 +130,10 @@ function mountStage(): StageHost | null {
   const canvas = root?.querySelector<HTMLCanvasElement>(".stage-canvas");
   if (canvas === null || canvas === undefined) return null;
   try {
-    const stage = new StageHost(canvas, { devicePixelRatio: window.devicePixelRatio });
+    const stage = new StageHost(canvas, {
+      devicePixelRatio: window.devicePixelRatio,
+      ...(testMode ? { fixedDpr: 1 } : {}),
+    });
     const governor = new FlashGovernor(model, webLayout);
     for (const layer of webLayers(model, webLayout, governor)) stage.add(layer);
     for (const layer of ringStageLayers) stage.add(layer);
@@ -281,6 +287,20 @@ loop.listen(() => {
   }
 });
 loop.start();
+if (testMode) {
+  installTestHook({
+    model,
+    clock,
+    layout: webLayout,
+    ring: ringModel,
+    host,
+    focus,
+    reduced,
+    invalidatePanels: () => {
+      for (const panel of panels.values()) panel.invalidate();
+    },
+  });
+}
 
 const fixture = fixtureFromQuery(window.location.search);
 view.status.value = `loading ${fixture} run…`;

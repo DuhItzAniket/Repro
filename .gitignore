@@ -52,6 +52,8 @@ node_modules/
 apps/web/dist/
 playwright-report/
 test-results/
+# Perf gate output (B12); the committed baseline lives in apps/web/perf/
+perf-results/
 blob-report/
 
 # Benchmark artefacts (large; published separately, e.g. Zenodo)
