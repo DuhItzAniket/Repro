@@ -72,23 +72,29 @@ stress load before building them, and do it on an integrated GPU.
 
 ## Evidence
 - Tests: web 71 (+20: stats 4, dpr 6, instances 6, proxies 4).
-- **Stress benchmark.** Integrated GPU: Intel UHD Graphics via ANGLE D3D11, in the Claude
-  desktop app's Chromium 152 on Windows 11. Load: 1920×641 stage, 10,000 edges, 2,048 streaks
-  at peak, 360 cards, 720 ticks, 4 draw calls.
+- **Stress benchmark (corrected).** Integrated GPU: Intel UHD Graphics via ANGLE D3D11, in the
+  Claude desktop app's Chromium 152 on Windows 11. Load: 1920×641 stage, 10,000 edges, 2,048
+  streaks at peak, 360 cards, 720 ticks, 4 draw calls. The render sanity check confirmed
+  0.40 M (DPR 1) to 1.57 M (DPR 2) lit device pixels.
 
   | DPR | Interval p50 / p95 / p99 (ms) | Dropped frames | CPU p95 (ms) |
   |---|---|---|---|
-  | 1 | 16.7 / 17.0 / 17.6 (run 2: 16.8 / 33.3) | 0.8% (1.3%) | 0.8 (0.5) |
-  | 1.5 | 16.7 / 17.1 / 33.2 | 1.1% | 0.8 |
-  | 2 | 16.7 / 17.0 / 33.2 (run 2: 17.0 / 33.1) | 1.1% (1.1%) | 0.9 (0.8) |
+  | 1 | 16.7 / 16.9 / 17.0 (run 2: 16.9 / 33.2) | 0% (1.3%) | 0.6 (0.6) |
+  | 1.5 | 16.7 / 16.9 / 17.1 | 0.2% | 0.6 |
+  | 2 | 16.7 / 16.9 / 17.0 (run 2: 16.9 / 17.0) | 0.2% (0.4%) | 0.7 (0.7) |
 
   Reading:
-  - The budget holds at every DPR, including 2.
-  - About 1% of frames take two refreshes at **every** DPR, including 1. They do not grow with
-    pixel count, so they come from the host browser's frame jitter, not the GPU (the idle stage
-    shows the same p99 spikes).
-  - CPU work is under 1 ms at p95, so the main thread has more than 15× headroom for the real
-    layers' logic.
+  - The budget holds at every DPR, including 2, with real fill.
+  - Dropped frames stay at or below about 1% and do not grow with pixel count, so they are host
+    jitter.
+  - CPU work is under 1 ms at p95.
+- **Correction.** The benchmark first recorded in this phase drew **nothing**. three.js culled
+  every segment quad as a back face: the shader flips y, which reverses the triangle winding,
+  and three's default material side is `FrontSide`. The HUD showed instances and draw calls,
+  so the timings looked plausible, but there was no fill. B05 found it when the real edge layer
+  rendered nothing. The fix was `side: DoubleSide`. The bench now reads back pixels after
+  warm-up and **refuses to report timings** for a stage that draws nothing. The invalid numbers
+  are superseded above and kept only as this note (and in `docs/paper/LOG.md`).
 - **Bundle:** JS 572 kB raw, **149 kB gzip** with three.js. That matches research/05's estimate
   of about 146 kB, and the build test's 300 kB gzip budget holds.
 
@@ -101,6 +107,9 @@ stress load before building them, and do it on an integrated GPU.
   (DESIGN.md) remains.
 
 ## Known gaps
+- GPU-free render-model tests cannot see rasterisation problems such as culling, blending or
+  winding. The bench's pixel sanity check covers the stage in a browser now. B12's Playwright
+  screenshots will cover it in CI.
 - WebGL has no GPU timer here (`EXT_disjoint_timer_query_webgl2` is commonly unavailable), so
   GPU cost is inferred from dropped frames rather than measured directly.
 - three.js's own per-frame allocations are not covered by "no allocation in `frame()`". The B12

@@ -92,3 +92,16 @@ entry. If something turns out wrong, add a correcting entry.
 - Method, hardware and raw numbers: `docs/perf/B04-stress-bench.json`. The CPU (i7-14650HX) is
   stronger than a typical mid laptop's. The large CPU headroom makes that immaterial to the
   conclusion, but a paper should state the hardware exactly.
+
+## 2026-10-13 · B04 · Correction: the first stage benchmark drew nothing
+
+- The B04 entry above is **wrong as first recorded**. Its timings came from a stage that drew no
+  pixels: three.js culled every segment quad as a back face, because the shader's y flip
+  reverses the triangle winding. Instance and draw-call counters looked normal, so nothing hinted
+  at the missing fill.
+- Re-measured after the fix (`side: DoubleSide`), with a pixel read-back confirming 0.40–1.57 M
+  lit device pixels: on the same integrated GPU the stress load still holds 60 fps at DPR 2. The
+  p95 frame interval was 16.9 ms, dropped frames ≤ 0.4%, and stage CPU p95 ≤ 0.7 ms. The
+  conclusion stands; the numbers in `docs/perf/B04-stress-bench.json` are the corrected ones.
+- Lesson for the evaluation chapter: a performance benchmark needs an output check (here, lit
+  pixels), not only counters. The bench now refuses to report timings without it.

@@ -1,7 +1,7 @@
 {
   "phase": "B04",
   "date": "2026-10-13",
-  "method": "apps/web/bench.html (src/bench): stress fixture (seed 1); proxy layers for edges, ring cards, ticks and streaks; the busiest second of the run looped for 8 s after a 1 s warm-up; fixed DPR per case; fresh WebGL context per case. Interval = requestAnimationFrame timestamp deltas; cpu = stage frame() time (layer updates, uploads, render call). Timer resolution 0.1 ms; values rounded to 0.1 ms.",
+  "method": "apps/web/bench.html (src/bench): stress fixture (seed 1); proxy layers for edges, ring cards, ticks and streaks; the busiest second of the run looped for 8 s after a 1 s warm-up; fixed DPR per case; fresh WebGL context per case. Interval = requestAnimationFrame timestamp deltas; cpu = stage frame() time (layer updates, uploads, render call). Timer resolution 0.1 ms; values rounded to 0.1 ms. A render sanity check (lit pixels read back after warm-up) refuses to time a stage that draws nothing.",
   "environment": {
     "browser": "Claude desktop in-app browser, Chrome/152.0.7977.130 (Windows 11, x64)",
     "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A78B) Direct3D11 vs_5_0 ps_5_0, D3D11)",
@@ -15,23 +15,114 @@
     "cards": 360,
     "ticks": 720,
     "streaks_peak": 2048,
-    "draw_calls": 4
+    "draw_calls": 4,
+    "lit_pixels": {
+      "dpr_1": 401626,
+      "dpr_1.5": 890319,
+      "dpr_2": 1570840
+    }
   },
   "runs": [
     {
       "run": 1,
       "results": [
-        { "dpr": 1, "frames": 477, "interval": { "p50": 16.7, "p95": 17.0, "p99": 17.6, "max": 33.5 }, "cpu": { "p50": 0.3, "p95": 0.8, "p99": 1.0, "max": 1.2 }, "dropped": 0.0084 },
-        { "dpr": 1.5, "frames": 476, "interval": { "p50": 16.7, "p95": 17.1, "p99": 33.2, "max": 33.3 }, "cpu": { "p50": 0.4, "p95": 0.8, "p99": 1.1, "max": 1.6 }, "dropped": 0.0105 },
-        { "dpr": 2, "frames": 476, "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.2, "max": 33.4 }, "cpu": { "p50": 0.4, "p95": 0.9, "p99": 1.1, "max": 1.4 }, "dropped": 0.0105 }
+        {
+          "dpr": 1,
+          "frames": 481,
+          "interval": {
+            "p50": 16.7,
+            "p95": 16.9,
+            "p99": 17.0,
+            "max": 17.0
+          },
+          "cpu": {
+            "p50": 0.4,
+            "p95": 0.6,
+            "p99": 0.8,
+            "max": 0.9
+          },
+          "dropped": 0.0,
+          "litPixels": 401626
+        },
+        {
+          "dpr": 1.5,
+          "frames": 479,
+          "interval": {
+            "p50": 16.7,
+            "p95": 16.9,
+            "p99": 17.1,
+            "max": 49.8
+          },
+          "cpu": {
+            "p50": 0.4,
+            "p95": 0.6,
+            "p99": 0.8,
+            "max": 1.0
+          },
+          "dropped": 0.0021,
+          "litPixels": 890319
+        },
+        {
+          "dpr": 2,
+          "frames": 479,
+          "interval": {
+            "p50": 16.7,
+            "p95": 16.9,
+            "p99": 17.0,
+            "max": 50.0
+          },
+          "cpu": {
+            "p50": 0.5,
+            "p95": 0.7,
+            "p99": 0.9,
+            "max": 1.0
+          },
+          "dropped": 0.0021,
+          "litPixels": 1570840
+        }
       ]
     },
     {
       "run": 2,
       "results": [
-        { "dpr": 2, "frames": 476, "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.1, "max": 33.5 }, "cpu": { "p50": 0.4, "p95": 0.8, "p99": 1.2, "max": 1.7 }, "dropped": 0.0105 },
-        { "dpr": 1, "frames": 475, "interval": { "p50": 16.7, "p95": 16.8, "p99": 33.3, "max": 33.4 }, "cpu": { "p50": 0.3, "p95": 0.5, "p99": 0.7, "max": 0.9 }, "dropped": 0.0126 }
+        {
+          "dpr": 2,
+          "frames": 476,
+          "interval": {
+            "p50": 16.7,
+            "p95": 16.9,
+            "p99": 17.0,
+            "max": 83.3
+          },
+          "cpu": {
+            "p50": 0.4,
+            "p95": 0.7,
+            "p99": 0.9,
+            "max": 1.0
+          },
+          "dropped": 0.0042,
+          "litPixels": 1570840
+        },
+        {
+          "dpr": 1,
+          "frames": 475,
+          "interval": {
+            "p50": 16.7,
+            "p95": 16.9,
+            "p99": 33.2,
+            "max": 33.3
+          },
+          "cpu": {
+            "p50": 0.4,
+            "p95": 0.6,
+            "p99": 0.8,
+            "max": 0.9
+          },
+          "dropped": 0.0126,
+          "litPixels": 401626
+        }
       ]
     }
-  ]
+  ],
+  "correction": "The first two runs recorded on 2026-10-13 measured a stage that drew nothing: three.js culled every segment quad as a back face (the shader's y flip reverses the winding). Those timings were invalid and are replaced by the runs below, measured after the fix (material side: DoubleSide). litPixels shows the frames really drew."
 }

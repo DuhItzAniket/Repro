@@ -36,6 +36,8 @@ export interface BenchResult {
   readonly instances: Record<string, number>;
   /** Times the page was hidden while measuring (hidden pages throttle frames). */
   readonly hiddenDuringRun: number;
+  /** Device pixels brighter than the background at the start of measuring (sanity check). */
+  readonly litPixels: number;
 }
 
 export interface BenchReport {
@@ -102,12 +104,21 @@ export async function runCase(
   // Warm-up: render the first burst frame for a second (shader compilation, first uploads),
   // then measure while looping the burst window, so every measured frame is under burst load.
   const warmupMs = 1000;
+  let litPixels = -1;
   let previous = await nextFrame();
   const first = previous;
   for (;;) {
     const now = await nextFrame();
     const elapsed = now - first;
     const measuring = elapsed >= warmupMs;
+    if (measuring && litPixels < 0) {
+      // Render sanity check: timings of a stage that draws nothing are meaningless.
+      litPixels = host.probeLitPixels();
+      if (litPixels === 0) {
+        host.dispose();
+        throw new Error(`render sanity check failed at dpr ${bench.dpr}: the stage drew no pixels`);
+      }
+    }
     const t = start + (measuring ? (elapsed - warmupMs) % BURST_LOOP_MS : 0);
     const cursor = model.store.cursorAt(t);
     const before = performance.now();
@@ -133,6 +144,7 @@ export async function runCase(
     drawCalls: host.info.drawCalls,
     instances: { ...host.info.instances, streaksPeak: peak.streaks },
     hiddenDuringRun: hidden,
+    litPixels,
   };
   const gpu = host.info.gpu;
   host.dispose();

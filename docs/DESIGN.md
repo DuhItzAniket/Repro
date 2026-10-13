@@ -199,4 +199,4 @@ surface — it stays plain and readable.
   budget" rule fired on vsync jitter alone in B04.
 - Measured in B04 (`docs/perf/B04-stress-bench.json`): on an integrated GPU (Intel UHD, Chromium
   152), 10k edges, 2,048 streaks, 360 cards and 720 ticks in 4 draw calls hold 60 fps at DPR 2.
-  The p95 frame interval was 17.0 ms and stage CPU time under 1 ms at p95.
+  The p95 frame interval was 16.9 ms and stage CPU time under 1 ms at p95.

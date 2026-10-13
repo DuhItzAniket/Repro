@@ -7,6 +7,7 @@
 import {
   AdditiveBlending,
   BufferAttribute,
+  DoubleSide,
   DynamicDrawUsage,
   GLSL3,
   InstancedBufferAttribute,
@@ -113,6 +114,10 @@ export class StageHost {
       transparent: true,
       depthTest: false,
       depthWrite: false,
+      // The shader maps y-down stage pixels to y-up clip space, which reverses the winding,
+      // and a segment's quad winding also depends on its direction. Never cull: with three's
+      // default FrontSide every segment was culled and nothing was drawn.
+      side: DoubleSide,
     });
     const geometry = new InstancedBufferGeometry();
     geometry.setAttribute("corner", new BufferAttribute(QUAD_CORNERS, 2));
@@ -183,6 +188,31 @@ export class StageHost {
       }
     }
     this.lastStart = start;
+  }
+
+  /**
+   * Renders the current frame again and counts pixels brighter than the background. It reads
+   * the whole drawing buffer back, so it is for benchmarks and debugging only, never per frame.
+   * The benchmark refuses to report timings for a stage that draws nothing.
+   */
+  probeLitPixels(): number {
+    this.renderer.render(this.scene, this.camera);
+    const gl = this.renderer.getContext();
+    const width = gl.drawingBufferWidth;
+    const height = gl.drawingBufferHeight;
+    const pixels = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    let lit = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      // The clear colour is #080808.
+      if (
+        (pixels[i] as number) > 8 ||
+        (pixels[i + 1] as number) > 8 ||
+        (pixels[i + 2] as number) > 8
+      )
+        lit++;
+    }
+    return lit;
   }
 
   dispose(): void {
