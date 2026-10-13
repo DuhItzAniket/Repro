@@ -14,8 +14,11 @@ result is a **Reproduction Card** with one of three verdicts:
 
 > Not "does it work?", but **"what did it change, and did it say so?"**
 
-> **Status: pre-alpha, planning complete (phase A01).** No runnable code yet. Development
-> proceeds phase by phase against the public [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha, v0.1.0 (Stage A, Foundation, complete).** The monorepo, the event
+> schema with generated TypeScript and Python types, quality and security gates, CI on
+> Linux and Windows, and measured feasibility of the tracer and sandbox are in place.
+> There is no end-to-end verification yet. Next: Stage B, the cockpit. Progress is tracked
+> in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 

@@ -600,7 +600,7 @@ wheels = [
 
 [[package]]
 name = "repro-bench"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "bench" }
 dependencies = [
     { name = "repro-engine" },
@@ -611,7 +611,7 @@ requires-dist = [{ name = "repro-engine", editable = "engine" }]
 
 [[package]]
 name = "repro-engine"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "engine" }
 dependencies = [
     { name = "typer" },
@@ -622,7 +622,7 @@ requires-dist = [{ name = "typer", specifier = ">=0.27.3" }]
 
 [[package]]
 name = "repro-events"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/events/python" }
 dependencies = [
     { name = "jsonschema" },

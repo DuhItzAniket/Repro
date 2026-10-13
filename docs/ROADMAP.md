@@ -39,7 +39,8 @@ A ──► B ──────────────┐
 **Goal:** a reproducible, cross-platform workspace where the event schema is the single source
 of truth. Measure the riskiest technical unknowns before building on them.
 
-**Gate A:** CI is green on `ubuntu-latest` and `windows-latest` from a clean clone. Changing the
+**Gate A (passed 2026-10-13, v0.1.0, record: [`phases/A-gate.md`](phases/A-gate.md)):** CI is
+green on `ubuntu-latest` and `windows-latest` from a clean clone. Changing the
 schema regenerates TS and Pydantic types, and CI fails on drift. Spike results are recorded in
 ADRs or phase records.
 
