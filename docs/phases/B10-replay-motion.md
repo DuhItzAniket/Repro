@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B05–B09 |
-| **Branch / PR** | `phase/B10-replay-motion` · PR pending |
+| **Branch / PR** | `phase/B10-replay-motion` · [#21](https://github.com/DuhItzAniket/Repro/pull/21) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
