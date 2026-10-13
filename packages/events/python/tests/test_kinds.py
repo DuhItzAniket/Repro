@@ -1,6 +1,8 @@
 """The kind registry in event.schema.json is complete and consistent with docs and examples."""
 
+import json
 import re
+from pathlib import Path
 
 from repro_events.schemas import ALL_STAGES, SchemaSet, default_schema_root
 
@@ -42,3 +44,21 @@ def test_registry_matches_the_kinds_documented_in_architecture(schema_set: Schem
         name for row in table_rows for name in re.findall(r"`([a-z]+(?:\.[a-z_]+)+)`", row)
     }
     assert documented == {info.kind for info in schema_set.kinds}
+
+
+def test_kind_alone_selects_the_branch(schema_set: SchemaSet) -> None:
+    # event_errors relies on this to skip re-checking all 34 oneOf branches per event.
+    assert schema_set.kind_discriminates
+
+
+def test_discrimination_is_detected_structurally(tmp_path: Path) -> None:
+    root = default_schema_root()
+    for path in root.rglob("*.schema.json"):
+        target = tmp_path / path.relative_to(root)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+    event_path = tmp_path / "event.schema.json"
+    schema = json.loads(event_path.read_text(encoding="utf-8"))
+    del schema["oneOf"][1]["properties"]["kind"]
+    event_path.write_text(json.dumps(schema), encoding="utf-8")
+    assert not SchemaSet(tmp_path).kind_discriminates

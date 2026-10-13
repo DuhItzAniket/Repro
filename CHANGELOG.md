@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `@repro/synth`: a deterministic synthetic-run generator (seeded sfc32, ULIDs, single-writer
+  ordering) with `DEMO` and `STRESS` profiles. Committed fixtures
+  `apps/web/fixtures/demo-run.jsonl` (2,334 events, 28 checks, 4 flagged) and
+  `stress-run.jsonl` (18,542 events, 10,000 edges, a 3k-event one-second burst), a drift test,
+  and `pnpm fixtures`. [B01]
+- ADR-0015, the check model: which events are checks, what their status means, and how
+  verdicts resolve pending checks. It defines the CHECKS and FLAGGED counters and the
+  change×check index. [B01]
+- `@repro/events/testing` export (Ajv harness) for other packages' tests. [B01]
+
+### Changed
+- `SchemaSet.event_errors` caches validators and skips the redundant whole-`oneOf` check when
+  `kind` discriminates the registry (`SchemaSet.kind_discriminates`). It is about 5× faster
+  with identical results. [B01]
+
 ## [0.1.0] - 2026-10-13
 
 Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.

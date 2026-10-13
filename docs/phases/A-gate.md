@@ -68,7 +68,7 @@ Typical full CI wall clock: about 1.5–2 minutes (PR #6: 1 min 49 s; `main` aft
 ## Carried-over gaps
 | Gap | Owner phase |
 |---|---|
-| Local uv 0.11.6 must be reinstalled (≥ 0.12.18 Windows security fix) before untrusted installs | before D03 (owner action) |
+| Local uv 0.11.6 must be reinstalled (≥ 0.12.18 Windows security fix) before untrusted installs | before D03 (owner action). **Resolved 2026-10-13:** the owner upgraded to uv 0.13.0; the full suite passes locally with it |
 | `required-version` floor for uv (`>=0.12.18`) | D03 |
 | Dependency graph disabled, so `dependency review` is off | owner setting, then set `DEPENDENCY_REVIEW=true` |
 | Schema files not yet packaged inside the `repro-events` wheel | H05 |
