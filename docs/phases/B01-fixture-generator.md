@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | A07 |
-| **Branch / PR** | `phase/B01-fixture-generator` · PR link added on creation |
+| **Branch / PR** | `phase/B01-fixture-generator` · [#10](https://github.com/DuhItzAniket/Repro/pull/10) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective

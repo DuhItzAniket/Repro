@@ -621,3 +621,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | A07 | 2026-10-13 | [#7](https://github.com/DuhItzAniket/Repro/pull/7) | Log validator/normaliser CLI, golden logs, Hypothesis/fast-check, deterministic fixture repos |
 | A08 | 2026-10-13 | [#8](https://github.com/DuhItzAniket/Repro/pull/8) | Measured: tracer overhead (budget 200 → ~baseline), Docker L3 on Windows, offline provisioning 0.79 s |
 | Gate A | 2026-10-13 | [#9](https://github.com/DuhItzAniket/Repro/pull/9) | Stage A complete; release v0.1.0 ([gate record](phases/A-gate.md)) |
+| B01 | 2026-10-13 | [#10](https://github.com/DuhItzAniket/Repro/pull/10) | `@repro/synth` generator; demo (2,334 events, 28 checks) and stress (10k edges, 3k/s burst) fixtures; ADR-0015 check model |
