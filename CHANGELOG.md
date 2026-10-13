@@ -26,6 +26,9 @@ All notable changes to this project are documented here. The format follows
 - In-house schema codegen (ADR-0014): TypeScript types (`ReproEvent` union, `EVENT_KINDS`,
   `KIND_STAGES`) and strict Pydantic v2 models with a discriminated `Event` union; `pnpm gen`;
   CI drift gate; equivalence tests across JSON Schema, Pydantic and Ajv. [A05]
+- CI pipeline: `lint`, `test` (Ubuntu, Windows), `security` (gitleaks over full history,
+  licence allow-list), PR dependency review; SHA-pinned actions; Dependabot for actions, npm and
+  uv. [A06]
 
 ### Changed
 - Common enum `Verdict` renamed `VerdictValue` (it collided with the `Verdict` model). [A05]
