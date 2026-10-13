@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = ["repro-engine", "repro-bench"]
 
 [dependency-groups]
-dev = ["pytest>=9.1.1"]
+dev = ["pytest>=9.1.1", "ruff>=0.17.0", "mypy>=2.4.0"]
 
 [tool.uv]
 package = false
@@ -24,3 +24,53 @@ minversion = "9.0"
 testpaths = ["engine/tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 xfail_strict = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["engine/src", "engine/tests", "bench/src"]
+# Code blocks in docs are illustrative sketches, not source; Ruff 0.17 would otherwise format them.
+extend-exclude = ["docs"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  "E", "W", "F",  # pycodestyle, pyflakes
+  "I",            # import order
+  "B",            # bugbear
+  "UP",           # pyupgrade
+  "SIM",          # simplify
+  "RUF",          # ruff-specific
+  "PT",           # pytest style
+  "C4",           # comprehensions
+  "N",            # naming
+  "S",            # bandit (security)
+  "PERF",         # performance anti-patterns
+  "TID",          # tidy imports
+  "PTH",          # use pathlib (CLAUDE.md platform rule)
+  "DTZ",          # timezone-aware datetimes (event timestamps are UTC)
+  "T20",          # no print
+  "ARG",          # unused arguments
+  "RET",          # return style
+  "PLC", "PLE", "PLR", "PLW",  # pylint subsets
+  "ERA",          # commented-out code
+  "BLE",          # blind except
+]
+ignore = [
+  "PLR0913",      # too many arguments: keyword-only configuration objects are clearer than forced bundling
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S603", "S607", "PLR2004", "ARG"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
+files = ["engine/src", "engine/tests", "bench/src"]

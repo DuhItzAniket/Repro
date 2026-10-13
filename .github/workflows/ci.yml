@@ -1,6 +1,5 @@
-# Clean-checkout build and test on Linux and Windows (phase A02).
-# A06 extends this workflow with lint, type and schema-drift gates, secret scanning,
-# dependency review and commit-SHA pinning of actions.
+# CI: quality gates (lint) and clean-checkout build and test on Linux and Windows.
+# A06 adds schema-drift and secret scanning, licence and dependency review, and SHA-pinned actions.
 name: CI
 
 on:
@@ -16,6 +15,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python environment
+        run: uv sync --locked
+
+      - name: Biome (lint + format, TS/JSON)
+        run: pnpm lint
+
+      - name: Ruff lint
+        run: uv run --locked ruff check --output-format github
+
+      - name: Ruff format
+        run: uv run --locked ruff format --check
+
+      - name: mypy (strict)
+        run: uv run --locked mypy
+
   build-test:
     name: build & test (${{ matrix.os }})
     strategy:

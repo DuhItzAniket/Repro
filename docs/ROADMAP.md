@@ -47,7 +47,7 @@ ADRs or phase records.
 |---|---|---|---|---|
 | A01 | Research, architecture & plan baseline | M | — | done |
 | A02 | Toolchain & monorepo scaffold | M | A01 | done |
-| A03 | Code-quality gates | S | A02 | planned |
+| A03 | Code-quality gates | S | A02 | done |
 | A04 | Event schema v1 | M | A02 | planned |
 | A05 | Schema codegen & drift gate | M | A04 | planned |
 | A06 | CI pipeline & repository security | M | A03, A05 | planned |
