@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B04 |
-| **Branch / PR** | `phase/B06-ring-layer` · PR link added on creation |
+| **Branch / PR** | `phase/B06-ring-layer` · [#15](https://github.com/DuhItzAniket/Repro/pull/15) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
