@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | A — Foundation |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | A02 |
-| **Branch / PR** | `phase/A03-quality-gates` |
-| **Started / finished** | 2026-10-13 / — |
+| **Branch / PR** | `phase/A03-quality-gates` · [#3](https://github.com/DuhItzAniket/Repro/pull/3) |
+| **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
 Every language has a lint, format and type gate that runs with one command locally and is
@@ -22,10 +22,10 @@ enforced in CI. A deliberately broken file fails each gate.
 - Restructuring CI, secret scanning, licence checks and SHA pinning (A06).
 
 ## Acceptance criteria
-- [ ] AC1: One command per language reports zero issues on the current tree (`pnpm lint`;
+- [x] AC1: One command per language reports zero issues on the current tree (`pnpm lint`;
       `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`).
-- [ ] AC2: A deliberately broken file fails each gate (procedure and output recorded below).
-- [ ] AC3: CI runs the gates in a `lint` job, and `lint` is a required check on `main`.
+- [x] AC2: A deliberately broken file fails each gate (procedure and output recorded below).
+- [x] AC3: CI runs the gates in a `lint` job, and `lint` is a required check on `main`.
 
 ## Test plan
 | Criterion | Check |
@@ -60,7 +60,9 @@ enforced in CI. A deliberately broken file fails each gate.
   | `ruff format --check` | 2-space indent, `x+1` | exit 1, "1 file would be reformatted" |
   | `mypy` | unannotated functions | exit 1, `no-untyped-def` in both files |
   | `biome check` | `any`, unused `var`, `==`, unformatted | exit 1, 2 errors + 2 warnings (noExplicitAny, noUnusedVariables, noDoubleEquals, format) |
-- AC3: CI run on the PR (see the PR), plus the branch-protection required-check list.
+- AC3: on PR #3, `lint` and both `build & test` jobs passed. Required checks on `main` are now
+  `lint`, `build & test (ubuntu-latest)` and `build & test (windows-latest)`, and #3 auto-merged
+  (squash) once they were green.
 
 ## Deviations from spec
 - None. The type checker choice was left open by the roadmap and is now recorded in ADR-0013.

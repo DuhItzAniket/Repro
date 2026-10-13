@@ -48,7 +48,7 @@ ADRs or phase records.
 | A01 | Research, architecture & plan baseline | M | — | done |
 | A02 | Toolchain & monorepo scaffold | M | A01 | done |
 | A03 | Code-quality gates | S | A02 | done |
-| A04 | Event schema v1 | M | A02 | planned |
+| A04 | Event schema v1 | M | A02 | done |
 | A05 | Schema codegen & drift gate | M | A04 | planned |
 | A06 | CI pipeline & repository security | M | A03, A05 | planned |
 | A07 | Test-harness foundations & golden-log tooling | M | A05 | planned |
@@ -609,3 +609,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 |---|---|---|---|
 | A01 | 2026-10-13 | (bootstrap commit) | Planning baseline published |
 | A02 | 2026-10-13 | [#1](https://github.com/DuhItzAniket/Repro/pull/1) | pnpm + uv workspaces, pinned toolchains, CI on Ubuntu + Windows; ADRs 0003/0004/0007/0011 accepted; Apache-2.0 |
+| A03 | 2026-10-13 | [#3](https://github.com/DuhItzAniket/Repro/pull/3) | Ruff + strict mypy (ADR-0013), Biome, required `lint` CI job |
