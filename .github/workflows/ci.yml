@@ -52,6 +52,9 @@ jobs:
       - name: mypy (strict)
         run: uv run --locked mypy
 
+      - name: Generated code is up to date (schema drift)
+        run: uv run --locked repro-events-codegen --check
+
   build-test:
     name: build & test (${{ matrix.os }})
     strategy:

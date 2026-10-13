@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!**/coverage", "!docs/research"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/coverage",
+      "!docs/research",
+      "!packages/events/src/generated"
+    ]
   },
   "formatter": {
     "enabled": true,

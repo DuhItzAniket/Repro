@@ -49,7 +49,7 @@ ADRs or phase records.
 | A02 | Toolchain & monorepo scaffold | M | A01 | done |
 | A03 | Code-quality gates | S | A02 | done |
 | A04 | Event schema v1 | M | A02 | done |
-| A05 | Schema codegen & drift gate | M | A04 | planned |
+| A05 | Schema codegen & drift gate | M | A04 | done |
 | A06 | CI pipeline & repository security | M | A03, A05 | planned |
 | A07 | Test-harness foundations & golden-log tooling | M | A05 | planned |
 | A08 | Feasibility spikes | M | A02 | planned |
@@ -86,11 +86,11 @@ ADRs or phase records.
   tests. An "every kind has a schema" test passes.
 
 **A05 · Schema codegen & drift gate**
-- Deliverables: TS types via json-schema-to-typescript and Pydantic v2 models via
-  datamodel-code-generator, plus Repro's own discriminated-union generator for `kind`.
-  Cross-language round-trip tests (Python model → JSON → TS validator and back).
-- Accept: `pnpm gen` / `uv run gen` regenerate deterministically, and CI fails on any diff
-  between committed and regenerated types. Round-trip passes for all example events.
+- Deliverables (revised in A05, see ADR-0014): an in-house generator (`repro-events-codegen`)
+  emitting TS types and strict Pydantic v2 models, both with a discriminated union over `kind`.
+  Equivalence tests across JSON Schema, Pydantic and Ajv (TypeScript), plus round trip.
+- Accept: `pnpm gen` / `uv run repro-events-codegen` regenerate deterministically, and CI fails
+  on any diff between committed and regenerated types. Round-trip passes for all example events.
 
 **A06 · CI pipeline & repository security**
 - Deliverables: GitHub Actions workflow for lint, types, unit tests, schema drift and secret

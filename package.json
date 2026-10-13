@@ -13,6 +13,7 @@
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "biome check .",
+    "gen": "uv run repro-events-codegen",
     "lint:fix": "biome check --write ."
   },
   "devDependencies": {

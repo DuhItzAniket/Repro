@@ -46,8 +46,8 @@ to Python 3.15, which was released only on 2026-10-09.
 | fastapi / uvicorn | 0.143.0 / 0.54.0 | |
 | pydantic | 2.14.1 | |
 | claude-agent-sdk | 0.2.165 (bundles CLI 2.1.294) | Pin exactly. Releases arrive every few days |
-| datamodel-code-generator | 0.83.0 | Plus Repro's own discriminated-union step |
-| json-schema-to-typescript | 16.0.0 | |
+| Schema codegen | in-house `repro-events-codegen` (ADR-0014) | json-schema-to-typescript 16.0.0 / datamodel-code-generator 0.83.0 evaluated and not used |
+| ajv / ajv-formats | 8.20.0 / 3.0.1 | Draft 2020-12 validation in TypeScript tests |
 | pytest / hypothesis | 9.1.1 / 6.169.0 | |
 | grimp / griffe | 3.17 / 2.3.2 | griffe with `allow_inspection=False` |
 | three | 0.186.1 (r186) | `WebGLRenderer` only |

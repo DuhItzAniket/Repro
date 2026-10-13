@@ -31,7 +31,7 @@ target-version = "py312"
 line-length = 100
 src = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests"]
 # Code blocks in docs are illustrative sketches, not source; Ruff 0.17 would otherwise format them.
-extend-exclude = ["docs"]
+extend-exclude = ["docs", "packages/events/python/src/repro_events/models.py"]
 
 [tool.ruff.format]
 docstring-code-format = true

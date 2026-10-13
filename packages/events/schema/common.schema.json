@@ -126,7 +126,7 @@
     "ClaimKind": {
       "enum": ["fix", "feature", "refactor", "no-change", "perf", "deps", "test", "docs"]
     },
-    "Verdict": {
+    "VerdictValue": {
       "enum": ["supported", "contradicted", "unverifiable"]
     },
     "CardStatus": {
