@@ -71,3 +71,4 @@ desktop.ini
 
 # Local Claude Code state
 .claude/settings.local.json
+.claude/launch.json

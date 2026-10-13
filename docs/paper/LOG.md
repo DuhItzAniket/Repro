@@ -65,3 +65,18 @@ entry. If something turns out wrong, add a correcting entry.
     share the sandbox, so the effect is symmetric, but it must still be avoided.
   - 24 click tests fail in a slim image because `less` is missing. Environment-induced failures
     are common, which is why outcome comparison must be base-vs-head (F2F) rather than absolute.
+
+## 2026-10-13 · B01 · Check model and synthetic reference run
+
+- ADR-0015 defines a *check* as a result-bearing event (`diff.*`, `invariant.result`) with a
+  status that does not depend on claims: `ok`, `fail` (a problem on its own) or `warn` (needs
+  explaining, or not comparable). A `warn` check counts as passed only when a **supported**
+  verdict cites its evidence. If review ends with no such citation, it counts as flagged
+  (an unexplained difference). This states the claim-relative explained-delta oracle in a
+  form that can be checked directly against the event log, with counters that only rise during
+  a run.
+- The synthetic reference run (`@repro/synth`, `DEMO`, seed 1) has 28 checks: 20 passed,
+  4 flagged, 4 unassessed. It also contains a test-tampering case, a masked unstable
+  observation and a rejected-then-retried verdict. It is a UI fixture, **not** evaluation
+  data, and must never be reported as a result.
+- Record: `docs/phases/B01-fixture-generator.md`.

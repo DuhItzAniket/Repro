@@ -103,6 +103,44 @@ class SchemaSet:
         """Validates a complete event (envelope plus the payload of exactly one kind)."""
         return self.validator(EVENT_SCHEMA)
 
+    @cached_property
+    def _envelope_validator(self) -> Draft202012Validator:
+        return self.validator(ENVELOPE_SCHEMA)
+
+    @cached_property
+    def _branch_validators(self) -> dict[str, Draft202012Validator]:
+        return {
+            info.kind: self._validator(
+                {
+                    "allOf": [
+                        {"$ref": self.uri(ENVELOPE_SCHEMA)},
+                        {"$ref": f"{self.uri(EVENT_SCHEMA)}#/oneOf/{info.branch_index}"},
+                    ]
+                }
+            )
+            for info in self.kinds
+        }
+
+    @cached_property
+    def kind_discriminates(self) -> bool:
+        """True when ``kind`` alone selects the ``oneOf`` branch.
+
+        That holds when the envelope requires ``kind``, the event schema adds nothing besides
+        the envelope and the ``oneOf``, and every branch pins a distinct ``kind`` constant.
+        Then an event that is valid against its own branch is valid against the whole schema,
+        and :meth:`event_errors` can skip re-checking all branches.
+        """
+        event_schema = self.documents[EVENT_SCHEMA]
+        envelope_only = event_schema.get("allOf") == [{"$ref": ENVELOPE_SCHEMA}]
+        extra_keys = set(event_schema) - {"$schema", "title", "description", "allOf", "oneOf"}
+        requires_kind = "kind" in self.documents[ENVELOPE_SCHEMA].get("required", [])
+        consts = [
+            branch.get("properties", {}).get("kind", {}).get("const")
+            for branch in event_schema["oneOf"]
+        ]
+        distinct = all(isinstance(c, str) for c in consts) and len(set(consts)) == len(consts)
+        return envelope_only and not extra_keys and requires_kind and distinct
+
     def event_errors(self, event: Any) -> list[str]:
         """Human-readable validation errors for one event; empty when valid.
 
@@ -110,24 +148,16 @@ class SchemaSet:
         the event is checked against that kind's branch so that messages point at the exact
         payload field instead of a generic "not valid under any of the given schemas".
         """
-        envelope_errors = _messages(self.validator(ENVELOPE_SCHEMA).iter_errors(event))
+        envelope_errors = _messages(self._envelope_validator.iter_errors(event))
         if envelope_errors:
             return envelope_errors
-        info = self.kinds_by_name.get(event["kind"])
-        if info is None:
+        branch = self._branch_validators.get(event["kind"])
+        if branch is None:
             return [f"$.kind: unknown event kind {event['kind']!r}"]
-        branch = self._validator(
-            {
-                "allOf": [
-                    {"$ref": self.uri(ENVELOPE_SCHEMA)},
-                    {"$ref": f"{self.uri(EVENT_SCHEMA)}#/oneOf/{info.branch_index}"},
-                ]
-            }
-        )
         branch_errors = _messages(branch.iter_errors(event))
-        if branch_errors:
+        if branch_errors or self.kind_discriminates:
             return branch_errors
-        # The full schema must agree; a disagreement means the registry itself is inconsistent.
+        # Without a discriminating kind, the full schema must agree as well.
         return _messages(self.event_validator.iter_errors(event))
 
 

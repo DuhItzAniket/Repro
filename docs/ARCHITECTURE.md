@@ -267,6 +267,11 @@ target code runs from snapshots, not worktrees. Adding kinds does not change cor
   `verdict.issued` that failed validation). Stored events are never edited.
 - **Schema evolution.** Consumers ignore unknown fields. Upcasters keyed by `(kind, pv)` live in
   `packages/events` so old JSONL logs keep replaying.
+- **Result-bearing events (ADR-0015).** `diff.*` and `invariant.result` events are the run's
+  *checks*. Their envelope `status` is `ok` for a passed check, `fail` for a problem on its own
+  terms (P2F, test tampering, failed invariant), and `warn` for a difference that needs a claim
+  to explain it or could not be compared. The cockpit's CHECKS and FLAGGED counters and the
+  change×check index are computed from these rules alone.
 - **Secrets.** Payloads never contain environment variables, API keys or tokens. The bus scrubs
   known secret patterns before persistence, as defence in depth.
 - **Interop (export only).** Lossless mapping to CloudEvents 1.0: `type = dev.repro.<kind>`,
@@ -517,3 +522,4 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
 | [0012](adr/0012-card-as-attestation.md) | Export the card as an in-toto attestation | accepted |
 | [0013](adr/0013-python-quality-tooling.md) | Python quality tooling: Ruff and mypy (strict) | accepted |
 | [0014](adr/0014-in-house-schema-codegen.md) | In-house code generation from the event schema | accepted |
+| [0015](adr/0015-check-model.md) | The check model: what CHECKS, FLAGGED and the index count | accepted |

@@ -108,6 +108,7 @@ pnpm gen                # regenerate TS types + Pydantic models from packages/ev
 uv run repro-events-codegen --check   # drift gate (CI): fails if generated code is stale
 uv run python scripts/check_licenses.py   # licence allow-list over all installed deps (CI)
 uv run repro-events validate <log.jsonl>   # schema + log invariants of an event log
+pnpm fixtures                             # regenerate apps/web/fixtures/*.jsonl (review the diff!)
 uv run pytest --update-goldens            # rewrite golden files (review the diff!)
 ```
 

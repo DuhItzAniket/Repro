@@ -48,6 +48,8 @@ The Paper Lab mapping → Repro mapping:
 - The ring is a large circle whose centre is **off-screen to the left** (centre ≈ x = 0.15·W,
   radius ≈ 0.55·H of the stage), so only the right arc shows, like the reference.
 - Header counters are left-aligned columns with tiny uppercase labels above large numerals.
+  CLAIMS = `claim.extracted` events; AGENTS = distinct spawned agents; FILES = distinct files of
+  module nodes in the dependency graph; CHECKS and FLAGGED follow the check model (ADR-0015).
 - Progress bar: one segment per stage (read, build, run, diff, check, review, card). The active
   segment is bright white, completed ones mid-grey, pending ones dark grey.
 - < 1100 px wide: panels become 2 columns and scroll; stage keeps ≥ 50vh.
@@ -141,9 +143,10 @@ caption bottom-left in `--text-dim` (the reference uses these, e.g.
    the bar (working / waiting / done / flagged). Flagged bars tinted `--flag-deep`. Footer:
    "independent jobs / shared event bus".
 8. **Change × check index** — dot matrix: rows = claims/changes, columns = checks; filled =
-   pass, rose = fail, hollow = missing. Right column: status word (verified / flagged /
-   review). Footer: "28 checks / 24 passed / 4 flagged". (Header counters and this footer always come from the
-   same projection, so they can never disagree.)
+   passed, rose = flagged, hollow = unassessed, dim = pending review (ADR-0015). Right column:
+   status word (verified / flagged / review). Footer: "28 checks / 20 passed / 4 flagged /
+   4 unassessed". (Header counters and this footer always come from the same projection, so
+   they can never disagree.)
 
 Clicking any row/cell/node **focuses** it: the stage pans/highlights, and a side drawer opens
 with the evidence (raw diff, trace samples, verdict text). The drawer is the only "normal UI"
