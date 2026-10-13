@@ -134,7 +134,8 @@ The UI side has three interfaces: `Projection<S>` (`init`, `apply(state, event, 
 - **A:** keep generated code checked in. Contributors should never need to run codegen to build.
   The drift gate enforces consistency.
 - **B:** start B04 with the stress fixture and measure on a real mid laptop before building the
-  layers. Shaders live in `.glsl` files imported with `?raw`. No allocation inside `frame()`.
+  layers. Shaders live in `.glsl` files imported with `?raw`. No object allocation inside
+  `frame()`; B12 gates a flat heap and a per-frame allocation budget.
 - **C:** the single-writer bus is the only code that assigns `seq`. All other components emit
   through it. Write the WebSocket gap-free test first, then the code.
 - **D:** every sandbox feature gets an escape or containment test in the same PR. The plugin is

@@ -242,8 +242,10 @@ surface — it stays plain and readable.
 ## Performance budget
 
 - 60 fps on a mid laptop with 10k edges and 2k live streaks. Use instanced geometry and one draw
-  call per layer (about 6 stage draw calls). No per-frame allocations. Panels redraw only on new
-  events, batched per animation frame.
+  call per layer (about 6 stage draw calls). No per-frame object allocations in the stage
+  layers (B12 measured about 25 kB a frame at the stress burst, all of it V8 boxing doubles at
+  calls it does not inline, short-lived). The heap stays flat across frames (B12 gate). Panels
+  redraw only on new events, batched per animation frame.
 - Initial load under 300 KB of JS, gzipped (fonts excluded). The measured baseline is about
   146 KB for three.js `WebGLRenderer`, Preact 11, signals and d3-force (research/05 §1.2).
 - Measured, not assumed:
