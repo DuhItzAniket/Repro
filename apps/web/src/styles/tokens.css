@@ -1,0 +1,32 @@
+/* Design tokens (DESIGN.md "Palette" and "Type"). The screen is about 95% greyscale; colour only
+   marks state. Dark only for now, but every colour is a token so a light theme can follow. */
+:root {
+  color-scheme: dark;
+
+  --bg: #080808;
+  --panel: #121212;
+  --panel-border: #232323;
+  --line-faint: rgb(255 255 255 / 10%);
+  --line: rgb(255 255 255 / 20%);
+  --line-strong: rgb(255 255 255 / 35%);
+  --text: #d6d6d6;
+  --text-dim: #6e6e6e;
+  --text-faint: #3a3a3a;
+  --hot: #ffffff;
+  --flag: #b48f9c;
+  --flag-deep: #6e4e5a;
+  --ok: #8fb4a8;
+  --violet: #7d7390;
+
+  /* Progress bar segments: active bright, done mid-grey, pending dark grey. */
+  --segment-active: var(--hot);
+  --segment-done: #5a5a5a;
+  --segment-pending: #262626;
+
+  --font-mono: "JetBrains Mono Variable", "IBM Plex Mono", ui-monospace, monospace;
+  --title-size: 22px;
+  --panel-title-size: 10px;
+  --body-size: 11px;
+  --numeral-size: 14px;
+  --micro-size: 8.5px;
+}
