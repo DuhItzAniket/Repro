@@ -137,7 +137,7 @@ allocation and bundle-size gates are active in CI.
 | B04 | Stage foundation & performance harness | M | B03 | done |
 | B05 | Dependency-web layer & bundles | L | B04 | done |
 | B06 | Ring layer (file-card atlas) | M | B04 | done |
-| B07 | Event-stream layer & callouts | M | B04 | planned |
+| B07 | Event-stream layer & callouts | M | B04 | done |
 | B08 | Panels I: feed, execution, agent workspace, behaviour field | L | B02, B03 | planned |
 | B09 | Panels II: change routes, signals, dispatch, change×check index | L | B08 | planned |
 | B10 | Replay controls & motion safety | M | B05–B09 | planned |
@@ -627,3 +627,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B04 | 2026-10-13 | [#13](https://github.com/DuhItzAniket/Repro/pull/13) | WebGL `StageHost` + pure layers, segment primitive, render-model hashing, adaptive DPR, perf HUD; stress bench on integrated GPU: 60 fps at DPR 2 |
 | B05 | 2026-10-13 | [#14](https://github.com/DuhItzAniket/Repro/pull/14) | Dependency web: worker d3-force layout (cached, equalised), shader-revealed edges, blast markers, Bézier bundles; 10k edges at 60 fps on an integrated GPU |
 | B06 | 2026-10-14 | [#15](https://github.com/DuhItzAniket/Repro/pull/15) | Ring of file cards built from events, worker-drawn atlas, one instanced draw call, closed-form rotation with 500 ms snaps, shader-rotated ticks |
+| B07 | 2026-10-14 | [#16](https://github.com/DuhItzAniket/Repro/pull/16) | Event streams on per-file lanes (≤ 2,048 live, velocity-stretched tails, DESIGN tints) and callouts; complete stage holds the budget at 2k streaks |

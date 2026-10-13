@@ -9,9 +9,10 @@ import { computeLayout } from "../shell/layout";
 import { type HudSnapshot, PerfHud, snapshot } from "../stage/hud";
 import { AtlasService, defaultAtlasBuild } from "../stage/ring/atlas-service";
 import { ringLayers } from "../stage/ring/layers";
+import { streakLayer } from "../stage/streams/layers";
 import { webLayers } from "../stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "../stage/web/layout-service";
-import { proxyLayers, streakProxy } from "./proxies";
+import { proxyLayers } from "./proxies";
 import { type BenchReport, type BenchResult, busiestSecond, runCase } from "./run";
 
 declare global {
@@ -23,7 +24,7 @@ declare global {
 const params = new URLSearchParams(window.location.search);
 const seconds = Number(params.get("seconds") ?? "8");
 const ratios = (params.get("dpr") ?? "1,1.5,2").split(",").map(Number);
-/** `real` (default): the web and ring layers plus a proxy for streaks; `proxy`: B04 proxies only. */
+/** `real` (default): every stage layer; `proxy`: the B04 proxies only. */
 const layerSet = params.get("layers") === "proxy" ? "proxy" : "real";
 
 const hud = signal<HudSnapshot | null>(null);
@@ -64,7 +65,7 @@ async function main(): Promise<void> {
       : [
           ...webLayers(model, webLayout),
           ...ringLayers(model, new AtlasService(defaultAtlasBuild())).layers,
-          streakProxy(model),
+          streakLayer(model),
         ];
   const start = busiestSecond(model) - 400;
   const { stage, ring } = computeLayout(window.innerWidth, window.innerHeight);

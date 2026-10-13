@@ -124,7 +124,11 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - Each event emits a streak from the ring's outer edge outward along a radial line, with a
   motion-blurred tail. Length ∝ duration/importance; alpha decays.
 - Tint: white = engine, `--violet` = agent, `--flag-deep`/`--flag` = fail/diff, `--ok` = pass.
+  Priority (B07): fail, then diff, then a passing test, then agent, then engine.
 - Dense bursts are the point: a test batch should look like the reference's fan of streaks.
+- Lanes (B07): an event streams along its file's lane, a hash of the file mapped into ±64° on the
+  ring's right side, so one file's activity forms a band. Graph, stage, run and feed events do
+  not stream; at most 2,048 streaks are live (the newest).
 
 ### Tooltips / callouts
 - Small boxes with a 1px border (as at 12 s and 18 s in the video), label + one value,

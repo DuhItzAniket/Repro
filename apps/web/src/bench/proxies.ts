@@ -120,8 +120,9 @@ export function streakProxy(model: CockpitModel, limit = 2048): StageLayer {
             0.6 * (1 - progress),
             0,
           )
-        )
+        ) {
           break;
+        }
       }
     },
   };

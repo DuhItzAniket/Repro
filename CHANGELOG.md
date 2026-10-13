@@ -42,6 +42,10 @@ All notable changes to this project are documented here. The format follows
   imports, symbols, changes). The rotation is closed-form, with 500 ms ease-out-cubic snaps to
   the focused file, plus a tick scale and rims. Segment layers can now turn in the shader with
   no per-frame uploads. [B06]
+- Event streams: up to 2,048 live streaks on per-file lanes, with eased heads,
+  velocity-stretched tails and DESIGN.md state tints, as a pure function of (events, t). Plus
+  callouts: at most two bordered boxes naming the latest findings. With every stage layer real,
+  the stress burst holds the frame budget on an integrated GPU. [B07]
 
 ### Fixed
 - Stage geometry is rebuilt when a layer's buffers grow. three.js caches the maximum instance

@@ -52,8 +52,9 @@ export class RingModel {
       Number.POSITIVE_INFINITY,
     );
     this.version++;
-    if (this.content.cards.length > 0)
+    if (this.content.cards.length > 0) {
       void this.atlas.request(this.content.key, this.content.cards);
+    }
   }
 }
 
