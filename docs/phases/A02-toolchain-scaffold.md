@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | A — Foundation |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | A01 |
-| **Branch / PR** | `phase/A02-toolchain-scaffold` · PR link added on merge |
-| **Started / finished** | 2026-10-13 / — |
+| **Branch / PR** | `phase/A02-toolchain-scaffold` · [#1](https://github.com/DuhItzAniket/Repro/pull/1) (merged as `f16730f`) |
+| **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
 Set up a reproducible, cross-platform monorepo that later phases fill in: a pnpm workspace for
@@ -49,11 +49,11 @@ a small but real test suite on Windows and Linux.
   web entry renders the product name.
 
 ## Acceptance criteria
-- [ ] AC1: On a clean clone, `pnpm install --frozen-lockfile` and `uv sync --locked` succeed on Windows and Linux.
-- [ ] AC2: `pnpm test`, `pnpm typecheck`, `pnpm build` and `uv run pytest` pass on Windows and Linux.
-- [ ] AC3: The interpreter, Node floor, pnpm version and build backend are pinned explicitly. No floating defaults are relied on.
-- [ ] AC4: `uv run repro --version` prints the version from package metadata.
-- [ ] AC5: CLAUDE.md Commands lists only commands that work.
+- [x] AC1: On a clean clone, `pnpm install --frozen-lockfile` and `uv sync --locked` succeed on Windows and Linux.
+- [x] AC2: `pnpm test`, `pnpm typecheck`, `pnpm build` and `uv run pytest` pass on Windows and Linux.
+- [x] AC3: The interpreter, Node floor, pnpm version and build backend are pinned explicitly. No floating defaults are relied on.
+- [x] AC4: `uv run repro --version` prints the version from package metadata.
+- [x] AC5: CLAUDE.md Commands lists only commands that work.
 
 ## Test plan
 | Criterion | Check |
@@ -98,7 +98,9 @@ a small but real test suite on Windows and Linux.
 - `pnpm dev` served `index.html` (`<title>Repro</title>`) on :5173.
 - `uv.lock` (written by uv 0.11.6) passes `uv lock --check` under uv 0.13.0, the version CI uses.
 - Neither lockfile contains machine-specific paths.
-- CI: see "CI runs" below.
+- CI: [run 38418581594](https://github.com/DuhItzAniket/Repro/actions/runs/38418581594) on `c490d43` passed on `ubuntu-latest`
+  and `windows-latest`, covering every step from checkout to the CLI smoke test. Run 38418489601 on
+  `3365420` also completed every step on both OSes before a newer push cancelled it.
 
 ## Deviations from spec
 - A minimal CI workflow was added in A02 rather than A06. A02's acceptance criterion requires
@@ -126,7 +128,10 @@ a small but real test suite on Windows and Linux.
 - Lint, format and type gates for Python (A03). TS gets `tsc --noEmit` now, and Biome comes in A03.
 - No `[tool.uv] required-version` floor yet. Set it to `>=0.12.18` in D03, once the local uv is
   reinstalled.
-- Branch protection on `main` is not enabled (repository setting, awaiting the owner's go-ahead).
+- PR #1 was merged by the owner with a merge commit, before squash-only merging was configured.
+  From now on `main` is protected: PRs only, both CI checks required and up to date, linear
+  history, conversation resolution, no force-push or deletion, enforced for admins, squash-only,
+  auto-merge allowed, and branches deleted after merge.
 
 ## Dependencies added
 | Package | Version | Licence | Why |
