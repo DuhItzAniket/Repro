@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B04 |
-| **Branch / PR** | `phase/B07-event-streams` · PR link added on creation |
+| **Branch / PR** | `phase/B07-event-streams` · [#16](https://github.com/DuhItzAniket/Repro/pull/16) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
