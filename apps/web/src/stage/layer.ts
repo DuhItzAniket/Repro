@@ -4,6 +4,7 @@
  * buffers into one instanced draw call. Layers never touch WebGL, so they are tested without a
  * GPU by hashing their render model.
  */
+import type { FocusTargets } from "../focus/focus";
 import type { Motion } from "../motion/motion";
 import type { Ring } from "../shell/layout";
 import type { InstanceBuffers, RenderModel } from "./instances";
@@ -20,6 +21,8 @@ export interface StageFrame {
   readonly ring: Ring;
   /** Replay speed and reduced motion: wall-clock durations scale with the speed (ADR-0011). */
   readonly motion: Motion;
+  /** What the user focused (B11): highlighted on the stage, its file pinned on the ring. */
+  readonly focus?: FocusTargets;
 }
 
 /** Which GPU primitive draws a layer's buffers. */

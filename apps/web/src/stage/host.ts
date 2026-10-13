@@ -22,6 +22,7 @@ import {
   Texture,
   WebGLRenderer,
 } from "three";
+import { type FocusTargets, NO_FOCUS } from "../focus/focus";
 import { type Motion, NORMAL_MOTION } from "../motion/motion";
 import type { Ring } from "../shell/layout";
 import { AdaptiveDpr } from "./dpr";
@@ -134,6 +135,7 @@ export class StageHost {
       height: 1,
       ring: { cx: 0, cy: 0, r: 1 },
       motion: NORMAL_MOTION,
+      focus: NO_FOCUS,
     };
   }
 
@@ -241,11 +243,17 @@ export class StageHost {
   }
 
   /** One frame: layers write instances, the host uploads what changed and draws. */
-  frame(t: number, cursor: number, motion: Motion = NORMAL_MOTION): void {
+  frame(
+    t: number,
+    cursor: number,
+    motion: Motion = NORMAL_MOTION,
+    focus: FocusTargets = NO_FOCUS,
+  ): void {
     const start = this.now();
     this.input.t = t;
     this.input.cursor = cursor;
     this.input.motion = motion;
+    this.input.focus = focus;
     this.time.value = t;
     for (const binding of this.bindings) {
       const { layer } = binding;

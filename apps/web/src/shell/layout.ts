@@ -34,10 +34,13 @@ export interface CockpitLayout {
   readonly ring: Ring;
   /** The replay transport strip, along the bottom of the stage (B10). */
   readonly transport: Rect;
+  /** The evidence drawer, over the right of the stage above the transport (B11). */
+  readonly drawer: Rect;
 }
 
 export const HEADER_HEIGHT = 56;
 export const TRANSPORT_HEIGHT = 24;
+export const DRAWER_WIDTH = 380;
 export const GAP = 8;
 export const PAD = 8;
 export const NARROW_BELOW = 1100;
@@ -97,6 +100,7 @@ export function computeLayout(viewportWidth: number, viewportHeight: number): Co
       panels,
       ring: ringFor(stage),
       transport: transportFor(stage),
+      drawer: drawerFor(stage),
     };
   }
 
@@ -125,6 +129,17 @@ export function computeLayout(viewportWidth: number, viewportHeight: number): Co
     panels,
     ring: ringFor(stage),
     transport: transportFor(stage),
+    drawer: drawerFor(stage),
+  };
+}
+
+function drawerFor(stage: Rect): Rect {
+  const w = Math.min(DRAWER_WIDTH, stage.w - 2 * PAD);
+  return {
+    x: stage.x + stage.w - w - PAD,
+    y: stage.y + PAD,
+    w,
+    h: stage.h - 2 * PAD - TRANSPORT_HEIGHT - PAD,
   };
 }
 

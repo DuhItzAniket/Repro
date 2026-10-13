@@ -66,6 +66,15 @@ All notable changes to this project are documented here. The format follows
   the bright area that rises in any 333 ms under half of WCAG 2.3.1's 87,296 CSS px² flashing
   area, at every speed, on both fixtures. `prefers-reduced-motion` and the in-app toggle stop
   streaks, bundles, flares, drift and panel animation. [B10]
+- Focus: click or keyboard on index rows and cells, route rows, dispatch slots, ring cards and
+  web nodes. The stage outlines the focus and pins its file on the ring, the agent workspace
+  follows a focused agent, and an evidence drawer shows the claim's verdict text and quotes,
+  the check's evidence and trace samples, the file's changes, routed tests and related checks.
+  [B11]
+- Accessible parallel DOM: a throttled `role="log"` for the feed (at most one summary every 2 s),
+  semantic tables for the index and the drawer, button lists for routes and agents, a file
+  picker, a described stage canvas, and landmarks. axe-core 4.14.0 reports no violations in
+  jsdom (CI) and in Chromium. [B11]
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the
@@ -77,6 +86,9 @@ All notable changes to this project are documented here. The format follows
   count per geometry and would otherwise draw no more instances than the first capacity. [B05]
 
 ### Changed
+- `--text-dim` is `#868686` (was the reference's `#6e6e6e`, 3.9:1) to reach WCAG 1.4.3's
+  4.5:1. `--text-faint` is no longer used for text, and callouts and the transport are opaque.
+  [B11]
 - `SchemaSet.event_errors` caches validators and skips the redundant whole-`oneOf` check when
   `kind` discriminates the registry (`SchemaSet.kind_discriminates`). It is about 5× faster
   with identical results. [B01]

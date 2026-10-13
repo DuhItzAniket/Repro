@@ -75,7 +75,7 @@ body {
 }
 
 .subtitle .run {
-  color: var(--text-faint);
+  color: var(--text-dim);
 }
 
 .counters {
@@ -226,7 +226,8 @@ body {
   margin: 0;
   padding: 0 6px;
   font-size: var(--micro-size);
-  background: rgb(8 8 8 / 72%);
+  /* Opaque: text keeps 4.5:1 contrast whatever streak passes behind (WCAG 1.4.3). */
+  background: var(--bg);
   border: 1px solid var(--panel-border);
 }
 
@@ -294,6 +295,138 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
   white-space: nowrap;
+}
+
+/* Focus and evidence (B11) ------------------------------------------------------------- */
+
+/* The stage's file picker: off-screen until keyboard focus reaches it. */
+.file-picker {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  font-size: var(--micro-size);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  clip-path: inset(50%);
+}
+
+.file-picker:focus-within {
+  clip-path: none;
+}
+
+.file-picker select {
+  max-width: 280px;
+  font-family: var(--font-mono);
+  font-size: var(--micro-size);
+  color: var(--text);
+  background: #181818;
+  border: 1px solid var(--panel-border);
+}
+
+.drawer {
+  position: absolute;
+  z-index: 4;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: var(--body-size);
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+}
+
+.drawer-header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: var(--panel-title-size);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.drawer-header h2:focus-visible {
+  outline: 1px solid var(--hot);
+  outline-offset: 2px;
+}
+
+.drawer-header .toggle {
+  flex: none;
+}
+
+.drawer-subtitle {
+  margin: 6px 0 10px;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.drawer-section h3 {
+  margin: 12px 0 4px;
+  font-size: var(--micro-size);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.drawer-section p {
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.drawer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--micro-size);
+}
+
+.drawer th,
+.drawer td {
+  padding: 2px 6px 2px 0;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.drawer th {
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.drawer .link {
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.drawer .link:focus-visible {
+  outline: 1px solid var(--hot);
+  outline-offset: 1px;
+}
+
+.stage-canvas,
+.panel-canvas {
+  cursor: pointer;
 }
 
 .panel-footer {
@@ -374,7 +507,8 @@ body {
   font-size: 9px;
   line-height: 1.4;
   white-space: nowrap;
-  background: rgb(8 8 8 / 85%);
+  /* Opaque: text keeps 4.5:1 contrast whatever streak passes behind (WCAG 1.4.3). */
+  background: var(--bg);
   border: 1px solid var(--line-strong);
 }
 

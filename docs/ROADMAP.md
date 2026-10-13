@@ -141,7 +141,7 @@ allocation and bundle-size gates are active in CI.
 | B08 | Panels I: feed, execution, agent workspace, behaviour field | L | B02, B03 | done |
 | B09 | Panels II: change routes, signals, dispatch, change×check index | L | B08 | done |
 | B10 | Replay controls & motion safety | M | B05–B09 | done |
-| B11 | Focus, evidence drawer & accessibility | M | B10 | planned |
+| B11 | Focus, evidence drawer & accessibility | M | B10 | done |
 | B12 | UI quality gate | M | B11 | planned |
 
 **B01 · Deterministic fixture generator & reference log**

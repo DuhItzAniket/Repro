@@ -2,6 +2,7 @@
  * The ring layers (B06): file cards in one instanced draw call, and the tick scale on its rim.
  * Both share a `RingModel`: content, angles and the closed-form rotation for the current log.
  */
+import type { FocusTargets } from "../../focus/focus";
 import type { CockpitModel } from "../../model/cockpit";
 import { type Motion, motionKey } from "../../motion/motion";
 import { ringTracker } from "../geometry";
@@ -37,6 +38,8 @@ export class RingModel {
   private built = -1;
   /** Rotations per motion setting (see `rotationAt`), rebuilt with the content. */
   readonly rotationCache = new Map<number, RingRotation>();
+  /** Card index per file. */
+  cardOf = new Map<string, number>();
 
   constructor(
     private readonly model: CockpitModel,
@@ -51,6 +54,7 @@ export class RingModel {
     this.angles = ringAngles(this.content.cards);
     this.rotation = ringRotation(this.angles, this.content.focus);
     this.rotationCache.clear();
+    this.cardOf = new Map(this.content.cards.map((card, i) => [card.file, i]));
     this.firstAppear = this.content.cards.reduce(
       (t, card) => Math.min(t, card.appear),
       Number.POSITIVE_INFINITY,
@@ -62,12 +66,31 @@ export class RingModel {
   }
 }
 
+/** The card the user's focus pins: the first focused file that has a card, or -1. */
+export function pinnedCard(ring: RingModel, focus: FocusTargets | undefined): number {
+  if (focus === undefined) return -1;
+  for (const file of focus.files) {
+    const card = ring.cardOf.get(file);
+    if (card !== undefined) return card;
+  }
+  return -1;
+}
+
 /**
  * The ring's angle at `t` for this frame's motion (ADR-0011): a snap lasts 500 ms of wall-clock
  * time at any replay speed, and reduced motion snaps instantly and does not drift. Closed-form
- * per setting, so it stays a pure function of (events, t, motion).
+ * per setting, so it stays a pure function of (events, t, motion). A user focus (B11) pins its
+ * file's card at 3 o'clock instead, without drift, until the focus changes.
  */
-export function rotationAt(ring: RingModel, t: number, motion: Motion): number {
+export function rotationAt(
+  ring: RingModel,
+  t: number,
+  motion: Motion,
+  focus?: FocusTargets,
+): number {
+  const pinned = pinnedCard(ring, focus);
+  if (pinned >= 0)
+    return -((ring.angles.start[pinned] as number) + (ring.angles.end[pinned] as number)) / 2;
   const key = motionKey(motion);
   let rotation = ring.rotationCache.get(key);
   if (rotation === undefined) {
@@ -97,7 +120,7 @@ export function cardLayer(ring: RingModel): CardLayer {
     rotation: 0,
     update(frame: StageFrame) {
       ring.sync();
-      layer.rotation = rotationAt(ring, frame.t, frame.motion);
+      layer.rotation = rotationAt(ring, frame.t, frame.motion, frame.focus);
       if (ring.version === drawn) return;
       drawn = ring.version;
       const { cards } = ring.content;
@@ -152,7 +175,7 @@ export function tickLayer(ring: RingModel, cardCapacity = 160): StageLayer {
     rotation: 0,
     update(frame: StageFrame) {
       ring.sync();
-      layer.rotation = rotationAt(ring, frame.t, frame.motion);
+      layer.rotation = rotationAt(ring, frame.t, frame.motion, frame.focus);
       const moved = ringChanged(frame.ring);
       if (ring.version === drawn && !moved) return;
       drawn = ring.version;

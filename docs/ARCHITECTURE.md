@@ -486,6 +486,12 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   panel only when its `version(t, cursor, motion)` or the motion settings change, clearing the
   whole backing store first. Equal versions must mean equal drawings; a B10 property test checks
   this frame by frame, which is what makes playing equal to scrubbing.
+- **Focus and accessibility (B11).** One focus (claim, file, symbol, check or agent) drives the
+  stage highlight and ring pin (`StageFrame.focus`), the panels' outlines, the agent workspace
+  and the evidence drawer (`drawerView`, a pure function of focus and cursor). Panels expose
+  `targets` (rows and cells with their rectangles) from the same geometry they draw with, for
+  hit tests and the keyboard mirror. Stage clicks are hit-tested against the ring's closed-form
+  rotation and the web layout.
 - **Motion (B10, ADR-0011).** The frame loop passes every layer and panel the replay speed and
   reduced motion. Visual durations are wall-clock, so the stage is a pure function of (events,
   t, motion). A `FlashGovernor` decides, in log order, which streaks and bundles are drawn and

@@ -8,11 +8,13 @@
  * shows the most urgent related result among them. The footer (`indexFooterText`) and the
  * header's counters count the same results the columns show.
  */
+
+import type { Focus } from "../focus/focus";
 import { type CheckIndexView, checkIndex, type RowStatus } from "../model/check-index";
 import type { CockpitModel } from "../model/cockpit";
 import { CHECK_KINDS, type CheckResult } from "../model/projections/checks";
 import { COLOR } from "../styles/palette";
-import { type Panel, versionOf } from "./panel";
+import { type Panel, type PanelSize, type PanelTarget, target, versionOf } from "./panel";
 import { charsIn, clip, font } from "./text";
 
 /** Smallest column pitch (px) before adjacent checks share a column. */
@@ -52,6 +54,49 @@ export function columnRanges(checks: number, width: number): [number, number][] 
   return out;
 }
 
+const LABEL_W = 74;
+const STATUS_W = 52;
+const TOP = 11;
+
+/** Geometry shared by drawing and focus targets. */
+export function indexGeometry(view: CheckIndexView, size: PanelSize) {
+  const matrixW = Math.max(10, size.w - LABEL_W - STATUS_W);
+  // Rows shrink with the panel, down to 7 px (7 px text), like the reference's dense index.
+  const pitchY = Math.max(7, Math.min(13, (size.h - TOP) / Math.max(1, view.rows.length)));
+  const fit = Math.max(1, Math.floor((size.h - TOP) / pitchY));
+  const overflow = view.rows.length > fit;
+  const ranges = columnRanges(view.results.length, matrixW);
+  const pitchX = matrixW / Math.max(1, ranges.length);
+  return {
+    matrixW,
+    pitchY,
+    text: Math.max(7, Math.min(9, Math.floor(pitchY - 1))),
+    shown: overflow ? fit - 1 : view.rows.length,
+    overflow,
+    ranges,
+    pitchX,
+    dot: Math.max(1.5, Math.min(MAX_DOT, pitchX - 2, pitchY - 3)),
+  };
+}
+
+/** The most urgent check of `row` within `[from, to)`, or -1. */
+function worstIn(view: CheckIndexView, related: ReadonlySet<number>, from: number, to: number) {
+  let worst = -1;
+  for (let i = from; i < to; i++) {
+    if (!related.has(i)) continue;
+    const result = view.results[i] as CheckResult;
+    if (worst < 0 || URGENCY[result] > URGENCY[view.results[worst] as CheckResult]) worst = i;
+  }
+  return worst;
+}
+
+const rowFocus = (row: CheckIndexView["rows"][number]): Focus | null =>
+  row.kind === "claim"
+    ? { kind: "claim", id: row.id }
+    : row.kind === "change"
+      ? { kind: "file", file: row.id }
+      : null;
+
 export function indexPanel(model: CockpitModel): Panel<CheckIndexView> {
   return {
     id: "index",
@@ -66,25 +111,17 @@ export function indexPanel(model: CockpitModel): Panel<CheckIndexView> {
     draw(ctx, view, size) {
       ctx.textBaseline = "top";
       ctx.textAlign = "left";
-      const labelW = 74;
-      const statusW = 52;
-      const matrixW = Math.max(10, size.w - labelW - statusW);
+      const labelW = LABEL_W;
+      const statusW = STATUS_W;
+      const { pitchY, text, ranges, pitchX, dot, overflow, ...g } = indexGeometry(view, size);
       ctx.font = font(8);
       ctx.fillStyle = COLOR.dim;
       ctx.fillText("CLAIM / CHANGE", 0, 0);
       ctx.fillText(`CHECKS (${view.results.length})`, labelW, 0);
       ctx.fillText("STATUS", size.w - statusW + 6, 0);
-      const top = 11;
+      const top = TOP;
       const rows = view.rows;
-      // Rows shrink with the panel, down to 7 px (7 px text), like the reference's dense index.
-      const pitchY = Math.max(7, Math.min(13, (size.h - top) / Math.max(1, rows.length)));
-      const text = Math.max(7, Math.min(9, Math.floor(pitchY - 1)));
-      const fit = Math.max(1, Math.floor((size.h - top) / pitchY));
-      const overflow = rows.length > fit;
-      const shown = overflow ? rows.slice(0, fit - 1) : rows;
-      const ranges = columnRanges(view.results.length, matrixW);
-      const pitchX = matrixW / Math.max(1, ranges.length);
-      const dot = Math.max(1.5, Math.min(MAX_DOT, pitchX - 2, pitchY - 3));
+      const shown = rows.slice(0, g.shown);
       shown.forEach((row, r) => {
         const y = top + r * pitchY;
         const cy = y + pitchY / 2;
@@ -94,12 +131,8 @@ export function indexPanel(model: CockpitModel): Panel<CheckIndexView> {
         ctx.fillText(clip(row.label, charsIn(labelW - 6, text)), 0, cy - text / 2);
         const related = new Set(row.checks);
         ranges.forEach(([from, to], k) => {
-          let worst: CheckResult | null = null;
-          for (let i = from; i < to; i++) {
-            if (!related.has(i)) continue;
-            const result = view.results[i] as CheckResult;
-            if (worst === null || URGENCY[result] > URGENCY[worst]) worst = result;
-          }
+          const index = worstIn(view, related, from, to);
+          const worst = index < 0 ? null : (view.results[index] as CheckResult);
           const cx = labelW + k * pitchX + pitchX / 2;
           if (worst === null) {
             // Unrelated: a backdrop point, so the matrix reads as a grid.
@@ -134,6 +167,41 @@ export function indexPanel(model: CockpitModel): Panel<CheckIndexView> {
         ctx.fillText(`+${rows.length - shown.length} more`, 0, top + shown.length * pitchY + 2);
       }
       ctx.globalAlpha = 1;
+    },
+    targets(view, size) {
+      const { pitchY, shown, ranges, pitchX } = indexGeometry(view, size);
+      const out: PanelTarget[] = [];
+      view.rows.forEach((row, r) => {
+        const focus = rowFocus(row);
+        const y = TOP + r * pitchY;
+        const visible = r < shown;
+        if (focus !== null) {
+          const n = row.checks.length;
+          const counts = `${n} related ${n === 1 ? "check" : "checks"}`;
+          out.push(
+            target(focus, row.label, visible ? { x: 0, y, w: size.w, h: pitchY } : null, true, [
+              row.status,
+              counts,
+            ]),
+          );
+        }
+        if (!visible) return;
+        // Cells: each column with a related check focuses its most urgent one.
+        const related = new Set(row.checks);
+        ranges.forEach(([from, to], k) => {
+          const index = worstIn(view, related, from, to);
+          if (index < 0) return;
+          out.push(
+            target(
+              { kind: "check", index },
+              `${row.label}, check ${index + 1}: ${view.results[index]}`,
+              { x: LABEL_W + k * pitchX, y, w: pitchX, h: pitchY },
+              false,
+            ),
+          );
+        });
+      });
+      return out;
     },
   };
 }

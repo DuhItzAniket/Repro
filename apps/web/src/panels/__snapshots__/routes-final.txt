@@ -1,46 +1,46 @@
-text "FILE" 0,0 400 8px #6e6e6e a1
-text "SYMBOL" 82.5,0 400 8px #6e6e6e a1
-text "TEST" 165,0 400 8px #6e6e6e a1
-text "CHECK" 247.5,0 400 8px #6e6e6e a1
-text "parse.py" 3,12.6 400 9px #6e6e6e a1
-text "parse_date" 85.5,12.6 400 9px #6e6e6e a1
-text "8 tests" 168,12.6 400 9px #6e6e6e a1
+text "FILE" 0,0 400 8px #868686 a1
+text "SYMBOL" 82.5,0 400 8px #868686 a1
+text "TEST" 165,0 400 8px #868686 a1
+text "CHECK" 247.5,0 400 8px #868686 a1
+text "parse.py" 3,12.6 400 9px #868686 a1
+text "parse_date" 85.5,12.6 400 9px #868686 a1
+text "8 tests" 168,12.6 400 9px #868686 a1
 rect 247.5,12 76.5x10.1 #1c1c1c a1
 rect 247.5,12 76.5x10.1 #2a2a2a a1
 text "9 passed" 250.5,12.6 700 9px #d6d6d6 a1
-text "parse.py" 3,23.7 400 9px #6e6e6e a1
-text "_split_iso" 85.5,23.7 400 9px #6e6e6e a1
-text "8 tests" 168,23.7 400 9px #6e6e6e a1
+text "parse.py" 3,23.7 400 9px #868686 a1
+text "_split_iso" 85.5,23.7 400 9px #868686 a1
+text "8 tests" 168,23.7 400 9px #868686 a1
 rect 247.5,23.1 76.5x10.1 #1c1c1c a1
 rect 247.5,23.1 76.5x10.1 #2a2a2a a1
 text "8 passed" 250.5,23.7 700 9px #d6d6d6 a1
-text "fmt.py" 3,34.9 400 9px #6e6e6e a1
-text "<module>" 85.5,34.9 400 9px #6e6e6e a1
-text "1 test" 168,34.9 400 9px #6e6e6e a1
+text "fmt.py" 3,34.9 400 9px #868686 a1
+text "<module>" 85.5,34.9 400 9px #868686 a1
+text "1 test" 168,34.9 400 9px #868686 a1
 rect 247.5,34.3 76.5x10.1 #1c1c1c a1
 rect 247.5,34.3 76.5x10.1 #2a2a2a a1
 text "1 passed" 250.5,34.9 700 9px #d6d6d6 a1
-text "fmt.py" 3,46 400 9px #6e6e6e a1
-text "format_durat…" 85.5,46 400 9px #6e6e6e a1
-text "3 tests" 168,46 400 9px #6e6e6e a1
+text "fmt.py" 3,46 400 9px #868686 a1
+text "format_durat…" 85.5,46 400 9px #868686 a1
+text "3 tests" 168,46 400 9px #868686 a1
 rect 247.5,45.4 76.5x10.1 #1c1c1c a1
 rect 247.5,45.4 76.5x10.1 #6e4e5a a1
 text "2 flagged" 250.5,46 700 9px #b48f9c a1
-text "recur.py" 3,57.1 400 9px #6e6e6e a1
-text "expand_rrule" 85.5,57.1 400 9px #6e6e6e a1
-text "4 tests" 168,57.1 400 9px #6e6e6e a1
+text "recur.py" 3,57.1 400 9px #868686 a1
+text "expand_rrule" 85.5,57.1 400 9px #868686 a1
+text "4 tests" 168,57.1 400 9px #868686 a1
 rect 247.5,56.6 76.5x10.1 #1c1c1c a1
 rect 247.5,56.6 76.5x10.1 #6e4e5a a1
 text "1 flagged" 250.5,57.1 700 9px #b48f9c a1
-text "recur.py" 3,68.3 400 9px #6e6e6e a1
-text "_by_month" 85.5,68.3 400 9px #6e6e6e a1
-text "4 tests" 168,68.3 400 9px #6e6e6e a1
+text "recur.py" 3,68.3 400 9px #868686 a1
+text "_by_month" 85.5,68.3 400 9px #868686 a1
+text "4 tests" 168,68.3 400 9px #868686 a1
 rect 247.5,67.7 76.5x10.1 #1c1c1c a1
 rect 247.5,67.7 76.5x10.1 #6e4e5a a1
 text "1 flagged" 250.5,68.3 700 9px #b48f9c a1
-text "fold.py" 3,79.4 400 9px #6e6e6e a1
-text "_fold_offset" 85.5,79.4 400 9px #6e6e6e a1
-text "2 tests" 168,79.4 400 9px #6e6e6e a1
+text "fold.py" 3,79.4 400 9px #868686 a1
+text "_fold_offset" 85.5,79.4 400 9px #868686 a1
+text "2 tests" 168,79.4 400 9px #868686 a1
 rect 247.5,78.9 76.5x10.1 #1c1c1c a1
 rect 247.5,78.9 76.5x10.1 #2a2a2a a1
 text "2 passed" 250.5,79.4 700 9px #d6d6d6 a1
