@@ -52,8 +52,10 @@ export const MIN_PANEL_ROW = 112;
 export const NARROW_PANEL_ROW = 220;
 export const PANEL_COUNT = 8;
 /** Ring geometry relative to the stage (DESIGN.md "Ring"). */
-export const RING_CENTRE_X = 0.15;
-export const RING_RADIUS = 0.55;
+/** Ring radius as a share of the stage height: the arc spans the whole stage, like the reference. */
+export const RING_RADIUS = 0.9;
+/** Where the ring's 3 o'clock point sits, as a share of the stage width. */
+export const RING_ARC_X = 0.46;
 
 /** Splits `total` px into `n` integer parts separated by `gap`; the last part absorbs rounding. */
 function split(total: number, n: number, gap: number): number[] {
@@ -153,5 +155,6 @@ function transportFor(stage: Rect): Rect {
 }
 
 function ringFor(stage: Rect): Ring {
-  return { cx: stage.w * RING_CENTRE_X, cy: stage.h / 2, r: stage.h * RING_RADIUS };
+  const r = stage.h * RING_RADIUS;
+  return { cx: stage.w * RING_ARC_X - r, cy: stage.h / 2, r };
 }

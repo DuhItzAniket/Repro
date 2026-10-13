@@ -34,6 +34,7 @@ import { AtlasService, defaultAtlasBuild } from "./stage/ring/atlas-service";
 import { ringLayers } from "./stage/ring/layers";
 import { type Callout, CalloutTracker } from "./stage/streams/callouts";
 import { streakLayer } from "./stage/streams/layers";
+import { residueLayer } from "./stage/streams/residue";
 import { webLayers } from "./stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "./stage/web/layout-service";
 import { installTestHook } from "./test-hook";
@@ -137,6 +138,7 @@ function mountStage(): StageHost | null {
     const governor = new FlashGovernor(model, webLayout);
     for (const layer of webLayers(model, webLayout, governor)) stage.add(layer);
     for (const layer of ringStageLayers) stage.add(layer);
+    stage.add(residueLayer(model));
     stage.add(streakLayer(model, governor));
     stage.add(focusLayer(model, webLayout, ringModel));
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);

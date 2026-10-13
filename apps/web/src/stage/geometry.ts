@@ -18,4 +18,4 @@ export function ringTracker(): (ring: Ring) => boolean {
 }
 
 /** Radius of the dependency web: inside the ring's band (DESIGN.md "Ring": a ≈ 90 px band). */
-export const WEB_INSET = 55;
+export const WEB_INSET = 80;

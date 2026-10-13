@@ -45,8 +45,17 @@ The Paper Lab mapping → Repro mapping:
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-- The ring is a large circle whose **left part is off-screen** (centre ≈ x = 0.15·W, radius
-  ≈ 0.55·H of the stage), so mainly the right arc shows, like the reference.
+- The ring is a large circle whose **left part is off-screen**, so mainly the right arc shows,
+  like the reference. In the reference the arc spans the whole stage height and its 3 o'clock
+  point sits near the middle of the width (centre ≈ 0.15·W, radius ≈ 0.55·H on its *portrait*
+  stage). On a landscape stage the same picture needs a larger radius relative to the height
+  (B13):
+  - radius = 0.9·H of the stage, and the 3 o'clock point at x = 0.46·W, so centre x = 0.46·W − r;
+  - at 1440×900: centre x 192.6, radius 469.8, with the top, bottom and left of the circle
+    off-screen.
+
+  B03–B12 used the portrait proportions directly, which left a small ring and an empty right
+  half; B13's side-by-side check against the 6 s reference frame found it.
 - Geometry is computed by one pure function, `computeLayout(width, height)`
   (`apps/web/src/shell/layout.ts`, B03). At 1440×900 the result is: header 56 px, stage 522 px
   (58%), panels 350×149. At 1920×1080: stage 641 px (59%), panels 470×179/180.
@@ -107,12 +116,15 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   (ADR-0008).
 
 ### Ring (centre)
-- A thick band (≈ 90px) made of stacked **file cards**: tiny monospace text blocks (3–4px type —
-  illegible texture is fine). No v1 event carries file contents, so a card is the file's
+- A thick band (about 120 px: content from r − 72 to r + 10, metadata from r + 12 to r + 50) made
+  of stacked **file cards**: dense monospace text blocks. Text is about 4–5 px on screen, legible
+  up close like the reference's. At most 64 cards (B13; was 160), so about a dozen large cards
+  are visible on the arc. Files the run is about come first. No v1 event carries file contents, so a card is the file's
   **outline from events** (B06): its path, its imports (`graph.edge`), and its functions and
   classes (`graph.node`). An outer column of metadata cards shows the file name, counts and
   changed symbols.
-- Cards for files in the blast radius are brighter; changed files have a thin `--hot` edge.
+- Cards for files in the blast radius are brighter (ink 1.0, others 0.72); changed files have a
+  thin `--hot` edge.
 - The ring rotates slowly (one card per ~2 s) and snaps the **focused file** to the 3 o'clock
   position (500 ms ease-out-cubic) when an event targets it: `symbol.changed`,
   `claim.extracted`, `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`.
@@ -126,9 +138,14 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - Tint: white = engine, `--violet` = agent, `--flag-deep`/`--flag` = fail/diff, `--ok` = pass.
   Priority (B07): fail, then diff, then a passing test, then agent, then engine.
 - Dense bursts are the point: a test batch should look like the reference's fan of streaks.
-- Lanes (B07): an event streams along its file's lane, a hash of the file mapped into ±64° on the
-  ring's right side, so one file's activity forms a band. Graph, stage, run and feed events do
-  not stream; at most 2,048 streaks are live (the newest).
+- Lanes (B07): an event streams along its file's lane, a hash of the file mapped onto the
+  ring's right side, so one file's activity forms a band. Since B13 lanes span ±28°, within the
+  visible arc, so streams run near-horizontal like the reference's. Graph, stage, run and feed
+  events do not stream; at most 2,048 streaks are live (the newest).
+- Residue (B13): every streaming event also leaves a faint, static trace along its lane,
+  written once with the event's time and faded by the shader over 90 s of run time. Busy files
+  build dense horizontal bands, like the reference's long-exposure streams. A trace adds at most
+  9% luminance, under WCAG 2.3.1's 10% flash threshold, and never moves.
 
 ### Tooltips / callouts
 - Small boxes with a 1px border (as at 12 s and 18 s in the video), label + one value,

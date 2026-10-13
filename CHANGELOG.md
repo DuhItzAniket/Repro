@@ -82,6 +82,12 @@ All notable changes to this project are documented here. The format follows
   - Allocation: a flat heap over 1,000 frames of the stress burst, and a per-frame stage budget.
   - Size: size-limit, 300 kB gzip; currently 188.5 kB.
   - Perf: a calibrated frame-cost gate against a CI baseline, also nightly.
+- Visual parity with the reference. [B13]
+  - The ring's arc spans the stage height (radius 0.9·H, 3 o'clock point at 0.46·W).
+  - At most 64 larger file cards, with legible 4–5 px text.
+  - Stream lanes within the visible arc (±28°).
+  - A stream residue: each event's faint, static trace along its lane, faded by the shader over
+    90 s of run time.
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the

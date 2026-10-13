@@ -146,10 +146,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "93540abc414c9be8",
-        "25500": "93e77a9a635bea49",
-        "45000": "93540abc414c9be8",
-        "8000": "9648e3946fda3d03",
+        "22000": "0b682bb64655beee",
+        "25500": "0c1ffdae574aac49",
+        "45000": "0b682bb64655beee",
+        "8000": "0197616a7f7f21f8",
       }
     `);
   });

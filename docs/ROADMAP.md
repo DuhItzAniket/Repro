@@ -143,6 +143,7 @@ allocation and bundle-size gates are active in CI.
 | B10 | Replay controls & motion safety | M | B05–B09 | done |
 | B11 | Focus, evidence drawer & accessibility | M | B10 | done |
 | B12 | UI quality gate | M | B11 | done |
+| B13 | Visual parity with the reference (added before Gate B) | S | B12 | done |
 
 **B01 · Deterministic fixture generator & reference log**
 - Deliverables: a seeded generator (TS or Python) that produces a realistic run (1 PR, 4 claims,
@@ -221,6 +222,15 @@ allocation and bundle-size gates are active in CI.
   `renderAt(t)` test hook), allocation test (`frame()` ×1000 with flat heap), size-limit
   (300 kB gzip) on every PR, and a nightly perf job with relative-regression gating.
 - Accept: all gates run in CI and fail on an injected regression of each type.
+
+**B13 · Visual parity** (added 2026-10-14, before Gate B)
+- Why: the gate's side-by-side check against the reference frame at 6 s found that the ring and
+  streams did not read as the same family. The panels and header did. The cause was the ring
+  geometry taken from the reference's portrait frame.
+- Deliverables: landscape ring geometry (the arc spans the stage height), larger and legible
+  file cards, lanes within the visible arc, and an event-driven stream residue.
+- Accept: the side-by-side reads as the same visual family. All B01–B12 tests and gates still
+  pass, with the changed pins explained by the intended constants only.
 
 ---
 
@@ -633,3 +643,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B10 | 2026-10-14 | [#21](https://github.com/DuhItzAniket/Repro/pull/21) | Transport and Space pause; wall-clock motion; flash governor under half of WCAG 2.3.1 at every speed; reduced motion; scrub = play for stage and panels |
 | B11 | 2026-10-14 | [#22](https://github.com/DuhItzAniket/Repro/pull/22) | Focus from click or keyboard (stage highlight, ring pin, panel outlines), evidence drawer, accessible parallel DOM; axe-core 0 violations; text contrast to WCAG AA |
 | B12 | 2026-10-14 | [#23](https://github.com/DuhItzAniket/Repro/pull/23) | Visual regression (SwiftShader, CI baselines), flat-heap allocation, size-limit 300 kB, calibrated perf gate (nightly); each gate rejects an injected regression in CI |
+| B13 | 2026-10-14 | [#24](https://github.com/DuhItzAniket/Repro/pull/24) | Visual parity found missing at the gate check: landscape ring geometry, 64 legible cards, lanes in the visible arc, shader-faded stream residue |

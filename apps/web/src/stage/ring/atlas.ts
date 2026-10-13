@@ -6,13 +6,13 @@
  */
 
 /** Cell sizes in CSS pixels; the atlas is drawn at `ATLAS_SCALE` device pixels per CSS pixel. */
-export const CONTENT_CELL = { w: 120, h: 40 } as const;
-export const META_CELL = { w: 72, h: 40 } as const;
+export const CONTENT_CELL = { w: 96, h: 48 } as const;
+export const META_CELL = { w: 48, h: 48 } as const;
 export const ATLAS_SCALE = 1.5;
 /** WebGL 2 guarantees textures of at least 2048 px per side. */
 export const ATLAS_MAX = 2048;
-const LINE_HEIGHT = 4;
-const FONT_SIZE = 3.4;
+const LINE_HEIGHT = 6;
+const FONT_SIZE = 5.2;
 
 export interface CellRect {
   /** Texture coordinates, 0–1, with v = 0 at the top of the atlas. */

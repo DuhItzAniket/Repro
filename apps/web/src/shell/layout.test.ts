@@ -33,7 +33,8 @@ describe("computeLayout at the B03 reference sizes", () => {
       [1082, 743, 350, 149],
     ]);
     expect(l.contentHeight).toBe(900);
-    expect(l.ring).toEqual({ cx: 216, cy: 261, r: 522 * 0.55 });
+    // The arc spans the stage height (r = 0.9 H) with its 3 o'clock point at 0.46 W (B13).
+    expect(l.ring).toEqual({ cx: 1440 * 0.46 - 522 * 0.9, cy: 261, r: 522 * 0.9 });
   });
 
   it("1920×1080: 59% stage, panels of 470 px in about 34% of the height", () => {

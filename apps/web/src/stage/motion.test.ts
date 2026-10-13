@@ -20,6 +20,7 @@ import { AtlasService } from "./ring/atlas-service";
 import { RingModel, ringLayers, rotationAt } from "./ring/layers";
 import { easeOutCubic, SNAP_MS } from "./ring/rotation";
 import { streakArea, streakLayer, streakShape, streakWidth } from "./streams/layers";
+import { residueLayer } from "./streams/residue";
 import { LONGEST_LIFE, lifetime, streams } from "./streams/style";
 import { BUNDLE_MS, bundleLayer, edgeLayer, webLayers } from "./web/layers";
 import { computeInline, LayoutService } from "./web/layout-service";
@@ -219,6 +220,7 @@ describe("scrubbing gives the same frame as playing (golden)", () => {
     return [
       ...webLayers(model, layout, governor),
       ...ringLayers(model, new AtlasService(() => Promise.resolve(null))).layers,
+      residueLayer(model),
       streakLayer(model, governor),
     ];
   }

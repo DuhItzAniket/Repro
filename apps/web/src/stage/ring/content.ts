@@ -14,7 +14,7 @@ import type { CockpitModel } from "../../model/cockpit";
 /** Time used for "never" in per-instance times (far beyond any run). */
 export const NEVER = 1e9;
 /** Most cards on the ring; with fewer files every file gets one. */
-export const MAX_CARDS = 160;
+export const MAX_CARDS = 64;
 const MAX_IMPORTS = 4;
 const MAX_SYMBOLS = 4;
 

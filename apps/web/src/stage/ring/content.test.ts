@@ -24,11 +24,14 @@ describe("targetFile", () => {
 });
 
 describe("ringContent", () => {
-  it("gives every module file a card, in path order", () => {
+  it("gives at most MAX_CARDS module files a card, in path order", () => {
     const files = demo.graph.ids.flatMap((_, i) =>
-      demo.graph.nodeTypeName(i) === "module" ? [demo.graph.files[i]] : [],
+      demo.graph.nodeTypeName(i) === "module" ? [demo.graph.files[i] as string] : [],
     );
-    expect(content.cards.map((c) => c.file)).toEqual([...files].sort());
+    const shown = content.cards.map((c) => c.file);
+    expect(shown).toHaveLength(Math.min(files.length, MAX_CARDS));
+    expect(shown).toEqual([...shown].sort());
+    for (const file of shown) expect(files).toContain(file);
   });
 
   it("builds each card only from what events say about the file", () => {
