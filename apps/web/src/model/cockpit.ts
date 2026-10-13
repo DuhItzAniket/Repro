@@ -11,6 +11,7 @@ import { type CheckCounts, checksProjection } from "./projections/checks";
 import { claimsProjection } from "./projections/claims";
 import { runProjection, type StageView } from "./projections/run";
 import { summaryProjection } from "./projections/summary";
+import { ObservationIndex, TestIndex } from "./runs";
 import { type AppendSummary, EventStore } from "./store";
 import { KindIndex, WindowIndex } from "./window";
 
@@ -72,6 +73,8 @@ export class CockpitModel {
   readonly kinds = new KindIndex(this.store);
   readonly window = new WindowIndex(this.store);
   readonly graph = new GraphIndex(this.store);
+  readonly tests = new TestIndex(this.store);
+  readonly observations = new ObservationIndex(this.store);
   readonly folder: Folder<CockpitState>;
 
   constructor(snapshotEvery = SNAPSHOT_EVERY) {
@@ -83,6 +86,8 @@ export class CockpitModel {
     const summary = this.store.appendAll(events);
     this.kinds.sync();
     this.graph.sync();
+    this.tests.sync();
+    this.observations.sync();
     this.folder.sync();
     return summary;
   }

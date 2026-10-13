@@ -1,5 +1,7 @@
 import type { Signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
+import type { ExecutionSides } from "../panels/execution";
+import { SideToggle } from "../panels/side-toggle";
 import { type HudSnapshot, PerfHud } from "../stage/hud";
 import type { Callout } from "../stage/streams/callouts";
 import { Callouts } from "../stage/streams/callouts-view";
@@ -45,9 +47,19 @@ export interface AppProps {
   hud?: Signal<HudSnapshot | null>;
   /** Callout boxes over the stage (B07). */
   callouts?: Signal<readonly Callout[]>;
+  /** Which execution lanes are shown (B08). */
+  executionSides?: Signal<ExecutionSides>;
 }
 
-export function App({ layout, view, hud, callouts }: AppProps) {
+/** Panels drawn on a Canvas 2D (B08; the second row arrives in B09). */
+export const CANVAS_PANELS: ReadonlySet<string> = new Set([
+  "feed",
+  "execution",
+  "workspace",
+  "behaviour",
+]);
+
+export function App({ layout, view, hud, callouts, executionSides }: AppProps) {
   const l = layout.value;
   return (
     <div class="cockpit" data-mode={l.mode} style={{ height: `${l.contentHeight}px` }}>
@@ -71,7 +83,19 @@ export function App({ layout, view, hud, callouts }: AppProps) {
             title={panel.title}
             rect={rect}
             footer={footerFor(panel.id, panel.footer, view)}
-          />
+          >
+            {CANVAS_PANELS.has(panel.id) && (
+              <canvas
+                class="panel-canvas"
+                data-panel={panel.id}
+                role="img"
+                aria-label={`${panel.title} (visual)`}
+              />
+            )}
+            {panel.id === "execution" && executionSides !== undefined && (
+              <SideToggle sides={executionSides} />
+            )}
+          </PanelFrame>
         );
       })}
     </div>
