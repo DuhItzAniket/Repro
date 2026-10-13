@@ -39,7 +39,10 @@ export interface StageLayer {
    * with the ring. The shader applies it, so a turning layer need not rewrite its buffers.
    */
   readonly rotation?: number;
-  /** Writes this frame's instances, or leaves them as they are. Must not allocate. */
+  /**
+   * Writes this frame's instances, or leaves them as they are. Must not allocate objects (B12's
+   * allocation gate measures it).
+   */
   update(frame: StageFrame): void;
 }
 

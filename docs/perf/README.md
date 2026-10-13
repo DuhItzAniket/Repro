@@ -9,6 +9,7 @@ hardware and raw numbers; summaries live in the phase records.
 | [`B05-web-bench.json`](B05-web-bench.json) | B05 | The real dependency-web layers (10k edges, blast markers, bundles) plus proxies, same machine and method |
 | [`B06-ring-bench.json`](B06-ring-bench.json) | B06 | Web plus the real ring (cards, ticks); only streaks are still a proxy |
 | [`B07-streams-bench.json`](B07-streams-bench.json) | B07 | The complete stage, every layer real, 2,048 live streaks at peak |
+| [`apps/web/perf/frame-cost-baseline.json`](../../apps/web/perf/frame-cost-baseline.json) | B12 | The CPU frame-cost gate's baseline, recorded in CI (see `apps/web/perf/README.md`) |
 | [`B10-motion-bench.json`](B10-motion-bench.json) | B10 | The same load after B10 (flare attribute, flash governor with its cap lifted): no change |
 
 ## Reproducing the stage benchmark

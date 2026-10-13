@@ -32,6 +32,7 @@ each one protects, where it runs, and the fixtures it relies on.
 | 7 | End-to-end | pytest (engine) + Playwright (web) | `repro run` → WS → UI shows the expected state | Nightly, stage gates |
 | 8 | Visual regression | Playwright screenshot comparison | Cockpit at frozen replay times on the reference fixture log | Every PR touching `apps/web` |
 | 9 | Performance | Custom harness + Playwright tracing | Frame-time budget, JS bundle size, engine wall-clock on reference repos | Bundle size on every PR; frame/engine perf nightly |
+| 9a | Allocation | Vitest (heap after GC; V8 allocation counter) | 1,000 frames of the stress burst: flat heap; stage allocation per frame within budget | Every PR (Ubuntu + Windows) |
 | 10 | Security | pytest sandbox suite | Network, filesystem, process, resource-exhaustion escape attempts | Every PR touching isolation; nightly |
 | 11 | Agent evals | Eval harness over labelled PR set | Claim extraction, verdict accuracy, citation validity, cost | On agent changes (recorded), weekly live |
 | 12 | Mutation | mutmut (engine core) | Measures how strong the suite is | Stage gates |
@@ -95,6 +96,21 @@ Detailed in `docs/ARCHITECTURE.md` §Agents and `docs/paper/README.md`.
   claim-extraction precision/recall, verdict accuracy, **citation validity rate** (cited
   evidence exists and relates to the claim's targets), rejection rate, tokens and cost per PR.
   Results are appended to `bench/results/agent-evals.csv` with model ID and prompt version.
+
+## 5a. Web quality gates (B12)
+
+Each gate has a self-test in CI that injects a regression of its kind and requires the gate to
+fail (`REPRO_INJECT`):
+
+| Gate | Runs | Measure | Injected regression |
+|---|---|---|---|
+| Visual (`visual` job) | Every PR | Playwright, Chromium + SwiftShader, pinned image; screenshots at 12, 24.5, 30.5 s, the end, the drawer and reduced motion; at most 50 differing pixels | Every panel shifted by 1 px |
+| Size (`test`, Ubuntu) | Every PR | size-limit: all shipped JS, gzip, 300 kB | 300 kB of random data in the entry chunk |
+| Allocation (`test`) | Every PR | Heap plus ArrayBuffers after GC, 1,000 frames after warm-up, under 512 kB of growth | A 2 kB-per-frame leak |
+| Perf (`gates`, nightly) | Every PR (self-test), nightly | Frame cost p50/p95 divided by a calibration workload, at most 30% above the CI baseline | 2 ms of work per frame |
+
+Baselines (screenshots, perf) are produced by CI and committed from its artifacts, never
+generated on a developer machine.
 
 ## 6. CI tiers
 

@@ -1,6 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { defineConfig, type Plugin } from "vite";
+import { configDefaults } from "vitest/config";
 
 const require = createRequire(import.meta.url);
 
@@ -24,6 +26,26 @@ export function fontLicence(): Plugin {
   };
 }
 
+/**
+ * The size gate's self-test (B12): with REPRO_INJECT=size the build appends 400 kB of random
+ * (incompressible) data to the entry chunk, which size-limit must reject. Never set otherwise.
+ */
+export function injectedBloat(): Plugin {
+  return {
+    name: "repro:inject-size",
+    apply: "build",
+    renderChunk(code, chunk) {
+      if (process.env.REPRO_INJECT !== "size" || !chunk.isEntry) return null;
+      const bloat = randomBytes(300 * 1024).toString("base64");
+      return `${code}\nglobalThis.__reproInjected = "${bloat}";\n`;
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [fontLicence()],
+  plugins: [fontLicence(), injectedBloat()],
+  test: {
+    // Playwright specs (e2e/) run in their own runner.
+    exclude: [...configDefaults.exclude, "e2e/**"],
+  },
 });

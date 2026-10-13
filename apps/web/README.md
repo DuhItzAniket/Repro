@@ -15,6 +15,8 @@ A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESI
 | `src/stage/ring/` | The ring: card content from events, closed-form rotation and snaps, the atlas (packing, drawing, worker, service), and the card and tick layers |
 | `src/stage/streams/` | Event streams (streak style, lanes, layer) and the callout overlay |
 | `src/panels/` | Canvas 2D panels: the `Panel` contract and `PanelHost` (draws only when the version changes), a recording context for golden tests, and all eight panels (feed, execution, workspace, behaviour, routes, signals, dispatch, change×check index) |
+| `src/perf/`, `perf/` | B12 gates: the headless frame pipeline, the allocation test, the calibrated frame-cost gate and its CI baseline |
+| `e2e/` | Playwright visual regression (`renderAt(t)` via `src/test-hook.ts`); baselines in `e2e/__screenshots__` come from CI only |
 | `src/bench/` | The stress benchmark (`/bench.html`, dev server) and its proxy layers; results in `docs/perf/` |
 | `src/styles/` | DESIGN.md tokens and shell styles |
 | `src/data/` | Loading a recorded log (the fixtures in Stage B; `?log=stress` picks the stress run) |

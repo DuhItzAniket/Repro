@@ -83,12 +83,142 @@ jobs:
         run: pnpm test
       - name: Web build
         run: pnpm build
+      - name: Bundle size (size-limit, 300 kB gzip; B12)
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm --filter @repro/web size
       - name: Install Python environment
         run: uv sync --locked
       - name: Python tests
         run: uv run --locked pytest
       - name: CLI smoke test
         run: uv run --locked repro --version
+
+  # Visual regression (B12, ADR-0009): the cockpit at frozen replay moments, rendered with
+  # SwiftShader in the Playwright image pinned by digest. Baselines are generated here only: when
+  # none are committed, this job writes them, uploads them as the "visual" artifact and fails
+  # until they are committed. It then checks that an injected visual change is caught.
+  visual:
+    name: visual
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Web build
+        run: pnpm --filter @repro/web build
+      - name: Are baselines committed?
+        id: baselines
+        shell: bash
+        run: |
+          if compgen -G "apps/web/e2e/__screenshots__/*.png" > /dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Generate baselines (none committed yet)
+        if: steps.baselines.outputs.present == 'false'
+        run: pnpm --filter @repro/web e2e
+        env:
+          REPRO_UPDATE_SNAPSHOTS: "1"
+      - name: Visual regression
+        if: steps.baselines.outputs.present == 'true'
+        run: pnpm --filter @repro/web e2e
+      - name: Gate self-test (an injected visual change must fail)
+        if: steps.baselines.outputs.present == 'true'
+        shell: bash
+        run: |
+          if REPRO_INJECT=visual pnpm --filter @repro/web e2e; then
+            echo "::error::the visual gate passed an injected regression"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: visual
+          path: |
+            apps/web/e2e/__screenshots__/
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Baselines must be committed
+        if: steps.baselines.outputs.present == 'false'
+        run: |
+          echo "::error::No visual baselines are committed. Commit apps/web/e2e/__screenshots__ from this run's 'visual' artifact."
+          exit 1
+
+  # Gate self-tests (B12): each quality gate must reject an injected regression of its kind.
+  # The allocation and size gates themselves run in "test"; the perf gate also runs nightly.
+  gates:
+    name: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Size gate rejects injected bloat
+        shell: bash
+        run: |
+          REPRO_INJECT=size pnpm --filter @repro/web build
+          if pnpm --filter @repro/web size; then
+            echo "::error::the size gate passed 300 kB of injected data"
+            exit 1
+          fi
+      - name: Allocation gate rejects an injected leak
+        shell: bash
+        run: |
+          if REPRO_INJECT=alloc pnpm --filter @repro/web exec vitest run src/perf/alloc.test.ts; then
+            echo "::error::the allocation gate passed an injected leak"
+            exit 1
+          fi
+      - name: Perf gate (calibrated frame cost vs the CI baseline)
+        id: perf
+        shell: bash
+        run: |
+          if [ -f apps/web/perf/frame-cost-baseline.json ]; then
+            pnpm --filter @repro/web perf
+          else
+            REPRO_PERF_RECORD=1 pnpm --filter @repro/web perf
+            echo "::error::No perf baseline is committed. Commit apps/web/perf/frame-cost-baseline.json from this run's 'perf' artifact (perf-results/frame-cost-baseline.json)."
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Perf gate rejects injected work
+        if: steps.perf.outputs.missing != 'true'
+        shell: bash
+        run: |
+          if REPRO_INJECT=perf pnpm --filter @repro/web perf; then
+            echo "::error::the perf gate passed 2 ms of injected work per frame"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: perf
+          path: apps/web/perf-results/
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Perf baseline must be committed
+        if: steps.perf.outputs.missing == 'true'
+        run: exit 1
 
   security:
     name: security

@@ -1,5 +1,5 @@
 // Builds the app for production and checks what ships: the font with its licence, the
-// fixtures, and JS within the 300 kB gzip budget (DESIGN.md; size-limit takes over in B12).
+// fixtures, and JS within the 300 kB gzip budget (DESIGN.md; size-limit enforces it in CI, B12).
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
