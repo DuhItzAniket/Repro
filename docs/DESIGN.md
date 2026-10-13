@@ -193,4 +193,10 @@ surface — it stays plain and readable.
   - the perf HUD reports frame-time p50/p95/p99 and draw calls;
   - a nightly stress run gates on relative regression;
   - a manual check on a real mid laptop (Windows, integrated GPU) happens at each stage gate.
-- Stage DPR is adaptive and capped at 2, dropping to 1.5 when p95 frame time exceeds budget.
+- Stage DPR is adaptive and capped at 2. It steps down (2 → 1.5 → 1) when frames are visibly
+  dropped: the p95 frame interval exceeds 1.5× the 60 Hz budget, meaning more than 5% of frames
+  took two refreshes. It probes back up after a run of good windows, with backoff. A plain "p95 >
+  budget" rule fired on vsync jitter alone in B04.
+- Measured in B04 (`docs/perf/B04-stress-bench.json`): on an integrated GPU (Intel UHD, Chromium
+  152), 10k edges, 2,048 streaks, 360 cards and 720 ticks in 4 draw calls hold 60 fps at DPR 2.
+  The p95 frame interval was 17.0 ms and stage CPU time under 1 ms at p95.

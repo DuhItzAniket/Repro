@@ -1,0 +1,37 @@
+{
+  "phase": "B04",
+  "date": "2026-10-13",
+  "method": "apps/web/bench.html (src/bench): stress fixture (seed 1); proxy layers for edges, ring cards, ticks and streaks; the busiest second of the run looped for 8 s after a 1 s warm-up; fixed DPR per case; fresh WebGL context per case. Interval = requestAnimationFrame timestamp deltas; cpu = stage frame() time (layer updates, uploads, render call). Timer resolution 0.1 ms; values rounded to 0.1 ms.",
+  "environment": {
+    "browser": "Claude desktop in-app browser, Chrome/152.0.7977.130 (Windows 11, x64)",
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A78B) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "cpu": "Intel Core i7-14650HX (16 cores, 24 threads)",
+    "machine": "laptop with hybrid graphics; the browser used the integrated GPU",
+    "display": "60 Hz; devicePixelRatio 1.75",
+    "viewport": "1920x1080 CSS px (emulated); stage 1920x641"
+  },
+  "load": {
+    "edges": 10000,
+    "cards": 360,
+    "ticks": 720,
+    "streaks_peak": 2048,
+    "draw_calls": 4
+  },
+  "runs": [
+    {
+      "run": 1,
+      "results": [
+        { "dpr": 1, "frames": 477, "interval": { "p50": 16.7, "p95": 17.0, "p99": 17.6, "max": 33.5 }, "cpu": { "p50": 0.3, "p95": 0.8, "p99": 1.0, "max": 1.2 }, "dropped": 0.0084 },
+        { "dpr": 1.5, "frames": 476, "interval": { "p50": 16.7, "p95": 17.1, "p99": 33.2, "max": 33.3 }, "cpu": { "p50": 0.4, "p95": 0.8, "p99": 1.1, "max": 1.6 }, "dropped": 0.0105 },
+        { "dpr": 2, "frames": 476, "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.2, "max": 33.4 }, "cpu": { "p50": 0.4, "p95": 0.9, "p99": 1.1, "max": 1.4 }, "dropped": 0.0105 }
+      ]
+    },
+    {
+      "run": 2,
+      "results": [
+        { "dpr": 2, "frames": 476, "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.1, "max": 33.5 }, "cpu": { "p50": 0.4, "p95": 0.8, "p99": 1.2, "max": 1.7 }, "dropped": 0.0105 },
+        { "dpr": 1, "frames": 475, "interval": { "p50": 16.7, "p95": 16.8, "p99": 33.3, "max": 33.4 }, "cpu": { "p50": 0.3, "p95": 0.5, "p99": 0.7, "max": 0.9 }, "dropped": 0.0126 }
+      ]
+    }
+  ]
+}

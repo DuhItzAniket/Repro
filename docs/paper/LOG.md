@@ -80,3 +80,15 @@ entry. If something turns out wrong, add a correcting entry.
   observation and a rejected-then-retried verdict. It is a UI fixture, **not** evaluation
   data, and must never be reported as a result.
 - Record: `docs/phases/B01-fixture-generator.md`.
+
+## 2026-10-13 · B04 · Rendering cost of the cockpit at stress load
+
+- The animated cockpit is not a performance risk. On an **integrated** GPU (Intel UHD, ANGLE
+  D3D11, Chromium 152), the stress load holds 60 fps at DPR 2 with a 1920×641 stage: 10,000
+  dependency edges and 2,048 concurrent event streaks, drawn as instanced anti-aliased quads in
+  4 draw calls. The p95 frame interval was 17.0 ms, about 1% of frames were dropped, and stage
+  CPU time was under 1 ms at p95. The ~1% of dropped frames also occurs at DPR 1 and on an idle
+  stage, so it is host jitter rather than rendering cost.
+- Method, hardware and raw numbers: `docs/perf/B04-stress-bench.json`. The CPU (i7-14650HX) is
+  stronger than a typical mid laptop's. The large CPU headroom makes that immaterial to the
+  conclusion, but a paper should state the hardware exactly.

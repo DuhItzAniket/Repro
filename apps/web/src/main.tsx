@@ -10,6 +10,8 @@ import { App } from "./shell/app";
 import { FrameLoop } from "./shell/frame";
 import { computeLayout } from "./shell/layout";
 import { createShellView } from "./shell/view";
+import { StageHost } from "./stage/host";
+import { type HudSnapshot, pollHud } from "./stage/hud";
 
 const root = document.getElementById("app");
 if (root === null) throw new Error("Repro: #app root element is missing from index.html");
@@ -19,8 +21,29 @@ const clock = new PresentationClock(() => performance.now());
 const view = createShellView();
 const layout = signal(computeLayout(window.innerWidth, window.innerHeight));
 
-render(<App layout={layout} view={view} />, root);
+const params = new URLSearchParams(window.location.search);
+const hud = params.has("hud") ? signal<HudSnapshot | null>(null) : undefined;
+render(<App layout={layout} view={view} {...(hud === undefined ? {} : { hud })} />, root);
+
+/** The WebGL stage. The rest of the cockpit works without it if WebGL 2 is unavailable. */
+function mountStage(): StageHost | null {
+  const canvas = root?.querySelector<HTMLCanvasElement>(".stage-canvas");
+  if (canvas === null || canvas === undefined) return null;
+  try {
+    const stage = new StageHost(canvas, { devicePixelRatio: window.devicePixelRatio });
+    stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
+    if (hud !== undefined) pollHud(stage, hud);
+    return stage;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    view.status.value = `stage disabled: WebGL 2 is unavailable (${reason})`;
+    return null;
+  }
+}
+
+const host = mountStage();
 const loop = new FrameLoop(model, clock, view);
+loop.listen((t, cursor) => host?.frame(t, cursor));
 // Checked every frame rather than on "resize" alone: emulated viewports do not always fire it,
 // and two property reads per frame cost nothing.
 let viewport = [window.innerWidth, window.innerHeight];
@@ -29,6 +52,8 @@ loop.listen(() => {
   if (w !== viewport[0] || h !== viewport[1]) {
     viewport = [w, h];
     layout.value = computeLayout(w, h);
+    const { stage, ring } = layout.value;
+    host?.resize(stage.w, stage.h, ring);
   }
 });
 loop.start();

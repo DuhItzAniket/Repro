@@ -7,6 +7,8 @@ A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESI
 | `src/model/` | The UI's data layer: `EventStore`, indexes, projections, snapshot folding and the presentation clock. Pure TypeScript, no DOM, tested in Node |
 | `src/model/projections/` | Pure reducers: `run` (meta, stages), `summary` (counters), `checks` (ADR-0015), `claims`, `agents` |
 | `src/shell/` | Preact shell: `computeLayout` (all geometry), header and progress bar, panel frames, the signals bridge (`view.ts`) and the frame loop |
+| `src/stage/` | WebGL stage: `StageHost` (the only three.js user), the `StageLayer` contract, instance buffers and render-model hashing, the segment primitive and its GLSL, adaptive DPR, frame statistics, the perf HUD (`?hud`) |
+| `src/bench/` | The stress benchmark (`/bench.html`, dev server) and its proxy layers; results in `docs/perf/` |
 | `src/styles/` | DESIGN.md tokens and shell styles |
 | `src/data/` | Loading a recorded log (the fixtures in Stage B; `?log=stress` picks the stress run) |
 | `fixtures/` | Generated reference and stress event logs (`pnpm fixtures`) |

@@ -26,6 +26,13 @@ All notable changes to this project are documented here. The format follows
   the demo fixture (`?log=stress` for the stress run). [B03]
 - Design tokens from DESIGN.md and self-hosted JetBrains Mono (variable woff2), with the OFL
   licence emitted next to the font files. [B03]
+- WebGL stage foundation: `StageHost` (three.js `WebGLRenderer`), pure `StageLayer`s with
+  preallocated instance buffers uploaded only on change, an instanced anti-aliased segment
+  primitive (GLSL ES 3.00), adaptive DPR, allocation-free frame statistics and a perf HUD
+  (`?hud`). [B04]
+- GPU-free render-model harness (`hashRenderModels`) and a stress benchmark (`bench.html`): on
+  an integrated GPU, 10k edges and 2,048 streaks hold 60 fps at DPR 2. Results are in
+  `docs/perf/`. [B04]
 
 ### Changed
 - `SchemaSet.event_errors` caches validators and skips the redundant whole-`oneOf` check when

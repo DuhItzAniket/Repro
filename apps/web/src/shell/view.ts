@@ -54,8 +54,9 @@ function sameStages(state: CockpitState, current: readonly StageSegment[]): bool
   for (let i = 0; i < stages.length; i++) {
     const a = stages[i];
     const b = current[i];
-    if (a === undefined || b === undefined || a.state !== b.state || a.outcome !== b.outcome)
+    if (a === undefined || b === undefined || a.state !== b.state || a.outcome !== b.outcome) {
       return false;
+    }
   }
   return true;
 }
