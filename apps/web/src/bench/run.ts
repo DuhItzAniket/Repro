@@ -32,8 +32,10 @@ export interface BenchResult {
   /** Share of frames whose interval exceeded 1.5× the 60 Hz budget (a visibly dropped frame). */
   readonly dropped: number;
   readonly drawCalls: number;
-  /** Instances in the last frame per layer, plus the peak streak count while measuring. */
+  /** Instances in the last frame, per layer. */
   readonly instances: Record<string, number>;
+  /** Most instances seen per layer while measuring. */
+  readonly peakInstances: Record<string, number>;
   /** Times the page was hidden while measuring (hidden pages throttle frames). */
   readonly hiddenDuringRun: number;
   /** Device pixels brighter than the background at the start of measuring (sanity check). */
@@ -45,6 +47,10 @@ export interface BenchReport {
   readonly userAgent: string;
   readonly devicePixelRatio: number;
   readonly burstAtMs: number;
+  /** Which layer set was measured. */
+  readonly layers: "real" | "proxy";
+  /** Wall-clock time of the dependency-web layout (worker), ms. */
+  readonly layoutMs: number;
   readonly results: BenchResult[];
 }
 
@@ -95,7 +101,7 @@ export async function runCase(
   host.resize(size.width, size.height, size.ring);
   const intervals: number[] = [];
   const cpu: number[] = [];
-  const peak = { streaks: 0 };
+  const peaks: Record<string, number> = {};
   let hidden = 0;
   const onVisibility = () => {
     if (document.visibilityState !== "visible") hidden++;
@@ -128,7 +134,9 @@ export async function runCase(
     if (measuring) {
       intervals.push(now - previous);
       cpu.push(after - before);
-      peak.streaks = Math.max(peak.streaks, host.info.instances.streaks ?? 0);
+      for (const [name, count] of Object.entries(host.info.instances)) {
+        peaks[name] = Math.max(peaks[name] ?? 0, count);
+      }
     }
     previous = now;
     if (elapsed >= warmupMs + bench.seconds * 1000) break;
@@ -142,7 +150,8 @@ export async function runCase(
     cpu: summarise(cpu),
     dropped: intervals.filter((v) => v > (1000 / 60) * 1.5).length / Math.max(1, intervals.length),
     drawCalls: host.info.drawCalls,
-    instances: { ...host.info.instances, streaksPeak: peak.streaks },
+    instances: { ...host.info.instances },
+    peakInstances: peaks,
     hiddenDuringRun: hidden,
     litPixels,
   };

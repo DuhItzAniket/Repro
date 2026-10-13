@@ -135,7 +135,7 @@ allocation and bundle-size gates are active in CI.
 | B02 | EventStore, projections, snapshots & clock | M | B01 | done |
 | B03 | App shell, tokens, fonts, header & progress | M | B02 | done |
 | B04 | Stage foundation & performance harness | M | B03 | done |
-| B05 | Dependency-web layer & bundles | L | B04 | planned |
+| B05 | Dependency-web layer & bundles | L | B04 | done |
 | B06 | Ring layer (file-card atlas) | M | B04 | planned |
 | B07 | Event-stream layer & callouts | M | B04 | planned |
 | B08 | Panels I: feed, execution, agent workspace, behaviour field | L | B02, B03 | planned |
@@ -625,3 +625,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B02 | 2026-10-13 | [#11](https://github.com/DuhItzAniket/Repro/pull/11) | Columnar EventStore, snapshot folder with exact seek, time/kind indexes, presentation clock; run/summary/checks/claims/agents projections |
 | B03 | 2026-10-13 | [#12](https://github.com/DuhItzAniket/Repro/pull/12) | Preact + signals shell, `computeLayout` geometry, header counters and 7-segment progress, tokens, self-hosted JetBrains Mono with OFL |
 | B04 | 2026-10-13 | [#13](https://github.com/DuhItzAniket/Repro/pull/13) | WebGL `StageHost` + pure layers, segment primitive, render-model hashing, adaptive DPR, perf HUD; stress bench on integrated GPU: 60 fps at DPR 2 |
+| B05 | 2026-10-13 | [#14](https://github.com/DuhItzAniket/Repro/pull/14) | Dependency web: worker d3-force layout (cached, equalised), shader-revealed edges, blast markers, Bézier bundles; 10k edges at 60 fps on an integrated GPU |

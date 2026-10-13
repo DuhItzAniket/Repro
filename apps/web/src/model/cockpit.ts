@@ -4,6 +4,7 @@
  */
 
 import { Folder } from "./folder";
+import { GraphIndex } from "./graph";
 import { combine, type StateOf } from "./projection";
 import { agentsProjection } from "./projections/agents";
 import { type CheckCounts, checksProjection } from "./projections/checks";
@@ -70,6 +71,7 @@ export class CockpitModel {
   readonly store = new EventStore();
   readonly kinds = new KindIndex(this.store);
   readonly window = new WindowIndex(this.store);
+  readonly graph = new GraphIndex(this.store);
   readonly folder: Folder<CockpitState>;
 
   constructor(snapshotEvery = SNAPSHOT_EVERY) {
@@ -80,6 +82,7 @@ export class CockpitModel {
   ingest(events: Iterable<unknown>): AppendSummary {
     const summary = this.store.appendAll(events);
     this.kinds.sync();
+    this.graph.sync();
     this.folder.sync();
     return summary;
   }

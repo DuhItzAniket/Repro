@@ -74,6 +74,14 @@ export class KindIndex {
     return list === undefined ? 0 : countBelow(list.indices, list.length, cursor);
   }
 
+  /** Store index of the last event of `kind` before `cursor`, or -1 (no allocation). */
+  lastIndex(kind: EventKind | "unknown", cursor: number): number {
+    const list = this.list(kind);
+    if (list === undefined) return -1;
+    const end = countBelow(list.indices, list.length, cursor);
+    return end === 0 ? -1 : (list.indices[end - 1] as number);
+  }
+
   /** Store indices of the last `k` events of `kind` before `cursor`, oldest first. */
   last(kind: EventKind | "unknown", cursor: number, k: number): number[] {
     const list = this.list(kind);

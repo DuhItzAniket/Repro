@@ -74,10 +74,10 @@ describe("render-model harness on the proxy layers", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "0": "791426d3600f58bc",
-        "20000": "015f39271e2bcca6",
-        "40000": "c2f4a29985b0387c",
-        "5000": "ba47ccad219326d8",
+        "0": "de93b396f3b5546f",
+        "20000": "ecbeca72d16be9b2",
+        "40000": "7661e30554dfc1a9",
+        "5000": "6416bdb8608fcac2",
       }
     `);
   });

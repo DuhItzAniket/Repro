@@ -99,7 +99,9 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   bright white sweeps in the reference.
 - Layout: force-directed (d3-force), computed once per run in a worker, then frozen. Positions are
   clipped to the inside of the ring. Initial positions are seeded from node-ID hashes (no trig),
-  so the layout is reproducible, and it is cached by graph hash.
+  so the layout is reproducible, and it is cached by graph hash. Symbols and tests are tied to
+  their module by layout-only containment links, and radii are equalised towards a uniform disc
+  so hub-heavy graphs still read as an even hairball (B05).
 - Rendering: edges are instanced anti-aliased quads with recency alpha computed in the shader.
   Bundles are instanced Bézier segments. Blending is additive. There is no post-processing
   (ADR-0008).

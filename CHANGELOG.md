@@ -33,6 +33,14 @@ All notable changes to this project are documented here. The format follows
 - GPU-free render-model harness (`hashRenderModels`) and a stress benchmark (`bench.html`) with
   a pixel sanity check. On an integrated GPU, 10k edges and 2,048 streaks hold 60 fps at DPR 2.
   Results are in `docs/perf/`. [B04]
+- Dependency web on the stage: `GraphIndex`, a deterministic d3-force layout in a worker
+  (containment links, radial equalisation, cached by graph hash), static edges revealed and
+  flared by a shader recency term, blast-radius markers, and event-triggered Bézier bundles. On
+  an integrated GPU, 10k edges hold the frame budget at DPR 2. [B05]
+
+### Fixed
+- Stage geometry is rebuilt when a layer's buffers grow. three.js caches the maximum instance
+  count per geometry and would otherwise draw no more instances than the first capacity. [B05]
 
 ### Changed
 - `SchemaSet.event_errors` caches validators and skips the redundant whole-`oneOf` check when

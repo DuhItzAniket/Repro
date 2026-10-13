@@ -8,26 +8,12 @@
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../model/cockpit";
 import { statusCode } from "../model/codes";
-import type { Ring } from "../shell/layout";
 import type { StageFrame, StageLayer } from "../stage/layer";
+import { ringTracker } from "../stage/ring";
 import { segmentBuffers, segmentWriter } from "../stage/segments";
 
 const UNIT = 4294967296;
 const FAIL = statusCode("fail");
-
-/** Remembers a ring by value without allocating, to skip redrawing static layers. */
-function ringTracker(): (ring: Ring) => boolean {
-  let cx = Number.NaN;
-  let cy = Number.NaN;
-  let r = Number.NaN;
-  return (ring) => {
-    if (ring.cx === cx && ring.cy === cy && ring.r === r) return false;
-    cx = ring.cx;
-    cy = ring.cy;
-    r = ring.r;
-    return true;
-  };
-}
 
 /** A deterministic point in the unit disc from an id, by rejection sampling on its hash (no trig). */
 function discPoint(id: string, out: { x: number; y: number }): void {
@@ -98,7 +84,8 @@ export function streakProxy(model: CockpitModel, limit = 2048): StageLayer {
     primitive: "segments",
     buffers,
     update(frame: StageFrame) {
-      const [start, end] = model.window.active(frame.t, STREAK_LIFE_MS);
+      const start = model.store.firstAtOrAfter(frame.t - STREAK_LIFE_MS);
+      const end = model.store.cursorAt(frame.t);
       const { cx, cy, r } = frame.ring;
       const origin = r + 50;
       writer.begin();

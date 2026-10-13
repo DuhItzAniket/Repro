@@ -12,11 +12,17 @@ import { computeLayout } from "./shell/layout";
 import { createShellView } from "./shell/view";
 import { StageHost } from "./stage/host";
 import { type HudSnapshot, pollHud } from "./stage/hud";
+import { webLayers } from "./stage/web/layers";
+import { computeInline, LayoutService, workerCompute } from "./stage/web/layout-service";
 
 const root = document.getElementById("app");
 if (root === null) throw new Error("Repro: #app root element is missing from index.html");
 
 const model = new CockpitModel();
+const webLayout = new LayoutService(
+  model.graph,
+  typeof Worker === "undefined" ? computeInline : workerCompute(),
+);
 const clock = new PresentationClock(() => performance.now());
 const view = createShellView();
 const layout = signal(computeLayout(window.innerWidth, window.innerHeight));
@@ -31,6 +37,7 @@ function mountStage(): StageHost | null {
   if (canvas === null || canvas === undefined) return null;
   try {
     const stage = new StageHost(canvas, { devicePixelRatio: window.devicePixelRatio });
+    for (const layer of webLayers(model, webLayout)) stage.add(layer);
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
     if (hud !== undefined) pollHud(stage, hud);
     return stage;
@@ -63,6 +70,7 @@ view.status.value = `loading ${fixture} run…`;
 loadLog(FIXTURES[fixture])
   .then(({ values, badLines }) => {
     const result = model.ingest(values);
+    void webLayout.request();
     clock.setEnd(model.store.endTime);
     clock.play();
     const problems = [
@@ -76,3 +84,8 @@ loadLog(FIXTURES[fixture])
   .catch((error: unknown) => {
     view.status.value = error instanceof Error ? error.message : String(error);
   });
+
+// Development only: a handle for inspecting the running cockpit from the console.
+if (import.meta.env.DEV) {
+  (window as unknown as { __repro: unknown }).__repro = { model, clock, webLayout, host, layout };
+}
