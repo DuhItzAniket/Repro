@@ -171,7 +171,20 @@ importers:
         version: 2.5.15
 
   apps/web:
+    dependencies:
+      '@repro/events':
+        specifier: workspace:*
+        version: link:../../packages/events
     devDependencies:
+      '@repro/synth':
+        specifier: workspace:*
+        version: link:../../packages/synth
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
       typescript:
         specifier: 7.0.2
         version: 7.0.2

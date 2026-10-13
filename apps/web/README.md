@@ -1,0 +1,36 @@
+# @repro/web — the cockpit
+
+A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESIGN.md).
+
+| Path | What it holds |
+|---|---|
+| `src/model/` | The UI's data layer: `EventStore`, indexes, projections, snapshot folding and the presentation clock. Pure TypeScript, no DOM, tested in Node |
+| `src/model/projections/` | Pure reducers: `run` (meta, stages), `summary` (counters), `checks` (ADR-0015), `claims`, `agents` |
+| `fixtures/` | Generated reference and stress event logs (`pnpm fixtures`) |
+
+## The model in one paragraph
+
+Events are appended to the `EventStore` in `seq` order (duplicates ignored, gaps stop
+ingestion). A `Folder` folds the combined cockpit projection over the store and keeps a snapshot
+every 256 events, so `stateAt(cursor)` costs at most one snapshot clone plus 256 events (about
+0.25 ms on the 18.5k-event stress log). The `PresentationClock` turns wall time into
+presentation time `t` (replay ×0.5/×1/×4/×16, live, global pause), and `store.cursorAt(t)`
+turns `t` into a fold cursor. Views read selectors such as `headerCounters` and `indexFooter`.
+They never fold events themselves.
+
+```ts
+import { CockpitModel, headerCounters } from "./src/model/cockpit";
+
+const model = new CockpitModel();
+model.ingest(events); // parsed JSON objects
+const { state } = model.stateAtTime(12_000); // 12 s into the run
+headerCounters(state); // { claims, agents, files, checks, flagged }
+```
+
+## Commands
+
+```
+pnpm --filter @repro/web dev        # Vite dev server
+pnpm --filter @repro/web test       # Vitest (model unit and property tests)
+pnpm --filter @repro/web typecheck
+```

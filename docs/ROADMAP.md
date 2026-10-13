@@ -132,7 +132,7 @@ allocation and bundle-size gates are active in CI.
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | B01 | Deterministic fixture generator & reference log | M | A07 | done |
-| B02 | EventStore, projections, snapshots & clock | M | B01 | planned |
+| B02 | EventStore, projections, snapshots & clock | M | B01 | done |
 | B03 | App shell, tokens, fonts, header & progress | M | B02 | planned |
 | B04 | Stage foundation & performance harness | M | B03 | planned |
 | B05 | Dependency-web layer & bundles | L | B04 | planned |

@@ -1187,8 +1187,9 @@ class RunBuilder {
     agreement: { runs: number; agreeing: number } | null,
   ): void {
     const { cited, quote } = this.citations(claim);
-    if (!quote[0].summary.includes(quote[1]))
+    if (!quote[0].summary.includes(quote[1])) {
       throw new Error(`quote for ${claim.id} is not in its evidence`);
+    }
     const rationale: Record<string, string> = {
       C1: "Both offset tests flip from fail to pass, and parse_date now returns aware datetimes for offset inputs.",
       C2: "Untraced ABBA runs give a head/base median ratio of 0.49, well outside the 3% noise floor.",
