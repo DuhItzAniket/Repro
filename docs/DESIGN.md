@@ -143,12 +143,15 @@ caption bottom-left in `--text-dim` (the reference uses these, e.g.
 1. **Investigation feed** — scrolling log: `seq  verb  message`. Verbs: read/build/run/diff/
    check/review. Newest row bold. Footer: none.
 2. **Execution** — two lanes (BASE / HEAD): particles = test cases moving left→right while
-   running; they settle as dots coloured by outcome. Bottom toggles: `BASE · HEAD · BOTH`.
+   running; they settle as dots coloured by outcome. Bottom toggles: `BASE · HEAD · BOTH`. The
+   repeat base run (A′) shares the BASE lane with dimmer particles and separate counts.
 3. **Agent workspace** — the focused agent's recent tool calls typed out like code, with a
-   blinking block cursor (see reference: `eqs = extract_equations(papers)` style). Repro lines
+   blinking block cursor while it works (see reference: `eqs = extract_equations(papers)` style).
+   The focused agent is the one with the latest state change unless the user pins one. Repro lines
    look like `claims = read_pr(diff)` / `obs = trace(base, head)` / `check_api(diff)`.
 4. **Behaviour diff field** — two small grids, BASE and HEAD, one cell per observation
-   (test × function). Cells differing between sides glow `--flag` on HEAD. Under them, a
+   (test × function). Cells differing between sides glow `--flag` on HEAD; cells whose base
+   runs disagree (A ≠ A′) are unstable, masked in `--flag-deep` and not counted. Under them, a
    histogram strip of diff counts per module. Footer: "same input / different output".
 5. **Change routes** — table: FILE · SYMBOL · TEST · CHECK, each a pill whose fill shows
    progress. Footer: "diff → symbols → tests → checks".

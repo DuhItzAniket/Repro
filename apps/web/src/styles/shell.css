@@ -169,8 +169,50 @@ body {
 }
 
 .panel-body {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
+}
+
+.panel-canvas {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.toggles {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.toggle {
+  flex: 1;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--micro-size);
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  background: #181818;
+  border: 1px solid var(--panel-border);
+}
+
+.toggle[aria-pressed="true"] {
+  color: var(--text);
+  background: #2a2a2a;
+}
+
+.toggle:focus-visible {
+  outline: 1px solid var(--hot);
+  outline-offset: 1px;
 }
 
 .panel-footer {

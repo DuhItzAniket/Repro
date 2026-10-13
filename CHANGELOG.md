@@ -46,6 +46,12 @@ All notable changes to this project are documented here. The format follows
   velocity-stretched tails and DESIGN.md state tints, as a pure function of (events, t). Plus
   callouts: at most two bordered boxes naming the latest findings. With every stage layer real,
   the stress burst holds the frame budget on an integrated GPU. [B07]
+- Canvas 2D panels: investigation feed (150 ms row insert), execution lanes (BASE with the A′
+  repeat run, HEAD, and a BASE · HEAD · BOTH toggle), agent workspace (typed tool calls, block
+  cursor while working), and behaviour diff field (A/A′/H agreement per test × symbol, module
+  histogram). Each panel is a pure view plus draw, redrawn only when its version changes, and is
+  covered by golden draw-call recordings. `TestIndex` and `ObservationIndex` join the cockpit
+  model. [B08]
 
 ### Fixed
 - Stage geometry is rebuilt when a layer's buffers grow. three.js caches the maximum instance

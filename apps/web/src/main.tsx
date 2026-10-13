@@ -6,6 +6,11 @@ import { render } from "preact";
 import { FIXTURES, fixtureFromQuery, loadLog } from "./data/load";
 import { PresentationClock } from "./model/clock";
 import { CockpitModel } from "./model/cockpit";
+import { behaviourPanel } from "./panels/behaviour";
+import { type ExecutionSides, executionPanel } from "./panels/execution";
+import { feedPanel } from "./panels/feed";
+import { type Panel, PanelHost } from "./panels/panel";
+import { workspacePanel } from "./panels/workspace";
 import { App } from "./shell/app";
 import { FrameLoop } from "./shell/frame";
 import { computeLayout } from "./shell/layout";
@@ -34,8 +39,15 @@ const layout = signal(computeLayout(window.innerWidth, window.innerHeight));
 const params = new URLSearchParams(window.location.search);
 const hud = params.has("hud") ? signal<HudSnapshot | null>(null) : undefined;
 const callouts = signal<readonly Callout[]>([]);
+const executionSides = signal<ExecutionSides>("both");
 render(
-  <App layout={layout} view={view} callouts={callouts} {...(hud === undefined ? {} : { hud })} />,
+  <App
+    layout={layout}
+    view={view}
+    callouts={callouts}
+    executionSides={executionSides}
+    {...(hud === undefined ? {} : { hud })}
+  />,
   root,
 );
 
@@ -61,8 +73,41 @@ function mountStage(): StageHost | null {
 }
 
 const host = mountStage();
+
+/** Canvas 2D panels (B08): each redraws only when its version changes. */
+interface PanelDriver {
+  frame(t: number, cursor: number): boolean;
+  resize(w: number, h: number, dpr: number): void;
+  invalidate(): void;
+}
+const panelMakers: Record<string, () => Panel<never>> = {
+  feed: () => feedPanel(model) as Panel<never>,
+  execution: () => executionPanel(model, executionSides) as Panel<never>,
+  workspace: () => workspacePanel(model) as Panel<never>,
+  behaviour: () => behaviourPanel(model) as Panel<never>,
+};
+const panels = new Map<Element, PanelDriver>();
+const panelSizes = new ResizeObserver((entries) => {
+  for (const entry of entries) {
+    const { width, height } = entry.contentRect;
+    panels.get(entry.target)?.resize(width, height, window.devicePixelRatio);
+  }
+});
+for (const canvas of root.querySelectorAll<HTMLCanvasElement>(".panel-canvas")) {
+  const make = panelMakers[canvas.dataset.panel ?? ""];
+  if (make === undefined) continue;
+  panels.set(canvas, new PanelHost(make(), canvas));
+  panelSizes.observe(canvas);
+}
+// The panels draw text in the web font; repaint once it has loaded.
+void document.fonts.ready.then(() => {
+  for (const panel of panels.values()) panel.invalidate();
+});
 const loop = new FrameLoop(model, clock, view);
 loop.listen((t, cursor) => host?.frame(t, cursor));
+loop.listen((t, cursor) => {
+  for (const panel of panels.values()) panel.frame(t, cursor);
+});
 const calloutTracker = new CalloutTracker();
 loop.listen((t) => {
   const next = calloutTracker.update(model, t, layout.value.ring);
