@@ -46,7 +46,7 @@ ADRs or phase records.
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | A01 | Research, architecture & plan baseline | M | — | done |
-| A02 | Toolchain & monorepo scaffold | M | A01 | planned |
+| A02 | Toolchain & monorepo scaffold | M | A01 | done |
 | A03 | Code-quality gates | S | A02 | planned |
 | A04 | Event schema v1 | M | A02 | planned |
 | A05 | Schema codegen & drift gate | M | A04 | planned |
@@ -608,3 +608,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Phase | Date | PR | Notes |
 |---|---|---|---|
 | A01 | 2026-10-13 | (bootstrap commit) | Planning baseline published |
+| A02 | 2026-10-13 | [#1](https://github.com/DuhItzAniket/Repro/pull/1) | pnpm + uv workspaces, pinned toolchains, CI on Ubuntu + Windows; ADRs 0003/0004/0007/0011 accepted; Apache-2.0 |
