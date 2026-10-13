@@ -311,8 +311,9 @@ export class StageHost {
         (pixels[i] as number) > 8 ||
         (pixels[i + 1] as number) > 8 ||
         (pixels[i + 2] as number) > 8
-      )
+      ) {
         lit++;
+      }
     }
     return lit;
   }

@@ -14,6 +14,8 @@ import { StageHost } from "./stage/host";
 import { type HudSnapshot, pollHud } from "./stage/hud";
 import { AtlasService, defaultAtlasBuild } from "./stage/ring/atlas-service";
 import { ringLayers } from "./stage/ring/layers";
+import { type Callout, CalloutTracker } from "./stage/streams/callouts";
+import { streakLayer } from "./stage/streams/layers";
 import { webLayers } from "./stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "./stage/web/layout-service";
 
@@ -31,7 +33,11 @@ const layout = signal(computeLayout(window.innerWidth, window.innerHeight));
 
 const params = new URLSearchParams(window.location.search);
 const hud = params.has("hud") ? signal<HudSnapshot | null>(null) : undefined;
-render(<App layout={layout} view={view} {...(hud === undefined ? {} : { hud })} />, root);
+const callouts = signal<readonly Callout[]>([]);
+render(
+  <App layout={layout} view={view} callouts={callouts} {...(hud === undefined ? {} : { hud })} />,
+  root,
+);
 
 /** The WebGL stage. The rest of the cockpit works without it if WebGL 2 is unavailable. */
 function mountStage(): StageHost | null {
@@ -43,6 +49,7 @@ function mountStage(): StageHost | null {
     for (const layer of ringLayers(model, new AtlasService(defaultAtlasBuild())).layers) {
       stage.add(layer);
     }
+    stage.add(streakLayer(model));
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
     if (hud !== undefined) pollHud(stage, hud);
     return stage;
@@ -56,6 +63,11 @@ function mountStage(): StageHost | null {
 const host = mountStage();
 const loop = new FrameLoop(model, clock, view);
 loop.listen((t, cursor) => host?.frame(t, cursor));
+const calloutTracker = new CalloutTracker();
+loop.listen((t) => {
+  const next = calloutTracker.update(model, t, layout.value.ring);
+  if (next !== null) callouts.value = next;
+});
 // Checked every frame rather than on "resize" alone: emulated viewports do not always fire it,
 // and two property reads per frame cost nothing.
 let viewport = [window.innerWidth, window.innerHeight];

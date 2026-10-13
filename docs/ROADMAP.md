@@ -137,7 +137,7 @@ allocation and bundle-size gates are active in CI.
 | B04 | Stage foundation & performance harness | M | B03 | done |
 | B05 | Dependency-web layer & bundles | L | B04 | done |
 | B06 | Ring layer (file-card atlas) | M | B04 | done |
-| B07 | Event-stream layer & callouts | M | B04 | planned |
+| B07 | Event-stream layer & callouts | M | B04 | done |
 | B08 | Panels I: feed, execution, agent workspace, behaviour field | L | B02, B03 | planned |
 | B09 | Panels II: change routes, signals, dispatch, change×check index | L | B08 | planned |
 | B10 | Replay controls & motion safety | M | B05–B09 | planned |

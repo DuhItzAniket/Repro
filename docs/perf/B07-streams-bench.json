@@ -1,0 +1,106 @@
+{
+  "phase": "B07",
+  "date": "2026-10-14",
+  "method": "apps/web/bench.html (layers=real): stress fixture (seed 1) with every stage layer real for the first time (web edges, markers, bundles, ring cards and ticks, event streaks); the busiest second looped for 8 s after a 1 s warm-up; fixed DPR per case; fresh WebGL context per case; render sanity check before timing. Values rounded to 0.1 ms.",
+  "environment": {
+    "browser": "Claude desktop in-app browser, Chrome/152.0.7977.130 (Windows 11, x64)",
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A78B) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "cpu": "Intel Core i7-14650HX (16 cores, 24 threads)",
+    "display": "60 Hz; devicePixelRatio 1.75",
+    "viewport": "1920x1080 CSS px (emulated); stage 1920x641"
+  },
+  "peak_instances": {
+    "edges": 10000,
+    "markers": 608,
+    "bundles": 2730,
+    "cards": 320,
+    "ticks": 1184,
+    "streaks": 2048
+  },
+  "layout_worker_ms": [2468, 2364],
+  "runs": [
+    {
+      "run": 1,
+      "results": [
+        {
+          "dpr": 1,
+          "frames": 474,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.0,
+            "p99": 33.2,
+            "max": 33.3
+          },
+          "cpu": {
+            "p50": 0.5,
+            "p95": 1.5,
+            "p99": 1.8,
+            "max": 2.2
+          },
+          "dropped": 0.0148,
+          "litPixels": 309890
+        },
+        {
+          "dpr": 2,
+          "frames": 471,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.0,
+            "p99": 33.3,
+            "max": 67.1
+          },
+          "cpu": {
+            "p50": 0.6,
+            "p95": 1.5,
+            "p99": 1.9,
+            "max": 2.3
+          },
+          "dropped": 0.017,
+          "litPixels": 1205320
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "results": [
+        {
+          "dpr": 2,
+          "frames": 475,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.1,
+            "p99": 33.1,
+            "max": 49.7
+          },
+          "cpu": {
+            "p50": 0.6,
+            "p95": 1.5,
+            "p99": 1.8,
+            "max": 2.2
+          },
+          "dropped": 0.0105,
+          "litPixels": 1205320
+        },
+        {
+          "dpr": 1,
+          "frames": 474,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.0,
+            "p99": 33.2,
+            "max": 33.4
+          },
+          "cpu": {
+            "p50": 0.7,
+            "p95": 1.6,
+            "p99": 2.0,
+            "max": 2.8
+          },
+          "dropped": 0.0148,
+          "litPixels": 309890
+        }
+      ]
+    }
+  ],
+  "reading": "With all six layers real and 2,048 live streaks at peak, p95 stays within the 60 Hz budget at DPR 1 and 2; stage CPU p95 1.5-1.6 ms, worst frame 2.8 ms. About 1-2% of frames take two refreshes at both DPRs, as in B06: host jitter, not rendering cost."
+}

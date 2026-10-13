@@ -1,6 +1,8 @@
 import type { Signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { type HudSnapshot, PerfHud } from "../stage/hud";
+import type { Callout } from "../stage/streams/callouts";
+import { Callouts } from "../stage/streams/callouts-view";
 import { Header, rectStyle } from "./header";
 import type { CockpitLayout, Rect } from "./layout";
 import { PANELS, SIGNALS_PARTIAL_CAPTION } from "./panels";
@@ -41,9 +43,11 @@ export interface AppProps {
   view: ShellView;
   /** Perf HUD snapshots (only with `?hud`). */
   hud?: Signal<HudSnapshot | null>;
+  /** Callout boxes over the stage (B07). */
+  callouts?: Signal<readonly Callout[]>;
 }
 
-export function App({ layout, view, hud }: AppProps) {
+export function App({ layout, view, hud, callouts }: AppProps) {
   const l = layout.value;
   return (
     <div class="cockpit" data-mode={l.mode} style={{ height: `${l.contentHeight}px` }}>
@@ -54,6 +58,7 @@ export function App({ layout, view, hud }: AppProps) {
         aria-label="Stage: dependency web, file ring and event streams"
       >
         <canvas class="stage-canvas" />
+        {callouts !== undefined && <Callouts items={callouts} />}
         {hud !== undefined && <PerfHud hud={hud} />}
       </section>
       {PANELS.map((panel, i) => {
