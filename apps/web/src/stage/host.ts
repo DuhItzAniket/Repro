@@ -170,6 +170,7 @@ export class StageHost {
         uTime: this.time,
         uFlare: { value: recency.flare },
         uFlareMs: { value: recency.flareMs },
+        uFadeMs: { value: recency.fadeMs ?? 0 },
         uCenter: { value: this.center },
         uSpin: { value: [1, 0] },
       },

@@ -26,6 +26,7 @@ import { AtlasService } from "../stage/ring/atlas-service";
 import { ringLayers } from "../stage/ring/layers";
 import { CalloutTracker } from "../stage/streams/callouts";
 import { streakLayer } from "../stage/streams/layers";
+import { residueLayer } from "../stage/streams/residue";
 import { webLayers } from "../stage/web/layers";
 import { computeInline, LayoutService } from "../stage/web/layout-service";
 
@@ -78,6 +79,7 @@ export async function pipeline(events: readonly unknown[]): Promise<Pipeline> {
   const layers: StageLayer[] = [
     ...webLayers(model, layout, governor),
     ...ring.layers,
+    residueLayer(model),
     streakLayer(model, governor),
     focusLayer(model, layout, ring.ring),
   ];

@@ -23,9 +23,9 @@ import { importance, LONGEST_LIFE, lifetime, streams, TINTS, tintOf, travel } fr
 
 export const MAX_STREAKS = 2048;
 /** Lanes fan across ±64° of the ring's right side, where the stage has room (DESIGN.md layout). */
-export const LANE_SPREAD = (64 * Math.PI) / 180;
+export const LANE_SPREAD = (28 * Math.PI) / 180;
 /** Tail length = head speed × this many ms (velocity-stretched motion blur). */
-const TAIL_MS = 110;
+const TAIL_MS = 160;
 const UNIT = 4294967296;
 
 /** Line width of an event's streak, CSS px. */

@@ -22,8 +22,8 @@ export const CARD_ATTRIBUTES: readonly AttributeSpec[] = [
 ];
 
 /** Radial extent of the band's two columns, as offsets from the ring radius (DESIGN: ≈ 90 px). */
-export const CONTENT_BAND = [-44, 8] as const;
-export const META_BAND = [10, 44] as const;
+export const CONTENT_BAND = [-72, 10] as const;
+export const META_BAND = [12, 50] as const;
 /** Gap between neighbouring cards, as a share of a card's angle. */
 const CARD_GAP = 0.08;
 

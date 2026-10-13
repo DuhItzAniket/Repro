@@ -135,9 +135,9 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
     expect(hashes).toMatchInlineSnapshot(`
       {
         "21000": "66d04c6cd55e9a9d/0",
-        "30500": "bf76ba5f43676a59/22",
-        "34000": "9057aa91e9f4acd7/9",
-        "46000": "69366a39a54350f3/4",
+        "30500": "e5159621518a7705/22",
+        "34000": "4b6afce20fbf6540/9",
+        "46000": "e0d2e45683cf86f1/4",
       }
     `);
   });

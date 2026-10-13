@@ -46,6 +46,7 @@ owner at the Stage B gate.
 - **Purity.** Decisions are made greedily in log order and depend only on the events up to each
   onset, the speed and the stage geometry. They are therefore the same when playing or
   scrubbing, and are never revised as events arrive.
-- **Measured** (unit-tested): every 333 ms window at ×0.5, ×1, ×4 and ×16, on the demo and
+- **Measured** (unit-tested, with B10's stage geometry; B13's larger ring changes the counts but
+  not the bound): every 333 ms window at ×0.5, ×1, ×4 and ×16, on the demo and
   stress fixtures, stays within the cap. At ×16 the stress run draws 717 of 5,789 streaks, 3 of
   192 bundles and 337 of 10,000 edge flares.

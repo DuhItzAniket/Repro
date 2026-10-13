@@ -32,6 +32,11 @@ export interface Recency {
   readonly flare: number;
   /** Decay time constant of the flare, wall-clock ms. */
   readonly flareMs: number;
+  /**
+   * If set, segments fade linearly to nothing over this much run time after appearing (B13's
+   * stream residue). Run time, not wall-clock: a fading trace does not move.
+   */
+  readonly fadeMs?: number;
 }
 
 export const NO_RECENCY: Recency = { flare: 0, flareMs: 1 };
@@ -44,7 +49,8 @@ export const NO_RECENCY: Recency = { flare: 0, flareMs: 1 };
 export function recencyFactor(appear: number, t: number, recency: Recency, flare = 1): number {
   const dt = t - appear;
   if (dt < 0) return 0;
-  return 1 + recency.flare * flare * Math.exp(-dt / recency.flareMs);
+  const fade = recency.fadeMs === undefined ? 1 : Math.max(0, 1 - dt / recency.fadeMs);
+  return (1 + recency.flare * flare * Math.exp(-dt / recency.flareMs)) * fade;
 }
 
 /** The alpha a segment is drawn with at `t` (before anti-aliasing and tails). */

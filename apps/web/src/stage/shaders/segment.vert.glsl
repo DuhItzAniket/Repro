@@ -15,6 +15,7 @@ uniform float uDpr;
 uniform float uTime; // presentation time, ms
 uniform float uFlare; // recency: extra alpha multiple right after appearing
 uniform float uFlareMs; // recency decay time constant, presentation ms (wall-clock × speed)
+uniform float uFadeMs; // > 0: fade linearly to nothing over this much run time after appearing
 uniform vec2 uCenter; // rotation centre, stage px (the ring's centre)
 uniform vec2 uSpin; // cos and sin of the layer's rotation (1, 0 for layers that do not turn)
 
@@ -44,7 +45,8 @@ void main() {
   // Recency (mirrors recencyFactor in segments.ts): hidden before `appear`, then a flare that
   // decays back to the base alpha.
   float dt = uTime - appear;
-  float recency = dt < 0.0 ? 0.0 : 1.0 + uFlare * flare * exp(-dt / uFlareMs);
+  float fade = uFadeMs > 0.0 ? max(0.0, 1.0 - dt / uFadeMs) : 1.0;
+  float recency = dt < 0.0 ? 0.0 : (1.0 + uFlare * flare * exp(-dt / uFlareMs)) * fade;
 
   vAcross = across;
   vHalfWidth = halfWidth;

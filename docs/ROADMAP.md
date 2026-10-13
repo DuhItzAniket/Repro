@@ -143,6 +143,7 @@ allocation and bundle-size gates are active in CI.
 | B10 | Replay controls & motion safety | M | B05–B09 | done |
 | B11 | Focus, evidence drawer & accessibility | M | B10 | done |
 | B12 | UI quality gate | M | B11 | done |
+| B13 | Visual parity with the reference (added before Gate B) | S | B12 | done |
 
 **B01 · Deterministic fixture generator & reference log**
 - Deliverables: a seeded generator (TS or Python) that produces a realistic run (1 PR, 4 claims,
@@ -221,6 +222,15 @@ allocation and bundle-size gates are active in CI.
   `renderAt(t)` test hook), allocation test (`frame()` ×1000 with flat heap), size-limit
   (300 kB gzip) on every PR, and a nightly perf job with relative-regression gating.
 - Accept: all gates run in CI and fail on an injected regression of each type.
+
+**B13 · Visual parity** (added 2026-10-14, before Gate B)
+- Why: the gate's side-by-side check against the reference frame at 6 s found that the ring and
+  streams did not read as the same family. The panels and header did. The cause was the ring
+  geometry taken from the reference's portrait frame.
+- Deliverables: landscape ring geometry (the arc spans the stage height), larger and legible
+  file cards, lanes within the visible arc, and an event-driven stream residue.
+- Accept: the side-by-side reads as the same visual family. All B01–B12 tests and gates still
+  pass, with the changed pins explained by the intended constants only.
 
 ---
 
