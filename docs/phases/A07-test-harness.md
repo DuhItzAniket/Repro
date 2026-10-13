@@ -5,7 +5,7 @@
 | **Stage** | A — Foundation |
 | **Status** | done |
 | **Depends on** | A05 |
-| **Branch / PR** | `phase/A07-test-harness` · PR link in ROADMAP phase log |
+| **Branch / PR** | `phase/A07-test-harness` · [#7](https://github.com/DuhItzAniket/Repro/pull/7) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
