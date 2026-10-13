@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B03 |
-| **Branch / PR** | `phase/B04-stage-foundation` · PR link added on creation |
+| **Branch / PR** | `phase/B04-stage-foundation` · [#13](https://github.com/DuhItzAniket/Repro/pull/13) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective

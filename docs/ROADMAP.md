@@ -624,3 +624,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B01 | 2026-10-13 | [#10](https://github.com/DuhItzAniket/Repro/pull/10) | `@repro/synth` generator; demo (2,334 events, 28 checks) and stress (10k edges, 3k/s burst) fixtures; ADR-0015 check model |
 | B02 | 2026-10-13 | [#11](https://github.com/DuhItzAniket/Repro/pull/11) | Columnar EventStore, snapshot folder with exact seek, time/kind indexes, presentation clock; run/summary/checks/claims/agents projections |
 | B03 | 2026-10-13 | [#12](https://github.com/DuhItzAniket/Repro/pull/12) | Preact + signals shell, `computeLayout` geometry, header counters and 7-segment progress, tokens, self-hosted JetBrains Mono with OFL |
+| B04 | 2026-10-13 | [#13](https://github.com/DuhItzAniket/Repro/pull/13) | WebGL `StageHost` + pure layers, segment primitive, render-model hashing, adaptive DPR, perf HUD; stress bench on integrated GPU: 60 fps at DPR 2 |
