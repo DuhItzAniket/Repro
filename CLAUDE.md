@@ -104,6 +104,8 @@ pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to 
 uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)
 uv run ruff format      # Python format (--check in CI)
 uv run mypy             # strict type check of engine, bench and tests
+pnpm gen                # regenerate TS types + Pydantic models from packages/events/schema
+uv run repro-events-codegen --check   # drift gate (CI): fails if generated code is stale
 ```
 
 Optional: `uvx pre-commit install` enables local hooks for Ruff and Biome.

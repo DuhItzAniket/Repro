@@ -23,7 +23,12 @@ All notable changes to this project are documented here. The format follows
   verdict, missing-item, artifact and card models, all with valid and invalid examples. [A04]
 - `repro-events` Python package: schema registry, field-precise event validation, and
   draft-07 derivation of agent output schemas. [A04]
+- In-house schema codegen (ADR-0014): TypeScript types (`ReproEvent` union, `EVENT_KINDS`,
+  `KIND_STAGES`) and strict Pydantic v2 models with a discriminated `Event` union; `pnpm gen`;
+  CI drift gate; equivalence tests across JSON Schema, Pydantic and Ajv. [A05]
 
 ### Changed
+- Common enum `Verdict` renamed `VerdictValue` (it collided with the `Verdict` model). [A05]
+- Event registry branches declare `"type": "object"` (Ajv strict mode). [A05]
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]

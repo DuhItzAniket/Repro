@@ -49,7 +49,7 @@ ADRs or phase records.
 | A02 | Toolchain & monorepo scaffold | M | A01 | done |
 | A03 | Code-quality gates | S | A02 | done |
 | A04 | Event schema v1 | M | A02 | done |
-| A05 | Schema codegen & drift gate | M | A04 | planned |
+| A05 | Schema codegen & drift gate | M | A04 | done |
 | A06 | CI pipeline & repository security | M | A03, A05 | planned |
 | A07 | Test-harness foundations & golden-log tooling | M | A05 | planned |
 | A08 | Feasibility spikes | M | A02 | planned |
@@ -86,11 +86,11 @@ ADRs or phase records.
   tests. An "every kind has a schema" test passes.
 
 **A05 · Schema codegen & drift gate**
-- Deliverables: TS types via json-schema-to-typescript and Pydantic v2 models via
-  datamodel-code-generator, plus Repro's own discriminated-union generator for `kind`.
-  Cross-language round-trip tests (Python model → JSON → TS validator and back).
-- Accept: `pnpm gen` / `uv run gen` regenerate deterministically, and CI fails on any diff
-  between committed and regenerated types. Round-trip passes for all example events.
+- Deliverables (revised in A05, see ADR-0014): an in-house generator (`repro-events-codegen`)
+  emitting TS types and strict Pydantic v2 models, both with a discriminated union over `kind`.
+  Equivalence tests across JSON Schema, Pydantic and Ajv (TypeScript), plus round trip.
+- Accept: `pnpm gen` / `uv run repro-events-codegen` regenerate deterministically, and CI fails
+  on any diff between committed and regenerated types. Round-trip passes for all example events.
 
 **A06 · CI pipeline & repository security**
 - Deliverables: GitHub Actions workflow for lint, types, unit tests, schema drift and secret
@@ -611,3 +611,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | A02 | 2026-10-13 | [#1](https://github.com/DuhItzAniket/Repro/pull/1) | pnpm + uv workspaces, pinned toolchains, CI on Ubuntu + Windows; ADRs 0003/0004/0007/0011 accepted; Apache-2.0 |
 | A03 | 2026-10-13 | [#3](https://github.com/DuhItzAniket/Repro/pull/3) | Ruff + strict mypy (ADR-0013), Biome, required `lint` CI job |
 | A04 | 2026-10-13 | [#4](https://github.com/DuhItzAniket/Repro/pull/4) | Event schema v1: 34 kinds, models, examples; `repro-events` registry, validation, draft-07 agent schemas |
+| A05 | 2026-10-13 | [#5](https://github.com/DuhItzAniket/Repro/pull/5) | In-house TS + Pydantic codegen (ADR-0014), three-validator equivalence tests, CI drift gate |

@@ -4,5 +4,19 @@
   "private": true,
   "description": "The Repro event schema: JSON Schema source of truth plus generated TypeScript types.",
   "license": "Apache-2.0",
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  }
 }

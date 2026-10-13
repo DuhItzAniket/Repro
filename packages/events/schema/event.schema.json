@@ -11,6 +11,7 @@
     {
       "title": "run.started",
       "description": "A run begins.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "run.started"
@@ -29,6 +30,7 @@
     {
       "title": "run.finished",
       "description": "A run ends (always emitted, also on failure or cancellation).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "run.finished"
@@ -44,6 +46,7 @@
     {
       "title": "stage.started",
       "description": "A pipeline stage begins.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "stage.started"
@@ -59,6 +62,7 @@
     {
       "title": "stage.finished",
       "description": "A pipeline stage ends; the envelope status carries ok/warn/fail.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "stage.finished"
@@ -74,6 +78,7 @@
     {
       "title": "log.line",
       "description": "A line for the investigation feed.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "log.line"
@@ -89,6 +94,7 @@
     {
       "title": "agent.spawned",
       "description": "An agent session starts.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "agent.spawned"
@@ -104,6 +110,7 @@
     {
       "title": "agent.state",
       "description": "An agent's state changes (drives the dispatch and workspace panels).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "agent.state"
@@ -119,6 +126,7 @@
     {
       "title": "cost.estimate",
       "description": "Client-side token and cost estimate for an agent call (not billing data).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "cost.estimate"
@@ -134,6 +142,7 @@
     {
       "title": "claim.extracted",
       "description": "A claim was extracted from the PR.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "claim.extracted"
@@ -152,6 +161,7 @@
     {
       "title": "snapshot.ready",
       "description": "A .git-less snapshot of one side is ready.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "snapshot.ready"
@@ -170,6 +180,7 @@
     {
       "title": "graph.node",
       "description": "A node of the dependency graph.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "graph.node"
@@ -188,6 +199,7 @@
     {
       "title": "graph.edge",
       "description": "An edge of the dependency graph (static imports, or observed calls/coverage).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "graph.edge"
@@ -206,6 +218,7 @@
     {
       "title": "symbol.changed",
       "description": "A symbol differs between base and head.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "symbol.changed"
@@ -224,6 +237,7 @@
     {
       "title": "blast.computed",
       "description": "Blast radius: changed symbols and their reverse dependents.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "blast.computed"
@@ -242,6 +256,7 @@
     {
       "title": "sandbox.ready",
       "description": "A sandbox for one side is ready; states the isolation actually achieved.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "sandbox.ready"
@@ -260,6 +275,7 @@
     {
       "title": "env.provisioned",
       "description": "An environment for one side was provisioned.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "env.provisioned"
@@ -278,6 +294,7 @@
     {
       "title": "test.selected",
       "description": "A test was selected (envelope target.test names it).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "test.selected"
@@ -296,6 +313,7 @@
     {
       "title": "test.started",
       "description": "A test run starts on one side.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "test.started"
@@ -314,6 +332,7 @@
     {
       "title": "test.finished",
       "description": "A test run finished on one side.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "test.finished"
@@ -332,6 +351,7 @@
     {
       "title": "trace.sample",
       "description": "A sampled behaviour observation (for the UI; full observations are artifacts).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "trace.sample"
@@ -350,6 +370,7 @@
     {
       "title": "perf.sample",
       "description": "An untraced timing sample.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "perf.sample"
@@ -368,6 +389,7 @@
     {
       "title": "diff.outcome",
       "description": "A base→head test outcome comparison.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.outcome"
@@ -386,6 +408,7 @@
     {
       "title": "diff.tests",
       "description": "A change to the tests themselves (removal, weakening, skips), or a base test failing on head.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.tests"
@@ -404,6 +427,7 @@
     {
       "title": "diff.behaviour",
       "description": "Same input, different behaviour, observed through existing tests.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.behaviour"
@@ -422,6 +446,7 @@
     {
       "title": "diff.probe",
       "description": "Same input, different behaviour, observed through a generated probe.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.probe"
@@ -440,6 +465,7 @@
     {
       "title": "diff.api",
       "description": "A public API breaking change.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.api"
@@ -458,6 +484,7 @@
     {
       "title": "diff.deps",
       "description": "A dependency difference between base and head.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.deps"
@@ -476,6 +503,7 @@
     {
       "title": "diff.perf",
       "description": "A performance comparison for one test (untraced, interleaved runs).",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "diff.perf"
@@ -494,6 +522,7 @@
     {
       "title": "invariant.result",
       "description": "The result of one declared invariant.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "invariant.result"
@@ -512,6 +541,7 @@
     {
       "title": "evidence.created",
       "description": "A citable evidence record was created.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "evidence.created"
@@ -530,6 +560,7 @@
     {
       "title": "missing.recorded",
       "description": "Something could not be verified.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "missing.recorded"
@@ -545,6 +576,7 @@
     {
       "title": "verdict.issued",
       "description": "A validated verdict on one claim.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "verdict.issued"
@@ -563,6 +595,7 @@
     {
       "title": "verdict.rejected",
       "description": "An agent verdict failed validation and was not accepted.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "verdict.rejected"
@@ -581,6 +614,7 @@
     {
       "title": "card.published",
       "description": "The Reproduction Card was computed and stored.",
+      "type": "object",
       "properties": {
         "kind": {
           "const": "card.published"

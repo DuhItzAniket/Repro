@@ -11,8 +11,8 @@ its single source of truth.
 | `schema/payloads/<kind>.schema.json` | One closed payload schema per kind (34 in v1) | A04 |
 | `schema/models/*.schema.json` | Claim, evidence, verdict, missing item, artifact reference, Reproduction Card | A04 |
 | `examples/` | For every kind, model and the envelope: valid examples and invalid examples, each with a reason | A04 |
-| `python/` | `repro-events`: schema registry, validators, draft-07 agent-schema derivation (+ generated Pydantic models in A05) | A04/A05 |
-| `src/` | Generated TypeScript types and validators | A05 |
+| `python/` | `repro-events`: schema registry, validators, draft-07 agent-schema derivation, codegen, generated Pydantic models (`models.py`) | A04/A05 |
+| `src/generated/types.ts` | Generated TypeScript types, `ReproEvent` union, `EVENT_KINDS`, `KIND_STAGES` | A05 |
 
 ## Rules
 
@@ -20,8 +20,8 @@ its single source of truth.
   path.
 - Keywords that draft-07 or the code generators cannot express (`prefixItems`,
   `unevaluated*`, `$dynamicRef`, …) are not used. A test enforces this.
-- Change the schema first, add or adjust examples, regenerate (A05), then update producers and
-  consumers.
+- Change the schema first, add or adjust examples, run `pnpm gen`, then update producers and
+  consumers. Generated files are committed; CI fails if they are stale.
 - Adding a kind or an optional field is additive. Changing or removing a field bumps the
   kind's `pv` (or the envelope `v`) and needs an upcaster.
 - A new kind needs: a branch in `event.schema.json`, `payloads/<kind>.schema.json`,
@@ -31,5 +31,8 @@ its single source of truth.
 ## Commands
 
 ```
-uv run pytest packages/events/python/tests   # schema hygiene, registry, examples, agent schemas
+pnpm gen                                     # regenerate TS types + Pydantic models (ADR-0014)
+uv run repro-events-codegen --check          # drift check
+uv run pytest packages/events/python/tests   # schema hygiene, registry, examples, models, codegen
+pnpm --filter @repro/events test             # Ajv validation of all examples + type assertions
 ```
