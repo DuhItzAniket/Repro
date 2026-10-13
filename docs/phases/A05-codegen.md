@@ -5,7 +5,7 @@
 | **Stage** | A — Foundation |
 | **Status** | done |
 | **Depends on** | A04 |
-| **Branch / PR** | `phase/A05-codegen` · PR link in ROADMAP phase log |
+| **Branch / PR** | `phase/A05-codegen` · [#5](https://github.com/DuhItzAniket/Repro/pull/5) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
