@@ -16,6 +16,7 @@ concurrency:
 
 env:
   UV_VERSION: "0.13.0"
+  HYPOTHESIS_PROFILE: ci # derandomised: a CI failure reproduces exactly
 
 jobs:
   lint:
@@ -121,9 +122,11 @@ jobs:
       - name: Licence allow-list (Python + JS)
         run: uv run --locked python scripts/check_licenses.py
 
+  # Needs the repository's Dependency graph (Settings -> Code security). Enable it, then set the
+  # repository variable DEPENDENCY_REVIEW=true to turn this job on.
   dependency-review:
     name: dependency review
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_REVIEW == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -51,7 +51,7 @@ ADRs or phase records.
 | A04 | Event schema v1 | M | A02 | done |
 | A05 | Schema codegen & drift gate | M | A04 | done |
 | A06 | CI pipeline & repository security | M | A03, A05 | done |
-| A07 | Test-harness foundations & golden-log tooling | M | A05 | planned |
+| A07 | Test-harness foundations & golden-log tooling | M | A05 | done |
 | A08 | Feasibility spikes | M | A02 | planned |
 
 **A01 · Research, architecture & plan baseline**
@@ -613,3 +613,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | A04 | 2026-10-13 | [#4](https://github.com/DuhItzAniket/Repro/pull/4) | Event schema v1: 34 kinds, models, examples; `repro-events` registry, validation, draft-07 agent schemas |
 | A05 | 2026-10-13 | [#5](https://github.com/DuhItzAniket/Repro/pull/5) | In-house TS + Pydantic codegen (ADR-0014), three-validator equivalence tests, CI drift gate |
 | A06 | 2026-10-13 | [#6](https://github.com/DuhItzAniket/Repro/pull/6) | CI: lint / test×2 / security (gitleaks, licence allow-list) / dependency review; SHA pins; Dependabot |
+| A07 | 2026-10-13 | [#7](https://github.com/DuhItzAniket/Repro/pull/7) | Log validator/normaliser CLI, golden logs, Hypothesis/fast-check, deterministic fixture repos |

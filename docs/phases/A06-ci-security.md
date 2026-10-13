@@ -61,7 +61,9 @@ secrets and disallowed licences cannot reach `main` unnoticed.
 - **Workflow static check:** actionlint (pinned image digest recorded during the phase) reports
   no findings.
 - **Local suite:** pytest 475 passed. Ruff, mypy, Biome and the drift check are clean.
-- **CI timings:** recorded in the PR (see the PR checks).
+- **CI timings** (PR #6 run, wall clock): the whole run took 1 min 49 s from creation to
+  completion. Jobs, which run in parallel: `lint` 26 s, `test (ubuntu-latest)` 32 s,
+  `test (windows-latest)` 61 s, `security` 33 s. That is well under the 10-minute criterion.
 
 ## Deviations from spec
 - Licence checking moved from dependency-review rules to our own script, because it covers
@@ -69,9 +71,12 @@ secrets and disallowed licences cannot reach `main` unnoticed.
 - No fake-secret PR on GitHub. The positive control was run locally (rationale above).
 
 ## Known gaps
-- `dependency review` is not a required check yet, because its coverage of `pnpm-lock.yaml` and
-  `uv.lock` through GitHub's dependency graph is not verified. Promote it once a Dependabot or
-  advisory run shows it working.
+- **`dependency review` failed on PR #6** with "Dependency review is not supported on this
+  repository. Please ensure that Dependency graph is enabled". Enabling the dependency graph is a
+  repository security setting, so it is left to the owner. Since A07 the job is gated on the
+  repository variable `DEPENDENCY_REVIEW == 'true'`, so it no longer fails every PR. It was never
+  a required check, so #6 merged on the required checks alone. Coverage of `pnpm-lock.yaml` and
+  `uv.lock` by the dependency graph is still unverified.
 - Branch protection lives in GitHub settings, not in the repository. It is documented in
   CONTRIBUTING.md and applied through the API in this phase.
 
