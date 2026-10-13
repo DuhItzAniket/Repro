@@ -5,9 +5,8 @@ name: Spikes (A08)
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - "spikes/A08/**"
-      - ".github/workflows/spikes.yml"
+    paths: # scripts only: committing results or prose must not re-run a 20-minute job
+      - "spikes/A08/*.py"
 
 permissions:
   contents: read

@@ -1,0 +1,188 @@
+{
+  "python": "3.13.16",
+  "implementation": "CPython",
+  "system": "Linux",
+  "machine": "x86_64",
+  "rounds": 5,
+  "repeats": 15,
+  "workloads": {
+    "fib": {
+      "target_calls": 57313,
+      "configs": {
+        "none": {
+          "median_ms": 1.261,
+          "round_medians_ms": [
+            1.3,
+            1.266,
+            1.25,
+            1.256,
+            1.261
+          ],
+          "ratio_vs_none": 1.0,
+          "overhead_ns_per_target_call": 0.0
+        },
+        "disable_all": {
+          "median_ms": 1.278,
+          "round_medians_ms": [
+            1.298,
+            1.283,
+            1.278,
+            1.221,
+            1.271
+          ],
+          "ratio_vs_none": 1.013,
+          "overhead_ns_per_target_call": 0.3
+        },
+        "target_dispatch": {
+          "median_ms": 7.327,
+          "round_medians_ms": [
+            7.381,
+            7.591,
+            7.327,
+            7.103,
+            7.271
+          ],
+          "ratio_vs_none": 5.811,
+          "overhead_ns_per_target_call": 105.8
+        },
+        "target_capture": {
+          "median_ms": 104.642,
+          "round_medians_ms": [
+            107.827,
+            106.549,
+            104.642,
+            101.074,
+            104.455
+          ],
+          "ratio_vs_none": 82.987,
+          "overhead_ns_per_target_call": 1803.8
+        },
+        "target_capture_budget": {
+          "median_ms": 1.235,
+          "round_medians_ms": [
+            1.282,
+            1.278,
+            1.22,
+            1.235,
+            1.217
+          ],
+          "ratio_vs_none": 0.98,
+          "overhead_ns_per_target_call": -0.5
+        },
+        "settrace_dispatch": {
+          "median_ms": 9.416,
+          "round_medians_ms": [
+            9.512,
+            9.416,
+            9.11,
+            9.488,
+            8.94
+          ],
+          "ratio_vs_none": 7.468,
+          "overhead_ns_per_target_call": 142.3
+        },
+        "settrace_capture": {
+          "median_ms": 106.817,
+          "round_medians_ms": [
+            107.495,
+            106.817,
+            107.26,
+            106.794,
+            106.264
+          ],
+          "ratio_vs_none": 84.711,
+          "overhead_ns_per_target_call": 1841.7
+        }
+      }
+    },
+    "records": {
+      "target_calls": 20000,
+      "configs": {
+        "none": {
+          "median_ms": 9.185,
+          "round_medians_ms": [
+            9.476,
+            9.411,
+            8.748,
+            8.55,
+            9.185
+          ],
+          "ratio_vs_none": 1.0,
+          "overhead_ns_per_target_call": 0.0
+        },
+        "disable_all": {
+          "median_ms": 8.191,
+          "round_medians_ms": [
+            8.511,
+            9.112,
+            8.191,
+            7.987,
+            8.126
+          ],
+          "ratio_vs_none": 0.892,
+          "overhead_ns_per_target_call": -49.7
+        },
+        "target_dispatch": {
+          "median_ms": 12.22,
+          "round_medians_ms": [
+            12.274,
+            12.22,
+            12.021,
+            11.216,
+            13.185
+          ],
+          "ratio_vs_none": 1.33,
+          "overhead_ns_per_target_call": 151.7
+        },
+        "target_capture": {
+          "median_ms": 163.143,
+          "round_medians_ms": [
+            171.648,
+            168.996,
+            163.143,
+            158.711,
+            163.068
+          ],
+          "ratio_vs_none": 17.761,
+          "overhead_ns_per_target_call": 7697.9
+        },
+        "target_capture_budget": {
+          "median_ms": 8.639,
+          "round_medians_ms": [
+            8.893,
+            8.692,
+            8.183,
+            8.272,
+            8.639
+          ],
+          "ratio_vs_none": 0.94,
+          "overhead_ns_per_target_call": -27.3
+        },
+        "settrace_dispatch": {
+          "median_ms": 14.866,
+          "round_medians_ms": [
+            15.221,
+            14.921,
+            14.866,
+            14.621,
+            14.436
+          ],
+          "ratio_vs_none": 1.618,
+          "overhead_ns_per_target_call": 284.0
+        },
+        "settrace_capture": {
+          "median_ms": 172.441,
+          "round_medians_ms": [
+            177.568,
+            172.441,
+            166.202,
+            164.422,
+            174.192
+          ],
+          "ratio_vs_none": 18.773,
+          "overhead_ns_per_target_call": 8162.8
+        }
+      }
+    }
+  }
+}

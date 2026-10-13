@@ -1,0 +1,52 @@
+{
+  "host": {
+    "system": "Linux",
+    "release": "6.17.0-1022-azure",
+    "machine": "x86_64"
+  },
+  "image": "ghcr.io/astral-sh/uv@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca",
+  "project": {
+    "repo": "https://github.com/pallets/click",
+    "tag": "8.5.0",
+    "commit": "8b19813f2bfca99f1018a587a8cf54fc959f2e5d",
+    "files": 166,
+    "snapshot_bytes": 1751040
+  },
+  "clone_s": 0.603,
+  "sync_command": "uv sync --locked --no-default-groups --group tests --link-mode copy",
+  "scenarios": [
+    {
+      "scenario": "cold",
+      "snapshot_copy_s": 0.123,
+      "provision_s": 0.85,
+      "provision_exit": 0,
+      "test_run_s": 6.498,
+      "pytest_exit": 1,
+      "pytest_summary": [
+        "24 failed, 1967 passed, 24 skipped, 31000 deselected, 1 xfailed in 3.97s"
+      ]
+    },
+    {
+      "scenario": "warm",
+      "snapshot_copy_s": 0.117,
+      "provision_s": 0.59,
+      "provision_exit": 0,
+      "test_run_s": 6.527,
+      "pytest_exit": 1,
+      "pytest_summary": [
+        "24 failed, 1967 passed, 24 skipped, 31000 deselected, 1 xfailed in 4.04s"
+      ]
+    },
+    {
+      "scenario": "warm_offline",
+      "snapshot_copy_s": 0.116,
+      "provision_s": 0.543,
+      "provision_exit": 0,
+      "test_run_s": 6.485,
+      "pytest_exit": 1,
+      "pytest_summary": [
+        "24 failed, 1967 passed, 24 skipped, 31000 deselected, 1 xfailed in 4.03s"
+      ]
+    }
+  ]
+}

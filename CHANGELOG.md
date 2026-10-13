@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-13
+
+Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
+
 ### Added
 - Project brief, research synthesis, final architecture, stage/phase roadmap, SDLC process,
   ADRs, threat model, test strategy and research-paper tracker. [A01]
@@ -41,3 +45,6 @@ All notable changes to this project are documented here. The format follows
 - Event registry branches declare `"type": "object"` (Ajv strict mode). [A05]
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
+
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.1.0
