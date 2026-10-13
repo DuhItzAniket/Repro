@@ -3,6 +3,7 @@
  * Both share a `RingModel`: content, angles and the closed-form rotation for the current log.
  */
 import type { CockpitModel } from "../../model/cockpit";
+import { type Motion, motionKey } from "../../motion/motion";
 import { ringTracker } from "../geometry";
 import { type AttributeSpec, InstanceBuffers } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
@@ -10,7 +11,7 @@ import { segmentBuffers, segmentWriter } from "../segments";
 import { atlasLayout } from "./atlas";
 import type { AtlasService } from "./atlas-service";
 import { type RingContent, ringContent } from "./content";
-import { type RingAngles, type RingRotation, ringAngles, ringRotation } from "./rotation";
+import { type RingAngles, type RingRotation, ringAngles, ringRotation, SNAP_MS } from "./rotation";
 
 /** Per-instance card attributes (see card.vert.glsl). */
 export const CARD_ATTRIBUTES: readonly AttributeSpec[] = [
@@ -34,6 +35,8 @@ export class RingModel {
   firstAppear = Number.POSITIVE_INFINITY;
   version = 0;
   private built = -1;
+  /** Rotations per motion setting (see `rotationAt`), rebuilt with the content. */
+  readonly rotationCache = new Map<number, RingRotation>();
 
   constructor(
     private readonly model: CockpitModel,
@@ -47,6 +50,7 @@ export class RingModel {
     this.content = ringContent(this.model);
     this.angles = ringAngles(this.content.cards);
     this.rotation = ringRotation(this.angles, this.content.focus);
+    this.rotationCache.clear();
     this.firstAppear = this.content.cards.reduce(
       (t, card) => Math.min(t, card.appear),
       Number.POSITIVE_INFINITY,
@@ -56,6 +60,23 @@ export class RingModel {
       void this.atlas.request(this.content.key, this.content.cards);
     }
   }
+}
+
+/**
+ * The ring's angle at `t` for this frame's motion (ADR-0011): a snap lasts 500 ms of wall-clock
+ * time at any replay speed, and reduced motion snaps instantly and does not drift. Closed-form
+ * per setting, so it stays a pure function of (events, t, motion).
+ */
+export function rotationAt(ring: RingModel, t: number, motion: Motion): number {
+  const key = motionKey(motion);
+  let rotation = ring.rotationCache.get(key);
+  if (rotation === undefined) {
+    rotation = motion.reduced
+      ? ringRotation(ring.angles, ring.content.focus, 0, 0)
+      : ringRotation(ring.angles, ring.content.focus, SNAP_MS * motion.speed);
+    ring.rotationCache.set(key, rotation);
+  }
+  return rotation.at(t);
 }
 
 export interface CardLayer extends StageLayer {
@@ -76,7 +97,7 @@ export function cardLayer(ring: RingModel): CardLayer {
     rotation: 0,
     update(frame: StageFrame) {
       ring.sync();
-      layer.rotation = ring.rotation.at(frame.t);
+      layer.rotation = rotationAt(ring, frame.t, frame.motion);
       if (ring.version === drawn) return;
       drawn = ring.version;
       const { cards } = ring.content;
@@ -131,7 +152,7 @@ export function tickLayer(ring: RingModel, cardCapacity = 160): StageLayer {
     rotation: 0,
     update(frame: StageFrame) {
       ring.sync();
-      layer.rotation = ring.rotation.at(frame.t);
+      layer.rotation = rotationAt(ring, frame.t, frame.motion);
       const moved = ringChanged(frame.ring);
       if (ring.version === drawn && !moved) return;
       drawn = ring.version;

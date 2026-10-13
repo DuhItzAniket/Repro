@@ -17,16 +17,20 @@ export const SEGMENT_ATTRIBUTES: readonly AttributeSpec[] = [
   { name: "color", size: 4 }, // r, g, b in 0–1, base alpha
   { name: "shape", size: 2 }, // width in px; alpha at the start relative to the end (tails)
   { name: "appear", size: 1 }, // presentation time (ms) the segment appears at
+  { name: "flare", size: 1 }, // share of the layer's recency flare this segment gets (0–1)
 ];
 
 /** `appear` for segments that are always visible (layers that rewrite every frame). */
 export const ALWAYS = -1e9;
 
-/** Per-layer recency parameters (shader uniforms). */
+/**
+ * Per-layer recency parameters (shader uniforms). `flareMs` is wall-clock time (ADR-0011): the
+ * host scales it by the replay speed, and turns flares off under reduced motion.
+ */
 export interface Recency {
   /** Extra alpha multiple right after appearing: 0 = none, 2 = three times as bright. */
   readonly flare: number;
-  /** Decay time constant of the flare, ms. */
+  /** Decay time constant of the flare, wall-clock ms. */
   readonly flareMs: number;
 }
 
@@ -34,17 +38,24 @@ export const NO_RECENCY: Recency = { flare: 0, flareMs: 1 };
 
 /**
  * The alpha multiplier the segment shader applies at presentation time `t` (mirrors
- * `segment.vert.glsl`; tested against it by value).
+ * `segment.vert.glsl`; tested against it by value). `recency` is as the shader receives it, in
+ * presentation time; `flare` is the segment's own share of the flare.
  */
-export function recencyFactor(appear: number, t: number, recency: Recency): number {
+export function recencyFactor(appear: number, t: number, recency: Recency, flare = 1): number {
   const dt = t - appear;
   if (dt < 0) return 0;
-  return 1 + recency.flare * Math.exp(-dt / recency.flareMs);
+  return 1 + recency.flare * flare * Math.exp(-dt / recency.flareMs);
 }
 
 /** The alpha a segment is drawn with at `t` (before anti-aliasing and tails). */
-export function segmentAlpha(base: number, appear: number, t: number, recency: Recency): number {
-  return Math.min(1, base * recencyFactor(appear, t, recency));
+export function segmentAlpha(
+  base: number,
+  appear: number,
+  t: number,
+  recency: Recency,
+  flare = 1,
+): number {
+  return Math.min(1, base * recencyFactor(appear, t, recency, flare));
 }
 
 export function segmentBuffers(capacity: number): InstanceBuffers {
@@ -68,6 +79,7 @@ export interface SegmentWriter {
     alpha: number,
     tail: number,
     appear?: number,
+    flare?: number,
   ): boolean;
 }
 
@@ -81,6 +93,7 @@ export function segmentWriter(
   let color = buffers.array("color");
   let shape = buffers.array("shape");
   let appearAt = buffers.array("appear");
+  let flares = buffers.array("flare");
   let generation = buffers.generation;
   return {
     buffers,
@@ -93,10 +106,11 @@ export function segmentWriter(
         color = buffers.array("color");
         shape = buffers.array("shape");
         appearAt = buffers.array("appear");
+        flares = buffers.array("flare");
         generation = buffers.generation;
       }
     },
-    push(ax, ay, bx, by, width, r, g, b, alpha, tail, appear = ALWAYS) {
+    push(ax, ay, bx, by, width, r, g, b, alpha, tail, appear = ALWAYS, flare = 1) {
       const i = buffers.count;
       if (i >= limit || i >= buffers.capacity) return false;
       a[i * 2] = ax;
@@ -110,6 +124,7 @@ export function segmentWriter(
       shape[i * 2] = width;
       shape[i * 2 + 1] = tail;
       appearAt[i] = appear;
+      flares[i] = flare;
       buffers.count = i + 1;
       return true;
     },

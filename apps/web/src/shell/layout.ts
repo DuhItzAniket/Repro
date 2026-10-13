@@ -32,9 +32,12 @@ export interface CockpitLayout {
   readonly stage: Rect;
   readonly panels: readonly Rect[];
   readonly ring: Ring;
+  /** The replay transport strip, along the bottom of the stage (B10). */
+  readonly transport: Rect;
 }
 
 export const HEADER_HEIGHT = 56;
+export const TRANSPORT_HEIGHT = 24;
 export const GAP = 8;
 export const PAD = 8;
 export const NARROW_BELOW = 1100;
@@ -93,6 +96,7 @@ export function computeLayout(viewportWidth: number, viewportHeight: number): Co
       stage,
       panels,
       ring: ringFor(stage),
+      transport: transportFor(stage),
     };
   }
 
@@ -120,6 +124,16 @@ export function computeLayout(viewportWidth: number, viewportHeight: number): Co
     stage,
     panels,
     ring: ringFor(stage),
+    transport: transportFor(stage),
+  };
+}
+
+function transportFor(stage: Rect): Rect {
+  return {
+    x: stage.x + PAD,
+    y: stage.y + stage.h - TRANSPORT_HEIGHT - PAD / 2,
+    w: stage.w - 2 * PAD,
+    h: TRANSPORT_HEIGHT,
   };
 }
 

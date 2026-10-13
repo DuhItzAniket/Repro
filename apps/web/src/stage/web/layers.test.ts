@@ -2,7 +2,9 @@ import fc from "fast-check";
 import { beforeAll, describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
+import { NORMAL_MOTION } from "../../motion/motion";
 import { computeLayout } from "../../shell/layout";
+import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
 import { segmentAlpha } from "../segments";
@@ -30,20 +32,24 @@ const frameAt = (t: number): StageFrame => ({
   width: stage.w,
   height: stage.h,
   ring,
+  motion: NORMAL_MOTION,
 });
+/** The B05 tests run without the flash governor's cap (B10 tests it). */
+const unlimited = (placed: LayoutService) =>
+  new FlashGovernor(model, placed, Number.POSITIVE_INFINITY);
 const hashOf = (layer: StageLayer) =>
   hashRenderModels([{ layer: layer.name, buffers: layer.buffers }]);
 
 describe("edge layer", () => {
   it("draws nothing until the layout lands", () => {
     const pending = new LayoutService(model.graph, computeInline);
-    const layer = edgeLayer(model, pending);
+    const layer = edgeLayer(model, pending, unlimited(pending));
     layer.update(frameAt(40_000));
     expect(layer.buffers.count).toBe(0);
   });
 
   it("writes every edge once, stamped with the time its event appeared", () => {
-    const layer = edgeLayer(model, layout);
+    const layer = edgeLayer(model, layout, unlimited(layout));
     layer.update(frameAt(0));
     const { graph } = model;
     expect(layer.buffers.count).toBe(graph.edgeCount);
@@ -54,7 +60,7 @@ describe("edge layer", () => {
   });
 
   it("does not rewrite (or re-upload) between graph events: playback is the shader's job", () => {
-    const layer = edgeLayer(model, layout);
+    const layer = edgeLayer(model, layout, unlimited(layout));
     layer.update(frameAt(1_000));
     const version = layer.buffers.version;
     for (const t of [5_000, 20_000, 48_000, 2_000]) layer.update(frameAt(t));
@@ -75,7 +81,7 @@ describe("edge layer", () => {
 
 describe("marker layer", () => {
   it("rings every blast-radius node once the blast is computed", () => {
-    const layer = markerLayer(model, layout);
+    const layer = markerLayer(model, layout, unlimited(layout));
     const blast = model.kinds.lastIndex("blast.computed", model.store.length);
     const at = model.store.time[blast] as number;
     layer.update(frameAt(at - 1));
@@ -97,7 +103,7 @@ describe("marker layer", () => {
 
 describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
   it("gives the same render model whatever happened in earlier frames", () => {
-    const fresh = () => bundleLayer(model, layout);
+    const fresh = () => bundleLayer(model, layout, unlimited(layout));
     const reused = fresh();
     fc.assert(
       fc.property(fc.integer({ min: 0, max: Math.ceil(model.store.endTime) }), (t) => {
@@ -111,7 +117,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
   });
 
   it("only draws for events within the last 1.2 s, and at most 40 bundles", () => {
-    const layer = bundleLayer(model, layout);
+    const layer = bundleLayer(model, layout, unlimited(layout));
     let peak = 0;
     for (let t = 0; t <= model.store.endTime; t += 250) {
       layer.update(frameAt(t));
@@ -128,9 +134,9 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
 
   it("pins the demo run's web at fixed times", async () => {
     const layers = [
-      edgeLayer(model, layout),
-      markerLayer(model, layout),
-      bundleLayer(model, layout),
+      edgeLayer(model, layout, unlimited(layout)),
+      markerLayer(model, layout, unlimited(layout)),
+      bundleLayer(model, layout, unlimited(layout)),
     ];
     const hashes = Object.fromEntries(
       [8_000, 22_000, 25_500, 45_000].map((t) => {
@@ -140,10 +146,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "9d74051c1f051b05",
-        "25500": "1b37b47a95d32735",
-        "45000": "9d74051c1f051b05",
-        "8000": "a7b498742905a6c5",
+        "22000": "93540abc414c9be8",
+        "25500": "93e77a9a635bea49",
+        "45000": "93540abc414c9be8",
+        "8000": "9648e3946fda3d03",
       }
     `);
   });

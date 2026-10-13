@@ -1,9 +1,10 @@
 /**
  * The panel contract (ARCHITECTURE §13, IMPLEMENTATION_PLAN §5): a panel is a pure view model
  * plus a pure `draw(ctx, view, size, t)` on a Canvas 2D context. The host draws only when the
- * panel's `version` changes (its `isDirty`). Panels can therefore move to an OffscreenCanvas
- * worker later, and they are tested by recording their draw calls (B08).
+ * panel's `version` or the motion settings change (its `isDirty`). Panels can therefore move to
+ * an OffscreenCanvas worker later, and they are tested by recording their draw calls (B08).
  */
+import { type Motion, motionKey, NORMAL_MOTION } from "../motion/motion";
 
 /** The Canvas 2D subset panels use: what a real context and the test recorder both provide. */
 export interface Ctx2D {
@@ -38,9 +39,10 @@ export interface Panel<V> {
   /**
    * A number that changes whenever the drawing at (t, cursor) would change: usually the cursor,
    * plus an animation phase while something on the panel moves. Equal versions are never redrawn.
+   * Animated panels take their wall-clock durations from `motion` (ADR-0011; default: normal).
    */
-  version(t: number, cursor: number): number;
-  view(t: number, cursor: number): V;
+  version(t: number, cursor: number, motion?: Motion): number;
+  view(t: number, cursor: number, motion?: Motion): V;
   draw(ctx: Ctx2D, view: V, size: PanelSize, t: number): void;
 }
 
@@ -51,12 +53,19 @@ export interface Panel<V> {
  */
 export const MAX_SIDE = 4096;
 
-/** Combines a cursor and a small animation phase into one version number. */
-export const versionOf = (cursor: number, phase = 0): number => cursor * 4096 + (phase % 4096);
+/** Animation phases per cursor before a version could repeat (2^26: weeks of 33 ms frames). */
+const PHASES = 67_108_864;
+
+/**
+ * Combines a cursor and an animation phase into one version number. Exact for cursors below
+ * 2^27, so equal versions mean equal (cursor, phase).
+ */
+export const versionOf = (cursor: number, phase = 0): number => cursor * PHASES + (phase % PHASES);
 
 /** Draws one panel into its canvas at the device pixel ratio, only when dirty. */
 export class PanelHost<V> {
   private drawn = Number.NaN;
+  private drawnMotion = Number.NaN;
   private size: PanelSize = { w: 0, h: 0 };
   private dpr = 1;
   private readonly context: CanvasRenderingContext2D | null;
@@ -86,20 +95,22 @@ export class PanelHost<V> {
     this.drawn = Number.NaN;
   }
 
-  /** Redraws if the panel's version changed; returns whether it drew. */
-  frame(t: number, cursor: number): boolean {
+  /** Redraws if the panel's version or the motion settings changed; returns whether it drew. */
+  frame(t: number, cursor: number, motion: Motion = NORMAL_MOTION): boolean {
     const ctx = this.context;
     if (ctx === null || this.size.w === 0 || this.size.h === 0) return false;
-    const version = this.panel.version(t, cursor);
-    if (version === this.drawn) return false;
+    const version = this.panel.version(t, cursor, motion);
+    const key = motionKey(motion);
+    if (version === this.drawn && key === this.drawnMotion) return false;
     this.drawn = version;
+    this.drawnMotion = key;
     // Clear the whole backing store in device pixels: w × dpr is rarely an integer, and a clear
     // in CSS pixels would leave a stale sliver at the edges (and keep Chrome from discarding
     // the canvas's pending draw operations).
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.panel.draw(ctx, this.panel.view(t, cursor), this.size, t);
+    this.panel.draw(ctx, this.panel.view(t, cursor, motion), this.size, t);
     return true;
   }
 }

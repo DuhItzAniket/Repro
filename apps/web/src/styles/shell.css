@@ -215,6 +215,87 @@ body {
   outline-offset: 1px;
 }
 
+/* Replay transport (B10): a strip along the bottom of the stage. */
+.transport {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0 6px;
+  font-size: var(--micro-size);
+  background: rgb(8 8 8 / 72%);
+  border: 1px solid var(--panel-border);
+}
+
+.transport .toggle {
+  flex: none;
+  padding: 1px 6px;
+}
+
+.transport .play {
+  min-width: 52px;
+  color: var(--text);
+}
+
+.speeds {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scrubber {
+  flex: 1;
+  min-width: 60px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+  appearance: none;
+}
+
+.scrubber::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--text-faint);
+}
+
+.scrubber::-webkit-slider-thumb {
+  width: 2px;
+  height: 12px;
+  margin-top: -6px;
+  background: var(--hot);
+  appearance: none;
+}
+
+.scrubber::-moz-range-track {
+  height: 1px;
+  background: var(--text-faint);
+}
+
+.scrubber::-moz-range-thumb {
+  width: 2px;
+  height: 12px;
+  background: var(--hot);
+  border: 0;
+  border-radius: 0;
+}
+
+.scrubber:focus-visible {
+  outline: 1px solid var(--hot);
+  outline-offset: 2px;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 .panel-footer {
   margin: 6px 0 0;
   overflow: hidden;

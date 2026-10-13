@@ -8,12 +8,13 @@ in vec2 b;
 in vec4 color;
 in vec2 shape;
 in float appear;
+in float flare; // this segment's share of the layer's flare (the flash governor's decision)
 
 uniform vec2 uViewport; // stage size in CSS px
 uniform float uDpr;
 uniform float uTime; // presentation time, ms
 uniform float uFlare; // recency: extra alpha multiple right after appearing
-uniform float uFlareMs; // recency decay time constant, ms
+uniform float uFlareMs; // recency decay time constant, presentation ms (wall-clock × speed)
 uniform vec2 uCenter; // rotation centre, stage px (the ring's centre)
 uniform vec2 uSpin; // cos and sin of the layer's rotation (1, 0 for layers that do not turn)
 
@@ -43,7 +44,7 @@ void main() {
   // Recency (mirrors recencyFactor in segments.ts): hidden before `appear`, then a flare that
   // decays back to the base alpha.
   float dt = uTime - appear;
-  float recency = dt < 0.0 ? 0.0 : 1.0 + uFlare * exp(-dt / uFlareMs);
+  float recency = dt < 0.0 ? 0.0 : 1.0 + uFlare * flare * exp(-dt / uFlareMs);
 
   vAcross = across;
   vHalfWidth = halfWidth;

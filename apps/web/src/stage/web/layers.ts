@@ -6,13 +6,17 @@
  * - **markers**: tiny hollow circles on the nodes in the latest blast radius.
  * - **bundles**: bright sheaves of 8–20 near-parallel Bézier curves along a path an event
  *   touches (a test reaching a function), fading over 1.2 s. They are a pure function of the
- *   events in the window and `t`.
+ *   events in the window, `t` and the motion settings.
+ *
+ * Durations are wall-clock (ADR-0011). The flash governor decides which bundles are drawn and
+ * which edges and markers flare; reduced motion draws no bundles and the host turns flares off.
  */
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../../model/cockpit";
 import { kindCode } from "../../model/codes";
 import type { EdgeType } from "../../model/graph";
 import { ringTracker, WEB_INSET } from "../geometry";
+import type { FlashGovernor } from "../governor";
 import type { StageFrame, StageLayer } from "../layer";
 import {
   ALWAYS,
@@ -32,12 +36,17 @@ export const EDGE_STYLE: Readonly<Record<EdgeType, { alpha: number; width: numbe
 
 const EDGE_TYPES: readonly EdgeType[] = ["imports", "calls", "covers"];
 
-export function edgeLayer(model: CockpitModel, layout: LayoutService): StageLayer {
+export function edgeLayer(
+  model: CockpitModel,
+  layout: LayoutService,
+  governor: FlashGovernor,
+): StageLayer {
   const buffers = segmentBuffers(1024);
   const writer = segmentWriter(buffers);
   const ringChanged = ringTracker();
   let drawnGraph = -1;
   let drawnLayout = -1;
+  let drawnGovernor = -1;
   return {
     name: "edges",
     primitive: "segments",
@@ -45,12 +54,20 @@ export function edgeLayer(model: CockpitModel, layout: LayoutService): StageLaye
     recency: EDGE_RECENCY,
     update(frame: StageFrame) {
       const { graph } = model;
+      governor.prepare(frame);
       const moved = ringChanged(frame.ring);
-      if (graph.version === drawnGraph && layout.version === drawnLayout && !moved) return;
+      if (
+        graph.version === drawnGraph &&
+        layout.version === drawnLayout &&
+        governor.version === drawnGovernor &&
+        !moved
+      )
+        return;
       const positions = layout.positions;
       if (positions === null) return;
       drawnGraph = graph.version;
       drawnLayout = layout.version;
+      drawnGovernor = governor.version;
       const { cx, cy, r } = frame.ring;
       const radius = r - WEB_INSET;
       buffers.reserve(graph.edgeCount);
@@ -72,6 +89,7 @@ export function edgeLayer(model: CockpitModel, layout: LayoutService): StageLaye
           style.alpha,
           1,
           model.store.time[graph.edgeEvent[e] as number] as number,
+          governor.edgeFlare(e) ? 1 : 0,
         );
       }
     },
@@ -85,13 +103,21 @@ const CIRCLE = Array.from({ length: MARKER_SIDES + 1 }, (_, i) => {
   return [Math.cos(angle), Math.sin(angle)] as const;
 });
 export const MARKER_RECENCY: Recency = { flare: 1.2, flareMs: 900 };
+/** Upper bound of one blast marker's drawn area in CSS px² (its eight 1 px sides). */
+export const MARKER_AREA =
+  MARKER_SIDES * segmentArea(2 * MARKER_RADIUS * Math.sin(Math.PI / MARKER_SIDES), 1);
 
-export function markerLayer(model: CockpitModel, layout: LayoutService): StageLayer {
+export function markerLayer(
+  model: CockpitModel,
+  layout: LayoutService,
+  governor: FlashGovernor,
+): StageLayer {
   const buffers = segmentBuffers(MARKER_SIDES * 128);
   const writer = segmentWriter(buffers);
   const ringChanged = ringTracker();
   let drawnBlast = -2;
   let drawnLayout = -1;
+  let drawnGovernor = -1;
   return {
     name: "markers",
     primitive: "segments",
@@ -99,18 +125,27 @@ export function markerLayer(model: CockpitModel, layout: LayoutService): StageLa
     recency: MARKER_RECENCY,
     update(frame: StageFrame) {
       const blast = model.kinds.lastIndex("blast.computed", frame.cursor);
+      governor.prepare(frame);
       const moved = ringChanged(frame.ring);
-      if (blast === drawnBlast && layout.version === drawnLayout && !moved) return;
+      if (
+        blast === drawnBlast &&
+        layout.version === drawnLayout &&
+        governor.version === drawnGovernor &&
+        !moved
+      )
+        return;
       const positions = layout.positions;
       if (positions === null) return;
       drawnBlast = blast;
       drawnLayout = layout.version;
+      drawnGovernor = governor.version;
       writer.begin();
       const event = blast < 0 ? null : model.store.event(blast);
       if (event?.kind !== "blast.computed") return;
       const { cx, cy, r } = frame.ring;
       const radius = r - WEB_INSET;
       const appear = model.store.time[blast] as number;
+      const flare = governor.markerFlare(blast) ? 1 : 0;
       const mark = (symbol: string, alpha: number) => {
         const node = model.graph.nodeForSymbol(symbol);
         if (node === undefined || node * 2 + 1 >= positions.length) return;
@@ -132,6 +167,7 @@ export function markerLayer(model: CockpitModel, layout: LayoutService): StageLa
             alpha,
             1,
             appear,
+            flare,
           );
         }
       };
@@ -148,6 +184,30 @@ const BUNDLE_STEPS = 10;
 const SWEEP = 0.25;
 const TRACE = kindCode("trace.sample", 1);
 const BEHAVIOUR = kindCode("diff.behaviour", 1);
+
+/** Curves in a bundle, from the event's hash. */
+const bundleCurves = (h: number): number => 8 + (h % 13);
+/** A bundle's bow: its middle bends to one side by 12–24% of its length (px, signed). */
+const bundleBow = (len: number, h: number): number =>
+  (0.12 + ((h >>> 8) % 100) / 800) * len * ((h & 1) === 1 ? 1 : -1);
+
+/**
+ * Upper bound of a bundle's drawn area in CSS px², for the flash governor: the sheaf lies within
+ * its control polygon (p → bowed middle → q), widened by the curves' spread, the 1 px line and
+ * 2 px of anti-aliasing fringe.
+ */
+export function bundleArea(len: number, h: number): number {
+  const curves = bundleCurves(h);
+  const bow = bundleBow(len, h);
+  const spread = (0.7 * 1.2 * (curves - 1)) / 2;
+  const half = Math.sqrt((len / 2) ** 2 + (Math.abs(bow) + spread) ** 2);
+  return (2 * half + 2) * (2 * spread + 1 + 2);
+}
+
+/** Upper bound of a segment's drawn area in CSS px² (2 px of anti-aliasing fringe each way). */
+export function segmentArea(len: number, width: number): number {
+  return (len + 2) * (width + 2);
+}
 
 /** Writes one sheaf of curves from p to q at `life` (0–1 of BUNDLE_MS). */
 function drawBundle(
@@ -166,9 +226,8 @@ function drawBundle(
   if (len < 1) return;
   const nx = -dy / len;
   const ny = dx / len;
-  // Each bundle bows to one side by 12–24% of its length, chosen by the event's hash.
-  const bow = (0.12 + ((h >>> 8) % 100) / 800) * len * ((h & 1) === 1 ? 1 : -1);
-  const curves = 8 + (h % 13);
+  const curves = bundleCurves(h);
+  const bow = bundleBow(len, h);
   const fade = (1 - life) * (1 - life);
   const reach = Math.min(1, life / SWEEP); // the sheaf sweeps out first, then fades
   const steps = Math.max(1, Math.ceil(BUNDLE_STEPS * reach));
@@ -201,7 +260,11 @@ function drawBundle(
   }
 }
 
-export function bundleLayer(model: CockpitModel, layout: LayoutService): StageLayer {
+export function bundleLayer(
+  model: CockpitModel,
+  layout: LayoutService,
+  governor: FlashGovernor,
+): StageLayer {
   const buffers = segmentBuffers(MAX_BUNDLES * 20 * BUNDLE_STEPS);
   const writer = segmentWriter(buffers);
   return {
@@ -210,11 +273,14 @@ export function bundleLayer(model: CockpitModel, layout: LayoutService): StageLa
     buffers,
     update(frame: StageFrame) {
       writer.begin();
+      governor.prepare(frame);
+      if (frame.motion.reduced) return; // reduced motion: no bundles (DESIGN.md "Motion")
       const positions = layout.positions;
       if (positions === null) return;
       const { store, graph } = model;
-      // Same range as window.active(t, BUNDLE_MS), without allocating a tuple each frame.
-      const start = store.firstAtOrAfter(frame.t - BUNDLE_MS);
+      const life = BUNDLE_MS * frame.motion.speed; // the wall-clock fade, in run time
+      // Same range as window.active(t, life), without allocating a tuple each frame.
+      const start = store.firstAtOrAfter(frame.t - life);
       const end = store.cursorAt(frame.t);
       const { cx, cy, r } = frame.ring;
       const radius = r - WEB_INSET;
@@ -224,6 +290,7 @@ export function bundleLayer(model: CockpitModel, layout: LayoutService): StageLa
         if (code !== TRACE && code !== BEHAVIOUR) continue;
         const event = store.event(i);
         if (event?.kind !== "trace.sample" && event?.kind !== "diff.behaviour") continue;
+        if (!governor.bundle(i)) continue;
         const test = event.target?.test;
         const from = test === undefined ? undefined : graph.byId.get(test);
         const to = graph.nodeForSymbol(event.payload.symbol_id);
@@ -236,7 +303,7 @@ export function bundleLayer(model: CockpitModel, layout: LayoutService): StageLa
           cy + (positions[from * 2 + 1] as number) * radius,
           cx + (positions[to * 2] as number) * radius,
           cy + (positions[to * 2 + 1] as number) * radius,
-          (frame.t - (store.time[i] as number)) / BUNDLE_MS,
+          (frame.t - (store.time[i] as number)) / life,
           hash32(event.id),
           code === BEHAVIOUR,
         );
@@ -245,6 +312,14 @@ export function bundleLayer(model: CockpitModel, layout: LayoutService): StageLa
   };
 }
 
-export function webLayers(model: CockpitModel, layout: LayoutService): StageLayer[] {
-  return [edgeLayer(model, layout), markerLayer(model, layout), bundleLayer(model, layout)];
+export function webLayers(
+  model: CockpitModel,
+  layout: LayoutService,
+  governor: FlashGovernor,
+): StageLayer[] {
+  return [
+    edgeLayer(model, layout, governor),
+    markerLayer(model, layout, governor),
+    bundleLayer(model, layout, governor),
+  ];
 }

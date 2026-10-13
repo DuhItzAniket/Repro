@@ -22,6 +22,7 @@ import {
   Texture,
   WebGLRenderer,
 } from "three";
+import { type Motion, NORMAL_MOTION } from "../motion/motion";
 import type { Ring } from "../shell/layout";
 import { AdaptiveDpr } from "./dpr";
 import type { InstanceBuffers } from "./instances";
@@ -126,7 +127,14 @@ export class StageHost {
       triangles: 0,
       instances: {},
     };
-    this.input = { t: 0, cursor: 0, width: 1, height: 1, ring: { cx: 0, cy: 0, r: 1 } };
+    this.input = {
+      t: 0,
+      cursor: 0,
+      width: 1,
+      height: 1,
+      ring: { cx: 0, cy: 0, r: 1 },
+      motion: NORMAL_MOTION,
+    };
   }
 
   add(layer: StageLayer): void {
@@ -233,14 +241,16 @@ export class StageHost {
   }
 
   /** One frame: layers write instances, the host uploads what changed and draws. */
-  frame(t: number, cursor: number): void {
+  frame(t: number, cursor: number, motion: Motion = NORMAL_MOTION): void {
     const start = this.now();
     this.input.t = t;
     this.input.cursor = cursor;
+    this.input.motion = motion;
     this.time.value = t;
     for (const binding of this.bindings) {
       const { layer } = binding;
       layer.update(this.input);
+      this.flare(binding, motion);
       if (binding.generation !== layer.buffers.generation) this.attach(binding);
       if (binding.version !== layer.buffers.version) {
         upload(binding.mesh.geometry, layer.buffers);
@@ -261,6 +271,19 @@ export class StageHost {
       }
     }
     this.lastStart = start;
+  }
+
+  /**
+   * Recency flares in wall-clock time (ADR-0011): the decay constant scales with the replay
+   * speed, and reduced motion turns flares off.
+   */
+  private flare(binding: Binding, motion: Motion): void {
+    const recency = binding.layer.recency;
+    const uniforms = binding.mesh.material.uniforms;
+    if (recency === undefined || uniforms.uFlare === undefined || uniforms.uFlareMs === undefined)
+      return;
+    uniforms.uFlare.value = motion.reduced ? 0 : recency.flare;
+    uniforms.uFlareMs.value = recency.flareMs * motion.speed;
   }
 
   /** Sets a turning layer's rotation uniform (cards: an angle; segments: its cos and sin). */

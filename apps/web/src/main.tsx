@@ -6,6 +6,7 @@ import { render } from "preact";
 import { FIXTURES, fixtureFromQuery, loadLog } from "./data/load";
 import { PresentationClock } from "./model/clock";
 import { CockpitModel } from "./model/cockpit";
+import { type Motion, REDUCED_MOTION_QUERY } from "./motion/motion";
 import { behaviourPanel } from "./panels/behaviour";
 import { indexPanel } from "./panels/check-index";
 import { dispatchPanel } from "./panels/dispatch";
@@ -18,7 +19,9 @@ import { workspacePanel } from "./panels/workspace";
 import { App } from "./shell/app";
 import { FrameLoop } from "./shell/frame";
 import { computeLayout } from "./shell/layout";
+import { createTransportState, spaceToPause, syncTransport } from "./shell/transport";
 import { createShellView } from "./shell/view";
+import { FlashGovernor } from "./stage/governor";
 import { StageHost } from "./stage/host";
 import { type HudSnapshot, pollHud } from "./stage/hud";
 import { AtlasService, defaultAtlasBuild } from "./stage/ring/atlas-service";
@@ -44,12 +47,27 @@ const params = new URLSearchParams(window.location.search);
 const hud = params.has("hud") ? signal<HudSnapshot | null>(null) : undefined;
 const callouts = signal<readonly Callout[]>([]);
 const executionSides = signal<ExecutionSides>("both");
+
+// Reduced motion follows the system setting; the transport's toggle overrides it until the
+// setting changes again (DESIGN.md "Motion").
+const reducedQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+const reduced = signal(reducedQuery.matches);
+reducedQuery.addEventListener("change", (event) => {
+  reduced.value = event.matches;
+});
+const transportState = createTransportState();
+const syncClock = () => syncTransport(transportState, clock);
+window.addEventListener("keydown", (event) => {
+  if (spaceToPause(event, clock)) syncClock();
+});
+
 render(
   <App
     layout={layout}
     view={view}
     callouts={callouts}
     executionSides={executionSides}
+    transport={{ state: transportState, clock, reduced, onCommand: syncClock }}
     {...(hud === undefined ? {} : { hud })}
   />,
   root,
@@ -61,11 +79,12 @@ function mountStage(): StageHost | null {
   if (canvas === null || canvas === undefined) return null;
   try {
     const stage = new StageHost(canvas, { devicePixelRatio: window.devicePixelRatio });
-    for (const layer of webLayers(model, webLayout)) stage.add(layer);
+    const governor = new FlashGovernor(model, webLayout);
+    for (const layer of webLayers(model, webLayout, governor)) stage.add(layer);
     for (const layer of ringLayers(model, new AtlasService(defaultAtlasBuild())).layers) {
       stage.add(layer);
     }
-    stage.add(streakLayer(model));
+    stage.add(streakLayer(model, governor));
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
     if (hud !== undefined) pollHud(stage, hud);
     return stage;
@@ -78,9 +97,9 @@ function mountStage(): StageHost | null {
 
 const host = mountStage();
 
-/** Canvas 2D panels (B08, B09): each redraws only when its version changes. */
+/** Canvas 2D panels (B08, B09): each redraws only when its version or the motion changes. */
 interface PanelDriver {
-  frame(t: number, cursor: number): boolean;
+  frame(t: number, cursor: number, motion: Motion): boolean;
   resize(w: number, h: number, dpr: number): void;
   invalidate(): void;
 }
@@ -111,16 +130,17 @@ for (const canvas of root.querySelectorAll<HTMLCanvasElement>(".panel-canvas")) 
 void document.fonts.ready.then(() => {
   for (const panel of panels.values()) panel.invalidate();
 });
-const loop = new FrameLoop(model, clock, view);
-loop.listen((t, cursor) => host?.frame(t, cursor));
-loop.listen((t, cursor) => {
-  for (const panel of panels.values()) panel.frame(t, cursor);
+const loop = new FrameLoop(model, clock, view, undefined, reduced);
+loop.listen((t, cursor, motion) => host?.frame(t, cursor, motion));
+loop.listen((t, cursor, motion) => {
+  for (const panel of panels.values()) panel.frame(t, cursor, motion);
 });
 const calloutTracker = new CalloutTracker();
-loop.listen((t) => {
-  const next = calloutTracker.update(model, t, layout.value.ring);
+loop.listen((t, _cursor, motion) => {
+  const next = calloutTracker.update(model, t, layout.value.ring, motion);
   if (next !== null) callouts.value = next;
 });
+loop.listen(syncClock);
 // Checked every frame rather than on "resize" alone: emulated viewports do not always fire it,
 // and two property reads per frame cost nothing.
 let viewport = [window.innerWidth, window.innerHeight];

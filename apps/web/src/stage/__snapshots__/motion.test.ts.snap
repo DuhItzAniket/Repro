@@ -1,0 +1,14 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`scrubbing gives the same frame as playing (golden) > is pinned at fixed times and speeds (same on every OS in CI) 1`] = `
+{
+  "x16@12000": "29f4c20b93864720",
+  "x16@24500": "b1d6e19486297ffc",
+  "x16@30500": "dfe509956607b66a",
+  "x16@34000": "b382a7c61a802837",
+  "x1@12000": "3b09412aa13d97c8",
+  "x1@24500": "4e152a98d6bcd787",
+  "x1@30500": "108ade1d602b166c",
+  "x1@34000": "4be5862b3355236f",
+}
+`;

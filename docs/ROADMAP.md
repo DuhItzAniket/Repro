@@ -140,7 +140,7 @@ allocation and bundle-size gates are active in CI.
 | B07 | Event-stream layer & callouts | M | B04 | done |
 | B08 | Panels I: feed, execution, agent workspace, behaviour field | L | B02, B03 | done |
 | B09 | Panels II: change routes, signals, dispatch, change×check index | L | B08 | done |
-| B10 | Replay controls & motion safety | M | B05–B09 | planned |
+| B10 | Replay controls & motion safety | M | B05–B09 | done |
 | B11 | Focus, evidence drawer & accessibility | M | B10 | planned |
 | B12 | UI quality gate | M | B11 | planned |
 
@@ -630,3 +630,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B07 | 2026-10-14 | [#16](https://github.com/DuhItzAniket/Repro/pull/16) | Event streams on per-file lanes (≤ 2,048 live, velocity-stretched tails, DESIGN tints) and callouts; complete stage holds the budget at 2k streaks |
 | B08 | 2026-10-14 | [#19](https://github.com/DuhItzAniket/Repro/pull/19) | Canvas 2D panels (feed, execution with A′, agent workspace, behaviour field) behind a version-gated `PanelHost`; golden draw-call recordings; paused = 0 redraws |
 | B09 | 2026-10-14 | [#20](https://github.com/DuhItzAniket/Repro/pull/20) | Change routes, signals, dispatch and change×check index; `ChangeIndex` routes pure in the cursor; index, footer and header count one check list |
+| B10 | 2026-10-14 | [#21](https://github.com/DuhItzAniket/Repro/pull/21) | Transport and Space pause; wall-clock motion; flash governor under half of WCAG 2.3.1 at every speed; reduced motion; scrub = play for stage and panels |

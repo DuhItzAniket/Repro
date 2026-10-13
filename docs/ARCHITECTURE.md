@@ -483,7 +483,13 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   with the graph and changes that precede it in the log, so routes are pure in the cursor.
 - **Panels:** Canvas 2D, written as pure `draw(ctx, view, size, t)` functions so they can move to
   an OffscreenCanvas worker if profiling shows main-thread contention. A `PanelHost` redraws a
-  panel only when its `version(t, cursor)` changes, clearing the whole backing store first.
+  panel only when its `version(t, cursor, motion)` or the motion settings change, clearing the
+  whole backing store first. Equal versions must mean equal drawings; a B10 property test checks
+  this frame by frame, which is what makes playing equal to scrubbing.
+- **Motion (B10, ADR-0011).** The frame loop passes every layer and panel the replay speed and
+  reduced motion. Visual durations are wall-clock, so the stage is a pure function of (events,
+  t, motion). A `FlashGovernor` decides, in log order, which streaks and bundles are drawn and
+  which edges and markers flare, keeping the bright area that rises in any 333 ms under its cap.
 - **Shell:** Preact 11 + signals for header, controls, drawer and the accessible parallel DOM.
 - **Determinism:** no `Date.now()` or `Math.random()` in projections. Per-event visual jitter
   comes from `hash32(event.id)`. Layout initial positions are seeded from node-ID hashes (no

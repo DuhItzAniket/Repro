@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
+import { NORMAL_MOTION } from "../../motion/motion";
 import { computeLayout } from "../../shell/layout";
 import { hashRenderModels } from "../instances";
 import type { StageFrame } from "../layer";
@@ -16,6 +17,7 @@ const frameAt = (t: number): StageFrame => ({
   width: stage.w,
   height: stage.h,
   ring,
+  motion: NORMAL_MOTION,
 });
 const noAtlas = () => new AtlasService(() => Promise.resolve(null));
 
@@ -98,11 +100,11 @@ describe("ring render model", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "0": "62d655d65ba7cd68@0.000000",
-        "20000": "62d655d65ba7cd68@0.585280",
-        "25500": "62d655d65ba7cd68@0.467395",
-        "45000": "62d655d65ba7cd68@9.590635",
-        "8000": "62d655d65ba7cd68@3.308625",
+        "0": "5876be1184b31af2@0.000000",
+        "20000": "5876be1184b31af2@0.585280",
+        "25500": "5876be1184b31af2@0.467395",
+        "45000": "5876be1184b31af2@9.590635",
+        "8000": "5876be1184b31af2@3.308625",
       }
     `);
   });

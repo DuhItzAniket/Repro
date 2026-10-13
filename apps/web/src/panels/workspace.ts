@@ -2,9 +2,11 @@
  * Agent workspace (DESIGN.md panel 3): the focused agent's recent tool calls typed out like
  * code, with a block cursor that blinks while the agent works. The focused agent is the one
  * with the latest `agent.state` (B11 lets the user pin one). Typing is a pure function of
- * `t` since the line's event.
+ * `t` since the line's event, in wall-clock time; under reduced motion lines appear whole and
+ * the cursor does not blink.
  */
 import type { CockpitModel } from "../model/cockpit";
+import { type Motion, NORMAL_MOTION } from "../motion/motion";
 import { COLOR } from "../styles/palette";
 import { type Panel, versionOf } from "./panel";
 import { charsIn, clip, font } from "./text";
@@ -30,14 +32,22 @@ export interface WorkspaceView {
 }
 
 export function workspacePanel(model: CockpitModel): Panel<WorkspaceView> {
-  const typedOf = (t: number, seq: number, text: string): number =>
-    Math.max(
-      0,
-      Math.min(text.length, Math.floor((t - (model.store.time[seq - 1] as number)) / TYPE_MS)),
-    );
+  const typedOf = (t: number, seq: number, text: string, motion: Motion): number =>
+    motion.reduced
+      ? text.length
+      : Math.max(
+          0,
+          Math.min(
+            text.length,
+            Math.floor((t - (model.store.time[seq - 1] as number)) / (TYPE_MS * motion.speed)),
+          ),
+        );
+  /** Blink phase (0 or 1) while working; steady under reduced motion. */
+  const blinkOf = (t: number, motion: Motion): number =>
+    motion.reduced ? 0 : Math.floor(t / (BLINK_MS * motion.speed)) % 2;
   return {
     id: "workspace",
-    version(t, cursor) {
+    version(t, cursor, motion = NORMAL_MOTION) {
       const last = model.kinds.lastIndex("agent.state", cursor);
       if (last < 0) return versionOf(0);
       const event = model.store.event(last);
@@ -46,11 +56,11 @@ export function workspacePanel(model: CockpitModel): Panel<WorkspaceView> {
         event?.kind === "agent.state" &&
         event.payload.state !== "done" &&
         event.payload.state !== "failed";
-      const typed = typedOf(t, last + 1, text);
-      const blink = working ? Math.floor(t / BLINK_MS) % 2 : 0;
+      const typed = typedOf(t, last + 1, text, motion);
+      const blink = working ? blinkOf(t, motion) : 0;
       return versionOf(last + 1, typed * 2 + blink);
     },
-    view(t, cursor) {
+    view(t, cursor, motion = NORMAL_MOTION) {
       const last = model.kinds.lastIndex("agent.state", cursor);
       const event = last < 0 ? null : model.store.event(last);
       if (event === null || event.agent === null)
@@ -62,14 +72,15 @@ export function workspacePanel(model: CockpitModel): Panel<WorkspaceView> {
         (line, i): WorkspaceLine => ({
           seq: line.seq,
           text: line.text,
-          typed: i === recent.length - 1 ? typedOf(t, line.seq, line.text) : line.text.length,
+          typed:
+            i === recent.length - 1 ? typedOf(t, line.seq, line.text, motion) : line.text.length,
         }),
       );
       const working = agent.state !== "done" && agent.state !== "failed";
       return {
         heading: `${agent.id} · ${agent.role} · ${agent.model}`,
         lines,
-        cursor: working && Math.floor(t / BLINK_MS) % 2 === 0,
+        cursor: working && blinkOf(t, motion) === 0,
       };
     },
     draw(ctx, view, size) {
