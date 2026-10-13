@@ -92,7 +92,11 @@ describe("frame-cost gate (B12)", () => {
       ...Object.fromEntries(Object.entries(m).map(([k, v]) => [k, Number(v.toFixed(4))])),
     };
     mkdirSync(RESULTS_DIR, { recursive: true });
-    writeFileSync(new URL("frame-cost.json", RESULTS_DIR), `${JSON.stringify(report, null, 2)}\n`);
+    // Injected runs keep their own file, so the clean measurement survives in the artifact.
+    const inject = process.env.REPRO_INJECT;
+    const name = inject === undefined ? "frame-cost.json" : `frame-cost-injected-${inject}.json`;
+    writeFileSync(new URL(name, RESULTS_DIR), `${JSON.stringify(report, null, 2)}\n`);
+    process.stdout.write(`frame cost: ${JSON.stringify(report)}\n`);
     if (process.env.REPRO_PERF_RECORD === "1") {
       writeFileSync(
         new URL("frame-cost-baseline.json", RESULTS_DIR),

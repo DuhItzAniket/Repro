@@ -75,6 +75,13 @@ All notable changes to this project are documented here. The format follows
   semantic tables for the index and the drawer, button lists for routes and agents, a file
   picker, a described stage canvas, and landmarks. axe-core 4.14.0 reports no violations in
   jsdom (CI) and in Chromium. [B11]
+- UI quality gates in CI. Each one rejects an injected regression of its kind in a self-test.
+  [B12]
+  - Visual regression: Playwright 1.64.0, Chromium and SwiftShader in an image pinned by digest,
+    baselines generated in CI, a `renderAt(t)` hook.
+  - Allocation: a flat heap over 1,000 frames of the stress burst, and a per-frame stage budget.
+  - Size: size-limit, 300 kB gzip; currently 188.5 kB.
+  - Perf: a calibrated frame-cost gate against a CI baseline, also nightly.
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the

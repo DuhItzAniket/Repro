@@ -142,7 +142,7 @@ allocation and bundle-size gates are active in CI.
 | B09 | Panels II: change routes, signals, dispatch, change×check index | L | B08 | done |
 | B10 | Replay controls & motion safety | M | B05–B09 | done |
 | B11 | Focus, evidence drawer & accessibility | M | B10 | done |
-| B12 | UI quality gate | M | B11 | planned |
+| B12 | UI quality gate | M | B11 | done |
 
 **B01 · Deterministic fixture generator & reference log**
 - Deliverables: a seeded generator (TS or Python) that produces a realistic run (1 PR, 4 claims,
@@ -632,3 +632,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B09 | 2026-10-14 | [#20](https://github.com/DuhItzAniket/Repro/pull/20) | Change routes, signals, dispatch and change×check index; `ChangeIndex` routes pure in the cursor; index, footer and header count one check list |
 | B10 | 2026-10-14 | [#21](https://github.com/DuhItzAniket/Repro/pull/21) | Transport and Space pause; wall-clock motion; flash governor under half of WCAG 2.3.1 at every speed; reduced motion; scrub = play for stage and panels |
 | B11 | 2026-10-14 | [#22](https://github.com/DuhItzAniket/Repro/pull/22) | Focus from click or keyboard (stage highlight, ring pin, panel outlines), evidence drawer, accessible parallel DOM; axe-core 0 violations; text contrast to WCAG AA |
+| B12 | 2026-10-14 | [#23](https://github.com/DuhItzAniket/Repro/pull/23) | Visual regression (SwiftShader, CI baselines), flat-heap allocation, size-limit 300 kB, calibrated perf gate (nightly); each gate rejects an injected regression in CI |
