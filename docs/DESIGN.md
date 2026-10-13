@@ -45,8 +45,11 @@ The Paper Lab mapping → Repro mapping:
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-- The ring is a large circle whose centre is **off-screen to the left** (centre ≈ x = 0.15·W,
-  radius ≈ 0.55·H of the stage), so only the right arc shows, like the reference.
+- The ring is a large circle whose **left part is off-screen** (centre ≈ x = 0.15·W, radius
+  ≈ 0.55·H of the stage), so mainly the right arc shows, like the reference.
+- Geometry is computed by one pure function, `computeLayout(width, height)`
+  (`apps/web/src/shell/layout.ts`, B03). At 1440×900 the result is: header 56 px, stage 522 px
+  (58%), panels 350×149. At 1920×1080: stage 641 px (59%), panels 470×179/180.
 - Header counters are left-aligned columns with tiny uppercase labels above large numerals.
   CLAIMS = `claim.extracted` events; AGENTS = distinct spawned agents; FILES = distinct files of
   module nodes in the dependency graph; CHECKS and FLAGGED follow the check model (ADR-0015).

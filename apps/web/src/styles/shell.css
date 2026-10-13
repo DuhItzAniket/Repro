@@ -1,0 +1,188 @@
+/* Shell: header, stage frame and panel frames. Geometry comes from computeLayout() as inline
+   styles; this file only styles what sits inside those rectangles. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--body-size);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cockpit {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Header ---------------------------------------------------------------------------------- */
+
+.header {
+  position: absolute;
+  display: grid;
+  grid-template-columns: minmax(260px, 34%) 1fr;
+  grid-template-rows: 1fr 3px;
+  column-gap: 16px;
+  row-gap: 4px;
+  padding: 6px 12px 5px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--title-size);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hot);
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  overflow: hidden;
+  font-size: var(--micro-size);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle .run {
+  color: var(--text-faint);
+}
+
+.counters {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  margin: 0;
+}
+
+.counter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.counter dt {
+  font-size: var(--micro-size);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.counter dd {
+  margin: 0;
+  font-size: var(--numeral-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--hot);
+}
+
+.counter[data-alert="true"] dd {
+  color: var(--flag);
+}
+
+.progress {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.segment {
+  height: 3px;
+  background: var(--segment-pending);
+}
+
+.segment[data-state="done"] {
+  background: var(--segment-done);
+}
+
+.segment[data-state="done"][data-outcome="fail"] {
+  background: var(--flag-deep);
+}
+
+.segment[data-state="active"] {
+  background: var(--segment-active);
+}
+
+/* Stage ----------------------------------------------------------------------------------- */
+
+.stage {
+  position: absolute;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Panels ---------------------------------------------------------------------------------- */
+
+.panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+}
+
+.panel-title {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  font-size: var(--panel-title-size);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.panel-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.panel-footer {
+  margin: 6px 0 0;
+  overflow: hidden;
+  font-size: var(--micro-size);
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-line {
+  color: var(--text-dim);
+}

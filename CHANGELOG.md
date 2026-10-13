@@ -20,6 +20,12 @@ All notable changes to this project are documented here. The format follows
   handling, `Folder` snapshots with exact seek, `WindowIndex` and `KindIndex`, a
   `PresentationClock` (replay ×0.5–×16, live, global pause), and the `run`, `summary`,
   `checks` (ADR-0015), `claims` and `agents` projections behind one cockpit state. [B02]
+- Cockpit shell (Preact 11 + signals): a header with five counters and a 7-stage progress bar,
+  a stage frame, and eight panel frames. Geometry comes from a single `computeLayout` (desktop
+  and narrow rules), the frame loop re-renders only on new information, and the cockpit replays
+  the demo fixture (`?log=stress` for the stress run). [B03]
+- Design tokens from DESIGN.md and self-hosted JetBrains Mono (variable woff2), with the OFL
+  licence emitted next to the font files. [B03]
 
 ### Changed
 - `SchemaSet.event_errors` caches validators and skips the redundant whole-`oneOf` check when
