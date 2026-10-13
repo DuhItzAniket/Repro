@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B04 |
-| **Branch / PR** | `phase/B05-dependency-web` · PR link added on creation |
+| **Branch / PR** | `phase/B05-dependency-web` · [#14](https://github.com/DuhItzAniket/Repro/pull/14) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
