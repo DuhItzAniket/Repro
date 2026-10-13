@@ -52,8 +52,17 @@ All notable changes to this project are documented here. The format follows
   histogram). Each panel is a pure view plus draw, redrawn only when its version changes, and is
   covered by golden draw-call recordings. `TestIndex` and `ObservationIndex` join the cockpit
   model. [B08]
+- The second row of panels: change routes (FILE · SYMBOL · TEST · CHECK with progress pills),
+  signals (pass rate, behaviour drift and perf Δ with check ticks; "illustrative until run
+  completes" while partial), agents / dispatch (12 slots, segmented bars, flagged agents), and
+  the change×check index (claims and unclaimed changes × every check, with row status). A
+  `ChangeIndex` routes selected tests to changed symbols through `calls` edges and module
+  imports, using only the log before each selection. The index counts the same checks as its
+  footer and the header. [B09]
 
 ### Fixed
+- Panel canvases are cleared in device pixels, so no sub-pixel sliver keeps stale content and
+  Chrome can discard pending draw operations. Canvas sides are clamped to 4,096 CSS px. [B09]
 - Stage geometry is rebuilt when a layer's buffers grow. three.js caches the maximum instance
   count per geometry and would otherwise draw no more instances than the first capacity. [B05]
 

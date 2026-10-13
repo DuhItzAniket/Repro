@@ -33,6 +33,9 @@ describe("App shell", () => {
     act(() => render(<App layout={layout} view={view} />, root));
     expect(root.querySelector(".title")?.textContent).toBe("Repro");
     expect(text(".panel-title")).toEqual(PANELS.map((p) => p.title));
+    // Every panel draws on its own canvas (B08, B09).
+    const canvases = [...root.querySelectorAll<HTMLCanvasElement>(".panel-canvas")];
+    expect(canvases.map((c) => c.dataset.panel)).toEqual(PANELS.map((p) => p.id));
     const stage = root.querySelector<HTMLElement>(".stage");
     expect([stage?.style.top, stage?.style.height]).toEqual(["56px", "522px"]);
     const last = root.querySelectorAll<HTMLElement>(".panel")[7];
@@ -52,6 +55,11 @@ describe("App shell", () => {
     const view = createShellView();
     act(() => render(<App layout={signal(computeLayout(1440, 900))} view={view} />, root));
     expect(text(".counter dd")).toEqual(["0", "0", "0", "0", "0"]);
+    // While the run is partial, Signals says its series are illustrative (DESIGN.md panel 6).
+    act(() => view.update(model.folder.stateAt(model.store.cursorAt(26_000))));
+    expect(root.querySelector('[data-panel="signals"] .panel-footer')?.textContent).toBe(
+      "illustrative until run completes",
+    );
     act(() => view.update(model.folder.stateAt(model.store.length)));
     expect(text(".counter dt")).toEqual(["Claims", "Agents", "Files", "Checks", "Flagged"]);
     expect(text(".counter dd")).toEqual(["4", "12", "147", "28", "4"]);

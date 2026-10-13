@@ -3,6 +3,7 @@
  * views read from. Views never fold events themselves; they ask for the state at a time.
  */
 
+import { ChangeIndex } from "./changes";
 import { Folder } from "./folder";
 import { GraphIndex } from "./graph";
 import { combine, type StateOf } from "./projection";
@@ -75,6 +76,7 @@ export class CockpitModel {
   readonly graph = new GraphIndex(this.store);
   readonly tests = new TestIndex(this.store);
   readonly observations = new ObservationIndex(this.store);
+  readonly changes = new ChangeIndex(this.store, this.graph);
   readonly folder: Folder<CockpitState>;
 
   constructor(snapshotEvery = SNAPSHOT_EVERY) {
@@ -88,6 +90,7 @@ export class CockpitModel {
     this.graph.sync();
     this.tests.sync();
     this.observations.sync();
+    this.changes.sync();
     this.folder.sync();
     return summary;
   }

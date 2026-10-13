@@ -44,6 +44,13 @@ export interface Panel<V> {
   draw(ctx: Ctx2D, view: V, size: PanelSize, t: number): void;
 }
 
+/**
+ * Largest canvas side in CSS pixels. If CSS ever stops constraining a panel canvas, its own
+ * backing size would feed back through the ResizeObserver and grow without bound (seen once with
+ * a stale dev-server stylesheet); the clamp keeps that from allocating a huge canvas.
+ */
+export const MAX_SIDE = 4096;
+
 /** Combines a cursor and a small animation phase into one version number. */
 export const versionOf = (cursor: number, phase = 0): number => cursor * 4096 + (phase % 4096);
 
@@ -62,7 +69,9 @@ export class PanelHost<V> {
   }
 
   /** Call when the canvas's CSS size or the display's pixel ratio changes. */
-  resize(w: number, h: number, dpr: number): void {
+  resize(width: number, height: number, dpr: number): void {
+    const w = Math.min(MAX_SIDE, Math.max(0, width));
+    const h = Math.min(MAX_SIDE, Math.max(0, height));
     const ratio = Math.min(2, Math.max(1, dpr));
     if (w === this.size.w && h === this.size.h && ratio === this.dpr) return;
     this.size = { w, h };
@@ -84,8 +93,12 @@ export class PanelHost<V> {
     const version = this.panel.version(t, cursor);
     if (version === this.drawn) return false;
     this.drawn = version;
+    // Clear the whole backing store in device pixels: w × dpr is rarely an integer, and a clear
+    // in CSS pixels would leave a stale sliver at the edges (and keep Chrome from discarding
+    // the canvas's pending draw operations).
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.clearRect(0, 0, this.size.w, this.size.h);
     this.panel.draw(ctx, this.panel.view(t, cursor), this.size, t);
     return true;
   }

@@ -7,9 +7,13 @@ import { FIXTURES, fixtureFromQuery, loadLog } from "./data/load";
 import { PresentationClock } from "./model/clock";
 import { CockpitModel } from "./model/cockpit";
 import { behaviourPanel } from "./panels/behaviour";
+import { indexPanel } from "./panels/check-index";
+import { dispatchPanel } from "./panels/dispatch";
 import { type ExecutionSides, executionPanel } from "./panels/execution";
 import { feedPanel } from "./panels/feed";
 import { type Panel, PanelHost } from "./panels/panel";
+import { routesPanel } from "./panels/routes";
+import { signalsPanel } from "./panels/signals";
 import { workspacePanel } from "./panels/workspace";
 import { App } from "./shell/app";
 import { FrameLoop } from "./shell/frame";
@@ -74,7 +78,7 @@ function mountStage(): StageHost | null {
 
 const host = mountStage();
 
-/** Canvas 2D panels (B08): each redraws only when its version changes. */
+/** Canvas 2D panels (B08, B09): each redraws only when its version changes. */
 interface PanelDriver {
   frame(t: number, cursor: number): boolean;
   resize(w: number, h: number, dpr: number): void;
@@ -85,6 +89,10 @@ const panelMakers: Record<string, () => Panel<never>> = {
   execution: () => executionPanel(model, executionSides) as Panel<never>,
   workspace: () => workspacePanel(model) as Panel<never>,
   behaviour: () => behaviourPanel(model) as Panel<never>,
+  routes: () => routesPanel(model) as Panel<never>,
+  signals: () => signalsPanel(model) as Panel<never>,
+  dispatch: () => dispatchPanel(model) as Panel<never>,
+  index: () => indexPanel(model) as Panel<never>,
 };
 const panels = new Map<Element, PanelDriver>();
 const panelSizes = new ResizeObserver((entries) => {

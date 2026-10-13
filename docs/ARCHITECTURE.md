@@ -474,8 +474,16 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   markers, bundles, ring cards, ring ticks, streaks), about one draw call each. GPU code sits
   behind a `Layer` interface (about 200 lines of glue), so the renderer can be swapped if the
   budget demands it.
-- **Panels:** Canvas 2D, written as pure `draw(ctx, view, t)` functions so they can move to an
-  OffscreenCanvas worker if profiling shows main-thread contention. They redraw only when dirty.
+- **Indexed state (B05, B08, B09).** Besides folded projections, append-only indexes record
+  the store index of each entry, so views ask "as of cursor k" without folding: `GraphIndex`
+  (nodes, edges), `TestIndex` (test runs), `ObservationIndex` (trace samples per test × symbol)
+  and `ChangeIndex` (changed symbols, selections, and the routes between them). A selected test
+  routes to a changed symbol if it was selected for it or for a caller within 3 `calls` hops, or,
+  for a module-level change, if its module imports the changed module. Each selection is routed
+  with the graph and changes that precede it in the log, so routes are pure in the cursor.
+- **Panels:** Canvas 2D, written as pure `draw(ctx, view, size, t)` functions so they can move to
+  an OffscreenCanvas worker if profiling shows main-thread contention. A `PanelHost` redraws a
+  panel only when its `version(t, cursor)` changes, clearing the whole backing store first.
 - **Shell:** Preact 11 + signals for header, controls, drawer and the accessible parallel DOM.
 - **Determinism:** no `Date.now()` or `Math.random()` in projections. Per-event visual jitter
   comes from `hash32(event.id)`. Layout initial positions are seeded from node-ID hashes (no
