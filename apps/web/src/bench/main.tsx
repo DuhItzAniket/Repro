@@ -1,3 +1,4 @@
+import { FlashGovernor } from "../stage/governor";
 import "@fontsource-variable/jetbrains-mono/wght.css";
 import "../styles/tokens.css";
 import "../styles/shell.css";
@@ -59,14 +60,18 @@ async function main(): Promise<void> {
   const layoutStart = performance.now();
   await webLayout.request();
   const layoutMs = performance.now() - layoutStart;
-  const layers = () =>
-    layerSet === "proxy"
-      ? proxyLayers(model)
-      : [
-          ...webLayers(model, webLayout),
-          ...ringLayers(model, new AtlasService(defaultAtlasBuild())).layers,
-          streakLayer(model),
-        ];
+  // Full load: the flash governor's cap is lifted, so the bench measures every element the
+  // layers can draw (2,048 streaks, every bundle), not the safer subset the app shows.
+  const unlimited = () => new FlashGovernor(model, webLayout, Number.POSITIVE_INFINITY);
+  const layers = () => {
+    if (layerSet === "proxy") return proxyLayers(model);
+    const governor = unlimited();
+    return [
+      ...webLayers(model, webLayout, governor),
+      ...ringLayers(model, new AtlasService(defaultAtlasBuild())).layers,
+      streakLayer(model, governor),
+    ];
+  };
   const start = busiestSecond(model) - 400;
   const { stage, ring } = computeLayout(window.innerWidth, window.innerHeight);
   const results: BenchResult[] = [];

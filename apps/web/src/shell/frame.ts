@@ -1,11 +1,12 @@
 /**
  * The animation-frame loop: presentation time from the clock, the fold cursor for that time,
- * and listeners called with both. The shell view is updated only when the cursor moves; the
- * stage (B04) will listen to every frame.
+ * the motion settings (replay speed, reduced motion), and listeners called with all three. The
+ * shell view is updated only when the cursor moves; the stage and panels listen to every frame.
  */
 
 import type { PresentationClock } from "../model/clock";
 import type { CockpitModel } from "../model/cockpit";
+import type { Motion } from "../motion/motion";
 import type { ShellView } from "./view";
 
 export interface FrameScheduler {
@@ -13,7 +14,7 @@ export interface FrameScheduler {
   cancel(handle: number): void;
 }
 
-export type FrameListener = (t: number, cursor: number) => void;
+export type FrameListener = (t: number, cursor: number, motion: Motion) => void;
 
 export const browserScheduler: FrameScheduler = {
   request: (callback) => requestAnimationFrame(callback),
@@ -25,12 +26,16 @@ export class FrameLoop {
   private handle = 0;
   private running = false;
   private lastCursor = -1;
+  /** This frame's motion, rewritten in place each frame (no per-frame allocation). */
+  private readonly motion = { speed: 1, reduced: false };
 
   constructor(
     private readonly model: CockpitModel,
     private readonly clock: PresentationClock,
     private readonly view: ShellView,
     private readonly scheduler: FrameScheduler = browserScheduler,
+    /** Reduced motion (the media query or the in-app toggle). */
+    private readonly reduced: { readonly value: boolean } = { value: false },
   ) {}
 
   /** Adds a per-frame listener; returns a function that removes it. */
@@ -60,7 +65,10 @@ export class FrameLoop {
       this.lastCursor = cursor;
       this.view.update(this.model.folder.stateAt(cursor));
     }
-    for (const listener of this.listeners) listener(t, cursor);
+    // Following live runs at ×1; a paused clock keeps the speed it will resume at.
+    this.motion.speed = this.clock.mode === "live" ? 1 : this.clock.speed;
+    this.motion.reduced = this.reduced.value;
+    for (const listener of this.listeners) listener(t, cursor, this.motion);
     this.handle = this.scheduler.request(this.frame);
   };
 }

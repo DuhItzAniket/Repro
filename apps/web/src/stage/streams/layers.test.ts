@@ -3,7 +3,9 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
+import { NORMAL_MOTION } from "../../motion/motion";
 import { computeLayout } from "../../shell/layout";
+import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
 import { targetFile } from "../ring/content";
@@ -31,7 +33,11 @@ const frameAt = (model: CockpitModel, t: number): StageFrame => ({
   width: stage.w,
   height: stage.h,
   ring,
+  motion: NORMAL_MOTION,
 });
+/** The B07 capacity tests run without the flash governor's cap (B10 tests it). */
+const unlimited = (model: CockpitModel) =>
+  new FlashGovernor(model, { positions: null, version: 0 }, Number.POSITIVE_INFINITY);
 const hashOf = (layer: StageLayer) =>
   hashRenderModels([{ layer: layer.name, buffers: layer.buffers }]);
 
@@ -80,10 +86,10 @@ describe("lanes", () => {
 
 describe("streak layer (B07: state at any t is reproducible after a scrub)", () => {
   it("gives the same render model whatever happened in earlier frames", () => {
-    const reused = streakLayer(demo);
+    const reused = streakLayer(demo, unlimited(demo));
     fc.assert(
       fc.property(fc.integer({ min: 0, max: Math.ceil(demo.store.endTime) }), (t) => {
-        const fresh = streakLayer(demo);
+        const fresh = streakLayer(demo, unlimited(demo));
         fresh.update(frameAt(demo, t));
         reused.update(frameAt(demo, t));
         expect(hashOf(reused)).toBe(hashOf(fresh));
@@ -93,7 +99,7 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
   });
 
   it("draws exactly the streaming events still within their life", () => {
-    const layer = streakLayer(demo);
+    const layer = streakLayer(demo, unlimited(demo));
     for (const t of [10_000, 21_000, 30_500, 34_000, 46_000]) {
       layer.update(frameAt(demo, t));
       let expected = 0;
@@ -109,7 +115,7 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
 
   it("caps the stress burst at 2,048 live streaks, keeping the newest", () => {
     const stress = modelOf(runEvents(STRESS));
-    const layer = streakLayer(stress);
+    const layer = streakLayer(stress, unlimited(stress));
     let peak = 0;
     for (let t = 20_000; t <= 30_000; t += 100) {
       layer.update(frameAt(stress, t));
@@ -119,7 +125,7 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
   });
 
   it("pins the demo stream at fixed times", () => {
-    const layer = streakLayer(demo);
+    const layer = streakLayer(demo, unlimited(demo));
     const hashes = Object.fromEntries(
       [21_000, 30_500, 34_000, 46_000].map((t) => {
         layer.update(frameAt(demo, t));
@@ -129,9 +135,9 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
     expect(hashes).toMatchInlineSnapshot(`
       {
         "21000": "66d04c6cd55e9a9d/0",
-        "30500": "3e62634f811711a5/22",
-        "34000": "ff4d1926f1de3e6f/9",
-        "46000": "5cbc3b59d499584b/4",
+        "30500": "bf76ba5f43676a59/22",
+        "34000": "9057aa91e9f4acd7/9",
+        "46000": "69366a39a54350f3/4",
       }
     `);
   });

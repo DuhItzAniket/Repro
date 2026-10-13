@@ -4,6 +4,7 @@
  * buffers into one instanced draw call. Layers never touch WebGL, so they are tested without a
  * GPU by hashing their render model.
  */
+import type { Motion } from "../motion/motion";
 import type { Ring } from "../shell/layout";
 import type { InstanceBuffers, RenderModel } from "./instances";
 import type { Recency } from "./segments";
@@ -17,6 +18,8 @@ export interface StageFrame {
   readonly width: number;
   readonly height: number;
   readonly ring: Ring;
+  /** Replay speed and reduced motion: wall-clock durations scale with the speed (ADR-0011). */
+  readonly motion: Motion;
 }
 
 /** Which GPU primitive draws a layer's buffers. */

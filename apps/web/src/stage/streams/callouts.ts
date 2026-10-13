@@ -3,8 +3,10 @@
  * anchored to the stream of a notable event, at most two at once, each shown for 2.5 s. Pure
  * selection: the callouts at `t` depend only on the events before `t`.
  */
+
 import type { ReproEvent } from "@repro/events";
 import type { CockpitModel } from "../../model/cockpit";
+import { type Motion, NORMAL_MOTION } from "../../motion/motion";
 import type { Ring } from "../../shell/layout";
 import { META_BAND } from "../ring/layers";
 import { laneAngle } from "./layers";
@@ -91,12 +93,20 @@ export function calloutText(event: ReproEvent): { label: string; value: string }
   }
 }
 
-/** The callouts visible at `t`, newest first (at most two). */
-export function selectCallouts(model: CockpitModel, t: number, ring: Ring): Callout[] {
+/**
+ * The callouts visible at `t`, newest first (at most two). A callout shows for CALLOUT_MS of
+ * wall-clock time (ADR-0011), so at ×16 it covers 16 times as much run time.
+ */
+export function selectCallouts(
+  model: CockpitModel,
+  t: number,
+  ring: Ring,
+  motion: Motion = NORMAL_MOTION,
+): Callout[] {
   const { store } = model;
   const out: Callout[] = [];
   const end = store.cursorAt(t);
-  const start = store.firstAtOrAfter(t - CALLOUT_MS);
+  const start = store.firstAtOrAfter(t - CALLOUT_MS * motion.speed);
   for (let i = end - 1; i >= start && out.length < MAX_CALLOUTS; i--) {
     const event = store.event(i);
     if (event === null) continue;
@@ -129,12 +139,17 @@ export class CalloutTracker {
   private r = Number.NaN;
 
   /** The new callouts, or null when nothing changed (no allocation in that case). */
-  update(model: CockpitModel, t: number, ring: Ring): Callout[] | null {
+  update(
+    model: CockpitModel,
+    t: number,
+    ring: Ring,
+    motion: Motion = NORMAL_MOTION,
+  ): Callout[] | null {
     const { store } = model;
     let first = -1;
     let second = -1;
     const end = store.cursorAt(t);
-    const start = store.firstAtOrAfter(t - CALLOUT_MS);
+    const start = store.firstAtOrAfter(t - CALLOUT_MS * motion.speed);
     for (let i = end - 1; i >= start && second < 0; i--) {
       const event = store.event(i);
       if (event === null || !notable(event)) continue;
@@ -148,6 +163,6 @@ export class CalloutTracker {
     this.cx = ring.cx;
     this.cy = ring.cy;
     this.r = ring.r;
-    return selectCallouts(model, t, ring);
+    return selectCallouts(model, t, ring, motion);
   }
 }

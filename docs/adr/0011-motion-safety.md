@@ -24,3 +24,28 @@ auto-updating content, with no five-second exception (research/05 §7).
 At ×4 and ×16 the stage shows aggregated activity rather than every event. That is the honest
 rendering at those speeds anyway. A unit test checks that the burst fixture at ×16 never exceeds
 the governor threshold.
+
+## Implementation notes (B10)
+These record how B10 built the decision. They add precision and change no scope; flagged for the
+owner at the Stage B gate.
+- **Threshold.** The WCAG 2.2 Understanding document for SC 2.3.1 gives the combined flashing
+  area as 341 × 256 CSS px, or 87,296 CSS px², at 1024 × 768 [V: research/05 §7, source 55]. The
+  governor's cap is half of that, 43,648 CSS px², as a margin for estimation error. It applies to
+  the whole stage rather than per 10° field, which is stricter.
+- **Why an onset cap bounds flashing.** If at most B px² can rise in any 333 ms, at most 3B can
+  rise in any second, so the area that flashes more than three times a second is at most 3B/4.
+- **Areas** are upper bounds from each element's own geometry: line length and width plus 2 px of
+  anti-aliasing fringe. Streaks use their longest visible stretch; bundles their control polygon
+  widened by the curves' spread. A unit test checks the streak bound at every age.
+- **Over the cap** a streak is not drawn. Decision 2 says its intensity is reduced; it is reduced
+  to zero, because under WCAG's 10% rule a dimmed but visible streak still counts in full once
+  streaks overlap additively. Edges and markers appear without their flare: a rise that never
+  falls is not a flash.
+- **Aggregation** (one bundle per graph edge per window) applies at every speed, not only ×4 and
+  ×16, so repeated bundles on one edge do not crowd out others within the cap.
+- **Purity.** Decisions are made greedily in log order and depend only on the events up to each
+  onset, the speed and the stage geometry. They are therefore the same when playing or
+  scrubbing, and are never revised as events arrive.
+- **Measured** (unit-tested): every 333 ms window at ×0.5, ×1, ×4 and ×16, on the demo and
+  stress fixtures, stays within the cap. At ×16 the stress run draws 717 of 5,789 streaks, 3 of
+  192 bundles and 337 of 10,000 edge flares.

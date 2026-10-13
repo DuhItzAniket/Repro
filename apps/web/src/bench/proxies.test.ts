@@ -1,10 +1,12 @@
 // The GPU-free render-model harness (ADR-0008, B04): layers are pure functions of the event
 // store and `t`, so the instance data they would upload is hashed and pinned. The same hashes
 // must come out on every run and every OS (CI runs this on Ubuntu and Windows).
+
 import { STRESS } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../model/cockpit";
 import { runEvents } from "../model/test-support";
+import { NORMAL_MOTION } from "../motion/motion";
 import { computeLayout } from "../shell/layout";
 import { hashRenderModels } from "../stage/instances";
 import { renderModels, type StageFrame, type StageLayer } from "../stage/layer";
@@ -28,6 +30,7 @@ function renderAt(model: CockpitModel, layers: StageLayer[], t: number): string 
     width: stage.w,
     height: stage.h,
     ring,
+    motion: NORMAL_MOTION,
   };
   for (const layer of layers) layer.update(frame);
   return hashRenderModels(renderModels(layers));
@@ -74,10 +77,10 @@ describe("render-model harness on the proxy layers", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "0": "de93b396f3b5546f",
-        "20000": "ecbeca72d16be9b2",
-        "40000": "7661e30554dfc1a9",
-        "5000": "6416bdb8608fcac2",
+        "0": "07dca9017b684434",
+        "20000": "5246e0552f5a25bc",
+        "40000": "6049c0b517978df9",
+        "5000": "2ade9193daaed2da",
       }
     `);
   });

@@ -193,13 +193,23 @@ surface — it stays plain and readable.
 - Durations: streak 600–1400 ms, bundle 1200 ms fade, panel row insert 150 ms, ring snap 500 ms
   ease-out-cubic.
 - Replay supports speed ×0.5 / ×1 / ×4 / ×16 and scrubbing. Animation is a pure function of
-  (events up to t, t).
+  (events up to t, t, motion), where motion is the replay speed and reduced motion.
 - `prefers-reduced-motion`: no streaks or bundles, and state changes are instant. An in-app
-  toggle mirrors this setting.
+  toggle mirrors this setting. Instant here also means: no recency flares, no ring drift, snaps
+  in one step, whole feed rows and typed lines, a steady workspace cursor, and running tests
+  held still.
 - **Global pause** (Space) freezes the presentation clock while ingestion continues (WCAG 2.2.2).
-- **[ADR-0011]** Durations above are wall-clock and clamped at high replay speeds. A
-  flash governor caps the bright area that can rise within any 333 ms window (WCAG 2.3.1). Above
-  the cap, bundles aggregate per edge.
+  Space is left to a focused control (a button, the scrubber), which handles it itself.
+- **Transport** (B10): a strip along the bottom of the stage with Play/Pause, ×0.5 ×1 ×4 ×16,
+  a scrubber at 100 ms steps with an `m:ss.s` readout, Live and Reduce motion.
+- **[ADR-0011]** Durations above are wall-clock, so in run time they scale with the replay speed;
+  edge and marker flares (1,500 and 900 ms) and callouts (2.5 s) too. A flash governor caps the
+  bright area that can rise within any 333 ms of wall-clock time (WCAG 2.3.1):
+  - the cap is 43,648 CSS px², half of WCAG's 87,296 CSS px² flashing area;
+  - areas are upper bounds from each element's geometry;
+  - over the cap, streaks and bundles are not drawn, and edges and markers appear without their
+    flare;
+  - at most one bundle per graph edge rises per window (aggregation).
 
 ## Accessibility
 

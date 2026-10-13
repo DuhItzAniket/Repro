@@ -1,7 +1,8 @@
 /**
  * Execution (DESIGN.md panel 2): two lanes, BASE and HEAD. A running test is a particle moving
  * left to right; a finished one settles on the right as a dot coloured by outcome. Positions
- * are pure functions of the run's events and `t`, so scrubbing is exact.
+ * are pure functions of the run's events, `t` and the motion settings, so scrubbing is exact.
+ * The travel time constant is wall-clock; under reduced motion running tests hold still.
  *
  * The BASE lane also carries the repeat base run (A′, `base_repeat`), which measures noise. Its
  * particles are dimmer and its counts are shown separately, so BASE and HEAD stay comparable.
@@ -11,6 +12,7 @@ import type { Side } from "@repro/events";
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../model/cockpit";
 import type { TestRun } from "../model/runs";
+import { NORMAL_MOTION } from "../motion/motion";
 import { COLOR } from "../styles/palette";
 import { type Panel, versionOf } from "./panel";
 import { font } from "./text";
@@ -72,15 +74,19 @@ export function executionPanel(
     sides.value === "both" ? ["base", "head"] : [sides.value];
   return {
     id: "execution",
-    version(t, cursor) {
+    version(t, cursor, motion = NORMAL_MOTION) {
       // Every run has one start and one finish, so tests are running while starts lead.
       const started = model.kinds.count("test.started", cursor);
       const finished = model.kinds.count("test.finished", cursor);
       const mode = sides.value === "both" ? 0 : sides.value === "base" ? 1 : 2;
-      const phase = started > finished ? Math.floor(t / FRAME_MS) % 1024 : 0;
+      const moving = started > finished && !motion.reduced;
+      const phase = moving ? Math.floor(t / (FRAME_MS * motion.speed)) : 0;
       return versionOf((started + finished) * 3 + mode, phase);
     },
-    view(t, cursor) {
+    view(t, cursor, motion = NORMAL_MOTION) {
+      // Running particles move in steps of the version's phase, so equal versions draw alike.
+      const frame = FRAME_MS * motion.speed;
+      const shownAt = Math.floor(t / frame) * frame;
       const lanes = shown().map((side): Lane => {
         const particles: Particle[] = [];
         let settled = 0;
@@ -101,9 +107,12 @@ export function executionPanel(
           const kind = kindOf(r, cursor);
           const jitter = 0.08 + 0.84 * (hash32(`${r.side}|${r.test}`) / 4294967296);
           if (kind === "running") {
-            const elapsed = t - (model.store.time[r.started] as number);
+            const elapsed =
+              Math.max(0, shownAt - (model.store.time[r.started] as number)) / motion.speed;
             particles.push({
-              x: RUN_FROM + RUN_SPAN * (1 - Math.exp(-elapsed / TRAVEL_MS)),
+              x: motion.reduced
+                ? RUN_FROM + RUN_SPAN / 2
+                : RUN_FROM + RUN_SPAN * (1 - Math.exp(-elapsed / TRAVEL_MS)),
               y: jitter,
               kind,
               repeat,

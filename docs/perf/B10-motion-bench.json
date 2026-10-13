@@ -1,0 +1,106 @@
+{
+  "phase": "B10",
+  "date": "2026-10-14",
+  "method": "apps/web/bench.html (layers=real): stress fixture (seed 1), every stage layer real, with the flash governor's cap lifted (an infinite budget) so the layers run at full load; the busiest second looped for 8 s after a 1 s warm-up at x1; fixed DPR per case; fresh WebGL context per case; render sanity check before timing. Same machine and method as B07; it checks that B10's per-segment flare attribute and per-frame governor check cost nothing measurable. Values rounded to 0.1 ms.",
+  "environment": {
+    "browser": "Claude desktop in-app browser, Chrome/152.0.7977.130 (Windows 11, x64)",
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A78B) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "cpu": "Intel Core i7-14650HX (16 cores, 24 threads)",
+    "display": "60 Hz; devicePixelRatio 1.75",
+    "viewport": "1920x1080 CSS px (emulated); stage 1920x641"
+  },
+  "peak_instances": {
+    "edges": 10000,
+    "markers": 608,
+    "bundles": 2730,
+    "cards": 320,
+    "ticks": 1184,
+    "streaks": 2048
+  },
+  "layout_worker_ms": [2463, 2421],
+  "runs": [
+    {
+      "run": 1,
+      "results": [
+        {
+          "dpr": 1,
+          "frames": 472,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.0,
+            "p99": 33.2,
+            "max": 33.3
+          },
+          "cpu": {
+            "p50": 0.6,
+            "p95": 1.3,
+            "p99": 2.0,
+            "max": 2.3
+          },
+          "dropped": 0.019,
+          "litPixels": 309890
+        },
+        {
+          "dpr": 2,
+          "frames": 474,
+          "interval": {
+            "p50": 16.7,
+            "p95": 16.9,
+            "p99": 33.3,
+            "max": 33.7
+          },
+          "cpu": {
+            "p50": 0.6,
+            "p95": 1.2,
+            "p99": 1.5,
+            "max": 2.0
+          },
+          "dropped": 0.015,
+          "litPixels": 1205320
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "results": [
+        {
+          "dpr": 1,
+          "frames": 471,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.0,
+            "p99": 33.3,
+            "max": 33.4
+          },
+          "cpu": {
+            "p50": 0.7,
+            "p95": 1.7,
+            "p99": 2.1,
+            "max": 2.6
+          },
+          "dropped": 0.021,
+          "litPixels": 309890
+        },
+        {
+          "dpr": 2,
+          "frames": 473,
+          "interval": {
+            "p50": 16.7,
+            "p95": 17.0,
+            "p99": 33.1,
+            "max": 66.4
+          },
+          "cpu": {
+            "p50": 0.7,
+            "p95": 1.6,
+            "p99": 1.9,
+            "max": 2.5
+          },
+          "dropped": 0.013,
+          "litPixels": 1205320
+        }
+      ]
+    }
+  ],
+  "reading": "Unchanged from B07: p95 16.9-17.0 ms at DPR 1 and 2, stage CPU p95 1.2-1.7 ms, worst frame 2.6 ms, 1.3-2.1% of frames taking two refreshes (host jitter, as in B06-B07). Lit pixels equal B07's exactly (309,890 and 1,205,320), so the x1 frame is pixel-identical with the governor's cap lifted. With the cap in force the app draws less: at x1 the stress burst shows 2,907 of 5,789 streaks over the run (unit-tested counts; see the B10 phase record)."
+}

@@ -30,8 +30,8 @@ rect 310.6,30.6 2.5x2.5 #d6d6d6 a0.8
 rect 310.6,37.7 2.5x2.5 #b48f9c a0.5
 rect 310.6,44.8 2.5x2.5 #d6d6d6 a0.8
 rect 310.6,51.9 2.5x2.5 #d6d6d6 a0.8
-rect 47.2,42.8 6x1.5 #ffffff a0.4
-rect 18.7,45.5 6x1.5 #ffffff a0.9
+rect 33.6,42.8 6x1.5 #ffffff a0.4
+rect 7.2,45.5 6x1.5 #ffffff a0.9
 text "HEAD · 15 run · 1 failed" 0,77 400 8px #6e6e6e a1
 rect 0,75 330x1 #232323 a1
 rect 224.4,89 1x57 #3a3a3a a1
@@ -49,4 +49,4 @@ rect 299,105.6 2.5x2.5 #d6d6d6 a0.8
 rect 299,112.7 2.5x2.5 #d6d6d6 a0.8
 rect 299,119.8 2.5x2.5 #d6d6d6 a0.8
 rect 299,126.9 2.5x2.5 #3a3a3a a1
-rect 191.6,126.7 6x1.5 #ffffff a0.9
+rect 190.4,126.7 6x1.5 #ffffff a0.9

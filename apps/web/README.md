@@ -7,8 +7,9 @@ A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESI
 | `src/model/` | The UI's data layer: `EventStore`, indexes, projections, snapshot folding and the presentation clock. Pure TypeScript, no DOM, tested in Node |
 | `src/model/changes.ts`, `check-index.ts` | Changed symbols, selections and their routes (`ChangeIndex`); the change×check index selector shared by the routes and index panels |
 | `src/model/projections/` | Pure reducers: `run` (meta, stages), `summary` (counters), `checks` (ADR-0015), `claims`, `agents` |
-| `src/shell/` | Preact shell: `computeLayout` (all geometry), header and progress bar, panel frames, the signals bridge (`view.ts`) and the frame loop |
-| `src/stage/` | WebGL stage: `StageHost` (the only three.js user), the `StageLayer` contract, instance buffers and render-model hashing, the segment primitive and its GLSL, adaptive DPR, frame statistics, the perf HUD (`?hud`) |
+| `src/shell/` | Preact shell: `computeLayout` (all geometry), header and progress bar, panel frames, the replay transport (Space pauses), the signals bridge (`view.ts`) and the frame loop |
+| `src/motion/` | Motion settings (replay speed, reduced motion) every layer and panel receives each frame (ADR-0011) |
+| `src/stage/` | WebGL stage: `StageHost` (the only three.js user), the `StageLayer` contract, instance buffers and render-model hashing, the segment primitive and its GLSL, the flash governor, adaptive DPR, frame statistics, the perf HUD (`?hud`) |
 | `src/stage/web/` | The dependency web: layout input and hash, the d3-force layout and its worker, `LayoutService`, and the edge, marker and bundle layers |
 | `src/stage/ring/` | The ring: card content from events, closed-form rotation and snaps, the atlas (packing, drawing, worker, service), and the card and tick layers |
 | `src/stage/streams/` | Event streams (streak style, lanes, layer) and the callout overlay |

@@ -63,6 +63,7 @@ export function ringRotation(
   angles: RingAngles,
   focus: readonly FocusEvent[],
   snapMs = SNAP_MS,
+  drift = angles.drift,
 ): RingRotation {
   const n = focus.length;
   const time = new Float64Array(n);
@@ -80,7 +81,7 @@ export function ringRotation(
     }
     const centre = ((angles.start[event.card] as number) + (angles.end[event.card] as number)) / 2;
     // At the end of the snap the card's centre must sit at angle 0 (3 o'clock).
-    const target = -(centre + angles.drift * (event.time + snapMs));
+    const target = -(centre + drift * (event.time + snapMs));
     time[k] = event.time;
     from[k] = offset;
     to[k] = offset + wrap(target - offset);
@@ -101,7 +102,7 @@ export function ringRotation(
         current =
           (from[k] as number) + ((to[k] as number) - (from[k] as number)) * easeOutCubic(progress);
       }
-      return angles.drift * t + current;
+      return drift * t + current;
     },
   };
 }

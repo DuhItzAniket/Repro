@@ -59,8 +59,18 @@ All notable changes to this project are documented here. The format follows
   `ChangeIndex` routes selected tests to changed symbols through `calls` edges and module
   imports, using only the log before each selection. The index counts the same checks as its
   footer and the header. [B09]
+- Replay transport along the bottom of the stage: Play/Pause, ×0.5–×16, a scrubber, Live and
+  Reduce motion. Space pauses everything except a focused control. [B10]
+- Motion safety (ADR-0011): every visual duration is wall-clock at any replay speed, and the
+  stage, panels and callouts are pure functions of (events, t, motion). A flash governor keeps
+  the bright area that rises in any 333 ms under half of WCAG 2.3.1's 87,296 CSS px² flashing
+  area, at every speed, on both fixtures. `prefers-reduced-motion` and the in-app toggle stop
+  streaks, bundles, flares, drift and panel animation. [B10]
 
 ### Fixed
+- The feed and execution panels could keep showing a stale drawing between version steps (the
+  view moved continuously while the version stepped). Both now quantise like their versions, and
+  `versionOf` no longer wraps after 4,096 phases. Found by B10's "scrub = play" property. [B10]
 - Panel canvases are cleared in device pixels, so no sub-pixel sliver keeps stale content and
   Chrome can discard pending draw operations. Canvas sides are clamped to 4,096 CSS px. [B09]
 - Stage geometry is rebuilt when a layer's buffers grow. three.js caches the maximum instance
