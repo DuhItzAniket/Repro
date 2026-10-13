@@ -5,13 +5,14 @@ hardware and raw numbers; summaries live in the phase records.
 
 | File | Phase | What |
 |---|---|---|
-| [`B04-stress-bench.json`](B04-stress-bench.json) | B04 | Stage foundation under the stress load (10k edges, 2,048 streaks) on an integrated GPU, DPR 1–2 |
+| [`B04-stress-bench.json`](B04-stress-bench.json) | B04 | Stage foundation under the stress load (10k edges, 2,048 streaks) on an integrated GPU, DPR 1–2 (corrected run; see its `correction` field) |
+| [`B05-web-bench.json`](B05-web-bench.json) | B05 | The real dependency-web layers (10k edges, blast markers, bundles) plus proxies, same machine and method |
 
 ## Reproducing the stage benchmark
 
 ```
 pnpm --filter @repro/web dev
-# open http://localhost:5173/bench.html?seconds=8&dpr=1,1.5,2
+# open http://localhost:5173/bench.html?seconds=8&dpr=1,1.5,2   (add &layers=proxy for B04's proxies only)
 # results appear on the page and in window.__REPRO_BENCH__
 ```
 

@@ -22,6 +22,7 @@ import type { Ring } from "../shell/layout";
 import { AdaptiveDpr } from "./dpr";
 import type { InstanceBuffers } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
+import { NO_RECENCY } from "./segments";
 import segmentFrag from "./shaders/segment.frag.glsl?raw";
 import segmentVert from "./shaders/segment.vert.glsl?raw";
 import { FrameStats } from "./stats";
@@ -75,6 +76,8 @@ export class StageHost {
   private readonly adaptive: AdaptiveDpr | null;
   private readonly now: () => number;
   private readonly viewport = [1, 1];
+  /** Shared by every layer's material: presentation time in ms. */
+  private readonly time = { value: 0 };
   private readonly input: MutableFrame;
   private dpr: number;
   private lastStart = Number.NaN;
@@ -105,11 +108,18 @@ export class StageHost {
   }
 
   add(layer: StageLayer): void {
+    const recency = layer.recency ?? NO_RECENCY;
     const material = new RawShaderMaterial({
       glslVersion: GLSL3,
       vertexShader: segmentVert,
       fragmentShader: segmentFrag,
-      uniforms: { uViewport: { value: this.viewport }, uDpr: { value: this.dpr } },
+      uniforms: {
+        uViewport: { value: this.viewport },
+        uDpr: { value: this.dpr },
+        uTime: this.time,
+        uFlare: { value: recency.flare },
+        uFlareMs: { value: recency.flareMs },
+      },
       blending: AdditiveBlending,
       transparent: true,
       depthTest: false,
@@ -119,26 +129,24 @@ export class StageHost {
       // default FrontSide every segment was culled and nothing was drawn.
       side: DoubleSide,
     });
-    const geometry = new InstancedBufferGeometry();
-    geometry.setAttribute("corner", new BufferAttribute(QUAD_CORNERS, 2));
-    geometry.setIndex(QUAD_INDEX);
-    const mesh = new Mesh(geometry, material);
+    const mesh = new Mesh(geometryFor(layer.buffers), material);
     mesh.frustumCulled = false;
-    const binding: Binding = { layer, mesh, generation: -1, version: -1 };
-    this.attach(binding);
+    const binding: Binding = { layer, mesh, generation: layer.buffers.generation, version: -1 };
     this.bindings.push(binding);
     this.scene.add(mesh);
     this.info.instances[layer.name] = 0;
   }
 
+  /**
+   * Rebinds a layer whose buffers were reallocated. A new geometry, not new attributes on the
+   * old one: three.js caches the maximum instance count per geometry from the first arrays it
+   * saw, and would silently draw no more instances than that (found in B05).
+   */
   private attach(binding: Binding): void {
-    const { buffers } = binding.layer;
-    for (const spec of buffers.specs) {
-      const attribute = new InstancedBufferAttribute(buffers.array(spec.name), spec.size);
-      attribute.setUsage(DynamicDrawUsage);
-      binding.mesh.geometry.setAttribute(spec.name, attribute);
-    }
-    binding.generation = buffers.generation;
+    const old = binding.mesh.geometry;
+    binding.mesh.geometry = geometryFor(binding.layer.buffers);
+    old.dispose();
+    binding.generation = binding.layer.buffers.generation;
     binding.version = -1;
   }
 
@@ -167,6 +175,7 @@ export class StageHost {
     const start = this.now();
     this.input.t = t;
     this.input.cursor = cursor;
+    this.time.value = t;
     for (const binding of this.bindings) {
       const { layer } = binding;
       layer.update(this.input);
@@ -222,6 +231,18 @@ export class StageHost {
     }
     this.renderer.dispose();
   }
+}
+
+function geometryFor(buffers: InstanceBuffers): InstancedBufferGeometry {
+  const geometry = new InstancedBufferGeometry();
+  geometry.setAttribute("corner", new BufferAttribute(QUAD_CORNERS, 2));
+  geometry.setIndex(QUAD_INDEX);
+  for (const spec of buffers.specs) {
+    const attribute = new InstancedBufferAttribute(buffers.array(spec.name), spec.size);
+    attribute.setUsage(DynamicDrawUsage);
+    geometry.setAttribute(spec.name, attribute);
+  }
+  return geometry;
 }
 
 function upload(geometry: InstancedBufferGeometry, buffers: InstanceBuffers): void {

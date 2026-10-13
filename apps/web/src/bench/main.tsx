@@ -7,7 +7,9 @@ import { FIXTURES, fixtureFromQuery, loadLog } from "../data/load";
 import { CockpitModel } from "../model/cockpit";
 import { computeLayout } from "../shell/layout";
 import { type HudSnapshot, PerfHud, snapshot } from "../stage/hud";
-import { proxyLayers } from "./proxies";
+import { webLayers } from "../stage/web/layers";
+import { computeInline, LayoutService, workerCompute } from "../stage/web/layout-service";
+import { cardProxy, proxyLayers, streakProxy, tickProxy } from "./proxies";
 import { type BenchReport, type BenchResult, busiestSecond, runCase } from "./run";
 
 declare global {
@@ -19,6 +21,8 @@ declare global {
 const params = new URLSearchParams(window.location.search);
 const seconds = Number(params.get("seconds") ?? "8");
 const ratios = (params.get("dpr") ?? "1,1.5,2").split(",").map(Number);
+/** `real` (default): B05 web layers plus proxies for the ring and streaks; `proxy`: B04 proxies only. */
+const layerSet = params.get("layers") === "proxy" ? "proxy" : "real";
 
 const hud = signal<HudSnapshot | null>(null);
 const status = signal("loading the stress run…");
@@ -44,6 +48,18 @@ async function main(): Promise<void> {
   const fixture = params.has("log") ? fixtureFromQuery(window.location.search) : "stress";
   const { values } = await loadLog(FIXTURES[fixture]);
   model.ingest(values);
+  const webLayout = new LayoutService(
+    model.graph,
+    typeof Worker === "undefined" ? computeInline : workerCompute(),
+  );
+  status.value = "laying out the dependency web…";
+  const layoutStart = performance.now();
+  await webLayout.request();
+  const layoutMs = performance.now() - layoutStart;
+  const layers = () =>
+    layerSet === "proxy"
+      ? proxyLayers(model)
+      : [...webLayers(model, webLayout), cardProxy(), tickProxy(), streakProxy(model)];
   const start = busiestSecond(model) - 400;
   const { stage, ring } = computeLayout(window.innerWidth, window.innerHeight);
   const results: BenchResult[] = [];
@@ -60,7 +76,7 @@ async function main(): Promise<void> {
     const run = await runCase(
       canvas,
       model,
-      () => proxyLayers(model),
+      layers,
       { width: stage.w, height: stage.h, ring },
       start,
       { dpr, seconds },
@@ -80,6 +96,8 @@ async function main(): Promise<void> {
     userAgent: navigator.userAgent,
     devicePixelRatio: window.devicePixelRatio,
     burstAtMs: start + 400,
+    layers: layerSet,
+    layoutMs: Math.round(layoutMs),
     results,
   };
   window.__REPRO_BENCH__ = done;

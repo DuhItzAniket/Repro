@@ -7,9 +7,13 @@ in vec2 a;
 in vec2 b;
 in vec4 color;
 in vec2 shape;
+in float appear;
 
 uniform vec2 uViewport; // stage size in CSS px
 uniform float uDpr;
+uniform float uTime; // presentation time, ms
+uniform float uFlare; // recency: extra alpha multiple right after appearing
+uniform float uFlareMs; // recency decay time constant, ms
 
 out vec4 vColor;
 out float vAcross; // signed distance from the centre line, CSS px
@@ -27,10 +31,16 @@ void main() {
   float across = corner.y * (halfWidth + margin);
   vec2 p = a + dir * along + normal * across;
 
+  // Recency (mirrors recencyFactor in segments.ts): hidden before `appear`, then a flare that
+  // decays back to the base alpha.
+  float dt = uTime - appear;
+  float recency = dt < 0.0 ? 0.0 : 1.0 + uFlare * exp(-dt / uFlareMs);
+
   vAcross = across;
   vHalfWidth = halfWidth;
-  vColor = vec4(color.rgb, color.a * mix(shape.y, 1.0, corner.x));
+  vColor = vec4(color.rgb, min(1.0, color.a * recency) * mix(shape.y, 1.0, corner.x));
 
+  // Segments that are not visible yet collapse to a point and cost no fill.
   vec2 clip = p / uViewport * 2.0 - 1.0;
-  gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+  gl_Position = recency > 0.0 ? vec4(clip.x, -clip.y, 0.0, 1.0) : vec4(2.0, 2.0, 2.0, 1.0);
 }

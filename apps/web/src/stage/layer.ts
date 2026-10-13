@@ -6,6 +6,7 @@
  */
 import type { Ring } from "../shell/layout";
 import type { InstanceBuffers, RenderModel } from "./instances";
+import type { Recency } from "./segments";
 
 export interface StageFrame {
   /** Presentation time, ms since the run started. */
@@ -25,7 +26,9 @@ export interface StageLayer {
   readonly name: string;
   readonly primitive: Primitive;
   readonly buffers: InstanceBuffers;
-  /** Writes this frame's instances. Must not allocate. */
+  /** How segments brighten after appearing (default: no flare). */
+  readonly recency?: Recency;
+  /** Writes this frame's instances, or leaves them as they are. Must not allocate. */
   update(frame: StageFrame): void;
 }
 

@@ -135,7 +135,7 @@ allocation and bundle-size gates are active in CI.
 | B02 | EventStore, projections, snapshots & clock | M | B01 | done |
 | B03 | App shell, tokens, fonts, header & progress | M | B02 | done |
 | B04 | Stage foundation & performance harness | M | B03 | done |
-| B05 | Dependency-web layer & bundles | L | B04 | planned |
+| B05 | Dependency-web layer & bundles | L | B04 | done |
 | B06 | Ring layer (file-card atlas) | M | B04 | planned |
 | B07 | Event-stream layer & callouts | M | B04 | planned |
 | B08 | Panels I: feed, execution, agent workspace, behaviour field | L | B02, B03 | planned |
