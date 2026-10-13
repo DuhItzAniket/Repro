@@ -6,7 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-14
+
+Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
+
 ### Added
+- Model coverage gate: projections and store at least 90% (lines, statements, functions) in CI
+  (`pnpm coverage`, SDLC.md §5). [Gate B]
 - `@repro/synth`: a deterministic synthetic-run generator (seeded sfc32, ULIDs, single-writer
   ordering) with `DEMO` and `STRESS` profiles. Committed fixtures
   `apps/web/fixtures/demo-run.jsonl` (2,334 events, 28 checks, 4 flagged) and

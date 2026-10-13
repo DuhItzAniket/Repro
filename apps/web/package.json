@@ -1,6 +1,6 @@
 {
   "name": "@repro/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Repro cockpit: a live, replayable projection of the engine's event stream.",
   "license": "Apache-2.0",
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "size": "size-limit",
     "perf": "vitest run --config vitest.perf.config.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "5.3.0",
@@ -30,6 +31,7 @@
     "@types/d3-force": "3.0.10",
     "@types/node": "24.19.2",
     "@types/three": "0.186.0",
+    "@vitest/coverage-v8": "5.0.4",
     "axe-core": "4.14.0",
     "fast-check": "4.10.2",
     "jsdom": "30.1.2",

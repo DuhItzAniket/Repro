@@ -242,7 +242,7 @@ describe("scrubbing gives the same frame as playing (golden)", () => {
         t = checkpoint;
       }
     }
-  });
+  }, 60_000); // about 2,900 frames: slow under coverage instrumentation or on a busy runner
 
   it("is pinned at fixed times and speeds (same on every OS in CI)", () => {
     const pins: Record<string, string> = {};

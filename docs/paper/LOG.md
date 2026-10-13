@@ -105,3 +105,42 @@ entry. If something turns out wrong, add a correcting entry.
   conclusion stands; the numbers in `docs/perf/B04-stress-bench.json` are the corrected ones.
 - Lesson for the evaluation chapter: a performance benchmark needs an output check (here, lit
   pixels), not only counters. The bench now refuses to report timings without it.
+
+## 2026-10-14 · B10 · Motion safety as a bounded onset budget
+- WCAG 2.2 SC 2.3.1 limits flashing area. Its Understanding document gives 341 × 256 = 87,296
+  CSS px² at 1024 × 768 (research/05 §7, source 55, re-checked in B10). For an event-driven
+  visualisation whose bursts are the point, we cap the bright area that can *rise* within any
+  333 ms of wall-clock time at half that area.
+- The argument: if at most B can rise per 333 ms, then at most 3B can rise per second, so the area
+  that flashes more than three times a second is at most 3B/4 < B. Decisions are greedy in log
+  order, so they are a pure function of (events, speed, geometry), identical when playing or
+  scrubbing.
+- Measured (unit-tested): the worst window is within the cap at ×0.5, ×1, ×4 and ×16 on both
+  fixtures. The cost is visible. At ×1 the 10k-edge stress run draws 2,466 of 5,789 streaks;
+  at ×16, 530 (B13 geometry). A frame-based luminance analysis would be a stronger check and is
+  future work.
+
+## 2026-10-14 · B12 · Quality gates that prove they can fail
+- Four CI gates guard the cockpit: visual regression, a flat heap over 1,000 frames, bundle size
+  and calibrated frame cost. Each also runs a self-test that injects a regression of its kind
+  (a 1 px layout shift, a 2 kB-per-frame leak, 300 kB of bloat, 2 ms of work per frame) and must
+  fail. All four held in CI run 38463117924.
+- Two measurement lessons:
+  - A leak check on the JS heap alone misses typed-array leaks, because their backing stores
+    live outside the heap; count ArrayBuffers too.
+  - Frame cost on shared runners varies about 60% between machines (calibration 5.46 vs
+    8.86 ms). Dividing by a calibration workload timed in the same process made one baseline
+    usable.
+
+## 2026-10-14 · B13 · Geometry transfer from a portrait reference
+- The visual reference is a portrait recording. Its ring geometry, measured as fractions of the
+  stage (centre 0.15·W, radius 0.55·H), was copied directly onto a landscape stage. That gave a
+  small circle and an empty right half; the side-by-side gate check caught it. What transfers
+  is the relationship: the arc spans the stage height with its 3 o'clock point near mid-width.
+  On landscape that means radius 0.9·H.
+- The reference's dense streams were reproduced without breaking the flash budget, with a static
+  residue: each event's faint trace (≤ 9% luminance, under the 10% flash threshold), faded by
+  the shader. Motion stays tied to events, and the look comes from accumulation, not brightness.
+- With the whole cockpit running, the demo run replays at ×1 at 60 fps on an integrated GPU
+  (Intel UHD) at 1920×1080, DPR 1.75: p50 16.7 ms, p95 17.0 ms over 2,867 frames, with 1.85%
+  of frames over 25 ms (host jitter). The CPU, an i7-14650HX, is stronger than a mid laptop's.
