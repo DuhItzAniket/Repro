@@ -5,7 +5,7 @@
 | **Stage** | A — Foundation |
 | **Status** | done |
 | **Depends on** | A02 |
-| **Branch / PR** | `phase/A08-spikes` · PR link in ROADMAP phase log |
+| **Branch / PR** | `phase/A08-spikes` · [#8](https://github.com/DuhItzAniket/Repro/pull/8) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
