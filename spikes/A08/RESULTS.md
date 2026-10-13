@@ -2,7 +2,7 @@
 
 Measured on 2026-10-13. The raw JSON is in `results/`, and every number below can be
 regenerated with the commands in [`README.md`](README.md). Linux-host numbers from a GitHub
-runner are produced by `.github/workflows/spikes.yml`. They are added at the Stage A gate.
+runner (`.github/workflows/spikes.yml`, run 38429323214) are in `results/linux-gha/` and §4.
 
 **Hardware and software (local).** x86-64 workstation, 24 logical CPUs, 16 GB RAM, Windows 11.
 Docker Desktop 29.8.2 with the WSL2 backend (Linux containers in a VM on the same hardware).
@@ -160,6 +160,43 @@ container (network off, `/work` read-only).
    deselected"). Test selection (D05) must respect a project's own pytest configuration.
 
 ---
+
+## 4. Linux host (GitHub-hosted runner)
+
+Same scripts, run by `.github/workflows/spikes.yml` (run 38429323214) on an `ubuntu-latest`
+runner: 4 vCPUs (AMD EPYC 9V45), 15 GiB RAM, Docker on a native Linux host. This is a shared
+VM, so treat the numbers as indicative.
+
+| Python | workload | baseline ms | disable_all × | dispatch ns/call (monitoring / settrace) | capture µs/call (monitoring / settrace) | budgeted × |
+|---|---|---|---|---|---|---|
+| 3.12.15 | fib | 1.16 | 1.13 | 105 / 170 | 1.82 / 2.12 | 1.14 |
+| 3.12.15 | records | 9.02 | 0.93 | 166 / 346 | 7.16 / 8.68 | 0.88 |
+| 3.13.16 | fib | 1.26 | 1.01 | 106 / 142 | 1.80 / 1.84 | 0.98 |
+| 3.13.16 | records | 9.19 | 0.89 | 152 / 284 | 7.70 / 8.16 | 0.94 |
+| 3.14.8 | fib | 0.97 | 0.99 | 102 / 150 | 2.30 / 2.33 | 1.00 |
+| 3.14.8 | records | 9.34 | 0.89 | 112 / 278 | 8.09 / 8.24 | 0.92 |
+| 3.15.0 | fib | 0.98 | 0.98 | 106 / 147 | 2.40 / 2.43 | 0.98 |
+| 3.15.0 | records | 8.85 | 0.95 | 136 / 325 | 8.13 / 8.33 | 0.97 |
+
+Sandbox round trip, three runs:
+- total 1.93–1.98 s, of which provisioning was 0.84–0.86 s and the hardened test run 0.60–0.62 s;
+- network blocked (`Errno 101`).
+
+Provisioning pallets/click:
+- cold 0.85 s, warm 0.59 s, warm offline 0.54 s;
+- suite 6.5 s, with the same **24 environment-caused failures** as on Windows.
+
+**Agreement with §1–3.** Every conclusion holds on a native Linux host:
+- disabled tracer at about baseline;
+- `sys.monitoring` dispatch 1.4–2.5× cheaper than `settrace`;
+- capture dominated by encoding;
+- budgeted capture at about baseline;
+- L3 network enforcement works;
+- offline provisioning is the fastest path.
+
+The native host's much faster provisioning (0.85 s vs 9.9 s cold) reflects network proximity
+to PyPI, not Docker. Windows-specific cost sits in Docker Desktop's VM boundary: a hardened
+container run took 0.60 s here vs 0.90 s on Windows.
 
 ## Go / no-go and defaults
 
