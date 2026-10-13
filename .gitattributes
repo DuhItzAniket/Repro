@@ -1,0 +1,14 @@
+# Normalise line endings in the repository; check out with LF everywhere so
+# hashes, snapshots and golden files are identical on Windows and Linux.
+* text=auto eol=lf
+
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
+*.woff2 binary
+*.db binary

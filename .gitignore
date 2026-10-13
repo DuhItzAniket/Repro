@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+# Repro .gitignore
+# ---------------------------------------------------------------------------
+
+# Third-party reference media (kept locally, not redistributed; see reference/README.md)
+reference/*.mp4
+reference/frames/
+reference/panels/
+
+# Secrets and local configuration -- never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# Repro runtime data (runs, event DBs, worktrees, traces)
+.repro/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+runs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# Node / web
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+.vite/
+apps/web/dist/
+playwright-report/
+test-results/
+blob-report/
+
+# Benchmark artefacts (large; published separately, e.g. Zenodo)
+bench/.cache/
+bench/results/raw/
+bench/datasets/downloads/
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local Claude Code state
+.claude/settings.local.json
