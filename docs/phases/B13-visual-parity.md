@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B12 |
-| **Branch / PR** | `phase/B13-visual-parity` · PR pending |
+| **Branch / PR** | `phase/B13-visual-parity` · [#24](https://github.com/DuhItzAniket/Repro/pull/24) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
@@ -79,8 +79,9 @@ circle.
       The comparison image stays local (the reference is third-party media); this is a judgement
       the owner confirms at the gate.
 - [x] AC2: all B01–B12 tests and gates pass. Web 225 tests; the allocation gate (stage at about
-      25 kB per frame again); scrub = play; the flash bound at every speed. Visual baselines are
-      regenerated in CI (the old ones show the old geometry).
+      25 kB per frame again); scrub = play; the flash bound at every speed. Visual baselines were
+      regenerated in CI run 38464807432 and checked by eye: stage, focus with drawer, reduced
+      motion, and the early graph-only moment.
 
 ## Evidence
 - In the browser (1440×900, `?test`):
