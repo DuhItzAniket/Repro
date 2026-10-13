@@ -1,4 +1,4 @@
-text "PASS RATE" 0,2 400 8px #6e6e6e a1
+text "PASS RATE" 0,2 400 8px #868686 a1
 text "0.75" 0,12 400 8px #d6d6d6 a1
 rect 64,25 266x1 #232323 a1
 rect 209,3 1x22 #b48f9c a1
@@ -28,7 +28,7 @@ lineTo 209,11.3
 lineTo 214,8.5
 lineTo 220,8.5
 stroke #d6d6d6 w1 a1
-text "DRIFT" 0,32 400 8px #6e6e6e a1
+text "DRIFT" 0,32 400 8px #868686 a1
 text "0.31" 0,42 400 8px #d6d6d6 a1
 rect 64,55 266x1 #232323 a1
 rect 75,33 1x22 #3a3a3a a1
@@ -63,7 +63,7 @@ lineTo 181,49.5
 lineTo 182,49.5
 lineTo 183,48.1
 stroke #d6d6d6 w1 a1
-text "PERF Δ" 0,62 400 8px #6e6e6e a1
+text "PERF Δ" 0,62 400 8px #868686 a1
 text "+0%" 0,72 400 8px #d6d6d6 a1
 rect 64,74 266x1 #232323 a1
 rect 318,63 1x22 #3a3a3a a1

@@ -8,7 +8,7 @@ export const COLOR = {
   panel: "#121212",
   border: "#232323",
   text: "#d6d6d6",
-  dim: "#6e6e6e",
+  dim: "#868686",
   faint: "#3a3a3a",
   hot: "#ffffff",
   flag: "#b48f9c",

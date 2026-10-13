@@ -8,6 +8,7 @@ A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESI
 | `src/model/changes.ts`, `check-index.ts` | Changed symbols, selections and their routes (`ChangeIndex`); the change×check index selector shared by the routes and index panels |
 | `src/model/projections/` | Pure reducers: `run` (meta, stages), `summary` (counters), `checks` (ADR-0015), `claims`, `agents` |
 | `src/shell/` | Preact shell: `computeLayout` (all geometry), header and progress bar, panel frames, the replay transport (Space pauses), the signals bridge (`view.ts`) and the frame loop |
+| `src/focus/` | The focus model (what is focused and what it highlights) and the evidence drawer's content |
 | `src/motion/` | Motion settings (replay speed, reduced motion) every layer and panel receives each frame (ADR-0011) |
 | `src/stage/` | WebGL stage: `StageHost` (the only three.js user), the `StageLayer` contract, instance buffers and render-model hashing, the segment primitive and its GLSL, the flash governor, adaptive DPR, frame statistics, the perf HUD (`?hud`) |
 | `src/stage/web/` | The dependency web: layout input and hash, the d3-force layout and its worker, `LayoutService`, and the edge, marker and bundle layers |

@@ -85,7 +85,7 @@ export function feedPanel(model: CockpitModel): Panel<FeedView> {
         const flagged = row.level === "warning" || row.level === "error";
         ctx.globalAlpha = newest ? Math.max(0.15, easeOutCubic(view.insert)) : 1;
         ctx.font = font(SIZE, newest ? 700 : 400);
-        ctx.fillStyle = COLOR.faint;
+        ctx.fillStyle = COLOR.dim;
         ctx.fillText(String(row.seq % 1000).padStart(3, "0"), 0, y);
         ctx.fillStyle = newest ? COLOR.text : COLOR.dim;
         ctx.fillText(row.verb, 34, y);

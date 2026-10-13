@@ -1,6 +1,6 @@
-text "CLAIM / CHANGE" 0,0 400 8px #6e6e6e a1
-text "CHECKS (28)" 74,0 400 8px #6e6e6e a1
-text "STATUS" 284,0 400 8px #6e6e6e a1
+text "CLAIM / CHANGE" 0,0 400 8px #868686 a1
+text "CHECKS (28)" 74,0 400 8px #868686 a1
+text "STATUS" 284,0 400 8px #868686 a1
 text "C1 fix" 0,11.9 700 7px #d6d6d6 a1
 rect 75.1,12.9 5x5 #d6d6d6 a1
 rect 82.4,12.9 5x5 #d6d6d6 a1
@@ -45,17 +45,17 @@ rect 142.2,23.2 2x2 #232323 a1
 rect 149.5,23.2 2x2 #232323 a1
 rect 155.3,21.7 5x5 #d6d6d6 a1
 rect 162.6,21.7 5x5 #d6d6d6 a1
-strokeRect 170.4,22.2 4x4 #6e6e6e
-strokeRect 177.6,22.2 4x4 #6e6e6e
+strokeRect 170.4,22.2 4x4 #868686
+strokeRect 177.6,22.2 4x4 #868686
 rect 185.9,23.2 2x2 #232323 a1
 rect 193.2,23.2 2x2 #232323 a1
 rect 199,21.7 5x5 #b48f9c a1
 rect 207.8,23.2 2x2 #232323 a1
 rect 215.1,23.2 2x2 #232323 a1
-strokeRect 221.4,22.2 4x4 #6e6e6e
+strokeRect 221.4,22.2 4x4 #868686
 rect 229.6,23.2 2x2 #232323 a1
 rect 235.4,21.7 5x5 #d6d6d6 a1
-strokeRect 243.2,22.2 4x4 #6e6e6e
+strokeRect 243.2,22.2 4x4 #868686
 rect 251.5,23.2 2x2 #232323 a1
 rect 258.8,23.2 2x2 #232323 a1
 rect 266.1,23.2 2x2 #232323 a1
@@ -121,7 +121,7 @@ rect 257.3,39.2 5x5 #b48f9c a1
 rect 266.1,40.7 2x2 #232323 a1
 rect 273.4,40.7 2x2 #232323 a1
 text "flagged" 284,38.2 400 7px #b48f9c a1
-text "_split_iso" 0,47 400 7px #6e6e6e a1
+text "_split_iso" 0,47 400 7px #868686 a1
 rect 75.1,48 5x5 #d6d6d6 a1
 rect 82.4,48 5x5 #d6d6d6 a1
 rect 89.7,48 5x5 #d6d6d6 a1
@@ -150,8 +150,8 @@ rect 251.5,49.5 2x2 #232323 a1
 rect 258.8,49.5 2x2 #232323 a1
 rect 266.1,49.5 2x2 #232323 a1
 rect 273.4,49.5 2x2 #232323 a1
-text "review" 284,47 400 7px #6e6e6e a1
-text "fmt.py" 0,55.8 400 7px #6e6e6e a1
+text "review" 284,47 400 7px #868686 a1
+text "fmt.py" 0,55.8 400 7px #868686 a1
 rect 76.6,58.3 2x2 #232323 a1
 rect 83.9,58.3 2x2 #232323 a1
 rect 91.2,58.3 2x2 #232323 a1
@@ -180,8 +180,8 @@ rect 251.5,58.3 2x2 #232323 a1
 rect 258.8,58.3 2x2 #232323 a1
 rect 266.1,58.3 2x2 #232323 a1
 rect 273.4,58.3 2x2 #232323 a1
-text "review" 284,55.8 400 7px #6e6e6e a1
-text "_by_month" 0,64.6 400 7px #6e6e6e a1
+text "review" 284,55.8 400 7px #868686 a1
+text "_by_month" 0,64.6 400 7px #868686 a1
 rect 76.6,67.1 2x2 #232323 a1
 rect 83.9,67.1 2x2 #232323 a1
 rect 91.2,67.1 2x2 #232323 a1
@@ -195,8 +195,8 @@ rect 142.2,67.1 2x2 #232323 a1
 rect 149.5,67.1 2x2 #232323 a1
 rect 155.3,65.6 5x5 #d6d6d6 a1
 rect 162.6,65.6 5x5 #d6d6d6 a1
-strokeRect 170.4,66.1 4x4 #6e6e6e
-strokeRect 177.6,66.1 4x4 #6e6e6e
+strokeRect 170.4,66.1 4x4 #868686
+strokeRect 177.6,66.1 4x4 #868686
 rect 185.9,67.1 2x2 #232323 a1
 rect 193.2,67.1 2x2 #232323 a1
 rect 199,65.6 5x5 #b48f9c a1
@@ -205,13 +205,13 @@ rect 215.1,67.1 2x2 #232323 a1
 rect 222.4,67.1 2x2 #232323 a1
 rect 229.6,67.1 2x2 #232323 a1
 rect 235.4,65.6 5x5 #d6d6d6 a1
-strokeRect 243.2,66.1 4x4 #6e6e6e
+strokeRect 243.2,66.1 4x4 #868686
 rect 251.5,67.1 2x2 #232323 a1
 rect 258.8,67.1 2x2 #232323 a1
 rect 266.1,67.1 2x2 #232323 a1
 rect 273.4,67.1 2x2 #232323 a1
 text "flagged" 284,64.6 400 7px #b48f9c a1
-text "_fold_offset" 0,73.3 400 7px #6e6e6e a1
+text "_fold_offset" 0,73.3 400 7px #868686 a1
 rect 76.6,75.8 2x2 #232323 a1
 rect 83.9,75.8 2x2 #232323 a1
 rect 91.2,75.8 2x2 #232323 a1
@@ -240,8 +240,8 @@ rect 251.5,75.8 2x2 #232323 a1
 rect 258.8,75.8 2x2 #232323 a1
 rect 266.1,75.8 2x2 #232323 a1
 rect 273.4,75.8 2x2 #232323 a1
-text "review" 284,73.3 400 7px #6e6e6e a1
-text "other" 0,82.1 400 7px #6e6e6e a1
+text "review" 284,73.3 400 7px #868686 a1
+text "other" 0,82.1 400 7px #868686 a1
 rect 76.6,84.6 2x2 #232323 a1
 rect 83.9,84.6 2x2 #232323 a1
 rect 91.2,84.6 2x2 #232323 a1

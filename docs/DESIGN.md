@@ -66,8 +66,8 @@ The Paper Lab mapping → Repro mapping:
 | `--panel-border` | `#232323` | 1px panel borders |
 | `--line` | `rgba(255,255,255,0.10–0.35)` | web lines, alpha by recency/weight |
 | `--text` | `#d6d6d6` | primary text |
-| `--text-dim` | `#6e6e6e` | labels, secondary columns |
-| `--text-faint` | `#3a3a3a` | inactive rows |
+| `--text-dim` | `#868686` | labels, secondary columns (raised from the reference's `#6e6e6e` in B11 for WCAG 1.4.3: at least 4.5:1 on every background text sits on) |
+| `--text-faint` | `#3a3a3a` | inactive marks: empty dots, rules, ticks. Never text (it is 1.76:1) |
 | `--hot` | `#ffffff` | active edges, active segment, cursor |
 | `--flag` | `#b48f9c` (dusty rose) | flagged / failing / behaviour diff cells |
 | `--flag-deep` | `#6e4e5a` | flag fills, red tint in streams |
@@ -185,6 +185,14 @@ caption bottom-left in `--text-dim` (the reference uses these, e.g.
 Clicking any row/cell/node **focuses** it: the stage pans/highlights, and a side drawer opens
 with the evidence (raw diff, trace samples, verdict text). The drawer is the only "normal UI"
 surface — it stays plain and readable.
+- Focusable (B11): index rows (claims, unclaimed changes) and cells (checks), route rows
+  (symbols), dispatch slots (agents), ring cards and web nodes (files, symbols). Rows in the
+  drawer link onwards.
+- Focus outlines the focused files' ring cards, rings their nodes and brightens their edges.
+  The ring pins the first focused file with a card at 3 o'clock, without drift, until the focus
+  changes. A focused agent is pinned in the agent workspace.
+- The drawer opens over the right of the stage. Keyboard focus moves into it; Escape closes it
+  and returns focus to where it was.
 
 ## Motion
 
@@ -216,9 +224,17 @@ surface — it stays plain and readable.
 - The canvas is not accessible to assistive technology, so every panel's meaning is mirrored in
   DOM:
   - the investigation feed is a visually hidden `role="log"` with throttled summaries (at most
-    about one every 2 s);
+    one every 2 s, batching every line since the last);
   - the card, the change×check index and the evidence drawer are semantic tables;
-  - the stage canvas has `role="img"` with a dynamic `aria-label`.
+  - the stage canvas has `role="img"` with a dynamic `aria-label` (time, edges, files, streams,
+    focus), updated at most once a second;
+  - routes and dispatch rows are lists of buttons; a "Focus a file" picker on the stage
+    appears when it has keyboard focus.
+- Mirror buttons are visually hidden; the canvas outlines the row the keyboard is on (white
+  outline) and the focused row (light fill), so keyboard focus is always visible.
+- Landmarks: the header (banner), `main` (stage, transport, panels) and the drawer (aside).
+- Text uses `--text` or `--text-dim` (4.5:1 or better). Boxes over the stage (callouts,
+  transport) are opaque, so their text keeps its contrast whatever passes behind.
 - Every focusable item (claim, file, agent, cell) is reachable by keyboard and triggers the same
   focus action as a click.
 - Colour is never the only carrier of state. Flagged rows also show the word and a glyph.

@@ -10,7 +10,7 @@ import { basename, relates, routeTests } from "../model/check-index";
 import type { CockpitModel } from "../model/cockpit";
 import type { CheckResult } from "../model/projections/checks";
 import { COLOR } from "../styles/palette";
-import { type Panel, versionOf } from "./panel";
+import { type Panel, type PanelSize, target, versionOf } from "./panel";
 import { charsIn, clip, font } from "./text";
 
 /** The pipeline steps, in column order. */
@@ -20,6 +20,9 @@ export type Step = (typeof STEPS)[number];
 export interface RouteRow {
   readonly file: string;
   readonly symbol: string;
+  /** Full file path and symbol id (for focus). */
+  readonly path: string;
+  readonly symbolId: string;
   readonly tests: number;
   /** The furthest step reached (index into STEPS) and the progress within it, 0–1. */
   readonly step: number;
@@ -57,6 +60,18 @@ export function checkLabel(checks: Readonly<Record<CheckResult, number>>): strin
   if (checks.passed > 0) return `${checks.passed} passed`;
   if (checks.unassessed > 0) return `${checks.unassessed} unassessed`;
   return "—";
+}
+
+/** Row geometry shared by drawing and focus targets. */
+export function routesGeometry(rows: number, size: PanelSize) {
+  const colW = size.w / STEPS.length;
+  const top = 12;
+  // Rows shrink with the panel, down to 9 px (7 px text), like the reference's dense tables.
+  const pitch = Math.max(9, Math.min(16, (size.h - top) / Math.max(1, rows)));
+  const textSize = Math.max(7, Math.min(9, Math.floor(pitch - 2)));
+  const fit = Math.max(1, Math.floor((size.h - top) / pitch));
+  const shown = rows > fit ? fit - 1 : rows;
+  return { colW, top, pitch, textSize, shown, overflow: rows > fit };
 }
 
 export function routesPanel(model: CockpitModel): Panel<RoutesView> {
@@ -114,6 +129,8 @@ export function routesPanel(model: CockpitModel): Panel<RoutesView> {
         rows.push({
           file: basename(change.file),
           symbol: nameOf(change.symbol),
+          path: change.file,
+          symbolId: change.symbol,
           tests: tests.size,
           step,
           progress: Math.min(1, progress),
@@ -125,20 +142,14 @@ export function routesPanel(model: CockpitModel): Panel<RoutesView> {
     draw(ctx, view, size) {
       ctx.textBaseline = "top";
       ctx.textAlign = "left";
-      const colW = size.w / STEPS.length;
+      const { colW, top, pitch, textSize, overflow, ...g } = routesGeometry(view.rows.length, size);
       ctx.font = font(8);
       ctx.fillStyle = COLOR.dim;
       STEPS.forEach((step, i) => {
         ctx.fillText(step.toUpperCase(), i * colW, 0);
       });
-      const top = 12;
-      // Rows shrink with the panel, down to 9 px (7 px text), like the reference's dense tables.
-      const pitch = Math.max(9, Math.min(16, (size.h - top) / Math.max(1, view.rows.length)));
-      const textSize = Math.max(7, Math.min(9, Math.floor(pitch - 2)));
       const chars = charsIn(colW - 8, textSize);
-      const fit = Math.max(1, Math.floor((size.h - top) / pitch));
-      const overflow = view.rows.length > fit;
-      const shown = overflow ? view.rows.slice(0, fit - 1) : view.rows;
+      const shown = view.rows.slice(0, g.shown);
       shown.forEach((row, r) => {
         const y = top + r * pitch;
         const cells = [
@@ -166,14 +177,7 @@ export function routesPanel(model: CockpitModel): Panel<RoutesView> {
             }
           }
           ctx.font = font(textSize, i === row.step ? 700 : 400);
-          ctx.fillStyle =
-            i === 3 && flagged
-              ? COLOR.flag
-              : i === row.step
-                ? COLOR.text
-                : i < row.step
-                  ? COLOR.dim
-                  : COLOR.faint;
+          ctx.fillStyle = i === 3 && flagged ? COLOR.flag : i === row.step ? COLOR.text : COLOR.dim;
           ctx.fillText(clip(text, chars), x + 3, y + (pitch - 1 - textSize) / 2);
         });
       });
@@ -183,6 +187,16 @@ export function routesPanel(model: CockpitModel): Panel<RoutesView> {
         ctx.fillText(`+${view.rows.length - shown.length} more`, 3, top + shown.length * pitch + 1);
       }
       ctx.globalAlpha = 1;
+    },
+    targets(view, size) {
+      const { top, pitch, shown } = routesGeometry(view.rows.length, size);
+      return view.rows.map((row, r) =>
+        target(
+          { kind: "symbol", symbol: row.symbolId, file: row.path },
+          `${row.symbol} in ${row.file}: ${row.tests} tests, ${checkLabel(row.checks)}`,
+          r < shown ? { x: 0, y: top + r * pitch, w: size.w, h: pitch - 1 } : null,
+        ),
+      );
     },
   };
 }

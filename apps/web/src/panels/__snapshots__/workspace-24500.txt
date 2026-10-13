@@ -1,8 +1,8 @@
-text "A03 · PROBE · CLAUDE-SONNET-5-5" 0,0 400 8px #6e6e6e a1
-text "780" 0,16 400 10px #3a3a3a a1
-text "src = read_symbol("timekeeper.fmt:format_duratio…" 34,16 400 10px #6e6e6e a1
-text "791" 0,29 400 10px #3a3a3a a1
-text "read_symbol("timekeeper.fmt:format_duration#0")" 34,29 400 10px #6e6e6e a1
-text "929" 0,42 400 10px #3a3a3a a1
+text "A03 · PROBE · CLAUDE-SONNET-5-5" 0,0 400 8px #868686 a1
+text "780" 0,16 400 10px #868686 a1
+text "src = read_symbol("timekeeper.fmt:format_duratio…" 34,16 400 10px #868686 a1
+text "791" 0,29 400 10px #868686 a1
+text "read_symbol("timekeeper.fmt:format_duration#0")" 34,29 400 10px #868686 a1
+text "929" 0,42 400 10px #868686 a1
 text "tests = rela" 34,42 400 10px #d6d6d6 a1
 rect 107,42 6x11 #ffffff a1

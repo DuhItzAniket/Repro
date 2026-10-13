@@ -6,7 +6,7 @@
 import type { CockpitModel } from "../model/cockpit";
 import type { AgentView } from "../model/projections/agents";
 import { COLOR } from "../styles/palette";
-import { type Panel, versionOf } from "./panel";
+import { type Panel, type PanelSize, target, versionOf } from "./panel";
 import { charsIn, clip, font } from "./text";
 
 export const SLOTS = 12;
@@ -39,6 +39,19 @@ export function statusOf(agent: AgentView): { status: DispatchStatus; flagged: b
 }
 
 const RELEVANT = ["agent.spawned", "agent.state", "verdict.issued", "verdict.rejected"] as const;
+
+/** Slot geometry shared by drawing and focus targets: two columns of six. */
+export function slotRect(slot: number, size: PanelSize) {
+  const gap = 12;
+  const colW = (size.w - gap) / 2;
+  const rowH = size.h / (SLOTS / 2);
+  return {
+    x: slot < SLOTS / 2 ? 0 : colW + gap,
+    y: (slot % (SLOTS / 2)) * rowH,
+    w: colW,
+    h: rowH,
+  };
+}
 
 export function dispatchPanel(model: CockpitModel): Panel<DispatchView> {
   return {
@@ -84,21 +97,18 @@ export function dispatchPanel(model: CockpitModel): Panel<DispatchView> {
     draw(ctx, view, size) {
       ctx.textBaseline = "top";
       ctx.textAlign = "left";
-      const gap = 12;
-      const colW = (size.w - gap) / 2;
-      const rowH = size.h / (SLOTS / 2);
+      const { w: colW, h: rowH } = slotRect(0, size);
       const labelW = 62;
       const barW = Math.max(10, colW - labelW);
       const segW = barW / SEGMENTS;
       const barH = Math.max(3, Math.min(7, rowH * 0.4));
       view.slots.forEach((s, i) => {
-        const x = i < SLOTS / 2 ? 0 : colW + gap;
-        const y = (i % (SLOTS / 2)) * rowH;
+        const { x, y } = slotRect(i, size);
         ctx.globalAlpha = 1;
         ctx.font = font(9);
-        ctx.fillStyle = s.id === null ? COLOR.faint : COLOR.dim;
+        ctx.fillStyle = COLOR.dim;
         ctx.fillText(s.id ?? String(s.slot + 1).padStart(2, "0"), x, y + 1);
-        ctx.fillStyle = s.id === null ? COLOR.faint : COLOR.text;
+        ctx.fillStyle = s.id === null ? COLOR.dim : COLOR.text;
         ctx.fillText(clip(s.role, charsIn(labelW - 26, 9)), x + 26, y + 1);
         const filled = Math.round(s.progress * SEGMENTS);
         for (let k = 0; k < SEGMENTS; k++) {
@@ -122,6 +132,18 @@ export function dispatchPanel(model: CockpitModel): Panel<DispatchView> {
         ctx.fillText(clip(status, charsIn(barW, 7)), x + labelW, y + 3 + barH);
       });
       ctx.globalAlpha = 1;
+    },
+    targets(view, size) {
+      return view.slots.flatMap((s) => {
+        if (s.id === null || s.status === null) return [];
+        const r = slotRect(s.slot, size);
+        return [
+          target({ kind: "agent", id: s.id }, `${s.id} ${s.role}: ${s.status}`, {
+            ...r,
+            h: r.h - 1,
+          }),
+        ];
+      });
     },
   };
 }

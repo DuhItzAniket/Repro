@@ -1,5 +1,5 @@
-text "BASE" 0,0 400 8px #6e6e6e a1
-text "HEAD" 170,0 400 8px #6e6e6e a1
+text "BASE" 0,0 400 8px #868686 a1
+text "HEAD" 170,0 400 8px #868686 a1
 rect 8.4,23.8 6x6 #d6d6d6 a0.6
 rect 178.4,23.8 6x6 #d6d6d6 a0.6
 rect 31.3,23.8 6x6 #d6d6d6 a1
