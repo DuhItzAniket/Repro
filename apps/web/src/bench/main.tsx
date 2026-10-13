@@ -1,0 +1,93 @@
+import "@fontsource-variable/jetbrains-mono/wght.css";
+import "../styles/tokens.css";
+import "../styles/shell.css";
+import { signal } from "@preact/signals";
+import { render } from "preact";
+import { FIXTURES, fixtureFromQuery, loadLog } from "../data/load";
+import { CockpitModel } from "../model/cockpit";
+import { computeLayout } from "../shell/layout";
+import { type HudSnapshot, PerfHud, snapshot } from "../stage/hud";
+import { proxyLayers } from "./proxies";
+import { type BenchReport, type BenchResult, busiestSecond, runCase } from "./run";
+
+declare global {
+  interface Window {
+    __REPRO_BENCH__?: BenchReport | { error: string };
+  }
+}
+
+const params = new URLSearchParams(window.location.search);
+const seconds = Number(params.get("seconds") ?? "8");
+const ratios = (params.get("dpr") ?? "1,1.5,2").split(",").map(Number);
+
+const hud = signal<HudSnapshot | null>(null);
+const status = signal("loading the stress run…");
+const report = signal<BenchReport | null>(null);
+
+function Page() {
+  return (
+    <div class="bench">
+      <canvas id="bench-canvas" class="bench-canvas" />
+      <PerfHud hud={hud} />
+      <pre class="bench-report">
+        {report.value === null ? status.value : JSON.stringify(report.value, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+async function main(): Promise<void> {
+  const root = document.getElementById("app");
+  if (root === null) throw new Error("#app missing");
+  render(<Page />, root);
+  const model = new CockpitModel();
+  const fixture = params.has("log") ? fixtureFromQuery(window.location.search) : "stress";
+  const { values } = await loadLog(FIXTURES[fixture]);
+  model.ingest(values);
+  const start = busiestSecond(model) - 400;
+  const { stage, ring } = computeLayout(window.innerWidth, window.innerHeight);
+  const results: BenchResult[] = [];
+  let gpu = "";
+  let lastHud = 0;
+  for (const dpr of ratios) {
+    status.value = `measuring at dpr ${dpr} for ${seconds} s…`;
+    // A fresh canvas (and WebGL context) per case, so no state carries over between ratios.
+    const old = document.getElementById("bench-canvas") as HTMLCanvasElement;
+    const canvas = document.createElement("canvas");
+    canvas.id = "bench-canvas";
+    canvas.className = "bench-canvas";
+    old.replaceWith(canvas);
+    const run = await runCase(
+      canvas,
+      model,
+      () => proxyLayers(model),
+      { width: stage.w, height: stage.h, ring },
+      start,
+      { dpr, seconds },
+      (host) => {
+        const now = performance.now();
+        if (now - lastHud > 250) {
+          lastHud = now;
+          hud.value = snapshot(host.info, host.stats.summarise());
+        }
+      },
+    );
+    results.push(run.result);
+    gpu = run.gpu;
+  }
+  const done: BenchReport = {
+    gpu,
+    userAgent: navigator.userAgent,
+    devicePixelRatio: window.devicePixelRatio,
+    burstAtMs: start + 400,
+    results,
+  };
+  window.__REPRO_BENCH__ = done;
+  report.value = done;
+}
+
+main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  window.__REPRO_BENCH__ = { error: message };
+  status.value = `failed: ${message}`;
+});

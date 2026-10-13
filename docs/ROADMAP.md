@@ -134,7 +134,7 @@ allocation and bundle-size gates are active in CI.
 | B01 | Deterministic fixture generator & reference log | M | A07 | done |
 | B02 | EventStore, projections, snapshots & clock | M | B01 | done |
 | B03 | App shell, tokens, fonts, header & progress | M | B02 | done |
-| B04 | Stage foundation & performance harness | M | B03 | planned |
+| B04 | Stage foundation & performance harness | M | B03 | done |
 | B05 | Dependency-web layer & bundles | L | B04 | planned |
 | B06 | Ring layer (file-card atlas) | M | B04 | planned |
 | B07 | Event-stream layer & callouts | M | B04 | planned |
@@ -624,3 +624,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B01 | 2026-10-13 | [#10](https://github.com/DuhItzAniket/Repro/pull/10) | `@repro/synth` generator; demo (2,334 events, 28 checks) and stress (10k edges, 3k/s burst) fixtures; ADR-0015 check model |
 | B02 | 2026-10-13 | [#11](https://github.com/DuhItzAniket/Repro/pull/11) | Columnar EventStore, snapshot folder with exact seek, time/kind indexes, presentation clock; run/summary/checks/claims/agents projections |
 | B03 | 2026-10-13 | [#12](https://github.com/DuhItzAniket/Repro/pull/12) | Preact + signals shell, `computeLayout` geometry, header counters and 7-segment progress, tokens, self-hosted JetBrains Mono with OFL |
+| B04 | 2026-10-13 | [#13](https://github.com/DuhItzAniket/Repro/pull/13) | WebGL `StageHost` + pure layers, segment primitive, render-model hashing, adaptive DPR, perf HUD; stress bench on integrated GPU: 60 fps at DPR 2 |

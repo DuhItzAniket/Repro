@@ -1,5 +1,6 @@
 import type { Signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
+import { type HudSnapshot, PerfHud } from "../stage/hud";
 import { Header, rectStyle } from "./header";
 import type { CockpitLayout, Rect } from "./layout";
 import { PANELS, SIGNALS_PARTIAL_CAPTION } from "./panels";
@@ -35,7 +36,14 @@ function footerFor(id: string, fixed: string | null, view: ShellView): string | 
   return fixed;
 }
 
-export function App({ layout, view }: { layout: Signal<CockpitLayout>; view: ShellView }) {
+export interface AppProps {
+  layout: Signal<CockpitLayout>;
+  view: ShellView;
+  /** Perf HUD snapshots (only with `?hud`). */
+  hud?: Signal<HudSnapshot | null>;
+}
+
+export function App({ layout, view, hud }: AppProps) {
   const l = layout.value;
   return (
     <div class="cockpit" data-mode={l.mode} style={{ height: `${l.contentHeight}px` }}>
@@ -44,7 +52,10 @@ export function App({ layout, view }: { layout: Signal<CockpitLayout>; view: She
         class="stage"
         style={rectStyle(l.stage)}
         aria-label="Stage: dependency web, file ring and event streams"
-      />
+      >
+        <canvas class="stage-canvas" />
+        {hud !== undefined && <PerfHud hud={hud} />}
+      </section>
       {PANELS.map((panel, i) => {
         const rect = l.panels[i];
         if (rect === undefined) return null;
