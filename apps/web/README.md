@@ -9,6 +9,7 @@ A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESI
 | `src/shell/` | Preact shell: `computeLayout` (all geometry), header and progress bar, panel frames, the signals bridge (`view.ts`) and the frame loop |
 | `src/stage/` | WebGL stage: `StageHost` (the only three.js user), the `StageLayer` contract, instance buffers and render-model hashing, the segment primitive and its GLSL, adaptive DPR, frame statistics, the perf HUD (`?hud`) |
 | `src/stage/web/` | The dependency web: layout input and hash, the d3-force layout and its worker, `LayoutService`, and the edge, marker and bundle layers |
+| `src/stage/ring/` | The ring: card content from events, closed-form rotation and snaps, the atlas (packing, drawing, worker, service), and the card and tick layers |
 | `src/bench/` | The stress benchmark (`/bench.html`, dev server) and its proxy layers; results in `docs/perf/` |
 | `src/styles/` | DESIGN.md tokens and shell styles |
 | `src/data/` | Loading a recorded log (the fixtures in Stage B; `?log=stress` picks the stress run) |

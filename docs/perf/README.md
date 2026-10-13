@@ -7,6 +7,7 @@ hardware and raw numbers; summaries live in the phase records.
 |---|---|---|
 | [`B04-stress-bench.json`](B04-stress-bench.json) | B04 | Stage foundation under the stress load (10k edges, 2,048 streaks) on an integrated GPU, DPR 1–2 (corrected run; see its `correction` field) |
 | [`B05-web-bench.json`](B05-web-bench.json) | B05 | The real dependency-web layers (10k edges, blast markers, bundles) plus proxies, same machine and method |
+| [`B06-ring-bench.json`](B06-ring-bench.json) | B06 | Web plus the real ring (cards, ticks); only streaks are still a proxy |
 
 ## Reproducing the stage benchmark
 

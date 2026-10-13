@@ -7,22 +7,29 @@
 import {
   AdditiveBlending,
   BufferAttribute,
+  DataTexture,
   DoubleSide,
   DynamicDrawUsage,
   GLSL3,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
+  LinearFilter,
   Mesh,
+  NormalBlending,
   OrthographicCamera,
   RawShaderMaterial,
   Scene,
+  Texture,
   WebGLRenderer,
 } from "three";
 import type { Ring } from "../shell/layout";
 import { AdaptiveDpr } from "./dpr";
 import type { InstanceBuffers } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
+import type { CardLayer } from "./ring/layers";
 import { NO_RECENCY } from "./segments";
+import cardFrag from "./shaders/card.frag.glsl?raw";
+import cardVert from "./shaders/card.vert.glsl?raw";
 import segmentFrag from "./shaders/segment.frag.glsl?raw";
 import segmentVert from "./shaders/segment.vert.glsl?raw";
 import { FrameStats } from "./stats";
@@ -42,6 +49,18 @@ interface Binding {
   readonly mesh: Mesh<InstancedBufferGeometry, RawShaderMaterial>;
   generation: number;
   version: number;
+  /** Card layers: the atlas version currently bound as a texture. */
+  atlasVersion: number;
+  texture: Texture | null;
+}
+
+const isCardLayer = (layer: StageLayer): layer is CardLayer => layer.primitive === "cards";
+
+/** A 1×1 transparent texture, bound until a card atlas arrives. */
+function emptyTexture(): Texture {
+  const texture = new DataTexture(new Uint8Array(4), 1, 1);
+  texture.needsUpdate = true;
+  return texture;
 }
 
 type MutableFrame = { -readonly [K in keyof StageFrame]: StageFrame[K] };
@@ -76,6 +95,9 @@ export class StageHost {
   private readonly adaptive: AdaptiveDpr | null;
   private readonly now: () => number;
   private readonly viewport = [1, 1];
+  /** Ring centre and radius, shared by card materials. */
+  private readonly center = [0, 0];
+  private readonly radius = { value: 1 };
   /** Shared by every layer's material: presentation time in ms. */
   private readonly time = { value: 0 };
   private readonly input: MutableFrame;
@@ -108,8 +130,27 @@ export class StageHost {
   }
 
   add(layer: StageLayer): void {
+    const material = isCardLayer(layer) ? this.cardMaterial() : this.segmentMaterial(layer);
+    const mesh = new Mesh(geometryFor(layer.buffers), material);
+    mesh.frustumCulled = false;
+    // Layers draw in the order they were added: the web, then the ring over it, then streaks.
+    mesh.renderOrder = this.bindings.length;
+    const binding: Binding = {
+      layer,
+      mesh,
+      generation: layer.buffers.generation,
+      version: -1,
+      atlasVersion: -1,
+      texture: null,
+    };
+    this.bindings.push(binding);
+    this.scene.add(mesh);
+    this.info.instances[layer.name] = 0;
+  }
+
+  private segmentMaterial(layer: StageLayer): RawShaderMaterial {
     const recency = layer.recency ?? NO_RECENCY;
-    const material = new RawShaderMaterial({
+    return new RawShaderMaterial({
       glslVersion: GLSL3,
       vertexShader: segmentVert,
       fragmentShader: segmentFrag,
@@ -119,6 +160,8 @@ export class StageHost {
         uTime: this.time,
         uFlare: { value: recency.flare },
         uFlareMs: { value: recency.flareMs },
+        uCenter: { value: this.center },
+        uSpin: { value: [1, 0] },
       },
       blending: AdditiveBlending,
       transparent: true,
@@ -129,12 +172,28 @@ export class StageHost {
       // default FrontSide every segment was culled and nothing was drawn.
       side: DoubleSide,
     });
-    const mesh = new Mesh(geometryFor(layer.buffers), material);
-    mesh.frustumCulled = false;
-    const binding: Binding = { layer, mesh, generation: layer.buffers.generation, version: -1 };
-    this.bindings.push(binding);
-    this.scene.add(mesh);
-    this.info.instances[layer.name] = 0;
+  }
+
+  private cardMaterial(): RawShaderMaterial {
+    return new RawShaderMaterial({
+      glslVersion: GLSL3,
+      vertexShader: cardVert,
+      fragmentShader: cardFrag,
+      uniforms: {
+        uViewport: { value: this.viewport },
+        uCenter: { value: this.center },
+        uRadius: this.radius,
+        uRotation: { value: 0 },
+        uTime: this.time,
+        uAtlas: { value: emptyTexture() },
+      },
+      // The band is opaque: it hides the web behind it, like the reference.
+      blending: NormalBlending,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    });
   }
 
   /**
@@ -155,6 +214,9 @@ export class StageHost {
     this.input.width = Math.max(1, width);
     this.input.height = Math.max(1, height);
     this.input.ring = ring;
+    this.center[0] = ring.cx;
+    this.center[1] = ring.cy;
+    this.radius.value = ring.r;
     this.applySize();
   }
 
@@ -184,6 +246,8 @@ export class StageHost {
         upload(binding.mesh.geometry, layer.buffers);
         binding.version = layer.buffers.version;
       }
+      if (layer.rotation !== undefined) this.spin(binding, layer.rotation);
+      if (isCardLayer(layer)) this.bindCards(binding, layer);
       this.info.instances[layer.name] = layer.buffers.count;
     }
     this.renderer.render(this.scene, this.camera);
@@ -197,6 +261,35 @@ export class StageHost {
       }
     }
     this.lastStart = start;
+  }
+
+  /** Sets a turning layer's rotation uniform (cards: an angle; segments: its cos and sin). */
+  private spin(binding: Binding, rotation: number): void {
+    const uniforms = binding.mesh.material.uniforms;
+    const angle = uniforms.uRotation;
+    if (angle !== undefined) angle.value = rotation;
+    const spin = uniforms.uSpin?.value as number[] | undefined;
+    if (spin !== undefined) {
+      spin[0] = Math.cos(rotation);
+      spin[1] = Math.sin(rotation);
+    }
+  }
+
+  private bindCards(binding: Binding, layer: CardLayer): void {
+    const uniforms = binding.mesh.material.uniforms;
+    const { bitmap, version } = layer.atlas;
+    if (version === binding.atlasVersion || bitmap === null) return;
+    binding.atlasVersion = version;
+    const texture = new Texture(bitmap);
+    texture.flipY = false; // ImageBitmaps cannot be flipped on upload; the atlas uses v = 0 at the top
+    texture.generateMipmaps = false;
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.needsUpdate = true;
+    binding.texture?.dispose();
+    binding.texture = texture;
+    const atlas = uniforms.uAtlas;
+    if (atlas !== undefined) atlas.value = texture;
   }
 
   /**
@@ -225,9 +318,10 @@ export class StageHost {
   }
 
   dispose(): void {
-    for (const { mesh } of this.bindings) {
+    for (const { mesh, texture } of this.bindings) {
       mesh.geometry.dispose();
       mesh.material.dispose();
+      texture?.dispose();
     }
     this.renderer.dispose();
   }

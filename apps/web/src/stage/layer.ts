@@ -20,7 +20,7 @@ export interface StageFrame {
 }
 
 /** Which GPU primitive draws a layer's buffers. */
-export type Primitive = "segments";
+export type Primitive = "segments" | "cards";
 
 export interface StageLayer {
   readonly name: string;
@@ -28,6 +28,11 @@ export interface StageLayer {
   readonly buffers: InstanceBuffers;
   /** How segments brighten after appearing (default: no flare). */
   readonly recency?: Recency;
+  /**
+   * Rotation about the ring's centre (radians) for the frame last updated, for layers that turn
+   * with the ring. The shader applies it, so a turning layer need not rewrite its buffers.
+   */
+  readonly rotation?: number;
   /** Writes this frame's instances, or leaves them as they are. Must not allocate. */
   update(frame: StageFrame): void;
 }

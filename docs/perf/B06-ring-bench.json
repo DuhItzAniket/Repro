@@ -1,0 +1,89 @@
+{
+  "phase": "B06",
+  "date": "2026-10-14",
+  "method": "apps/web/bench.html (layers=real): stress fixture (seed 1) with the B05 web layers, the B06 ring layers (cards in one instanced draw call, ticks and rims) and the B04 streak proxy; the busiest second looped for 8 s after a 1 s warm-up; fixed DPR per case; fresh WebGL context per case; render sanity check before timing. Values rounded to 0.1 ms.",
+  "environment": {
+    "browser": "Claude desktop in-app browser, Chrome/152.0.7977.130 (Windows 11, x64)",
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A78B) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "cpu": "Intel Core i7-14650HX (16 cores, 24 threads)",
+    "display": "60 Hz; devicePixelRatio 1.75",
+    "viewport": "1920x1080 CSS px (emulated); stage 1920x641"
+  },
+  "peak_instances": {
+    "edges": 10000,
+    "markers": 608,
+    "bundles": 2730,
+    "cards": 320,
+    "ticks": 1184,
+    "streaks": 2048
+  },
+  "runs": [
+    {
+      "run": 1,
+      "note": "ticks rewritten and uploaded every frame",
+      "results": [
+        {
+          "dpr": 1,
+          "frames": 471,
+          "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.3, "max": 33.5 },
+          "cpu": { "p50": 0.5, "p95": 1.4, "p99": 1.6, "max": 1.9 },
+          "dropped": 0.0212,
+          "litPixels": 331940
+        },
+        {
+          "dpr": 2,
+          "frames": 471,
+          "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.4, "max": 50.1 },
+          "cpu": { "p50": 0.6, "p95": 1.1, "p99": 1.4, "max": 2.5 },
+          "dropped": 0.017,
+          "litPixels": 1279122
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "note": "ticks rewritten and uploaded every frame",
+      "results": [
+        {
+          "dpr": 2,
+          "frames": 471,
+          "interval": { "p50": 16.7, "p95": 16.9, "p99": 33.4, "max": 49.8 },
+          "cpu": { "p50": 0.6, "p95": 1.1, "p99": 1.5, "max": 2.2 },
+          "dropped": 0.0191,
+          "litPixels": 1279122
+        },
+        {
+          "dpr": 1,
+          "frames": 467,
+          "interval": { "p50": 16.7, "p95": 17.1, "p99": 33.4, "max": 33.5 },
+          "cpu": { "p50": 0.6, "p95": 1.3, "p99": 1.8, "max": 2.5 },
+          "dropped": 0.03,
+          "litPixels": 331940
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "note": "final code: ticks static, rotated in the shader",
+      "results": [
+        {
+          "dpr": 1,
+          "frames": 475,
+          "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.2, "max": 33.4 },
+          "cpu": { "p50": 0.5, "p95": 1.3, "p99": 2.1, "max": 2.4 },
+          "dropped": 0.0126,
+          "litPixels": 331929
+        },
+        {
+          "dpr": 2,
+          "frames": 469,
+          "interval": { "p50": 16.7, "p95": 17.0, "p99": 33.3, "max": 66.8 },
+          "cpu": { "p50": 0.5, "p95": 1.1, "p99": 1.4, "max": 2.2 },
+          "dropped": 0.0213,
+          "litPixels": 1279121
+        }
+      ]
+    }
+  ],
+  "reading": "p95 stays within the 60 Hz budget at DPR 1 and 2. 1-3% of frames take two refreshes, at both DPRs and with or without per-frame tick uploads, while the stage's own CPU work never exceeds 2.5 ms: the drops come from the host environment, not from rendering cost."
+}
