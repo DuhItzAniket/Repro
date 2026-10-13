@@ -114,3 +114,6 @@ The developer works on **Windows** (x64).
 - Use uv ≥ 0.12.18 for the Windows wheel path-traversal fix.
 - Pass `-c core.longpaths=true` to git per command. Never modify the user's global git config.
 - Docker Desktop (WSL2 backend) provides the L3 sandbox on Windows, including Home editions.
+- Keep the checkout path short on Windows (about 100 characters or less). pnpm 12 writes
+  `node_modules\.pnpm-task-run-state-v1\<~100-char name>` and fails with "path not found" once
+  the full path passes 260 characters (observed in A02).

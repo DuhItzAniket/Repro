@@ -41,7 +41,7 @@ to Python 3.15, which was released only on 2026-10-09.
 | uv | ≥ 0.13 | ≥ 0.12.18 is required for the Windows wheel path-traversal fix |
 | git | ≥ 2.40 | `-c core.longpaths=true` per command on Windows |
 | Node.js | ≥ 22.12 | Required by Vite 8 and Vitest 5 |
-| pnpm | pinned via `packageManager` (A02) | Installed with corepack or standalone |
+| pnpm | 12.11.2, pinned via `packageManager` | `npm i -g pnpm@12.11.2` (corepack is not bundled with Node ≥ 25) |
 | Docker | Desktop (WSL2) on Windows; Engine on Linux | Default L3 sandbox (ADR-0004) |
 | fastapi / uvicorn | 0.143.0 / 0.54.0 | |
 | pydantic | 2.14.1 | |
@@ -61,14 +61,17 @@ to Python 3.15, which was released only on 2026-10-09.
 ## 3. Developer environment (Windows first)
 
 1. Upgrade uv to ≥ 0.13, then `uv python install 3.13`. Many Windows machines still default to
-   an older Python.
-2. Install pnpm: `corepack enable` (or a standalone install), then the version pinned in
-   `package.json`.
-3. Install Docker Desktop with the WSL2 backend. This works on Windows Home, whereas Windows
+   an older Python. If `uv self update` reports "version … was not found" (seen with uv 0.11.6
+   in A02), reinstall uv with the official installer or winget instead.
+2. Install pnpm at the version pinned in `package.json` (`npm i -g pnpm@<version>`). Corepack is
+   no longer bundled with Node ≥ 25.
+3. Clone to a short path. pnpm 12's task-state files under `node_modules` fail beyond the
+   260-character Windows path limit (observed in A02).
+4. Install Docker Desktop with the WSL2 backend. This works on Windows Home, whereas Windows
    Sandbox and Hyper-V do not. Without Docker, Repro still runs but reports `isolation: process`.
-4. Repository-local git settings: `core.autocrlf=false` (`.gitattributes` enforces LF) and
+5. Repository-local git settings: `core.autocrlf=false` (`.gitattributes` enforces LF) and
    `core.longpaths=true`. Repro itself never changes the user's global git configuration.
-5. Keep run roots short (`%LOCALAPPDATA%\repro\r\<id8>`). Don't put untrusted target code on a
+6. Keep run roots short (`%LOCALAPPDATA%\repro\r\<id8>`). Don't put untrusted target code on a
    trusted Dev Drive, because Defender switches to asynchronous scanning there.
 
 `repro doctor` (C01) checks all of the above and prints what is missing.
