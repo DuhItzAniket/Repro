@@ -1,0 +1,61 @@
+# Clean-checkout build and test on Linux and Windows (phase A02).
+# A06 extends this workflow with lint, type and schema-drift gates, secret scanning,
+# dependency review and commit-SHA pinning of actions.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build & test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: JS tests
+        run: pnpm test
+
+      - name: Web build
+        run: pnpm build
+
+      - name: Install Python environment
+        run: uv sync --locked
+
+      - name: Python tests
+        run: uv run --locked pytest
+
+      - name: CLI smoke test
+        run: uv run --locked repro --version

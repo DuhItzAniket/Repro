@@ -85,15 +85,24 @@ evidence, claim attribution, and the Missing list, all local and replayable.
   an `LLMBackend` protocol (ADR-0007). Models are configurable via env.
 - **CLI:** `repro` (Python, Typer): `run`, `replay`, `serve`, `doctor`, `export`.
 
-## Commands (fill these in during A02, keep them accurate)
+## Commands (keep accurate; add a command only once it works)
+
+Prerequisites: Node ≥ 22.12, pnpm 12.11.2 (`npm i -g pnpm@12.11.2`; corepack is not bundled
+with Node ≥ 25), uv, and Python 3.13 (`uv python install 3.13`).
 
 ```
-pnpm install            # web deps
-uv sync                 # engine deps
-pnpm dev                # web UI on :5173 (fixture stream until the engine is wired)
-uv run repro serve      # engine API + WS on :8787
-pnpm test / uv run pytest
+pnpm install            # JS deps for all workspace packages (apps/*, packages/*)
+uv sync                 # Python workspace (engine, bench) into .venv, with the dev group
+pnpm dev                # web UI dev server (Vite) on :5173
+pnpm typecheck          # tsc --noEmit across JS packages
+pnpm test               # Vitest across JS packages
+pnpm build              # production build of apps/web
+uv run pytest           # Python tests
+uv run repro --version  # engine CLI (subcommands arrive in C01)
 ```
+
+CI (`.github/workflows/ci.yml`) runs the same commands from a clean checkout on Ubuntu and
+Windows, with `--frozen-lockfile` / `--locked`.
 
 ## Platform notes
 
