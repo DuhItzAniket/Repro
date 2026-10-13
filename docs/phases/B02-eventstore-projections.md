@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B01 |
-| **Branch / PR** | `phase/B02-eventstore-projections` · PR link added on creation |
+| **Branch / PR** | `phase/B02-eventstore-projections` · [#11](https://github.com/DuhItzAniket/Repro/pull/11) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
