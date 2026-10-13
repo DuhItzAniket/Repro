@@ -22,9 +22,9 @@ functions ≥ 90% for `src/model/**`).
 ## CI matrix
 | OS | Python | Node | Result | Run |
 |---|---|---|---|---|
-| ubuntu-latest | 3.13 (`.python-version`) | 24 (`.node-version`) | pass | gate PR checks |
-| windows-latest | 3.13 | 24 | pass | gate PR checks |
-| ubuntu-latest + Playwright image (pinned by digest) | — | 24 | pass | `visual` job, gate PR checks |
+| ubuntu-latest | 3.13 (`.python-version`) | 24 (`.node-version`) | pass | [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
+| windows-latest | 3.13 | 24 | pass | [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
+| ubuntu-latest + Playwright image (pinned by digest) | — | 24 | pass | `visual` job, [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
 
 ## Metrics at gate (measured)
 | Metric | Value |
