@@ -107,12 +107,18 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   (ADR-0008).
 
 ### Ring (centre)
-- A thick band (≈ 90px) made of stacked **file cards**: tiny monospace text blocks rendered from
-  the actual file contents (first ~20 lines, 3–4px type — illegible texture is fine).
+- A thick band (≈ 90px) made of stacked **file cards**: tiny monospace text blocks (3–4px type —
+  illegible texture is fine). No v1 event carries file contents, so a card is the file's
+  **outline from events** (B06): its path, its imports (`graph.edge`), and its functions and
+  classes (`graph.node`). An outer column of metadata cards shows the file name, counts and
+  changed symbols.
 - Cards for files in the blast radius are brighter; changed files have a thin `--hot` edge.
 - The ring rotates slowly (one card per ~2 s) and snaps the **focused file** to the 3 o'clock
-  position when an event targets it.
+  position (500 ms ease-out-cubic) when an event targets it: `symbol.changed`,
+  `claim.extracted`, `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`.
 - Thin tick marks + tiny labels on the outer edge (file paths), like the reference's scale.
+- The band is opaque (normal blending) and hides the web behind it; every other stage layer is
+  additive.
 
 ### Event streams (right)
 - Each event emits a streak from the ring's outer edge outward along a radial line, with a

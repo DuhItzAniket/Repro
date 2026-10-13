@@ -8,8 +8,8 @@
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../model/cockpit";
 import { statusCode } from "../model/codes";
+import { ringTracker } from "../stage/geometry";
 import type { StageFrame, StageLayer } from "../stage/layer";
-import { ringTracker } from "../stage/ring";
 import { segmentBuffers, segmentWriter } from "../stage/segments";
 
 const UNIT = 4294967296;

@@ -7,9 +7,11 @@ import { FIXTURES, fixtureFromQuery, loadLog } from "../data/load";
 import { CockpitModel } from "../model/cockpit";
 import { computeLayout } from "../shell/layout";
 import { type HudSnapshot, PerfHud, snapshot } from "../stage/hud";
+import { AtlasService, defaultAtlasBuild } from "../stage/ring/atlas-service";
+import { ringLayers } from "../stage/ring/layers";
 import { webLayers } from "../stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "../stage/web/layout-service";
-import { cardProxy, proxyLayers, streakProxy, tickProxy } from "./proxies";
+import { proxyLayers, streakProxy } from "./proxies";
 import { type BenchReport, type BenchResult, busiestSecond, runCase } from "./run";
 
 declare global {
@@ -21,7 +23,7 @@ declare global {
 const params = new URLSearchParams(window.location.search);
 const seconds = Number(params.get("seconds") ?? "8");
 const ratios = (params.get("dpr") ?? "1,1.5,2").split(",").map(Number);
-/** `real` (default): B05 web layers plus proxies for the ring and streaks; `proxy`: B04 proxies only. */
+/** `real` (default): the web and ring layers plus a proxy for streaks; `proxy`: B04 proxies only. */
 const layerSet = params.get("layers") === "proxy" ? "proxy" : "real";
 
 const hud = signal<HudSnapshot | null>(null);
@@ -59,7 +61,11 @@ async function main(): Promise<void> {
   const layers = () =>
     layerSet === "proxy"
       ? proxyLayers(model)
-      : [...webLayers(model, webLayout), cardProxy(), tickProxy(), streakProxy(model)];
+      : [
+          ...webLayers(model, webLayout),
+          ...ringLayers(model, new AtlasService(defaultAtlasBuild())).layers,
+          streakProxy(model),
+        ];
   const start = busiestSecond(model) - 400;
   const { stage, ring } = computeLayout(window.innerWidth, window.innerHeight);
   const results: BenchResult[] = [];

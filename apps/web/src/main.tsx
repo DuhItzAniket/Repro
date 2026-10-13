@@ -12,6 +12,8 @@ import { computeLayout } from "./shell/layout";
 import { createShellView } from "./shell/view";
 import { StageHost } from "./stage/host";
 import { type HudSnapshot, pollHud } from "./stage/hud";
+import { AtlasService, defaultAtlasBuild } from "./stage/ring/atlas-service";
+import { ringLayers } from "./stage/ring/layers";
 import { webLayers } from "./stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "./stage/web/layout-service";
 
@@ -38,6 +40,9 @@ function mountStage(): StageHost | null {
   try {
     const stage = new StageHost(canvas, { devicePixelRatio: window.devicePixelRatio });
     for (const layer of webLayers(model, webLayout)) stage.add(layer);
+    for (const layer of ringLayers(model, new AtlasService(defaultAtlasBuild())).layers) {
+      stage.add(layer);
+    }
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
     if (hud !== undefined) pollHud(stage, hud);
     return stage;

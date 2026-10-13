@@ -12,8 +12,8 @@ import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../../model/cockpit";
 import { kindCode } from "../../model/codes";
 import type { EdgeType } from "../../model/graph";
+import { ringTracker, WEB_INSET } from "../geometry";
 import type { StageFrame, StageLayer } from "../layer";
-import { ringTracker, WEB_INSET } from "../ring";
 import {
   ALWAYS,
   type Recency,

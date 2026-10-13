@@ -37,6 +37,11 @@ All notable changes to this project are documented here. The format follows
   (containment links, radial equalisation, cached by graph hash), static edges revealed and
   flared by a shader recency term, blast-radius markers, and event-triggered Bézier bundles. On
   an integrated GPU, 10k edges hold the frame budget at DPR 2. [B05]
+- Ring of file cards: one instanced draw call over a text atlas drawn in a worker
+  (OffscreenCanvas → ImageBitmap). Each card is built from the events about its file (path,
+  imports, symbols, changes). The rotation is closed-form, with 500 ms ease-out-cubic snaps to
+  the focused file, plus a tick scale and rims. Segment layers can now turn in the shader with
+  no per-frame uploads. [B06]
 
 ### Fixed
 - Stage geometry is rebuilt when a layer's buffers grow. three.js caches the maximum instance
