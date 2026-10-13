@@ -80,20 +80,29 @@ evidence, claim attribution, and the Missing list, all local and replayable.
 - **Engine (`engine/`):** Python 3.12+ (development pins 3.13), FastAPI + WebSocket, SQLite
   (WAL, single writer). First target language: **Python repos with pytest**. Reused libraries:
   grimp and griffe (ADR-0006). Tracer, encoder and selection map are Repro's own (ADR-0005).
-- **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004, proposed).
+- **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004).
 - **Agents:** Claude Agent SDK (Python `claude-agent-sdk`, pinned exactly), locked down, behind
   an `LLMBackend` protocol (ADR-0007). Models are configurable via env.
 - **CLI:** `repro` (Python, Typer): `run`, `replay`, `serve`, `doctor`, `export`.
 
-## Commands (fill these in during A02, keep them accurate)
+## Commands (keep accurate; add a command only once it works)
+
+Prerequisites: Node ≥ 22.12, pnpm 12.11.2 (`npm i -g pnpm@12.11.2`; corepack is not bundled
+with Node ≥ 25), uv, and Python 3.13 (`uv python install 3.13`).
 
 ```
-pnpm install            # web deps
-uv sync                 # engine deps
-pnpm dev                # web UI on :5173 (fixture stream until the engine is wired)
-uv run repro serve      # engine API + WS on :8787
-pnpm test / uv run pytest
+pnpm install            # JS deps for all workspace packages (apps/*, packages/*)
+uv sync                 # Python workspace (engine, bench) into .venv, with the dev group
+pnpm dev                # web UI dev server (Vite) on :5173
+pnpm typecheck          # tsc --noEmit across JS packages
+pnpm test               # Vitest across JS packages
+pnpm build              # production build of apps/web
+uv run pytest           # Python tests
+uv run repro --version  # engine CLI (subcommands arrive in C01)
 ```
+
+CI (`.github/workflows/ci.yml`) runs the same commands from a clean checkout on Ubuntu and
+Windows, with `--frozen-lockfile` / `--locked`.
 
 ## Platform notes
 
@@ -105,3 +114,6 @@ The developer works on **Windows** (x64).
 - Use uv ≥ 0.12.18 for the Windows wheel path-traversal fix.
 - Pass `-c core.longpaths=true` to git per command. Never modify the user's global git config.
 - Docker Desktop (WSL2 backend) provides the L3 sandbox on Windows, including Home editions.
+- Keep the checkout path short on Windows (about 100 characters or less). pnpm 12 writes
+  `node_modules\.pnpm-task-run-state-v1\<~100-char name>` and fails with "path not found" once
+  the full path passes 260 characters (observed in A02).

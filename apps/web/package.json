@@ -1,0 +1,20 @@
+{
+  "name": "@repro/web",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "description": "Repro cockpit: a live, replayable projection of the engine's event stream.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  }
+}

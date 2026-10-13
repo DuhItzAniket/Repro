@@ -9,3 +9,14 @@ All notable changes to this project are documented here. The format follows
 ### Added
 - Project brief, research synthesis, final architecture, stage/phase roadmap, SDLC process,
   ADRs, threat model, test strategy and research-paper tracker. [A01]
+- pnpm workspace (`apps/web`, `packages/events`) and uv workspace (`engine`, `bench`) with
+  pinned toolchains: pnpm 12.11.2, Node >= 22.12, TypeScript 7.0.2, Vite 8.3.4, Vitest 5.0.4,
+  Python 3.13 (requires >= 3.12), `uv_build`. [A02]
+- `repro` CLI entry point with `--version`. [A02]
+- CI workflow: clean-checkout install, typecheck, tests, build and CLI smoke test on Ubuntu
+  and Windows. [A02]
+- Apache-2.0 `LICENSE` and `NOTICE`. [A02]
+
+### Changed
+- ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
+  runtime) and 0011 (motion safety) accepted. [A02]

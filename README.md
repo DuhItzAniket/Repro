@@ -87,4 +87,6 @@ code by design. Please report isolation issues privately.
 
 ## License
 
-Not yet chosen. Until a license is added, all rights are reserved.
+[Apache License 2.0](LICENSE). Third-party components keep their own licences. For example, the
+JetBrains Mono font (from Stage B) is under the SIL Open Font License 1.1, and its licence ships
+alongside it.

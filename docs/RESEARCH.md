@@ -162,7 +162,7 @@ Vendor-published numbers are marked as such in research/01 §3. They are motivat
 | Agent SDK validates structured output as draft-07 | Draft-07 `$ref`-free agent schemas with evidence-ID enums |
 | LLM judges show position, verbosity and self-preference bias | Order swap, reference-guided prompts, panel, judge ≠ author model |
 | WebGPURenderer is experimental and rejects GLSL; WebGPU reaches about 18% of Linux | three.js `WebGLRenderer` + custom instanced layers (ADR-0008) |
-| At ×16 replay, a 1.2 s fade becomes a 75 ms flash (WCAG 2.3.1) | Wall-clock clamping + flash governor (ADR-0011, proposed) |
+| At ×16 replay, a 1.2 s fade becomes a 75 ms flash (WCAG 2.3.1) | Wall-clock clamping + flash governor (ADR-0011) |
 | in-toto supports custom predicates; `actions/attest@v4` signs them | Card as an in-toto attestation export (ADR-0012) |
 
 ## Corrections to the original brief

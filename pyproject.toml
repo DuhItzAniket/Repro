@@ -1,0 +1,26 @@
+# uv workspace root. It is not a distributable package: it only ties the members together
+# and holds shared dev tooling configuration.
+[project]
+name = "repro-workspace"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = ["repro-engine", "repro-bench"]
+
+[dependency-groups]
+dev = ["pytest>=9.1.1"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["engine", "bench"]
+
+[tool.uv.sources]
+repro-engine = { workspace = true }
+repro-bench = { workspace = true }
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["engine/tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+xfail_strict = true
