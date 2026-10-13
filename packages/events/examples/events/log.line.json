@@ -1,0 +1,96 @@
+{
+  "kind": "log.line",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007P2AW",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 5,
+      "ts": "2026-10-13T13:40:05.005Z",
+      "stage": "run",
+      "agent": null,
+      "kind": "log.line",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "level": "info",
+        "verb": "run",
+        "message": "running 14 selected tests on base (A)"
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'level'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007P2AW",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5005,
+        "ts": "2026-10-13T13:40:05.005Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "verb": "run",
+          "message": "running 14 selected tests on base (A)"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007P2AW",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5,
+        "ts": "2026-10-13T13:40:05.005Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "running 14 selected tests on base (A)",
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007P2AW",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5,
+        "ts": "2026-10-13T13:40:05.005Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "running 14 selected tests on base (A)"
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

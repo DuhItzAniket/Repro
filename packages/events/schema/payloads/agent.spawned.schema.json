@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent.spawned payload",
+  "description": "An agent session starts.",
+  "type": "object",
+  "required": ["role", "model", "prompt_version", "slot"],
+  "properties": {
+    "role": {
+      "$ref": "../common.schema.json#/$defs/AgentRole"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "prompt_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "slot": {
+      "description": "Dispatch slot (the UI shows 12).",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

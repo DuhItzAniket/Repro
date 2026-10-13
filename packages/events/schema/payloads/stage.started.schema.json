@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stage.started payload",
+  "description": "A pipeline stage begins.",
+  "type": "object",
+  "required": ["index"],
+  "properties": {
+    "index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+    }
+  },
+  "additionalProperties": false
+}

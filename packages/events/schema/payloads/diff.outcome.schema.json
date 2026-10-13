@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diff.outcome payload",
+  "description": "A base→head test outcome comparison.",
+  "type": "object",
+  "required": ["evidence_id", "base_outcome", "head_outcome", "class", "reruns"],
+  "properties": {
+    "evidence_id": {
+      "$ref": "../common.schema.json#/$defs/EvidenceId"
+    },
+    "base_outcome": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/TestOutcome"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "head_outcome": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/TestOutcome"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "class": {
+      "$ref": "../common.schema.json#/$defs/OutcomeClass"
+    },
+    "reruns": {
+      "type": "object",
+      "required": ["base", "head"],
+      "properties": {
+        "base": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "head": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

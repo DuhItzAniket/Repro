@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "run.finished payload",
+  "description": "A run ends (always emitted, also on failure or cancellation).",
+  "type": "object",
+  "required": ["outcome", "card_status", "duration_ms", "counts"],
+  "properties": {
+    "outcome": {
+      "enum": ["completed", "failed", "cancelled"]
+    },
+    "card_status": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/CardStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "duration_ms": {
+      "$ref": "../common.schema.json#/$defs/DurationMs"
+    },
+    "counts": {
+      "type": "object",
+      "required": ["events", "evidence", "missing"],
+      "properties": {
+        "events": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

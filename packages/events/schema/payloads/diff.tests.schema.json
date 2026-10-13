@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diff.tests payload",
+  "description": "A change to the tests themselves (removal, weakening, skips), or a base test failing on head.",
+  "type": "object",
+  "required": ["evidence_id", "file", "test", "change", "detail"],
+  "properties": {
+    "evidence_id": {
+      "$ref": "../common.schema.json#/$defs/EvidenceId"
+    },
+    "file": {
+      "$ref": "../common.schema.json#/$defs/RelPath"
+    },
+    "test": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/TestId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "change": {
+      "enum": [
+        "test_removed",
+        "skip_added",
+        "xfail_added",
+        "assertion_removed",
+        "assertion_weakened",
+        "raises_widened",
+        "test_modified",
+        "base_test_fails_on_head"
+      ]
+    },
+    "detail": {
+      "$ref": "../common.schema.json#/$defs/ShortText"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diff.deps payload",
+  "description": "A dependency difference between base and head.",
+  "type": "object",
+  "required": ["evidence_id", "package", "change", "base_version", "head_version", "source"],
+  "properties": {
+    "evidence_id": {
+      "$ref": "../common.schema.json#/$defs/EvidenceId"
+    },
+    "package": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "change": {
+      "enum": ["added", "removed", "upgraded", "downgraded", "changed"]
+    },
+    "base_version": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "head_version": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "enum": ["lockfile", "installed"]
+    }
+  },
+  "additionalProperties": false
+}

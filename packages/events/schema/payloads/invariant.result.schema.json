@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "invariant.result payload",
+  "description": "The result of one declared invariant.",
+  "type": "object",
+  "required": ["invariant", "result", "evidence_ids", "message"],
+  "properties": {
+    "invariant": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 100
+    },
+    "result": {
+      "enum": ["pass", "fail", "not_evaluated"]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "../common.schema.json#/$defs/EvidenceId"
+      }
+    },
+    "message": {
+      "$ref": "../common.schema.json#/$defs/ShortText"
+    }
+  },
+  "additionalProperties": false
+}

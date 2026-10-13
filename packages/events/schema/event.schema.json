@@ -1,0 +1,600 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repro event",
+  "description": "A complete event: the envelope plus exactly one kind-specific payload. The oneOf list is the registry of event kinds (v1).",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "oneOf": [
+    {
+      "title": "run.started",
+      "description": "A run begins.",
+      "properties": {
+        "kind": {
+          "const": "run.started"
+        },
+        "stage": {
+          "const": "read"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/run.started.schema.json"
+        }
+      }
+    },
+    {
+      "title": "run.finished",
+      "description": "A run ends (always emitted, also on failure or cancellation).",
+      "properties": {
+        "kind": {
+          "const": "run.finished"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/run.finished.schema.json"
+        }
+      }
+    },
+    {
+      "title": "stage.started",
+      "description": "A pipeline stage begins.",
+      "properties": {
+        "kind": {
+          "const": "stage.started"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/stage.started.schema.json"
+        }
+      }
+    },
+    {
+      "title": "stage.finished",
+      "description": "A pipeline stage ends; the envelope status carries ok/warn/fail.",
+      "properties": {
+        "kind": {
+          "const": "stage.finished"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/stage.finished.schema.json"
+        }
+      }
+    },
+    {
+      "title": "log.line",
+      "description": "A line for the investigation feed.",
+      "properties": {
+        "kind": {
+          "const": "log.line"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/log.line.schema.json"
+        }
+      }
+    },
+    {
+      "title": "agent.spawned",
+      "description": "An agent session starts.",
+      "properties": {
+        "kind": {
+          "const": "agent.spawned"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/agent.spawned.schema.json"
+        }
+      }
+    },
+    {
+      "title": "agent.state",
+      "description": "An agent's state changes (drives the dispatch and workspace panels).",
+      "properties": {
+        "kind": {
+          "const": "agent.state"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/agent.state.schema.json"
+        }
+      }
+    },
+    {
+      "title": "cost.estimate",
+      "description": "Client-side token and cost estimate for an agent call (not billing data).",
+      "properties": {
+        "kind": {
+          "const": "cost.estimate"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/cost.estimate.schema.json"
+        }
+      }
+    },
+    {
+      "title": "claim.extracted",
+      "description": "A claim was extracted from the PR.",
+      "properties": {
+        "kind": {
+          "const": "claim.extracted"
+        },
+        "stage": {
+          "const": "read"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/claim.extracted.schema.json"
+        }
+      }
+    },
+    {
+      "title": "snapshot.ready",
+      "description": "A .git-less snapshot of one side is ready.",
+      "properties": {
+        "kind": {
+          "const": "snapshot.ready"
+        },
+        "stage": {
+          "const": "build"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/snapshot.ready.schema.json"
+        }
+      }
+    },
+    {
+      "title": "graph.node",
+      "description": "A node of the dependency graph.",
+      "properties": {
+        "kind": {
+          "const": "graph.node"
+        },
+        "stage": {
+          "const": "build"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/graph.node.schema.json"
+        }
+      }
+    },
+    {
+      "title": "graph.edge",
+      "description": "An edge of the dependency graph (static imports, or observed calls/coverage).",
+      "properties": {
+        "kind": {
+          "const": "graph.edge"
+        },
+        "stage": {
+          "enum": ["build", "run"]
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/graph.edge.schema.json"
+        }
+      }
+    },
+    {
+      "title": "symbol.changed",
+      "description": "A symbol differs between base and head.",
+      "properties": {
+        "kind": {
+          "const": "symbol.changed"
+        },
+        "stage": {
+          "const": "build"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/symbol.changed.schema.json"
+        }
+      }
+    },
+    {
+      "title": "blast.computed",
+      "description": "Blast radius: changed symbols and their reverse dependents.",
+      "properties": {
+        "kind": {
+          "const": "blast.computed"
+        },
+        "stage": {
+          "const": "build"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/blast.computed.schema.json"
+        }
+      }
+    },
+    {
+      "title": "sandbox.ready",
+      "description": "A sandbox for one side is ready; states the isolation actually achieved.",
+      "properties": {
+        "kind": {
+          "const": "sandbox.ready"
+        },
+        "stage": {
+          "enum": ["build", "run"]
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/sandbox.ready.schema.json"
+        }
+      }
+    },
+    {
+      "title": "env.provisioned",
+      "description": "An environment for one side was provisioned.",
+      "properties": {
+        "kind": {
+          "const": "env.provisioned"
+        },
+        "stage": {
+          "const": "build"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/env.provisioned.schema.json"
+        }
+      }
+    },
+    {
+      "title": "test.selected",
+      "description": "A test was selected (envelope target.test names it).",
+      "properties": {
+        "kind": {
+          "const": "test.selected"
+        },
+        "stage": {
+          "const": "run"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/test.selected.schema.json"
+        }
+      }
+    },
+    {
+      "title": "test.started",
+      "description": "A test run starts on one side.",
+      "properties": {
+        "kind": {
+          "const": "test.started"
+        },
+        "stage": {
+          "const": "run"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/test.started.schema.json"
+        }
+      }
+    },
+    {
+      "title": "test.finished",
+      "description": "A test run finished on one side.",
+      "properties": {
+        "kind": {
+          "const": "test.finished"
+        },
+        "stage": {
+          "const": "run"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/test.finished.schema.json"
+        }
+      }
+    },
+    {
+      "title": "trace.sample",
+      "description": "A sampled behaviour observation (for the UI; full observations are artifacts).",
+      "properties": {
+        "kind": {
+          "const": "trace.sample"
+        },
+        "stage": {
+          "const": "run"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/trace.sample.schema.json"
+        }
+      }
+    },
+    {
+      "title": "perf.sample",
+      "description": "An untraced timing sample.",
+      "properties": {
+        "kind": {
+          "const": "perf.sample"
+        },
+        "stage": {
+          "const": "run"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/perf.sample.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.outcome",
+      "description": "A base→head test outcome comparison.",
+      "properties": {
+        "kind": {
+          "const": "diff.outcome"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.outcome.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.tests",
+      "description": "A change to the tests themselves (removal, weakening, skips), or a base test failing on head.",
+      "properties": {
+        "kind": {
+          "const": "diff.tests"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.tests.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.behaviour",
+      "description": "Same input, different behaviour, observed through existing tests.",
+      "properties": {
+        "kind": {
+          "const": "diff.behaviour"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.behaviour.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.probe",
+      "description": "Same input, different behaviour, observed through a generated probe.",
+      "properties": {
+        "kind": {
+          "const": "diff.probe"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.probe.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.api",
+      "description": "A public API breaking change.",
+      "properties": {
+        "kind": {
+          "const": "diff.api"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.api.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.deps",
+      "description": "A dependency difference between base and head.",
+      "properties": {
+        "kind": {
+          "const": "diff.deps"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.deps.schema.json"
+        }
+      }
+    },
+    {
+      "title": "diff.perf",
+      "description": "A performance comparison for one test (untraced, interleaved runs).",
+      "properties": {
+        "kind": {
+          "const": "diff.perf"
+        },
+        "stage": {
+          "const": "diff"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/diff.perf.schema.json"
+        }
+      }
+    },
+    {
+      "title": "invariant.result",
+      "description": "The result of one declared invariant.",
+      "properties": {
+        "kind": {
+          "const": "invariant.result"
+        },
+        "stage": {
+          "const": "check"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/invariant.result.schema.json"
+        }
+      }
+    },
+    {
+      "title": "evidence.created",
+      "description": "A citable evidence record was created.",
+      "properties": {
+        "kind": {
+          "const": "evidence.created"
+        },
+        "stage": {
+          "enum": ["build", "run", "diff", "check"]
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/evidence.created.schema.json"
+        }
+      }
+    },
+    {
+      "title": "missing.recorded",
+      "description": "Something could not be verified.",
+      "properties": {
+        "kind": {
+          "const": "missing.recorded"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/missing.recorded.schema.json"
+        }
+      }
+    },
+    {
+      "title": "verdict.issued",
+      "description": "A validated verdict on one claim.",
+      "properties": {
+        "kind": {
+          "const": "verdict.issued"
+        },
+        "stage": {
+          "const": "review"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/verdict.issued.schema.json"
+        }
+      }
+    },
+    {
+      "title": "verdict.rejected",
+      "description": "An agent verdict failed validation and was not accepted.",
+      "properties": {
+        "kind": {
+          "const": "verdict.rejected"
+        },
+        "stage": {
+          "const": "review"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/verdict.rejected.schema.json"
+        }
+      }
+    },
+    {
+      "title": "card.published",
+      "description": "The Reproduction Card was computed and stored.",
+      "properties": {
+        "kind": {
+          "const": "card.published"
+        },
+        "stage": {
+          "const": "card"
+        },
+        "pv": {
+          "const": 1
+        },
+        "payload": {
+          "$ref": "payloads/card.published.schema.json"
+        }
+      }
+    }
+  ]
+}

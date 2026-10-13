@@ -1,0 +1,87 @@
+{
+  "kind": "stage.finished",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007NTKD",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 4,
+      "ts": "2026-10-13T13:40:04.004Z",
+      "stage": "build",
+      "agent": null,
+      "kind": "stage.finished",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "duration_ms": 9120
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'duration_ms'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007NTKD",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5004,
+        "ts": "2026-10-13T13:40:04.004Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "stage.finished",
+        "target": null,
+        "status": "ok",
+        "payload": {},
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007NTKD",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 4,
+        "ts": "2026-10-13T13:40:04.004Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "stage.finished",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "duration_ms": 9120,
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007NTKD",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 4,
+        "ts": "2026-10-13T13:40:04.004Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "stage.finished",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "duration_ms": 9120
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

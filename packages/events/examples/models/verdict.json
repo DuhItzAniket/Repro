@@ -1,0 +1,83 @@
+{
+  "valid": [
+    {
+      "claim_id": "C1",
+      "verdict": "supported",
+      "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+      "quotes": [
+        {
+          "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+          "text": "fails on base and passes on head (F2P)"
+        }
+      ],
+      "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+      "model": "claude-opus-5-5",
+      "agreement": {
+        "runs": 2,
+        "agreeing": 2
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "a verdict must cite at least one evidence id",
+      "value": {
+        "claim_id": "C1",
+        "verdict": "supported",
+        "cited_evidence": [],
+        "quotes": [
+          {
+            "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+            "text": "fails on base and passes on head (F2P)"
+          }
+        ],
+        "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+        "model": "claude-opus-5-5",
+        "agreement": {
+          "runs": 2,
+          "agreeing": 2
+        }
+      }
+    },
+    {
+      "reason": "cited ids must be evidence ids",
+      "value": {
+        "claim_id": "C1",
+        "verdict": "supported",
+        "cited_evidence": ["C1"],
+        "quotes": [
+          {
+            "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+            "text": "fails on base and passes on head (F2P)"
+          }
+        ],
+        "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+        "model": "claude-opus-5-5",
+        "agreement": {
+          "runs": 2,
+          "agreeing": 2
+        }
+      }
+    },
+    {
+      "reason": "verdict value must be supported/contradicted/unverifiable",
+      "value": {
+        "claim_id": "C1",
+        "verdict": "looks good",
+        "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+        "quotes": [
+          {
+            "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+            "text": "fails on base and passes on head (F2P)"
+          }
+        ],
+        "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+        "model": "claude-opus-5-5",
+        "agreement": {
+          "runs": 2,
+          "agreeing": 2
+        }
+      }
+    }
+  ]
+}

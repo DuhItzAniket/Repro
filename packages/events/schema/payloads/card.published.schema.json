@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "card.published payload",
+  "description": "The Reproduction Card was computed and stored.",
+  "type": "object",
+  "required": ["status", "card_sha256", "counts"],
+  "properties": {
+    "status": {
+      "$ref": "../common.schema.json#/$defs/CardStatus"
+    },
+    "card_sha256": {
+      "$ref": "../common.schema.json#/$defs/Sha256"
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "claims",
+        "supported",
+        "contradicted",
+        "unverifiable",
+        "gap_items",
+        "unexplained",
+        "missing",
+        "invariants_failed"
+      ],
+      "properties": {
+        "claims": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "supported": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contradicted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unverifiable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gap_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexplained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invariants_failed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

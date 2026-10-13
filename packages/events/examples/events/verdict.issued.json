@@ -1,0 +1,172 @@
+{
+  "kind": "verdict.issued",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007WK4H",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 32,
+      "ts": "2026-10-13T13:40:32.032Z",
+      "stage": "review",
+      "agent": "a07",
+      "kind": "verdict.issued",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "verdict": {
+          "claim_id": "C1",
+          "verdict": "supported",
+          "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+          "quotes": [
+            {
+              "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+              "text": "fails on base and passes on head (F2P)"
+            }
+          ],
+          "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+          "model": "claude-opus-5-5",
+          "agreement": {
+            "runs": 2,
+            "agreeing": 2
+          }
+        }
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'verdict'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WK4H",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5032,
+        "ts": "2026-10-13T13:40:32.032Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "verdict.issued",
+        "target": null,
+        "status": "ok",
+        "payload": {},
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WK4H",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 32,
+        "ts": "2026-10-13T13:40:32.032Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "verdict.issued",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "verdict": {
+            "claim_id": "C1",
+            "verdict": "supported",
+            "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+            "quotes": [
+              {
+                "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+                "text": "fails on base and passes on head (F2P)"
+              }
+            ],
+            "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+            "model": "claude-opus-5-5",
+            "agreement": {
+              "runs": 2,
+              "agreeing": 2
+            }
+          },
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'verdict.issued' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WK4H",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 32,
+        "ts": "2026-10-13T13:40:32.032Z",
+        "stage": "read",
+        "agent": "a07",
+        "kind": "verdict.issued",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "verdict": {
+            "claim_id": "C1",
+            "verdict": "supported",
+            "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+            "quotes": [
+              {
+                "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+                "text": "fails on base and passes on head (F2P)"
+              }
+            ],
+            "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+            "model": "claude-opus-5-5",
+            "agreement": {
+              "runs": 2,
+              "agreeing": 2
+            }
+          }
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WK4H",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 32,
+        "ts": "2026-10-13T13:40:32.032Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "verdict.issued",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "verdict": {
+            "claim_id": "C1",
+            "verdict": "supported",
+            "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+            "quotes": [
+              {
+                "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+                "text": "fails on base and passes on head (F2P)"
+              }
+            ],
+            "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+            "model": "claude-opus-5-5",
+            "agreement": {
+              "runs": 2,
+              "agreeing": 2
+            }
+          }
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

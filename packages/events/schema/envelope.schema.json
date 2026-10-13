@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Event envelope",
+  "description": "Fields common to every event. Core fields from the original brief plus v, pv, parent and producer (ADR-0003). The payload is validated per kind by event.schema.json.",
+  "type": "object",
+  "required": [
+    "id",
+    "run_id",
+    "seq",
+    "ts",
+    "stage",
+    "agent",
+    "kind",
+    "target",
+    "status",
+    "payload",
+    "v",
+    "pv",
+    "producer"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/EventId"
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/RunId"
+    },
+    "seq": {
+      "description": "Monotonic per run, assigned by the single writer; the only ordering.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "ts": {
+      "$ref": "common.schema.json#/$defs/Timestamp"
+    },
+    "stage": {
+      "$ref": "common.schema.json#/$defs/Stage"
+    },
+    "agent": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/AgentId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kind": {
+      "description": "Event kind, e.g. 'test.finished'.",
+      "type": "string",
+      "pattern": "^[a-z]+(\\.[a-z_]+)+$"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/Target"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/Status"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "v": {
+      "description": "Envelope schema version.",
+      "const": 1
+    },
+    "pv": {
+      "description": "Payload schema version for this kind; upcasters dispatch on (kind, pv).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "parent": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/EventId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "producer": {
+      "description": "Emitting engine build: 'repro/<semver>[+<git sha>]'.",
+      "type": "string",
+      "pattern": "^repro/[0-9]+\\.[0-9]+\\.[0-9]+[0-9A-Za-z.+-]*$"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,41 @@
+{
+  "valid": [
+    {
+      "reason": "no_covering_test",
+      "targets": [
+        {
+          "symbol": "pkg.dates:format_date#0"
+        }
+      ],
+      "detail": "No selected test executes pkg.dates:format_date, which the change modifies.",
+      "resolution": "Add a test that calls format_date."
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "unknown missing reason",
+      "value": {
+        "reason": "forgot",
+        "targets": [
+          {
+            "symbol": "pkg.dates:format_date#0"
+          }
+        ],
+        "detail": "No selected test executes pkg.dates:format_date, which the change modifies.",
+        "resolution": "Add a test that calls format_date."
+      }
+    },
+    {
+      "reason": "detail is required",
+      "value": {
+        "reason": "no_covering_test",
+        "targets": [
+          {
+            "symbol": "pkg.dates:format_date#0"
+          }
+        ],
+        "resolution": "Add a test that calls format_date."
+      }
+    }
+  ]
+}

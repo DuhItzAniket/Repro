@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "blast.computed payload",
+  "description": "Blast radius: changed symbols and their reverse dependents.",
+  "type": "object",
+  "required": ["changed", "affected", "module_level_changes"],
+  "properties": {
+    "changed": {
+      "type": "array",
+      "items": {
+        "$ref": "../common.schema.json#/$defs/SymbolId"
+      }
+    },
+    "affected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["symbol_id", "distance"],
+        "properties": {
+          "symbol_id": {
+            "$ref": "../common.schema.json#/$defs/SymbolId"
+          },
+          "distance": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "module_level_changes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    }
+  },
+  "additionalProperties": false
+}

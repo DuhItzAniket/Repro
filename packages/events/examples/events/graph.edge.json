@@ -1,0 +1,119 @@
+{
+  "kind": "graph.edge",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007QRF5",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 12,
+      "ts": "2026-10-13T13:40:12.012Z",
+      "stage": "build",
+      "agent": null,
+      "kind": "graph.edge",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "source": "pkg.api",
+        "target": "pkg.dates",
+        "type": "imports"
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'source'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QRF5",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5012,
+        "ts": "2026-10-13T13:40:12.012Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "graph.edge",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "target": "pkg.dates",
+          "type": "imports"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QRF5",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 12,
+        "ts": "2026-10-13T13:40:12.012Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "graph.edge",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "source": "pkg.api",
+          "target": "pkg.dates",
+          "type": "imports",
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'graph.edge' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QRF5",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 12,
+        "ts": "2026-10-13T13:40:12.012Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "graph.edge",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "source": "pkg.api",
+          "target": "pkg.dates",
+          "type": "imports"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QRF5",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 12,
+        "ts": "2026-10-13T13:40:12.012Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "graph.edge",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "source": "pkg.api",
+          "target": "pkg.dates",
+          "type": "imports"
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

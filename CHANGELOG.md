@@ -18,6 +18,11 @@ All notable changes to this project are documented here. The format follows
 - Apache-2.0 `LICENSE` and `NOTICE`. [A02]
 - Quality gates: Ruff (lint + format) and strict mypy for Python (ADR-0013), Biome for
   TS/JSON, `pnpm lint`, an optional local pre-commit config, and a required CI `lint` job. [A03]
+- Event schema v1 (JSON Schema 2020-12): envelope with ADR-0003 fields, a registry of 34 event
+  kinds with stage and payload-version constraints, payload schemas, and claim, evidence,
+  verdict, missing-item, artifact and card models, all with valid and invalid examples. [A04]
+- `repro-events` Python package: schema registry, field-precise event validation, and
+  draft-07 derivation of agent output schemas. [A04]
 
 ### Changed
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent

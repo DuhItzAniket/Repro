@@ -1,0 +1,124 @@
+{
+  "kind": "test.started",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007S6VZ",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 18,
+      "ts": "2026-10-13T13:40:18.018Z",
+      "stage": "run",
+      "agent": null,
+      "kind": "test.started",
+      "target": {
+        "test": "tests/test_dates.py::test_parse_date_with_timezone"
+      },
+      "status": "ok",
+      "payload": {
+        "side": "base",
+        "attempt": 1
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'side'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007S6VZ",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5018,
+        "ts": "2026-10-13T13:40:18.018Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.started",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "attempt": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007S6VZ",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 18,
+        "ts": "2026-10-13T13:40:18.018Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.started",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "base",
+          "attempt": 1,
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'test.started' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007S6VZ",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 18,
+        "ts": "2026-10-13T13:40:18.018Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "test.started",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "base",
+          "attempt": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007S6VZ",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 18,
+        "ts": "2026-10-13T13:40:18.018Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.started",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "base",
+          "attempt": 1
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

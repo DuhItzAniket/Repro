@@ -1,0 +1,48 @@
+{
+  "valid": [
+    {
+      "id": "C1",
+      "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+      "kind": "fix",
+      "targets": [
+        {
+          "file": "pkg/dates.py",
+          "symbol": "pkg.dates:parse_date#0"
+        }
+      ],
+      "source": "description"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "claim id must be C<n>",
+      "value": {
+        "id": "claim-1",
+        "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+        "kind": "fix",
+        "targets": [
+          {
+            "file": "pkg/dates.py",
+            "symbol": "pkg.dates:parse_date#0"
+          }
+        ],
+        "source": "description"
+      }
+    },
+    {
+      "reason": "unknown claim kind",
+      "value": {
+        "id": "C1",
+        "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+        "kind": "improvement",
+        "targets": [
+          {
+            "file": "pkg/dates.py",
+            "symbol": "pkg.dates:parse_date#0"
+          }
+        ],
+        "source": "description"
+      }
+    }
+  ]
+}

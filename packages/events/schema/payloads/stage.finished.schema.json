@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stage.finished payload",
+  "description": "A pipeline stage ends; the envelope status carries ok/warn/fail.",
+  "type": "object",
+  "required": ["duration_ms"],
+  "properties": {
+    "duration_ms": {
+      "$ref": "../common.schema.json#/$defs/DurationMs"
+    }
+  },
+  "additionalProperties": false
+}

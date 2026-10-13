@@ -31,3 +31,15 @@ entry. If something turns out wrong, add a correcting entry.
   - PR-MCI: Gong et al.; 23,247 PRs; 45.4% "claim unimplemented changes".
 - **Known gap:** literature discovery for 2025–2026 is incomplete (search budget exhausted). A
   follow-up search is needed before J10.
+
+## 2026-10-13 · A04 · Evidence-constrained output, by construction
+
+- The event schema v1 defines verdicts so that `cited_evidence` has `minItems: 1` and contains
+  only `ev_`-prefixed ULIDs. Agent-facing schemas are derived from the source schemas by
+  `to_draft07()`, because the Agent SDK validates draft-07 only.
+- Design rule worth reporting: the derivation **rejects** keywords draft-07 cannot express
+  instead of dropping them. Dropping a constraint would let an LLM emit output the source
+  schema forbids, silently widening what counts as a valid verdict. A hygiene test keeps such
+  keywords out of all source schemas, so derivation is total over the v1 schema set.
+- Tests show the derived schemas agree with the source schemas on every model example
+  (valid accepted, invalid rejected) and accept every valid payload example (380 tests).

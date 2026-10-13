@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "test.started payload",
+  "description": "A test run starts on one side.",
+  "type": "object",
+  "required": ["side", "attempt"],
+  "properties": {
+    "side": {
+      "$ref": "../common.schema.json#/$defs/Side"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

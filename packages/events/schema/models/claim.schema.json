@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Claim",
+  "description": "An atomic, checkable statement the change makes about itself.",
+  "type": "object",
+  "required": ["id", "text", "kind", "targets", "source"],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/ClaimId"
+    },
+    "text": {
+      "description": "The atomic claim, as extracted from the PR.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "kind": {
+      "$ref": "../common.schema.json#/$defs/ClaimKind"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "../common.schema.json#/$defs/Target"
+      }
+    },
+    "source": {
+      "enum": ["title", "description", "commit", "issue"]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sandbox.ready payload",
+  "description": "A sandbox for one side is ready; states the isolation actually achieved.",
+  "type": "object",
+  "required": ["side", "backend", "isolation_level", "network", "platform"],
+  "properties": {
+    "side": {
+      "$ref": "../common.schema.json#/$defs/Side"
+    },
+    "backend": {
+      "$ref": "../common.schema.json#/$defs/SandboxBackend"
+    },
+    "isolation_level": {
+      "$ref": "../common.schema.json#/$defs/IsolationLevel"
+    },
+    "network": {
+      "$ref": "../common.schema.json#/$defs/NetworkEnforcement"
+    },
+    "platform": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    }
+  },
+  "additionalProperties": false
+}

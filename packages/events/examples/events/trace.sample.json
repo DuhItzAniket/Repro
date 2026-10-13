@@ -1,0 +1,149 @@
+{
+  "kind": "trace.sample",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007SPAX",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 20,
+      "ts": "2026-10-13T13:40:20.020Z",
+      "stage": "run",
+      "agent": null,
+      "kind": "trace.sample",
+      "target": {
+        "test": "tests/test_dates.py::test_parse_date_with_timezone",
+        "symbol": "pkg.dates:parse_date#0"
+      },
+      "status": "ok",
+      "payload": {
+        "side": "head",
+        "symbol_id": "pkg.dates:parse_date#0",
+        "call_index": 0,
+        "args_preview": "('2026-03-29T02:30+01:00',)",
+        "result_preview": "datetime(2026,3,29,1,30,tzinfo=UTC)",
+        "raised": null
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'side'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SPAX",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5020,
+        "ts": "2026-10-13T13:40:20.020Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "trace.sample",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone",
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "symbol_id": "pkg.dates:parse_date#0",
+          "call_index": 0,
+          "args_preview": "('2026-03-29T02:30+01:00',)",
+          "result_preview": "datetime(2026,3,29,1,30,tzinfo=UTC)",
+          "raised": null
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SPAX",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 20,
+        "ts": "2026-10-13T13:40:20.020Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "trace.sample",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone",
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "head",
+          "symbol_id": "pkg.dates:parse_date#0",
+          "call_index": 0,
+          "args_preview": "('2026-03-29T02:30+01:00',)",
+          "result_preview": "datetime(2026,3,29,1,30,tzinfo=UTC)",
+          "raised": null,
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'trace.sample' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SPAX",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 20,
+        "ts": "2026-10-13T13:40:20.020Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "trace.sample",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone",
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "head",
+          "symbol_id": "pkg.dates:parse_date#0",
+          "call_index": 0,
+          "args_preview": "('2026-03-29T02:30+01:00',)",
+          "result_preview": "datetime(2026,3,29,1,30,tzinfo=UTC)",
+          "raised": null
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SPAX",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 20,
+        "ts": "2026-10-13T13:40:20.020Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "trace.sample",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone",
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "head",
+          "symbol_id": "pkg.dates:parse_date#0",
+          "call_index": 0,
+          "args_preview": "('2026-03-29T02:30+01:00',)",
+          "result_preview": "datetime(2026,3,29,1,30,tzinfo=UTC)",
+          "raised": null
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

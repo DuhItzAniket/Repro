@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "run.started payload",
+  "description": "A run begins.",
+  "type": "object",
+  "required": ["repo", "base", "head", "pr", "mode"],
+  "properties": {
+    "repo": {
+      "type": "object",
+      "required": ["name", "url"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "base": {
+      "$ref": "../common.schema.json#/$defs/GitRef"
+    },
+    "head": {
+      "$ref": "../common.schema.json#/$defs/GitRef"
+    },
+    "pr": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["title", "number", "url"],
+          "properties": {
+            "title": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "number": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mode": {
+      "type": "object",
+      "required": ["deterministic_only", "sandbox_backend"],
+      "properties": {
+        "deterministic_only": {
+          "type": "boolean"
+        },
+        "sandbox_backend": {
+          "$ref": "../common.schema.json#/$defs/SandboxBackend"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

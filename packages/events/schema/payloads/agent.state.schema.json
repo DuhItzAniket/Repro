@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent.state payload",
+  "description": "An agent's state changes (drives the dispatch and workspace panels).",
+  "type": "object",
+  "required": ["state", "tool", "detail", "progress"],
+  "properties": {
+    "state": {
+      "enum": ["waiting", "thinking", "tool_call", "done", "failed"]
+    },
+    "tool": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 200
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "description": "Short text for the agent workspace panel.",
+          "type": "string",
+          "maxLength": 500
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "progress": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

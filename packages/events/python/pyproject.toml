@@ -1,0 +1,15 @@
+[project]
+name = "repro-events"
+version = "0.1.0.dev0"
+description = "Repro event schema tooling: schema registry, validation, and agent-output schema derivation."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = ["jsonschema>=4.26.0", "referencing>=0.37.0"]
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "repro_events"

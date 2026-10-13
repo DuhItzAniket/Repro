@@ -1,0 +1,144 @@
+{
+  "kind": "diff.probe",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007TX08",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 25,
+      "ts": "2026-10-13T13:40:25.025Z",
+      "stage": "diff",
+      "agent": "a09",
+      "kind": "diff.probe",
+      "target": {
+        "symbol": "pkg.dates:parse_date#0"
+      },
+      "status": "ok",
+      "payload": {
+        "evidence_id": "ev_01JBAAHWY0000000000000WAHH",
+        "symbol_id": "pkg.dates:parse_date#0",
+        "probe_id": "probe_parse_date_dst_gap",
+        "change": "exception_added",
+        "base_preview": "datetime(2026,3,29,1,30)",
+        "head_preview": "NonExistentTimeError"
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'evidence_id'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TX08",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5025,
+        "ts": "2026-10-13T13:40:25.025Z",
+        "stage": "diff",
+        "agent": "a09",
+        "kind": "diff.probe",
+        "target": {
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "symbol_id": "pkg.dates:parse_date#0",
+          "probe_id": "probe_parse_date_dst_gap",
+          "change": "exception_added",
+          "base_preview": "datetime(2026,3,29,1,30)",
+          "head_preview": "NonExistentTimeError"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TX08",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 25,
+        "ts": "2026-10-13T13:40:25.025Z",
+        "stage": "diff",
+        "agent": "a09",
+        "kind": "diff.probe",
+        "target": {
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence_id": "ev_01JBAAHWY0000000000000WAHH",
+          "symbol_id": "pkg.dates:parse_date#0",
+          "probe_id": "probe_parse_date_dst_gap",
+          "change": "exception_added",
+          "base_preview": "datetime(2026,3,29,1,30)",
+          "head_preview": "NonExistentTimeError",
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'diff.probe' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TX08",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 25,
+        "ts": "2026-10-13T13:40:25.025Z",
+        "stage": "read",
+        "agent": "a09",
+        "kind": "diff.probe",
+        "target": {
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence_id": "ev_01JBAAHWY0000000000000WAHH",
+          "symbol_id": "pkg.dates:parse_date#0",
+          "probe_id": "probe_parse_date_dst_gap",
+          "change": "exception_added",
+          "base_preview": "datetime(2026,3,29,1,30)",
+          "head_preview": "NonExistentTimeError"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TX08",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 25,
+        "ts": "2026-10-13T13:40:25.025Z",
+        "stage": "diff",
+        "agent": "a09",
+        "kind": "diff.probe",
+        "target": {
+          "symbol": "pkg.dates:parse_date#0"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence_id": "ev_01JBAAHWY0000000000000WAHH",
+          "symbol_id": "pkg.dates:parse_date#0",
+          "probe_id": "probe_parse_date_dst_gap",
+          "change": "exception_added",
+          "base_preview": "datetime(2026,3,29,1,30)",
+          "head_preview": "NonExistentTimeError"
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

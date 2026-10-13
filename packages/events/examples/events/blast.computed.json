@@ -1,0 +1,144 @@
+{
+  "kind": "blast.computed",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007R7Y3",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 14,
+      "ts": "2026-10-13T13:40:14.014Z",
+      "stage": "build",
+      "agent": null,
+      "kind": "blast.computed",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "changed": ["pkg.dates:parse_date#0"],
+        "affected": [
+          {
+            "symbol_id": "pkg.api:load_events#0",
+            "distance": 1
+          }
+        ],
+        "module_level_changes": []
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'changed'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007R7Y3",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5014,
+        "ts": "2026-10-13T13:40:14.014Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "blast.computed",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "affected": [
+            {
+              "symbol_id": "pkg.api:load_events#0",
+              "distance": 1
+            }
+          ],
+          "module_level_changes": []
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007R7Y3",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 14,
+        "ts": "2026-10-13T13:40:14.014Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "blast.computed",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "changed": ["pkg.dates:parse_date#0"],
+          "affected": [
+            {
+              "symbol_id": "pkg.api:load_events#0",
+              "distance": 1
+            }
+          ],
+          "module_level_changes": [],
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'blast.computed' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007R7Y3",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 14,
+        "ts": "2026-10-13T13:40:14.014Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "blast.computed",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "changed": ["pkg.dates:parse_date#0"],
+          "affected": [
+            {
+              "symbol_id": "pkg.api:load_events#0",
+              "distance": 1
+            }
+          ],
+          "module_level_changes": []
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007R7Y3",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 14,
+        "ts": "2026-10-13T13:40:14.014Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "blast.computed",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "changed": ["pkg.dates:parse_date#0"],
+          "affected": [
+            {
+              "symbol_id": "pkg.api:load_events#0",
+              "distance": 1
+            }
+          ],
+          "module_level_changes": []
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

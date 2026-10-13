@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "claim.extracted payload",
+  "description": "A claim was extracted from the PR.",
+  "type": "object",
+  "required": ["claim"],
+  "properties": {
+    "claim": {
+      "$ref": "../models/claim.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

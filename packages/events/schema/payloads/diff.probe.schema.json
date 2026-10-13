@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diff.probe payload",
+  "description": "Same input, different behaviour, observed through a generated probe.",
+  "type": "object",
+  "required": ["evidence_id", "symbol_id", "probe_id", "change", "base_preview", "head_preview"],
+  "properties": {
+    "evidence_id": {
+      "$ref": "../common.schema.json#/$defs/EvidenceId"
+    },
+    "symbol_id": {
+      "$ref": "../common.schema.json#/$defs/SymbolId"
+    },
+    "probe_id": {
+      "type": "string",
+      "pattern": "^probe_[0-9a-z_]+$",
+      "maxLength": 200
+    },
+    "change": {
+      "$ref": "../common.schema.json#/$defs/BehaviourChange"
+    },
+    "base_preview": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/Preview"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "head_preview": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/Preview"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

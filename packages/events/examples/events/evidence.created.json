@@ -1,0 +1,242 @@
+{
+  "kind": "evidence.created",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007W3NK",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 30,
+      "ts": "2026-10-13T13:40:30.030Z",
+      "stage": "diff",
+      "agent": null,
+      "kind": "evidence.created",
+      "target": {
+        "test": "tests/test_dates.py::test_parse_date_with_timezone"
+      },
+      "status": "ok",
+      "payload": {
+        "evidence": {
+          "id": "ev_01JBAAHWY0000000000000VBKN",
+          "run_id": "run_01JBAAHWY00000000000003E08",
+          "type": "test_outcome",
+          "targets": [
+            {
+              "test": "tests/test_dates.py::test_parse_date_with_timezone",
+              "symbol": "pkg.dates:parse_date#0"
+            }
+          ],
+          "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+          "data": {
+            "class": "F2P",
+            "base_outcome": "failed",
+            "head_outcome": "passed"
+          },
+          "artifacts": [
+            {
+              "path": "junit/head.xml",
+              "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+              "media_type": "application/xml",
+              "size_bytes": 2048
+            }
+          ],
+          "stability": "stable",
+          "origin": "introduced",
+          "produced_by": {
+            "component": "diff.outcome",
+            "version": "0.4.0"
+          },
+          "seq": 812
+        }
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'evidence'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007W3NK",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5030,
+        "ts": "2026-10-13T13:40:30.030Z",
+        "stage": "diff",
+        "agent": null,
+        "kind": "evidence.created",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {},
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007W3NK",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 30,
+        "ts": "2026-10-13T13:40:30.030Z",
+        "stage": "diff",
+        "agent": null,
+        "kind": "evidence.created",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence": {
+            "id": "ev_01JBAAHWY0000000000000VBKN",
+            "run_id": "run_01JBAAHWY00000000000003E08",
+            "type": "test_outcome",
+            "targets": [
+              {
+                "test": "tests/test_dates.py::test_parse_date_with_timezone",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+            "data": {
+              "class": "F2P",
+              "base_outcome": "failed",
+              "head_outcome": "passed"
+            },
+            "artifacts": [
+              {
+                "path": "junit/head.xml",
+                "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+                "media_type": "application/xml",
+                "size_bytes": 2048
+              }
+            ],
+            "stability": "stable",
+            "origin": "introduced",
+            "produced_by": {
+              "component": "diff.outcome",
+              "version": "0.4.0"
+            },
+            "seq": 812
+          },
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'evidence.created' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007W3NK",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 30,
+        "ts": "2026-10-13T13:40:30.030Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "evidence.created",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence": {
+            "id": "ev_01JBAAHWY0000000000000VBKN",
+            "run_id": "run_01JBAAHWY00000000000003E08",
+            "type": "test_outcome",
+            "targets": [
+              {
+                "test": "tests/test_dates.py::test_parse_date_with_timezone",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+            "data": {
+              "class": "F2P",
+              "base_outcome": "failed",
+              "head_outcome": "passed"
+            },
+            "artifacts": [
+              {
+                "path": "junit/head.xml",
+                "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+                "media_type": "application/xml",
+                "size_bytes": 2048
+              }
+            ],
+            "stability": "stable",
+            "origin": "introduced",
+            "produced_by": {
+              "component": "diff.outcome",
+              "version": "0.4.0"
+            },
+            "seq": 812
+          }
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007W3NK",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 30,
+        "ts": "2026-10-13T13:40:30.030Z",
+        "stage": "diff",
+        "agent": null,
+        "kind": "evidence.created",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence": {
+            "id": "ev_01JBAAHWY0000000000000VBKN",
+            "run_id": "run_01JBAAHWY00000000000003E08",
+            "type": "test_outcome",
+            "targets": [
+              {
+                "test": "tests/test_dates.py::test_parse_date_with_timezone",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+            "data": {
+              "class": "F2P",
+              "base_outcome": "failed",
+              "head_outcome": "passed"
+            },
+            "artifacts": [
+              {
+                "path": "junit/head.xml",
+                "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+                "media_type": "application/xml",
+                "size_bytes": 2048
+              }
+            ],
+            "stability": "stable",
+            "origin": "introduced",
+            "produced_by": {
+              "component": "diff.outcome",
+              "version": "0.4.0"
+            },
+            "seq": 812
+          }
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}
