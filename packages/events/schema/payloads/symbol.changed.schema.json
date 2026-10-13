@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "symbol.changed payload",
+  "description": "A symbol differs between base and head.",
+  "type": "object",
+  "required": ["symbol_id", "change", "file", "base_lines", "head_lines", "previous_symbol_id"],
+  "properties": {
+    "symbol_id": {
+      "$ref": "../common.schema.json#/$defs/SymbolId"
+    },
+    "change": {
+      "enum": ["added", "removed", "modified", "renamed", "moved"]
+    },
+    "file": {
+      "$ref": "../common.schema.json#/$defs/RelPath"
+    },
+    "base_lines": {
+      "anyOf": [
+        {
+          "description": "[first, last] line, 1-based, inclusive.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "head_lines": {
+      "anyOf": [
+        {
+          "description": "[first, last] line, 1-based, inclusive.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "previous_symbol_id": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/SymbolId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

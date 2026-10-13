@@ -1,0 +1,134 @@
+{
+  "kind": "test.finished",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007SEKE",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 19,
+      "ts": "2026-10-13T13:40:19.019Z",
+      "stage": "run",
+      "agent": null,
+      "kind": "test.finished",
+      "target": {
+        "test": "tests/test_dates.py::test_parse_date_with_timezone"
+      },
+      "status": "ok",
+      "payload": {
+        "side": "base",
+        "attempt": 1,
+        "outcome": "failed",
+        "duration_ms": 41.2
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'side'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SEKE",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5019,
+        "ts": "2026-10-13T13:40:19.019Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.finished",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "attempt": 1,
+          "outcome": "failed",
+          "duration_ms": 41.2
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SEKE",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 19,
+        "ts": "2026-10-13T13:40:19.019Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.finished",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "base",
+          "attempt": 1,
+          "outcome": "failed",
+          "duration_ms": 41.2,
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'test.finished' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SEKE",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 19,
+        "ts": "2026-10-13T13:40:19.019Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "test.finished",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "base",
+          "attempt": 1,
+          "outcome": "failed",
+          "duration_ms": 41.2
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007SEKE",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 19,
+        "ts": "2026-10-13T13:40:19.019Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.finished",
+        "target": {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone"
+        },
+        "status": "ok",
+        "payload": {
+          "side": "base",
+          "attempt": 1,
+          "outcome": "failed",
+          "duration_ms": 41.2
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

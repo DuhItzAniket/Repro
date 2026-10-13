@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "verdict.rejected payload",
+  "description": "An agent verdict failed validation and was not accepted.",
+  "type": "object",
+  "required": ["claim_id", "reason", "detail"],
+  "properties": {
+    "claim_id": {
+      "$ref": "../common.schema.json#/$defs/ClaimId"
+    },
+    "reason": {
+      "enum": [
+        "uncited",
+        "invalid_citation",
+        "unrelated_citation",
+        "quote_mismatch",
+        "inconsistent_with_evidence",
+        "order_swap_disagreement",
+        "retries_exhausted",
+        "schema_error"
+      ]
+    },
+    "detail": {
+      "$ref": "../common.schema.json#/$defs/ShortText"
+    }
+  },
+  "additionalProperties": false
+}

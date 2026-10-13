@@ -4,31 +4,32 @@
 name = "repro-workspace"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = ["repro-engine", "repro-bench"]
+dependencies = ["repro-engine", "repro-bench", "repro-events"]
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "ruff>=0.17.0", "mypy>=2.4.0"]
+dev = ["pytest>=9.1.1", "ruff>=0.17.0", "mypy>=2.4.0", "types-jsonschema>=4.26.0"]
 
 [tool.uv]
 package = false
 
 [tool.uv.workspace]
-members = ["engine", "bench"]
+members = ["engine", "bench", "packages/events/python"]
 
 [tool.uv.sources]
 repro-engine = { workspace = true }
 repro-bench = { workspace = true }
+repro-events = { workspace = true }
 
 [tool.pytest.ini_options]
 minversion = "9.0"
-testpaths = ["engine/tests"]
+testpaths = ["engine/tests", "packages/events/python/tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 xfail_strict = true
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["engine/src", "engine/tests", "bench/src"]
+src = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests"]
 # Code blocks in docs are illustrative sketches, not source; Ruff 0.17 would otherwise format them.
 extend-exclude = ["docs"]
 
@@ -73,4 +74,4 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
-files = ["engine/src", "engine/tests", "bench/src"]
+files = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests"]

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "snapshot.ready payload",
+  "description": "A .git-less snapshot of one side is ready.",
+  "type": "object",
+  "required": ["side", "sha", "file_count", "tree_sha256"],
+  "properties": {
+    "side": {
+      "$ref": "../common.schema.json#/$defs/SnapshotSide"
+    },
+    "sha": {
+      "$ref": "../common.schema.json#/$defs/GitSha"
+    },
+    "file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tree_sha256": {
+      "$ref": "../common.schema.json#/$defs/Sha256"
+    }
+  },
+  "additionalProperties": false
+}

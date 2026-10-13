@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "verdict.issued payload",
+  "description": "A validated verdict on one claim.",
+  "type": "object",
+  "required": ["verdict"],
+  "properties": {
+    "verdict": {
+      "$ref": "../models/verdict.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

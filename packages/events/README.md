@@ -5,12 +5,31 @@ its single source of truth.
 
 | Path | Contents | Phase |
 |---|---|---|
-| `schema/` | JSON Schema 2020-12: envelope (ADR-0003 fields), one schema per event kind, evidence, claim, verdict, card | A04 |
-| `src/` | Generated TypeScript types (json-schema-to-typescript) and validators | A05 |
-| `python/` | Generated Pydantic v2 models, published to the uv workspace as `repro-events` | A05 |
+| `schema/common.schema.json` | Shared identifiers (ULID-based ids, symbol and test ids, repo-relative paths), enums, value objects | A04 |
+| `schema/envelope.schema.json` | Fields every event carries: core fields plus `v`, `pv`, `parent`, `producer` (ADR-0003) | A04 |
+| `schema/event.schema.json` | A complete event. Its `oneOf` is **the registry of kinds**: each branch fixes `kind`, the allowed `stage`(s), `pv`, and the payload schema | A04 |
+| `schema/payloads/<kind>.schema.json` | One closed payload schema per kind (34 in v1) | A04 |
+| `schema/models/*.schema.json` | Claim, evidence, verdict, missing item, artifact reference, Reproduction Card | A04 |
+| `examples/` | For every kind, model and the envelope: valid examples and invalid examples, each with a reason | A04 |
+| `python/` | `repro-events`: schema registry, validators, draft-07 agent-schema derivation (+ generated Pydantic models in A05) | A04/A05 |
+| `src/` | Generated TypeScript types and validators | A05 |
 
-Rules:
-- Change the schema first, regenerate, then update producers and consumers.
-- Generated files are committed, and CI fails if they drift from the schema (A05/A06).
-- Adding a kind or an optional field is additive. Changing or removing a field bumps `pv`
-  (payload version) or `v` (envelope version) and needs an upcaster.
+## Rules
+
+- Schemas are JSON Schema draft 2020-12, with no `$id`. Files reference each other by relative
+  path.
+- Keywords that draft-07 or the code generators cannot express (`prefixItems`,
+  `unevaluated*`, `$dynamicRef`, …) are not used. A test enforces this.
+- Change the schema first, add or adjust examples, regenerate (A05), then update producers and
+  consumers.
+- Adding a kind or an optional field is additive. Changing or removing a field bumps the
+  kind's `pv` (or the envelope `v`) and needs an upcaster.
+- A new kind needs: a branch in `event.schema.json`, `payloads/<kind>.schema.json`,
+  `examples/events/<kind>.json` with at least one valid and one invalid example, and a row in
+  ARCHITECTURE §5.2. Tests fail if any of these is missing.
+
+## Commands
+
+```
+uv run pytest packages/events/python/tests   # schema hygiene, registry, examples, agent schemas
+```

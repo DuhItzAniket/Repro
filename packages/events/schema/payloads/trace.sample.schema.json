@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "trace.sample payload",
+  "description": "A sampled behaviour observation (for the UI; full observations are artifacts).",
+  "type": "object",
+  "required": ["side", "symbol_id", "call_index", "args_preview", "result_preview", "raised"],
+  "properties": {
+    "side": {
+      "$ref": "../common.schema.json#/$defs/Side"
+    },
+    "symbol_id": {
+      "$ref": "../common.schema.json#/$defs/SymbolId"
+    },
+    "call_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "args_preview": {
+      "$ref": "../common.schema.json#/$defs/Preview"
+    },
+    "result_preview": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/Preview"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "raised": {
+      "anyOf": [
+        {
+          "description": "Exception type qualname.",
+          "type": "string",
+          "maxLength": 512
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "perf.sample payload",
+  "description": "An untraced timing sample.",
+  "type": "object",
+  "required": ["side", "repetition", "duration_ms"],
+  "properties": {
+    "side": {
+      "$ref": "../common.schema.json#/$defs/Side"
+    },
+    "repetition": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "duration_ms": {
+      "$ref": "../common.schema.json#/$defs/DurationMs"
+    }
+  },
+  "additionalProperties": false
+}

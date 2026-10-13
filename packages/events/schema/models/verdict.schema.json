@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Verdict",
+  "description": "A judgement on one claim. Must cite at least one evidence id; uncited verdicts are rejected.",
+  "type": "object",
+  "required": [
+    "claim_id",
+    "verdict",
+    "cited_evidence",
+    "quotes",
+    "rationale",
+    "model",
+    "agreement"
+  ],
+  "properties": {
+    "claim_id": {
+      "$ref": "../common.schema.json#/$defs/ClaimId"
+    },
+    "verdict": {
+      "$ref": "../common.schema.json#/$defs/Verdict"
+    },
+    "cited_evidence": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "../common.schema.json#/$defs/EvidenceId"
+      }
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["evidence_id", "text"],
+        "properties": {
+          "evidence_id": {
+            "$ref": "../common.schema.json#/$defs/EvidenceId"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "agreement": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["runs", "agreeing"],
+          "properties": {
+            "runs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "agreeing": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

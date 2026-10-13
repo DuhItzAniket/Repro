@@ -1,0 +1,100 @@
+{
+  "kind": "agent.spawned",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007PA2B",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 6,
+      "ts": "2026-10-13T13:40:06.006Z",
+      "stage": "review",
+      "agent": "a07",
+      "kind": "agent.spawned",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "role": "review",
+        "model": "claude-opus-5-5",
+        "prompt_version": "reviewer@1",
+        "slot": 6
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'role'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007PA2B",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5006,
+        "ts": "2026-10-13T13:40:06.006Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "agent.spawned",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "model": "claude-opus-5-5",
+          "prompt_version": "reviewer@1",
+          "slot": 6
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007PA2B",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 6,
+        "ts": "2026-10-13T13:40:06.006Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "agent.spawned",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "role": "review",
+          "model": "claude-opus-5-5",
+          "prompt_version": "reviewer@1",
+          "slot": 6,
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007PA2B",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 6,
+        "ts": "2026-10-13T13:40:06.006Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "agent.spawned",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "role": "review",
+          "model": "claude-opus-5-5",
+          "prompt_version": "reviewer@1",
+          "slot": 6
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

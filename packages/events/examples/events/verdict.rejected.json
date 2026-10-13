@@ -1,0 +1,119 @@
+{
+  "kind": "verdict.rejected",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007WTW0",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 33,
+      "ts": "2026-10-13T13:40:33.033Z",
+      "stage": "review",
+      "agent": "a08",
+      "kind": "verdict.rejected",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "claim_id": "C2",
+        "reason": "uncited",
+        "detail": "Structured output had no cited_evidence after 3 retries."
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'claim_id'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WTW0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5033,
+        "ts": "2026-10-13T13:40:33.033Z",
+        "stage": "review",
+        "agent": "a08",
+        "kind": "verdict.rejected",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "reason": "uncited",
+          "detail": "Structured output had no cited_evidence after 3 retries."
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WTW0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 33,
+        "ts": "2026-10-13T13:40:33.033Z",
+        "stage": "review",
+        "agent": "a08",
+        "kind": "verdict.rejected",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "claim_id": "C2",
+          "reason": "uncited",
+          "detail": "Structured output had no cited_evidence after 3 retries.",
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'verdict.rejected' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WTW0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 33,
+        "ts": "2026-10-13T13:40:33.033Z",
+        "stage": "read",
+        "agent": "a08",
+        "kind": "verdict.rejected",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "claim_id": "C2",
+          "reason": "uncited",
+          "detail": "Structured output had no cited_evidence after 3 retries."
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007WTW0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 33,
+        "ts": "2026-10-13T13:40:33.033Z",
+        "stage": "review",
+        "agent": "a08",
+        "kind": "verdict.rejected",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "claim_id": "C2",
+          "reason": "uncited",
+          "detail": "Structured output had no cited_evidence after 3 retries."
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

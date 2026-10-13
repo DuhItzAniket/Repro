@@ -1,0 +1,395 @@
+{
+  "valid": [
+    {
+      "card_version": 1,
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "status": "VERIFIED",
+      "repo": {
+        "name": "dateutils-demo",
+        "url": null
+      },
+      "pr": {
+        "title": "Fix timezone handling in parse_date",
+        "number": 42,
+        "url": null
+      },
+      "conditions": {
+        "base": {
+          "ref": "main",
+          "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+        },
+        "head": {
+          "ref": "fix/parse-date-tz",
+          "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+        },
+        "python_version": "3.13.13",
+        "platform": "linux-container",
+        "isolation_level": "L3",
+        "network": "enforced",
+        "lock_sha256": {
+          "base": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+          "head": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d"
+        },
+        "selected_tests": 14,
+        "seeds": {
+          "hash_seed": 0,
+          "hash_seed_repeat": 1
+        },
+        "repro_version": "0.7.0",
+        "models": ["claude-haiku-5-5", "claude-opus-5-5"]
+      },
+      "claims": [
+        {
+          "id": "C1",
+          "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+          "kind": "fix",
+          "targets": [
+            {
+              "file": "pkg/dates.py",
+              "symbol": "pkg.dates:parse_date#0"
+            }
+          ],
+          "source": "description"
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "C1",
+          "verdict": "supported",
+          "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+          "quotes": [
+            {
+              "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+              "text": "fails on base and passes on head (F2P)"
+            }
+          ],
+          "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+          "model": "claude-opus-5-5",
+          "agreement": {
+            "runs": 2,
+            "agreeing": 2
+          }
+        }
+      ],
+      "gap": [
+        {
+          "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+          "type": "test_outcome",
+          "summary": "F2P: test_parse_date_with_timezone",
+          "origin": "introduced",
+          "stability": "stable",
+          "explained_by": ["C1"]
+        }
+      ],
+      "invariants": [
+        {
+          "name": "public_api_stable",
+          "result": "pass",
+          "evidence_ids": ["ev_01JBAAHWY0000000000000VKB4"]
+        }
+      ],
+      "missing": [],
+      "replay": {
+        "event_log_sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+        "event_count": 2318
+      },
+      "generated_at": "2026-10-13T13:52:07.412Z"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "unknown card status",
+      "value": {
+        "card_version": 1,
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "status": "PASSED",
+        "repo": {
+          "name": "dateutils-demo",
+          "url": null
+        },
+        "pr": {
+          "title": "Fix timezone handling in parse_date",
+          "number": 42,
+          "url": null
+        },
+        "conditions": {
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "python_version": "3.13.13",
+          "platform": "linux-container",
+          "isolation_level": "L3",
+          "network": "enforced",
+          "lock_sha256": {
+            "base": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+            "head": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d"
+          },
+          "selected_tests": 14,
+          "seeds": {
+            "hash_seed": 0,
+            "hash_seed_repeat": 1
+          },
+          "repro_version": "0.7.0",
+          "models": ["claude-haiku-5-5", "claude-opus-5-5"]
+        },
+        "claims": [
+          {
+            "id": "C1",
+            "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+            "kind": "fix",
+            "targets": [
+              {
+                "file": "pkg/dates.py",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "source": "description"
+          }
+        ],
+        "verdicts": [
+          {
+            "claim_id": "C1",
+            "verdict": "supported",
+            "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+            "quotes": [
+              {
+                "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+                "text": "fails on base and passes on head (F2P)"
+              }
+            ],
+            "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+            "model": "claude-opus-5-5",
+            "agreement": {
+              "runs": 2,
+              "agreeing": 2
+            }
+          }
+        ],
+        "gap": [
+          {
+            "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+            "type": "test_outcome",
+            "summary": "F2P: test_parse_date_with_timezone",
+            "origin": "introduced",
+            "stability": "stable",
+            "explained_by": ["C1"]
+          }
+        ],
+        "invariants": [
+          {
+            "name": "public_api_stable",
+            "result": "pass",
+            "evidence_ids": ["ev_01JBAAHWY0000000000000VKB4"]
+          }
+        ],
+        "missing": [],
+        "replay": {
+          "event_log_sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+          "event_count": 2318
+        },
+        "generated_at": "2026-10-13T13:52:07.412Z"
+      }
+    },
+    {
+      "reason": "isolation level must be L0-L4",
+      "value": {
+        "card_version": 1,
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "status": "VERIFIED",
+        "repo": {
+          "name": "dateutils-demo",
+          "url": null
+        },
+        "pr": {
+          "title": "Fix timezone handling in parse_date",
+          "number": 42,
+          "url": null
+        },
+        "conditions": {
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "python_version": "3.13.13",
+          "platform": "linux-container",
+          "isolation_level": "L9",
+          "network": "enforced",
+          "lock_sha256": {
+            "base": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+            "head": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d"
+          },
+          "selected_tests": 14,
+          "seeds": {
+            "hash_seed": 0,
+            "hash_seed_repeat": 1
+          },
+          "repro_version": "0.7.0",
+          "models": ["claude-haiku-5-5", "claude-opus-5-5"]
+        },
+        "claims": [
+          {
+            "id": "C1",
+            "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+            "kind": "fix",
+            "targets": [
+              {
+                "file": "pkg/dates.py",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "source": "description"
+          }
+        ],
+        "verdicts": [
+          {
+            "claim_id": "C1",
+            "verdict": "supported",
+            "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+            "quotes": [
+              {
+                "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+                "text": "fails on base and passes on head (F2P)"
+              }
+            ],
+            "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+            "model": "claude-opus-5-5",
+            "agreement": {
+              "runs": 2,
+              "agreeing": 2
+            }
+          }
+        ],
+        "gap": [
+          {
+            "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+            "type": "test_outcome",
+            "summary": "F2P: test_parse_date_with_timezone",
+            "origin": "introduced",
+            "stability": "stable",
+            "explained_by": ["C1"]
+          }
+        ],
+        "invariants": [
+          {
+            "name": "public_api_stable",
+            "result": "pass",
+            "evidence_ids": ["ev_01JBAAHWY0000000000000VKB4"]
+          }
+        ],
+        "missing": [],
+        "replay": {
+          "event_log_sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+          "event_count": 2318
+        },
+        "generated_at": "2026-10-13T13:52:07.412Z"
+      }
+    },
+    {
+      "reason": "card version must be 1",
+      "value": {
+        "card_version": 2,
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "status": "VERIFIED",
+        "repo": {
+          "name": "dateutils-demo",
+          "url": null
+        },
+        "pr": {
+          "title": "Fix timezone handling in parse_date",
+          "number": 42,
+          "url": null
+        },
+        "conditions": {
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "python_version": "3.13.13",
+          "platform": "linux-container",
+          "isolation_level": "L3",
+          "network": "enforced",
+          "lock_sha256": {
+            "base": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+            "head": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d"
+          },
+          "selected_tests": 14,
+          "seeds": {
+            "hash_seed": 0,
+            "hash_seed_repeat": 1
+          },
+          "repro_version": "0.7.0",
+          "models": ["claude-haiku-5-5", "claude-opus-5-5"]
+        },
+        "claims": [
+          {
+            "id": "C1",
+            "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+            "kind": "fix",
+            "targets": [
+              {
+                "file": "pkg/dates.py",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "source": "description"
+          }
+        ],
+        "verdicts": [
+          {
+            "claim_id": "C1",
+            "verdict": "supported",
+            "cited_evidence": ["ev_01JBAAHWY0000000000000VBKN"],
+            "quotes": [
+              {
+                "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+                "text": "fails on base and passes on head (F2P)"
+              }
+            ],
+            "rationale": "The claimed fix target has a fail-to-pass test whose failure on base is the naive-datetime bug.",
+            "model": "claude-opus-5-5",
+            "agreement": {
+              "runs": 2,
+              "agreeing": 2
+            }
+          }
+        ],
+        "gap": [
+          {
+            "evidence_id": "ev_01JBAAHWY0000000000000VBKN",
+            "type": "test_outcome",
+            "summary": "F2P: test_parse_date_with_timezone",
+            "origin": "introduced",
+            "stability": "stable",
+            "explained_by": ["C1"]
+          }
+        ],
+        "invariants": [
+          {
+            "name": "public_api_stable",
+            "result": "pass",
+            "evidence_ids": ["ev_01JBAAHWY0000000000000VKB4"]
+          }
+        ],
+        "missing": [],
+        "replay": {
+          "event_log_sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+          "event_count": 2318
+        },
+        "generated_at": "2026-10-13T13:52:07.412Z"
+      }
+    }
+  ]
+}

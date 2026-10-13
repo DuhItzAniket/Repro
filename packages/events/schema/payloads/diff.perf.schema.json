@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diff.perf payload",
+  "description": "A performance comparison for one test (untraced, interleaved runs).",
+  "type": "object",
+  "required": [
+    "evidence_id",
+    "ratio",
+    "ci_low",
+    "ci_high",
+    "noise_floor",
+    "verdict",
+    "repetitions"
+  ],
+  "properties": {
+    "evidence_id": {
+      "$ref": "../common.schema.json#/$defs/EvidenceId"
+    },
+    "ratio": {
+      "description": "head/base ratio of medians.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "ci_low": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "ci_high": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "noise_floor": {
+      "description": "Relative A/A noise floor.",
+      "type": "number",
+      "minimum": 0
+    },
+    "verdict": {
+      "enum": ["regression", "improvement", "no_change", "not_assessable"]
+    },
+    "repetitions": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

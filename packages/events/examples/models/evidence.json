@@ -1,0 +1,138 @@
+{
+  "valid": [
+    {
+      "id": "ev_01JBAAHWY0000000000000VBKN",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "type": "test_outcome",
+      "targets": [
+        {
+          "test": "tests/test_dates.py::test_parse_date_with_timezone",
+          "symbol": "pkg.dates:parse_date#0"
+        }
+      ],
+      "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+      "data": {
+        "class": "F2P",
+        "base_outcome": "failed",
+        "head_outcome": "passed"
+      },
+      "artifacts": [
+        {
+          "path": "junit/head.xml",
+          "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+          "media_type": "application/xml",
+          "size_bytes": 2048
+        }
+      ],
+      "stability": "stable",
+      "origin": "introduced",
+      "produced_by": {
+        "component": "diff.outcome",
+        "version": "0.4.0"
+      },
+      "seq": 812
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "evidence must have at least one target",
+      "value": {
+        "id": "ev_01JBAAHWY0000000000000VBKN",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "type": "test_outcome",
+        "targets": [],
+        "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+        "data": {
+          "class": "F2P",
+          "base_outcome": "failed",
+          "head_outcome": "passed"
+        },
+        "artifacts": [
+          {
+            "path": "junit/head.xml",
+            "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+            "media_type": "application/xml",
+            "size_bytes": 2048
+          }
+        ],
+        "stability": "stable",
+        "origin": "introduced",
+        "produced_by": {
+          "component": "diff.outcome",
+          "version": "0.4.0"
+        },
+        "seq": 812
+      }
+    },
+    {
+      "reason": "artifact digest must be SHA-256 hex",
+      "value": {
+        "id": "ev_01JBAAHWY0000000000000VBKN",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "type": "test_outcome",
+        "targets": [
+          {
+            "test": "tests/test_dates.py::test_parse_date_with_timezone",
+            "symbol": "pkg.dates:parse_date#0"
+          }
+        ],
+        "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+        "data": {
+          "class": "F2P",
+          "base_outcome": "failed",
+          "head_outcome": "passed"
+        },
+        "artifacts": [
+          {
+            "path": "junit/head.xml",
+            "sha256": "abc",
+            "media_type": "application/xml",
+            "size_bytes": 2048
+          }
+        ],
+        "stability": "stable",
+        "origin": "introduced",
+        "produced_by": {
+          "component": "diff.outcome",
+          "version": "0.4.0"
+        },
+        "seq": 812
+      }
+    },
+    {
+      "reason": "unknown evidence type",
+      "value": {
+        "id": "ev_01JBAAHWY0000000000000VBKN",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "type": "opinion",
+        "targets": [
+          {
+            "test": "tests/test_dates.py::test_parse_date_with_timezone",
+            "symbol": "pkg.dates:parse_date#0"
+          }
+        ],
+        "summary": "test_parse_date_with_timezone fails on base and passes on head (F2P), 3/3 reruns each side.",
+        "data": {
+          "class": "F2P",
+          "base_outcome": "failed",
+          "head_outcome": "passed"
+        },
+        "artifacts": [
+          {
+            "path": "junit/head.xml",
+            "sha256": "5d41402abc4b2a76b9719d911017c592ae2e3c8d1f0b7a6c5e4d3c2b1a0f9e8d",
+            "media_type": "application/xml",
+            "size_bytes": 2048
+          }
+        ],
+        "stability": "stable",
+        "origin": "introduced",
+        "produced_by": {
+          "component": "diff.outcome",
+          "version": "0.4.0"
+        },
+        "seq": 812
+      }
+    }
+  ]
+}

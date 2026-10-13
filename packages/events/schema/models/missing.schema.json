@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MissingItem",
+  "description": "Something that could not be verified, and why. Never reported as a pass.",
+  "type": "object",
+  "required": ["reason", "targets", "detail", "resolution"],
+  "properties": {
+    "reason": {
+      "$ref": "../common.schema.json#/$defs/MissingReason"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "../common.schema.json#/$defs/Target"
+      }
+    },
+    "detail": {
+      "$ref": "../common.schema.json#/$defs/ShortText"
+    },
+    "resolution": {
+      "anyOf": [
+        {
+          "description": "What would allow this to be checked.",
+          "type": "string",
+          "maxLength": 500
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

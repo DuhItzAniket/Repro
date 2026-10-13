@@ -1,0 +1,139 @@
+{
+  "kind": "diff.tests",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007TDHA",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 23,
+      "ts": "2026-10-13T13:40:23.023Z",
+      "stage": "diff",
+      "agent": null,
+      "kind": "diff.tests",
+      "target": {
+        "file": "tests/test_dates.py"
+      },
+      "status": "ok",
+      "payload": {
+        "evidence_id": "ev_01JBAAHWY0000000000000VV2K",
+        "file": "tests/test_dates.py",
+        "test": "tests/test_dates.py::test_parse_date_rejects_garbage",
+        "change": "skip_added",
+        "detail": "@pytest.mark.skip added to a test that fails on head."
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'evidence_id'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TDHA",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5023,
+        "ts": "2026-10-13T13:40:23.023Z",
+        "stage": "diff",
+        "agent": null,
+        "kind": "diff.tests",
+        "target": {
+          "file": "tests/test_dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "file": "tests/test_dates.py",
+          "test": "tests/test_dates.py::test_parse_date_rejects_garbage",
+          "change": "skip_added",
+          "detail": "@pytest.mark.skip added to a test that fails on head."
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TDHA",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 23,
+        "ts": "2026-10-13T13:40:23.023Z",
+        "stage": "diff",
+        "agent": null,
+        "kind": "diff.tests",
+        "target": {
+          "file": "tests/test_dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence_id": "ev_01JBAAHWY0000000000000VV2K",
+          "file": "tests/test_dates.py",
+          "test": "tests/test_dates.py::test_parse_date_rejects_garbage",
+          "change": "skip_added",
+          "detail": "@pytest.mark.skip added to a test that fails on head.",
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'diff.tests' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TDHA",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 23,
+        "ts": "2026-10-13T13:40:23.023Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "diff.tests",
+        "target": {
+          "file": "tests/test_dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence_id": "ev_01JBAAHWY0000000000000VV2K",
+          "file": "tests/test_dates.py",
+          "test": "tests/test_dates.py::test_parse_date_rejects_garbage",
+          "change": "skip_added",
+          "detail": "@pytest.mark.skip added to a test that fails on head."
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007TDHA",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 23,
+        "ts": "2026-10-13T13:40:23.023Z",
+        "stage": "diff",
+        "agent": null,
+        "kind": "diff.tests",
+        "target": {
+          "file": "tests/test_dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "evidence_id": "ev_01JBAAHWY0000000000000VV2K",
+          "file": "tests/test_dates.py",
+          "test": "tests/test_dates.py::test_parse_date_rejects_garbage",
+          "change": "skip_added",
+          "detail": "@pytest.mark.skip added to a test that fails on head."
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

@@ -235,7 +235,11 @@ because it actually ran base.
 }
 ```
 The core fields are unchanged from the original brief. The four additive fields were accepted
-in ADR-0003.
+in ADR-0003. In schema v1, `v`, `pv` and `producer` are required (no older logs exist), and
+`parent` is optional. The authoritative definition is `packages/events/schema/` (A04): the
+envelope, one payload schema per kind, shared definitions, and the models (claim, evidence,
+verdict, missing item, artifact, card). Execution sides are named `base`, `base_repeat` (A′) and
+`head`.
 
 ### 5.2 Kinds (v1)
 | Group | Kinds |
@@ -274,7 +278,7 @@ target code runs from snapshots, not worktrees. Adding kinds does not change cor
 {
   "id": "ev_01J…",
   "run_id": "run_01J…",
-  "type": "test_outcome|test_change|behaviour_diff|probe_diff|api_diff|dep_diff|lock_drift|perf_diff|invariant|selection|network_attempt|environment|static_change",
+  "type": "test_outcome|test_change|behaviour_diff|probe_diff|api_diff|dep_diff|lock_drift|perf_diff|invariant|selection|network_attempt|environment|static_change|policy_change",
   "targets": [{ "file": "...", "symbol": "...", "test": "..." }],
   "summary": "parse_date('2026-03-29T02:30', tz='Europe/Berlin'): base → 2026-03-29T01:30Z, head → raises NonExistentTimeError",
   "data": { },                         // type-specific, schema'd
@@ -300,7 +304,7 @@ where possible what would resolve it.
 
 | Section | Content |
 |---|---|
-| Claim | Atomic claims C1…Cn extracted from the PR (text, targets, kind: fix / feature / refactor / no-change / perf / deps) |
+| Claim | Atomic claims C1…Cn extracted from the PR (text, targets, kind: fix / feature / refactor / no-change / perf / deps / test / docs) |
 | Conditions | base and head SHAs, interpreter, lock digests, selected tests, seeds, **isolation level achieved**, platform, Repro version, model IDs |
 | Gap | Behaviour, outcome, API, dependency and perf differences, each with origin (introduced or pre-existing), stability, evidence ID and explained-by claim(s) |
 | Verdicts | Per claim: `supported` / `contradicted` / `unverifiable`, cited evidence, rationale, agreement (panel) |

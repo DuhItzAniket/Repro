@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "test.finished payload",
+  "description": "A test run finished on one side.",
+  "type": "object",
+  "required": ["side", "attempt", "outcome", "duration_ms"],
+  "properties": {
+    "side": {
+      "$ref": "../common.schema.json#/$defs/Side"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "outcome": {
+      "$ref": "../common.schema.json#/$defs/TestOutcome"
+    },
+    "duration_ms": {
+      "$ref": "../common.schema.json#/$defs/DurationMs"
+    }
+  },
+  "additionalProperties": false
+}

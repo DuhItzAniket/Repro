@@ -1,0 +1,379 @@
+{
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY000000000002BM3ZR",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 9001,
+      "ts": "2026-10-13T13:40:01.001Z",
+      "stage": "run",
+      "agent": null,
+      "kind": "log.line",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "level": "info",
+        "verb": "run",
+        "message": "x"
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "event id is not 'evt_' + ULID",
+      "event": {
+        "id": "evt_123",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "seq starts at 1",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 0,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "timestamp must be UTC with a 'Z' suffix",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01+02:00",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "unknown stage",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "deploy",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "unknown kind",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "test.exploded",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "agent id has the wrong form",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": "agent-7",
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "target path uses backslashes",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": {
+          "file": "pkg\\dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "target path is absolute",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": {
+          "file": "/home/u/pkg/dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "target path escapes the repository",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": {
+          "file": "../outside.py"
+        },
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "target path has a drive letter",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": {
+          "file": "C:/repo/pkg/dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "target object must not be empty",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": {},
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "envelope version must be 1",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 2,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "producer is required",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null
+      }
+    },
+    {
+      "reason": "unknown envelope field",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0",
+        "extra": true
+      }
+    },
+    {
+      "reason": "status is not one of start/progress/ok/warn/fail",
+      "event": {
+        "id": "evt_01JBAAHWY000000000002BM3ZR",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "run",
+        "agent": null,
+        "kind": "log.line",
+        "target": null,
+        "status": "done",
+        "payload": {
+          "level": "info",
+          "verb": "run",
+          "message": "x"
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,206 @@
+{
+  "kind": "run.started",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007N3D0",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 1,
+      "ts": "2026-10-13T13:40:01.001Z",
+      "stage": "read",
+      "agent": null,
+      "kind": "run.started",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "repo": {
+          "name": "dateutils-demo",
+          "url": null
+        },
+        "base": {
+          "ref": "main",
+          "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+        },
+        "head": {
+          "ref": "fix/parse-date-tz",
+          "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+        },
+        "pr": {
+          "title": "Fix timezone handling in parse_date",
+          "number": 42,
+          "url": null
+        },
+        "mode": {
+          "deterministic_only": false,
+          "sandbox_backend": "docker"
+        }
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'repo'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007N3D0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5001,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "run.started",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "pr": {
+            "title": "Fix timezone handling in parse_date",
+            "number": 42,
+            "url": null
+          },
+          "mode": {
+            "deterministic_only": false,
+            "sandbox_backend": "docker"
+          }
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007N3D0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 1,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "run.started",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "repo": {
+            "name": "dateutils-demo",
+            "url": null
+          },
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "pr": {
+            "title": "Fix timezone handling in parse_date",
+            "number": 42,
+            "url": null
+          },
+          "mode": {
+            "deterministic_only": false,
+            "sandbox_backend": "docker"
+          },
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'run.started' cannot occur in stage 'build'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007N3D0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 1,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "run.started",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "repo": {
+            "name": "dateutils-demo",
+            "url": null
+          },
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "pr": {
+            "title": "Fix timezone handling in parse_date",
+            "number": 42,
+            "url": null
+          },
+          "mode": {
+            "deterministic_only": false,
+            "sandbox_backend": "docker"
+          }
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007N3D0",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 1,
+        "ts": "2026-10-13T13:40:01.001Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "run.started",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "repo": {
+            "name": "dateutils-demo",
+            "url": null
+          },
+          "base": {
+            "ref": "main",
+            "sha": "3f6c1e0a9b8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e"
+          },
+          "head": {
+            "ref": "fix/parse-date-tz",
+            "sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+          },
+          "pr": {
+            "title": "Fix timezone handling in parse_date",
+            "number": 42,
+            "url": null
+          },
+          "mode": {
+            "deterministic_only": false,
+            "sandbox_backend": "docker"
+          }
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cost.estimate payload",
+  "description": "Client-side token and cost estimate for an agent call (not billing data).",
+  "type": "object",
+  "required": ["model", "input_tokens", "output_tokens", "cache_read_tokens", "usd", "estimate"],
+  "properties": {
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "input_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "output_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cache_read_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "estimate": {
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}

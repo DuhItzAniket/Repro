@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "missing.recorded payload",
+  "description": "Something could not be verified.",
+  "type": "object",
+  "required": ["missing"],
+  "properties": {
+    "missing": {
+      "$ref": "../models/missing.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

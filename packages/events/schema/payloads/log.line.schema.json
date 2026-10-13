@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "log.line payload",
+  "description": "A line for the investigation feed.",
+  "type": "object",
+  "required": ["level", "verb", "message"],
+  "properties": {
+    "level": {
+      "enum": ["debug", "info", "warning", "error"]
+    },
+    "verb": {
+      "$ref": "../common.schema.json#/$defs/Stage"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "additionalProperties": false
+}

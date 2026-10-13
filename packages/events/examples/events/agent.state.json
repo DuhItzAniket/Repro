@@ -1,0 +1,100 @@
+{
+  "kind": "agent.state",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007PHST",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 7,
+      "ts": "2026-10-13T13:40:07.007Z",
+      "stage": "review",
+      "agent": "a07",
+      "kind": "agent.state",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "state": "tool_call",
+        "tool": "mcp__repro__get_evidence",
+        "detail": "ev = get_evidence(C1)",
+        "progress": 0.4
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'state'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007PHST",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5007,
+        "ts": "2026-10-13T13:40:07.007Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "agent.state",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "tool": "mcp__repro__get_evidence",
+          "detail": "ev = get_evidence(C1)",
+          "progress": 0.4
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007PHST",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 7,
+        "ts": "2026-10-13T13:40:07.007Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "agent.state",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "state": "tool_call",
+          "tool": "mcp__repro__get_evidence",
+          "detail": "ev = get_evidence(C1)",
+          "progress": 0.4,
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007PHST",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 7,
+        "ts": "2026-10-13T13:40:07.007Z",
+        "stage": "review",
+        "agent": "a07",
+        "kind": "agent.state",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "state": "tool_call",
+          "tool": "mcp__repro__get_evidence",
+          "detail": "ev = get_evidence(C1)",
+          "progress": 0.4
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

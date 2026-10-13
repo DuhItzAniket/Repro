@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "evidence.created payload",
+  "description": "A citable evidence record was created.",
+  "type": "object",
+  "required": ["evidence"],
+  "properties": {
+    "evidence": {
+      "$ref": "../models/evidence.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

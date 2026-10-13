@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph.edge payload",
+  "description": "An edge of the dependency graph (static imports, or observed calls/coverage).",
+  "type": "object",
+  "required": ["source", "target", "type"],
+  "properties": {
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "type": {
+      "enum": ["imports", "calls", "covers"]
+    }
+  },
+  "additionalProperties": false
+}

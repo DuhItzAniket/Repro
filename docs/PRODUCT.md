@@ -84,7 +84,7 @@ PR / branch ─► READ ─► BUILD ─► RUN (base ‖ base′ ‖ head) ─�
 ```
 
 1. **Read:** parse the PR (description, commits, diff) into atomic claims C1…Cn, each with
-   targets and a kind (fix / feature / refactor / no-change / perf / deps).
+   targets and a kind (fix / feature / refactor / no-change / perf / deps / test / docs).
 2. **Build:** check out both sides as isolated snapshots, provision identical environments,
    build the symbol table and import graph, and compute the blast radius.
 3. **Run:**

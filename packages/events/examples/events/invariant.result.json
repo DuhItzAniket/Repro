@@ -1,0 +1,124 @@
+{
+  "kind": "invariant.result",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007VVY4",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 29,
+      "ts": "2026-10-13T13:40:29.029Z",
+      "stage": "check",
+      "agent": null,
+      "kind": "invariant.result",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "invariant": "public_api_stable",
+        "result": "fail",
+        "evidence_ids": ["ev_01JBAAHWY0000000000000WJ90"],
+        "message": "parse_date lost parameter 'strict'."
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'invariant'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007VVY4",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5029,
+        "ts": "2026-10-13T13:40:29.029Z",
+        "stage": "check",
+        "agent": null,
+        "kind": "invariant.result",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "result": "fail",
+          "evidence_ids": ["ev_01JBAAHWY0000000000000WJ90"],
+          "message": "parse_date lost parameter 'strict'."
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007VVY4",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 29,
+        "ts": "2026-10-13T13:40:29.029Z",
+        "stage": "check",
+        "agent": null,
+        "kind": "invariant.result",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "invariant": "public_api_stable",
+          "result": "fail",
+          "evidence_ids": ["ev_01JBAAHWY0000000000000WJ90"],
+          "message": "parse_date lost parameter 'strict'.",
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'invariant.result' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007VVY4",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 29,
+        "ts": "2026-10-13T13:40:29.029Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "invariant.result",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "invariant": "public_api_stable",
+          "result": "fail",
+          "evidence_ids": ["ev_01JBAAHWY0000000000000WJ90"],
+          "message": "parse_date lost parameter 'strict'."
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007VVY4",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 29,
+        "ts": "2026-10-13T13:40:29.029Z",
+        "stage": "check",
+        "agent": null,
+        "kind": "invariant.result",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "invariant": "public_api_stable",
+          "result": "fail",
+          "evidence_ids": ["ev_01JBAAHWY0000000000000WJ90"],
+          "message": "parse_date lost parameter 'strict'."
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

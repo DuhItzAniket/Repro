@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diff.behaviour payload",
+  "description": "Same input, different behaviour, observed through existing tests.",
+  "type": "object",
+  "required": [
+    "evidence_id",
+    "symbol_id",
+    "test",
+    "change",
+    "stability",
+    "base_preview",
+    "head_preview"
+  ],
+  "properties": {
+    "evidence_id": {
+      "$ref": "../common.schema.json#/$defs/EvidenceId"
+    },
+    "symbol_id": {
+      "$ref": "../common.schema.json#/$defs/SymbolId"
+    },
+    "test": {
+      "$ref": "../common.schema.json#/$defs/TestId"
+    },
+    "change": {
+      "$ref": "../common.schema.json#/$defs/BehaviourChange"
+    },
+    "stability": {
+      "$ref": "../common.schema.json#/$defs/Stability"
+    },
+    "base_preview": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/Preview"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "head_preview": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/Preview"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,152 @@
+{
+  "kind": "claim.extracted",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007Q18R",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 9,
+      "ts": "2026-10-13T13:40:09.009Z",
+      "stage": "read",
+      "agent": "a01",
+      "kind": "claim.extracted",
+      "target": null,
+      "status": "ok",
+      "payload": {
+        "claim": {
+          "id": "C1",
+          "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+          "kind": "fix",
+          "targets": [
+            {
+              "file": "pkg/dates.py",
+              "symbol": "pkg.dates:parse_date#0"
+            }
+          ],
+          "source": "description"
+        }
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'claim'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007Q18R",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5009,
+        "ts": "2026-10-13T13:40:09.009Z",
+        "stage": "read",
+        "agent": "a01",
+        "kind": "claim.extracted",
+        "target": null,
+        "status": "ok",
+        "payload": {},
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007Q18R",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9,
+        "ts": "2026-10-13T13:40:09.009Z",
+        "stage": "read",
+        "agent": "a01",
+        "kind": "claim.extracted",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "claim": {
+            "id": "C1",
+            "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+            "kind": "fix",
+            "targets": [
+              {
+                "file": "pkg/dates.py",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "source": "description"
+          },
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'claim.extracted' cannot occur in stage 'build'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007Q18R",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9,
+        "ts": "2026-10-13T13:40:09.009Z",
+        "stage": "build",
+        "agent": "a01",
+        "kind": "claim.extracted",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "claim": {
+            "id": "C1",
+            "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+            "kind": "fix",
+            "targets": [
+              {
+                "file": "pkg/dates.py",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "source": "description"
+          }
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007Q18R",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 9,
+        "ts": "2026-10-13T13:40:09.009Z",
+        "stage": "read",
+        "agent": "a01",
+        "kind": "claim.extracted",
+        "target": null,
+        "status": "ok",
+        "payload": {
+          "claim": {
+            "id": "C1",
+            "text": "Fixes parse_date returning a naive datetime when the input has a UTC offset.",
+            "kind": "fix",
+            "targets": [
+              {
+                "file": "pkg/dates.py",
+                "symbol": "pkg.dates:parse_date#0"
+              }
+            ],
+            "source": "description"
+          }
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}

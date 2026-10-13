@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReproductionCard",
+  "description": "The canonical JSON form of a Reproduction Card (ARCHITECTURE §7).",
+  "type": "object",
+  "required": [
+    "card_version",
+    "run_id",
+    "status",
+    "repo",
+    "pr",
+    "conditions",
+    "claims",
+    "verdicts",
+    "gap",
+    "invariants",
+    "missing",
+    "replay",
+    "generated_at"
+  ],
+  "properties": {
+    "card_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "../common.schema.json#/$defs/RunId"
+    },
+    "status": {
+      "$ref": "../common.schema.json#/$defs/CardStatus"
+    },
+    "repo": {
+      "type": "object",
+      "required": ["name", "url"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "pr": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["title", "number", "url"],
+          "properties": {
+            "title": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "number": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "conditions": {
+      "type": "object",
+      "required": [
+        "base",
+        "head",
+        "python_version",
+        "platform",
+        "isolation_level",
+        "network",
+        "lock_sha256",
+        "selected_tests",
+        "seeds",
+        "repro_version",
+        "models"
+      ],
+      "properties": {
+        "base": {
+          "$ref": "../common.schema.json#/$defs/GitRef"
+        },
+        "head": {
+          "$ref": "../common.schema.json#/$defs/GitRef"
+        },
+        "python_version": {
+          "type": "string",
+          "pattern": "^3\\.[0-9]+\\.[0-9]+"
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "isolation_level": {
+          "$ref": "../common.schema.json#/$defs/IsolationLevel"
+        },
+        "network": {
+          "$ref": "../common.schema.json#/$defs/NetworkEnforcement"
+        },
+        "lock_sha256": {
+          "type": "object",
+          "required": ["base", "head"],
+          "properties": {
+            "base": {
+              "anyOf": [
+                {
+                  "$ref": "../common.schema.json#/$defs/Sha256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "head": {
+              "anyOf": [
+                {
+                  "$ref": "../common.schema.json#/$defs/Sha256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "selected_tests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "seeds": {
+          "type": "object",
+          "required": ["hash_seed", "hash_seed_repeat"],
+          "properties": {
+            "hash_seed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hash_seed_repeat": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "repro_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "claim.schema.json"
+      }
+    },
+    "verdicts": {
+      "type": "array",
+      "items": {
+        "$ref": "verdict.schema.json"
+      }
+    },
+    "gap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["evidence_id", "type", "summary", "origin", "stability", "explained_by"],
+        "properties": {
+          "evidence_id": {
+            "$ref": "../common.schema.json#/$defs/EvidenceId"
+          },
+          "type": {
+            "$ref": "../common.schema.json#/$defs/EvidenceType"
+          },
+          "summary": {
+            "$ref": "../common.schema.json#/$defs/ShortText"
+          },
+          "origin": {
+            "$ref": "../common.schema.json#/$defs/Origin"
+          },
+          "stability": {
+            "$ref": "../common.schema.json#/$defs/Stability"
+          },
+          "explained_by": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "../common.schema.json#/$defs/ClaimId"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "result", "evidence_ids"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "result": {
+            "enum": ["pass", "fail", "not_evaluated"]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "../common.schema.json#/$defs/EvidenceId"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "$ref": "missing.schema.json"
+      }
+    },
+    "replay": {
+      "type": "object",
+      "required": ["event_log_sha256", "event_count"],
+      "properties": {
+        "event_log_sha256": {
+          "$ref": "../common.schema.json#/$defs/Sha256"
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "generated_at": {
+      "$ref": "../common.schema.json#/$defs/Timestamp"
+    }
+  },
+  "additionalProperties": false
+}

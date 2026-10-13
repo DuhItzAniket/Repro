@@ -1,0 +1,142 @@
+{
+  "kind": "graph.node",
+  "valid": [
+    {
+      "id": "evt_01JBAAHWY0000000000007QGQP",
+      "run_id": "run_01JBAAHWY00000000000003E08",
+      "seq": 11,
+      "ts": "2026-10-13T13:40:11.011Z",
+      "stage": "build",
+      "agent": null,
+      "kind": "graph.node",
+      "target": {
+        "file": "pkg/dates.py"
+      },
+      "status": "ok",
+      "payload": {
+        "node": {
+          "id": "pkg.dates",
+          "type": "module",
+          "name": "pkg.dates",
+          "file": "pkg/dates.py",
+          "line": null
+        }
+      },
+      "v": 1,
+      "pv": 1,
+      "parent": null,
+      "producer": "repro/0.1.0+3f6c1e0"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "payload is missing required field 'node'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QGQP",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 5011,
+        "ts": "2026-10-13T13:40:11.011Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "graph.node",
+        "target": {
+          "file": "pkg/dates.py"
+        },
+        "status": "ok",
+        "payload": {},
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload has a property the schema does not allow",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QGQP",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 11,
+        "ts": "2026-10-13T13:40:11.011Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "graph.node",
+        "target": {
+          "file": "pkg/dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "node": {
+            "id": "pkg.dates",
+            "type": "module",
+            "name": "pkg.dates",
+            "file": "pkg/dates.py",
+            "line": null
+          },
+          "unexpected_field": 1
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "kind 'graph.node' cannot occur in stage 'read'",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QGQP",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 11,
+        "ts": "2026-10-13T13:40:11.011Z",
+        "stage": "read",
+        "agent": null,
+        "kind": "graph.node",
+        "target": {
+          "file": "pkg/dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "node": {
+            "id": "pkg.dates",
+            "type": "module",
+            "name": "pkg.dates",
+            "file": "pkg/dates.py",
+            "line": null
+          }
+        },
+        "v": 1,
+        "pv": 1,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    },
+    {
+      "reason": "payload version 2 does not exist for this kind in schema v1",
+      "event": {
+        "id": "evt_01JBAAHWY0000000000007QGQP",
+        "run_id": "run_01JBAAHWY00000000000003E08",
+        "seq": 11,
+        "ts": "2026-10-13T13:40:11.011Z",
+        "stage": "build",
+        "agent": null,
+        "kind": "graph.node",
+        "target": {
+          "file": "pkg/dates.py"
+        },
+        "status": "ok",
+        "payload": {
+          "node": {
+            "id": "pkg.dates",
+            "type": "module",
+            "name": "pkg.dates",
+            "file": "pkg/dates.py",
+            "line": null
+          }
+        },
+        "v": 1,
+        "pv": 2,
+        "parent": null,
+        "producer": "repro/0.1.0+3f6c1e0"
+      }
+    }
+  ]
+}
