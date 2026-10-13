@@ -32,6 +32,9 @@ All notable changes to this project are documented here. The format follows
 - Test harness: Hypothesis (dev/ci profiles) and fast-check; `repro-events validate` /
   `normalise` CLI for event logs (schema plus log invariants, including evidence-before-citation);
   golden-file fixture; deterministic fixture-repository builder with the `honest-fix` fixture. [A07]
+- Feasibility spikes with results (`spikes/A08/`): `sys.monitoring` tracer overhead on CPython
+  3.12–3.15 (Windows/Linux), Docker L3 sandbox round trip, and container provisioning of a real
+  project. A spike workflow reproduces them on a Linux runner. [A08]
 
 ### Changed
 - Common enum `Verdict` renamed `VerdictValue` (it collided with the `Verdict` model). [A05]

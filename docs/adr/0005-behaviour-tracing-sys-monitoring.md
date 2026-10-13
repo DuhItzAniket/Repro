@@ -44,3 +44,17 @@ The plugin must support Python 3.12–3.15 and their differences (`BRANCH_*` and
 in 3.14; per-code "other" events in 3.15). Targets older than 3.12 run without traces, and the
 card says so. The encoder is security- and correctness-critical, so it gets property-based
 tests and fuzzing.
+
+## Measured (A08, 2026-10-13)
+`spikes/A08/RESULTS.md` §1. CPython 3.12–3.15, Windows and Linux:
+- Every code object `DISABLE`d costs 0.94–1.06× baseline, so loading the tracer is free.
+- An instrumented target costs 114–197 ns per call with `sys.monitoring` and 193–547 ns with
+  `settrace`.
+- Full value capture costs 2.3–11.4 µs per call, and **encoding dominates**: `settrace` capture
+  is only 2–35 % slower.
+- **Budgeted capture (200 calls, then `DISABLE`) runs at 0.92–1.19× baseline in steady state.**
+
+Consequences:
+- The default budget is 200 encoded calls per (test, function).
+- Encoder performance is a first-class requirement for E02.
+- E01 re-measures on real suites.

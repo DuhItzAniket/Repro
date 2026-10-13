@@ -43,3 +43,25 @@ entry. If something turns out wrong, add a correcting entry.
   keywords out of all source schemas, so derivation is total over the v1 schema set.
 - Tests show the derived schemas agree with the source schemas on every model example
   (valid accepted, invalid rejected) and accept every valid payload example (380 tests).
+
+## 2026-10-13 · A08 · Feasibility measurements
+
+- **Tracer overhead** (16 configurations: CPython 3.12–3.15 × Windows/Linux × 2 workloads; 5
+  interleaved rounds × 15 repetitions; process per configuration):
+  - `sys.monitoring` with everything `DISABLE`d runs at baseline (0.94–1.06×).
+  - Per-call dispatch for an instrumented target: 114–197 ns, against 193–547 ns for `sys.settrace`.
+  - Full argument and return capture with structural encoding plus BLAKE2b: 2.3–11.4 µs per call.
+    The encoder dominates, and settrace capture is only 2–35 % slower.
+  - A per-target budget of 200 captured calls returns overhead to baseline in steady state.
+  - **Implication for the paper:** value capture is affordable only with budgets. The cost
+    model belongs in the evaluation's RQ5 (cost), and encoder design is a performance
+    contribution, not an implementation detail.
+- **Sandbox:** Docker `--network none` verifiably blocks network on Windows Home (WSL2), at about
+  0.3–0.9 s per container. Offline provisioning from a warm uv cache: 0.79 s vs 9.9 s cold
+  (pallets/click 8.5.0).
+- **Negative and surprising results worth reporting:**
+  - Docker's default `noexec` tmpfs caused 3 sandbox-induced test failures in click. A naive
+    sandbox can *create* behaviour differences, which is a threat to validity. Base and head
+    share the sandbox, so the effect is symmetric, but it must still be avoided.
+  - 24 click tests fail in a slim image because `less` is missing. Environment-induced failures
+    are common, which is why outcome comparison must be base-vs-head (F2F) rather than absolute.

@@ -1,0 +1,76 @@
+{
+  "host": {
+    "system": "Windows",
+    "release": "11",
+    "machine": "AMD64"
+  },
+  "docker_server": "29.8.2 linux/amd64",
+  "image": "ghcr.io/astral-sh/uv@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca",
+  "image_pull_s": 1.648,
+  "snapshot_bytes": 20480,
+  "runs": [
+    {
+      "timings_s": {
+        "volume_create": 0.144,
+        "snapshot_copy": 0.33,
+        "provision": 11.042,
+        "test_run_sandboxed": 0.99,
+        "network_probe": 0.406,
+        "collect_junit": 0.37,
+        "volume_remove": 0.161
+      },
+      "total_s": 13.443,
+      "pytest_exit_code": 0,
+      "pytest_summary": [
+        "2 passed in 0.01s"
+      ],
+      "junit_bytes": 435,
+      "network_probe": [
+        "BLOCKED ('1.1.1.1', 443) OSError [Errno 101] Network is unreachable",
+        "BLOCKED ('pypi.org', 443) gaierror [Errno -3] Temporary failure in name resolution"
+      ]
+    },
+    {
+      "timings_s": {
+        "volume_create": 0.147,
+        "snapshot_copy": 0.328,
+        "provision": 8.991,
+        "test_run_sandboxed": 0.892,
+        "network_probe": 0.404,
+        "collect_junit": 0.329,
+        "volume_remove": 0.159
+      },
+      "total_s": 11.25,
+      "pytest_exit_code": 0,
+      "pytest_summary": [
+        "2 passed in 0.01s"
+      ],
+      "junit_bytes": 435,
+      "network_probe": [
+        "BLOCKED ('1.1.1.1', 443) OSError [Errno 101] Network is unreachable",
+        "BLOCKED ('pypi.org', 443) gaierror [Errno -3] Temporary failure in name resolution"
+      ]
+    },
+    {
+      "timings_s": {
+        "volume_create": 0.148,
+        "snapshot_copy": 0.341,
+        "provision": 8.602,
+        "test_run_sandboxed": 0.899,
+        "network_probe": 0.389,
+        "collect_junit": 0.338,
+        "volume_remove": 0.158
+      },
+      "total_s": 10.875,
+      "pytest_exit_code": 0,
+      "pytest_summary": [
+        "2 passed in 0.01s"
+      ],
+      "junit_bytes": 435,
+      "network_probe": [
+        "BLOCKED ('1.1.1.1', 443) OSError [Errno 101] Network is unreachable",
+        "BLOCKED ('pypi.org', 443) gaierror [Errno -3] Temporary failure in name resolution"
+      ]
+    }
+  ]
+}

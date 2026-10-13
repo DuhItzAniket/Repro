@@ -153,10 +153,12 @@ Two further checks come from the literature (research/02 §1.9, §5.5):
   Code objects are kept alive to prevent `id` reuse.
 - Records are attributed to the current test and phase through pytest hooks and flushed per test
   to the output directory.
-- **Budgets.** Each (test, function) pair gets *N* fully encoded calls. After that only counts and
+- **Budgets.** Each (test, function) pair gets *N* fully encoded calls (default 200, measured in A08). After that only counts and
   rolling digests are kept, then the location is disabled and marked `truncated`. The per-call
   overhead of `sys.monitoring` with Python callbacks is **not published** (research/03 §1.3),
-  so Repro measures it itself (phase A08) before fixing default budgets.
+  so Repro measured it in A08 (`spikes/A08/RESULTS.md`). Dispatch costs 114–197 ns per call,
+  capture 2.3–11.4 µs per call (dominated by encoding), and budgeted capture runs at about
+  baseline speed.
 
 **Canonical encoder.** A structural, CBOR-like tagged encoding is hashed with BLAKE2b-128.
 It **never calls user-defined dunders** (`__repr__`, `__eq__`, properties, iterators). It
@@ -327,7 +329,7 @@ verdicts are labelled as judgements.
 | L0 | separate process per side, minimal env, fixed seeds | ✓ | ✓ |
 | L1 detect | in-process socket guard + `sys.addaudithook` → evidence of network, subprocess and file attempts | ✓ | ✓ |
 | L2 contain | Windows Job Objects (kill-on-close, memory, CPU, process count) or POSIX process groups + rlimits, plus wall-clock timeouts | ✓ | ✓ |
-| L3 enforce | Linux container: `--network none`, read-only root + tmpfs, `--cap-drop ALL`, `no-new-privileges`, non-root, pids/memory/cpu limits, snapshot copied into a volume (no bind-mounted live worktree, no `.git`) | Docker Desktop (WSL2) | Docker / Podman |
+| L3 enforce | Linux container: `--network none`, read-only root + tmpfs `/tmp` (mounted `exec`; A08 found `noexec` breaks real suites), `--cap-drop ALL`, `no-new-privileges`, non-root, pids/memory/cpu limits, snapshot copied into a volume (no bind-mounted live worktree, no `.git`) | Docker Desktop (WSL2) | Docker / Podman |
 | L4 harden | gVisor `runsc` (or a microVM) | — | optional |
 
 Rules:

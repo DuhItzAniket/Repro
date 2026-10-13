@@ -72,6 +72,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101", "S603", "S607", "PLR2004", "ARG"]
+# Spikes are measurement scripts: they shell out to git/docker and use numeric literals freely.
+"spikes/**" = ["S603", "S607", "S108", "PLR2004", "S101", "ARG001"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

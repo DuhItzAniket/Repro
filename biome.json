@@ -12,7 +12,8 @@
       "!**/dist",
       "!**/coverage",
       "!docs/research",
-      "!packages/events/src/generated"
+      "!packages/events/src/generated",
+      "!spikes/**/results"
     ]
   },
   "formatter": {
