@@ -623,3 +623,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Gate A | 2026-10-13 | [#9](https://github.com/DuhItzAniket/Repro/pull/9) | Stage A complete; release v0.1.0 ([gate record](phases/A-gate.md)) |
 | B01 | 2026-10-13 | [#10](https://github.com/DuhItzAniket/Repro/pull/10) | `@repro/synth` generator; demo (2,334 events, 28 checks) and stress (10k edges, 3k/s burst) fixtures; ADR-0015 check model |
 | B02 | 2026-10-13 | [#11](https://github.com/DuhItzAniket/Repro/pull/11) | Columnar EventStore, snapshot folder with exact seek, time/kind indexes, presentation clock; run/summary/checks/claims/agents projections |
+| B03 | 2026-10-13 | [#12](https://github.com/DuhItzAniket/Repro/pull/12) | Preact + signals shell, `computeLayout` geometry, header counters and 7-segment progress, tokens, self-hosted JetBrains Mono with OFL |

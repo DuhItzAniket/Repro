@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B02 |
-| **Branch / PR** | `phase/B03-app-shell` · PR link added on creation |
+| **Branch / PR** | `phase/B03-app-shell` · [#12](https://github.com/DuhItzAniket/Repro/pull/12) |
 | **Started / finished** | 2026-10-13 / 2026-10-13 |
 
 ## Objective
