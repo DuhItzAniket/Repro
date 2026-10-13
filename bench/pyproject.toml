@@ -1,0 +1,18 @@
+[project]
+name = "repro-bench"
+version = "0.1.0.dev0"
+description = "Repro evaluation harness: dataset adapters, baselines and analysis (Stage J)."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = ["repro-engine"]
+
+[tool.uv.sources]
+repro-engine = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "repro_bench"

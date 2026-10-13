@@ -55,7 +55,7 @@ External dependencies and how much Repro depends on each:
 ```
 repro/
 ├─ packages/events/            THE contract: JSON Schema (2020-12) + generated TS & Pydantic types
-├─ engine/repro/
+├─ engine/src/repro/            (import package `repro`; distribution `repro-engine`)
 │   ├─ cli.py                  Typer: run · replay · serve · doctor · export
 │   ├─ config/                 engine settings (env/file), repro.yml loader + schema
 │   ├─ orchestrator/           run lifecycle, stage DAG, job runner, cancellation, timeouts

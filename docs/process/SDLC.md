@@ -88,7 +88,7 @@ A stage ends with a **gate**, which is a short review that the stage delivered w
 
 | Area | Bar |
 |---|---|
-| Python | Ruff (lint + format), type checking in strict mode for `engine/repro/**`, pytest. Branch coverage ≥ 85 % on engine core packages from Stage C on. |
+| Python | Ruff (lint + format), type checking in strict mode for `engine/src/repro/**`, pytest. Branch coverage ≥ 85 % on engine core packages from Stage C on. |
 | TypeScript | Biome (lint + format), `tsc --noEmit` strict, Vitest. Projections/store coverage ≥ 90 %. |
 | Schema | Generated TS and Pydantic types are checked in and CI fails on drift. |
 | UI perf | 60 fps budget and JS size budget enforced by automated checks from Stage B on (see DESIGN.md). |

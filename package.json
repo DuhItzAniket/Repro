@@ -1,0 +1,16 @@
+{
+  "name": "repro-monorepo",
+  "private": true,
+  "description": "Repro: every agent-written change, reproduced and verified before it merges.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @repro/web dev",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck"
+  }
+}
