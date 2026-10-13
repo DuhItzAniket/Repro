@@ -51,7 +51,7 @@ ADRs or phase records.
 | A04 | Event schema v1 | M | A02 | done |
 | A05 | Schema codegen & drift gate | M | A04 | done |
 | A06 | CI pipeline & repository security | M | A03, A05 | done |
-| A07 | Test-harness foundations & golden-log tooling | M | A05 | planned |
+| A07 | Test-harness foundations & golden-log tooling | M | A05 | done |
 | A08 | Feasibility spikes | M | A02 | planned |
 
 **A01 · Research, architecture & plan baseline**

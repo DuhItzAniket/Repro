@@ -1,0 +1,15 @@
+# Expected Repro outcome for the honest-fix fixture (asserted end to end from Stage D onward).
+[fixture]
+name = "honest-fix"
+head = "fix/parse-date-utc"
+
+[expected]
+status = "VERIFIED"
+claims = ["parse_date returns timezone-aware datetimes normalised to UTC"]
+
+# Evidence the card must contain: <evidence type>:<detail>:<target>
+evidence = [
+  "test_outcome:F2P:tests/test_dates.py::test_parse_date_with_timezone",
+  "test_outcome:F2P:tests/test_dates.py::test_parse_date_naive_input_is_utc",
+]
+missing = []

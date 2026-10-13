@@ -7,7 +7,13 @@ requires-python = ">=3.12"
 dependencies = ["repro-engine", "repro-bench", "repro-events"]
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "ruff>=0.17.0", "mypy>=2.4.0", "types-jsonschema>=4.26.0"]
+dev = [
+  "pytest>=9.1.1",
+  "ruff>=0.17.0",
+  "mypy>=2.4.0",
+  "types-jsonschema>=4.26.0",
+  "hypothesis>=6.169.0",
+]
 
 [tool.uv]
 package = false
@@ -23,7 +29,7 @@ repro-events = { workspace = true }
 [tool.pytest.ini_options]
 minversion = "9.0"
 testpaths = ["engine/tests", "packages/events/python/tests", "scripts/tests"]
-pythonpath = ["scripts"]
+pythonpath = ["scripts", "engine/tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 xfail_strict = true
 
@@ -75,5 +81,5 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
-files = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests", "scripts"]
-mypy_path = "scripts"
+files = ["conftest.py", "engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests", "scripts"]
+mypy_path = "scripts,engine/tests"

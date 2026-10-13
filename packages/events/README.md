@@ -11,6 +11,7 @@ its single source of truth.
 | `schema/payloads/<kind>.schema.json` | One closed payload schema per kind (34 in v1) | A04 |
 | `schema/models/*.schema.json` | Claim, evidence, verdict, missing item, artifact reference, Reproduction Card | A04 |
 | `examples/` | For every kind, model and the envelope: valid examples and invalid examples, each with a reason | A04 |
+| `examples/logs/sample-run.jsonl` | A coherent 45-event run used by log tooling and golden tests | A07 |
 | `python/` | `repro-events`: schema registry, validators, draft-07 agent-schema derivation, codegen, generated Pydantic models (`models.py`) | A04/A05 |
 | `src/generated/types.ts` | Generated TypeScript types, `ReproEvent` union, `EVENT_KINDS`, `KIND_STAGES` | A05 |
 
@@ -32,6 +33,8 @@ its single source of truth.
 
 ```
 pnpm gen                                     # regenerate TS types + Pydantic models (ADR-0014)
+uv run repro-events validate LOG.jsonl       # schema + log invariants (seq, ids, evidence-before-citation)
+uv run repro-events normalise LOG.jsonl      # canonical, id/time-normalised JSONL
 uv run repro-events-codegen --check          # drift check
 uv run pytest packages/events/python/tests   # schema hygiene, registry, examples, models, codegen
 pnpm --filter @repro/events test             # Ajv validation of all examples + type assertions

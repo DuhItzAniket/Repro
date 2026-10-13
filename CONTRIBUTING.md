@@ -19,7 +19,7 @@ Repro is developed phase by phase against a public roadmap. Before you open a PR
 | `lint` | Biome, `tsc --noEmit`, Ruff lint + format, mypy (strict), generated-code drift |
 | `test` (Ubuntu, Windows) | Vitest, web build, pytest, CLI smoke test |
 | `security` | gitleaks over the full history; licence allow-list for every Python and JS dependency |
-| `dependency review` (PRs) | Known vulnerabilities (high and above) in dependencies the PR adds or changes |
+| `dependency review` (PRs) | Known vulnerabilities (high and above) in dependencies the PR adds or changes. Off until the repository's Dependency graph is enabled and the variable `DEPENDENCY_REVIEW=true` is set |
 
 All actions are pinned to commit SHAs. Dependabot proposes weekly updates for actions, npm and
 uv dependencies.

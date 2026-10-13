@@ -1,8 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
-import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
-import addFormatsModule from "ajv-formats";
+import { join } from "node:path";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   EVENT_KINDS,
@@ -13,47 +9,16 @@ import {
   type Stage,
   type TestOutcome,
 } from "./index";
+import {
+  type EventCases,
+  EXAMPLES_DIR,
+  type ModelCases,
+  readJson,
+  SCHEMA_DIR,
+  validator,
+} from "./testing/ajv";
 
-const PKG = fileURLToPath(new URL("..", import.meta.url));
-const SCHEMA_DIR = join(PKG, "schema");
-const EXAMPLES_DIR = join(PKG, "examples");
-// In-memory base URI for resolving the schemas' relative $refs (.invalid is reserved, RFC 2606).
-const BASE = "https://repro.invalid/schema/";
-
-type Json = unknown;
-interface EventCases {
-  valid: Json[];
-  invalid: { reason: string; event: Json }[];
-}
-interface ModelCases {
-  valid: Json[];
-  invalid: { reason: string; value: Json }[];
-}
-
-const readJson = <T>(path: string): T => JSON.parse(readFileSync(path, "utf8")) as T;
-
-function buildAjv(): Ajv2020 {
-  // ajv-formats is CommonJS; under ESM interop its function may sit on `.default`.
-  const addFormats = ((addFormatsModule as unknown as { default?: unknown }).default ??
-    addFormatsModule) as (ajv: Ajv2020) => void;
-  const ajv = new Ajv2020({ strict: true, allErrors: true, allowUnionTypes: true });
-  addFormats(ajv);
-  for (const entry of readdirSync(SCHEMA_DIR, { recursive: true, withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith(".schema.json")) continue;
-    const path = join(entry.parentPath, entry.name);
-    const rel = relative(SCHEMA_DIR, path).split(sep).join("/");
-    ajv.addSchema({ ...readJson<object>(path), $id: BASE + rel });
-  }
-  return ajv;
-}
-
-const ajv = buildAjv();
-const compile = (rel: string): ValidateFunction => {
-  const validate = ajv.getSchema(BASE + rel);
-  if (!validate) throw new Error(`schema not loaded: ${rel}`);
-  return validate;
-};
-const validateEvent = compile("event.schema.json");
+const validateEvent = validator("event.schema.json");
 
 describe("JSON Schema validation in TypeScript (Ajv, draft 2020-12)", () => {
   it.each([...EVENT_KINDS])("%s: valid examples pass, invalid examples fail", (kind) => {
@@ -73,7 +38,7 @@ describe("JSON Schema validation in TypeScript (Ajv, draft 2020-12)", () => {
   });
 
   it.each(["card", "claim", "evidence", "missing", "verdict"])("model %s", (name) => {
-    const validate = compile(`models/${name}.schema.json`);
+    const validate = validator(`models/${name}.schema.json`);
     const cases = readJson<ModelCases>(join(EXAMPLES_DIR, "models", `${name}.json`));
     for (const value of cases.valid) {
       expect(validate(value), JSON.stringify(validate.errors)).toBe(true);

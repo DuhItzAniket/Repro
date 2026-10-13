@@ -29,6 +29,9 @@ All notable changes to this project are documented here. The format follows
 - CI pipeline: `lint`, `test` (Ubuntu, Windows), `security` (gitleaks over full history,
   licence allow-list), PR dependency review; SHA-pinned actions; Dependabot for actions, npm and
   uv. [A06]
+- Test harness: Hypothesis (dev/ci profiles) and fast-check; `repro-events validate` /
+  `normalise` CLI for event logs (schema plus log invariants, including evidence-before-citation);
+  golden-file fixture; deterministic fixture-repository builder with the `honest-fix` fixture. [A07]
 
 ### Changed
 - Common enum `Verdict` renamed `VerdictValue` (it collided with the `Verdict` model). [A05]
