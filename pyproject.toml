@@ -22,14 +22,15 @@ repro-events = { workspace = true }
 
 [tool.pytest.ini_options]
 minversion = "9.0"
-testpaths = ["engine/tests", "packages/events/python/tests"]
+testpaths = ["engine/tests", "packages/events/python/tests", "scripts/tests"]
+pythonpath = ["scripts"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 xfail_strict = true
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests"]
+src = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests", "scripts"]
 # Code blocks in docs are illustrative sketches, not source; Ruff 0.17 would otherwise format them.
 extend-exclude = ["docs", "packages/events/python/src/repro_events/models.py"]
 
@@ -74,4 +75,5 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
-files = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests"]
+files = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests", "scripts"]
+mypy_path = "scripts"

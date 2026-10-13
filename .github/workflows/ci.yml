@@ -1,5 +1,5 @@
-# CI: quality gates (lint) and clean-checkout build and test on Linux and Windows.
-# A06 adds schema-drift and secret scanning, licence and dependency review, and SHA-pinned actions.
+# CI pipeline (A06). Required checks on main: lint, test (ubuntu-latest), test (windows-latest),
+# security. Every action is pinned to a full commit SHA. Dependabot keeps the pins current.
 name: CI
 
 on:
@@ -14,49 +14,48 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  UV_VERSION: "0.13.0"
+
 jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
-
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
-          version: "0.13.0"
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Install Python environment
         run: uv sync --locked
 
       - name: Biome (lint + format, TS/JSON)
         run: pnpm lint
-
+      - name: TypeScript (tsc --noEmit)
+        run: pnpm typecheck
       - name: Ruff lint
         run: uv run --locked ruff check --output-format github
-
       - name: Ruff format
         run: uv run --locked ruff format --check
-
       - name: mypy (strict)
         run: uv run --locked mypy
-
       - name: Generated code is up to date (schema drift)
         run: uv run --locked repro-events-codegen --check
 
-  build-test:
-    name: build & test (${{ matrix.os }})
+  test:
+    name: test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -64,37 +63,71 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@v6 # version from package.json "packageManager"
-
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
-
-      - uses: astral-sh/setup-uv@v10.3.0 # this action publishes no floating major tag
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
-          version: "0.13.0"
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
       - name: JS tests
         run: pnpm test
-
       - name: Web build
         run: pnpm build
-
       - name: Install Python environment
         run: uv sync --locked
-
       - name: Python tests
         run: uv run --locked pytest
-
       - name: CLI smoke test
         run: uv run --locked repro --version
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # scan the full history, not only the tip
+      - name: Secret scan (gitleaks CLI, MIT-licensed image pinned by digest)
+        run: >
+          docker run --rm
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo
+          -v "${{ github.workspace }}:/repo:ro"
+          ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --redact --no-banner --exit-code 1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          uv sync --locked
+      - name: Licence allow-list (Python + JS)
+        run: uv run --locked python scripts/check_licenses.py
+
+  dependency-review:
+    name: dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          license-check: false # licences are enforced by scripts/check_licenses.py

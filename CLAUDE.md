@@ -106,6 +106,7 @@ uv run ruff format      # Python format (--check in CI)
 uv run mypy             # strict type check of engine, bench and tests
 pnpm gen                # regenerate TS types + Pydantic models from packages/events/schema
 uv run repro-events-codegen --check   # drift gate (CI): fails if generated code is stale
+uv run python scripts/check_licenses.py   # licence allow-list over all installed deps (CI)
 ```
 
 Optional: `uvx pre-commit install` enables local hooks for Ruff and Biome.
