@@ -203,8 +203,8 @@ allocation and bundle-size gates are active in CI.
 
 **B10 · Replay controls & motion safety**
 - Deliverables: transport controls (play/pause, ×0.5/×1/×4/×16, scrubber, jump to live).
-  Global pause with Space. If ADR-0011 is approved: wall-clock-clamped durations and the flash
-  governor. `prefers-reduced-motion` support.
+  Global pause with Space. Wall-clock-clamped durations and the flash governor
+  (ADR-0011). `prefers-reduced-motion` support.
 - Accept: scrubbing anywhere gives the same frame as playing to that point (golden test). The
   ×16 burst fixture never exceeds the flash threshold. Reduced motion disables streaks and bundles.
 

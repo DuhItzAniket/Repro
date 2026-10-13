@@ -1,7 +1,6 @@
 # ADR-0007: Locked-down agent runtime behind an `LLMBackend` interface
 
-- **Status:** proposed. The lockdown and validation parts are accepted. **The backend choice
-  needs project-owner input** (see "Open question").
+- **Status:** accepted (approved by the project owner on 2026-10-13, including the recommendation in "Open question": ship the Agent SDK backend first and decide on a direct-API backend from G09 eval data)
 - **Date:** 2026-10-13
 - **Phase:** A01 (implemented in G01–G07)
 

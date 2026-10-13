@@ -1,7 +1,6 @@
 # ADR-0004: Layered isolation with Docker as the default enforcing sandbox
 
-- **Status:** proposed. **Needs project-owner approval**, because it moves containers from
-  "M7+ option" into the core path and adds Docker as a recommended dependency.
+- **Status:** accepted (approved by the project owner on 2026-10-13)
 - **Date:** 2026-10-13
 - **Phase:** A01 (implemented in D01–D02, hardened in H03)
 
@@ -20,7 +19,7 @@ Other findings:
   tamper with host git config and hooks (research/03 §8).
 - uv's default `hardlink` mode on Windows shares files with the cache (research/03 §7).
 
-## Decision (proposed)
+## Decision
 1. Isolation is **layered** (L0 process → L1 detection → L2 containment → L3 container
    enforcement → L4 gVisor/microVM). The card states the **highest layer actually achieved**.
    Network is reported as `enforced` only at L3 or above. Otherwise it is reported as

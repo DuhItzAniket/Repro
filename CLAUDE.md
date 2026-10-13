@@ -80,7 +80,7 @@ evidence, claim attribution, and the Missing list, all local and replayable.
 - **Engine (`engine/`):** Python 3.12+ (development pins 3.13), FastAPI + WebSocket, SQLite
   (WAL, single writer). First target language: **Python repos with pytest**. Reused libraries:
   grimp and griffe (ADR-0006). Tracer, encoder and selection map are Repro's own (ADR-0005).
-- **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004, proposed).
+- **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004).
 - **Agents:** Claude Agent SDK (Python `claude-agent-sdk`, pinned exactly), locked down, behind
   an `LLMBackend` protocol (ADR-0007). Models are configurable via env.
 - **CLI:** `repro` (Python, Typer): `run`, `replay`, `serve`, `doctor`, `export`.

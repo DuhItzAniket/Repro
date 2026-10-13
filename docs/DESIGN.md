@@ -1,7 +1,7 @@
 # Repro — Design
 
-> Baseline v1 (A01). The rendering architecture is in ARCHITECTURE §13 and ADR-0008. Proposed
-> motion-safety amendments (ADR-0011) are marked **[proposed]** below.
+> Baseline v1 (A01). The rendering architecture is in ARCHITECTURE §13 and ADR-0008. The
+> motion-safety amendments from ADR-0011 are marked **[ADR-0011]** below.
 
 The look is taken from the Paper Lab reference video. Study `reference/frames/*.png` (full
 frames) and `reference/panels/*.png` (header, stage and each of the 8 panels, upscaled) before
@@ -160,7 +160,7 @@ surface — it stays plain and readable.
 - `prefers-reduced-motion`: no streaks or bundles, and state changes are instant. An in-app
   toggle mirrors this setting.
 - **Global pause** (Space) freezes the presentation clock while ingestion continues (WCAG 2.2.2).
-- **[proposed, ADR-0011]** Durations above are wall-clock and clamped at high replay speeds. A
+- **[ADR-0011]** Durations above are wall-clock and clamped at high replay speeds. A
   flash governor caps the bright area that can rise within any 333 ms window (WCAG 2.3.1). Above
   the cap, bundles aggregate per edge.
 

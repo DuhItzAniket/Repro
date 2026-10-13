@@ -1,8 +1,8 @@
 # ADR-0003: Additive envelope fields for versioning and causation
 
-- **Status:** proposed. **Needs project-owner approval** (CLAUDE.md rule 7: event-schema changes)
+- **Status:** accepted (approved by the project owner on 2026-10-13)
 - **Date:** 2026-10-13
-- **Phase:** A01 (would be implemented in A04)
+- **Phase:** A01 (implemented in A04)
 
 ## Context
 The original envelope has no explicit version, so old logs cannot be upcast reliably when a
@@ -11,7 +11,7 @@ the type name" plus upcasters (research/04 §5.3). The UI also needs causation, 
 "this tool call belongs to that agent turn", to animate bundles and focus correctly. And the
 evaluation needs to know which engine build produced a log.
 
-## Decision (proposed)
+## Decision
 Keep all core fields unchanged. Add four **optional, additive** fields:
 
 | Field | Type | Meaning |

@@ -227,16 +227,15 @@ because it actually ran base.
   "target": { "file": "pkg/dates.py", "symbol": "parse_date", "test": "tests/test_dates.py::test_tz" },
   "status": "start|progress|ok|warn|fail",
   "payload": { },              // schema'd per kind
-  // proposed additive fields (ADR-0003, pending approval):
+  // additive fields (ADR-0003):
   "v": 1,                      // envelope schema version
   "pv": 1,                     // payload schema version for this kind
   "parent": "evt_…",           // causation (optional)
   "producer": "repro/0.3.0+abc1234"
 }
 ```
-The core fields are unchanged from the original brief. The four additive fields are
-**proposed** and wait for project-owner approval. If they are rejected, versioning lives in the
-`kind` name (e.g. `test.finished@2`) instead.
+The core fields are unchanged from the original brief. The four additive fields were accepted
+in ADR-0003.
 
 ### 5.2 Kinds (v1)
 | Group | Kinds |
@@ -468,7 +467,7 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
 - **Accessibility:** global pause (WCAG 2.2.2), a `role="log"` mirror of the investigation feed
   with throttled announcements, semantic tables for card and index, keyboard focus, and
   `prefers-reduced-motion` support. A flash governor and wall-clock-clamped motion at high replay
-  speeds address WCAG 2.3.1 (ADR-0011, pending approval).
+  speeds address WCAG 2.3.1 (ADR-0011).
 
 ## 14. Cross-cutting concerns
 
@@ -500,13 +499,13 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
 |---|---|---|
 | [0001](adr/0001-record-architecture-decisions.md) | Record architecture decisions | accepted |
 | [0002](adr/0002-event-log-source-of-truth.md) | The event log is the source of truth | accepted |
-| [0003](adr/0003-event-envelope-versioning.md) | Additive envelope fields for versioning and causation | **proposed** |
-| [0004](adr/0004-layered-isolation-docker-default.md) | Layered isolation with Docker as the default enforcing sandbox | **proposed** |
+| [0003](adr/0003-event-envelope-versioning.md) | Additive envelope fields for versioning and causation | accepted |
+| [0004](adr/0004-layered-isolation-docker-default.md) | Layered isolation with Docker as the default enforcing sandbox | accepted |
 | [0005](adr/0005-behaviour-tracing-sys-monitoring.md) | Own `sys.monitoring` tracer, canonical encoder and selection map | accepted |
 | [0006](adr/0006-static-analysis-reuse.md) | Reuse `ast`, grimp and griffe for static analysis | accepted |
-| [0007](adr/0007-agent-runtime-lockdown.md) | Locked-down agent runtime behind an `LLMBackend` interface | **proposed** |
+| [0007](adr/0007-agent-runtime-lockdown.md) | Locked-down agent runtime behind an `LLMBackend` interface | accepted |
 | [0008](adr/0008-stage-renderer-threejs.md) | Stage renderer: three.js WebGLRenderer with custom instanced layers | accepted |
 | [0009](adr/0009-web-tooling.md) | Web tooling: Biome, Vitest, Playwright | accepted |
 | [0010](adr/0010-evaluation-methodology.md) | Evaluation on fresh SWE-format tasks against execution-aware baselines | accepted |
-| [0011](adr/0011-motion-safety.md) | Wall-clock-clamped motion and a flash governor | **proposed** |
+| [0011](adr/0011-motion-safety.md) | Wall-clock-clamped motion and a flash governor | accepted |
 | [0012](adr/0012-card-as-attestation.md) | Export the card as an in-toto attestation | accepted |

@@ -1,7 +1,6 @@
 # ADR-0011: Wall-clock-clamped motion and a flash governor
 
-- **Status:** proposed. **Needs project-owner sign-off** because it amends DESIGN.md's motion
-  rules.
+- **Status:** accepted (approved by the project owner on 2026-10-13)
 - **Date:** 2026-10-13
 - **Phase:** A01 (implemented in B10)
 
@@ -12,7 +11,7 @@ Replay runs at up to ×16, so a 1.2 s fade becomes 75 ms of wall-clock time. Whi
 general flashes per second over a large area. SC 2.2.2 (Level A) requires a way to pause
 auto-updating content, with no five-second exception (research/05 §7).
 
-## Decision (proposed)
+## Decision
 1. Visual durations are expressed in **wall-clock** time and clamped to the DESIGN.md ranges,
    while staying pure functions of `(event, t, speed)`.
 2. A **flash governor** caps the total bright area that may rise within any 333 ms window.
