@@ -461,6 +461,11 @@ Clock: t = live ? now − t0 : replayT (×0.5/1/4/16, scrub, pause) ──► fr
 Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker (OffscreenCanvas 2D → ImageBitmap)
 ```
 
+- **EventStore (B02).** Columns (`seq`, presentation time, kind, stage, status) are typed
+  arrays next to the parsed events. Presentation time is the running maximum of `ts`, so a
+  backwards timestamp never breaks time queries. The store takes only a gap-free sequence: a
+  duplicate `seq` is ignored, and a gap stops ingestion so the transport resyncs with `?from=`.
+  Unknown kinds, and known kinds with a newer `pv`, are stored but not interpreted.
 - **Two kinds of UI state.** *Folded* state (counters, index, agents, grids, log) comes from pure
   reducers with snapshots for fast seek. *Transient* visuals (streaks, bundles, ring snap) are
   pure functions of the events whose visual window contains `t`. Scrubbing never rebuilds

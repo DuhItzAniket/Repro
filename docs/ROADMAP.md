@@ -132,7 +132,7 @@ allocation and bundle-size gates are active in CI.
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | B01 | Deterministic fixture generator & reference log | M | A07 | done |
-| B02 | EventStore, projections, snapshots & clock | M | B01 | planned |
+| B02 | EventStore, projections, snapshots & clock | M | B01 | done |
 | B03 | App shell, tokens, fonts, header & progress | M | B02 | planned |
 | B04 | Stage foundation & performance harness | M | B03 | planned |
 | B05 | Dependency-web layer & bundles | L | B04 | planned |
@@ -622,3 +622,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | A08 | 2026-10-13 | [#8](https://github.com/DuhItzAniket/Repro/pull/8) | Measured: tracer overhead (budget 200 → ~baseline), Docker L3 on Windows, offline provisioning 0.79 s |
 | Gate A | 2026-10-13 | [#9](https://github.com/DuhItzAniket/Repro/pull/9) | Stage A complete; release v0.1.0 ([gate record](phases/A-gate.md)) |
 | B01 | 2026-10-13 | [#10](https://github.com/DuhItzAniket/Repro/pull/10) | `@repro/synth` generator; demo (2,334 events, 28 checks) and stress (10k edges, 3k/s burst) fixtures; ADR-0015 check model |
+| B02 | 2026-10-13 | [#11](https://github.com/DuhItzAniket/Repro/pull/11) | Columnar EventStore, snapshot folder with exact seek, time/kind indexes, presentation clock; run/summary/checks/claims/agents projections |

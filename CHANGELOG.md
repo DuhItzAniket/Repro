@@ -16,6 +16,10 @@ All notable changes to this project are documented here. The format follows
   verdicts resolve pending checks. It defines the CHECKS and FLAGGED counters and the
   change×check index. [B01]
 - `@repro/events/testing` export (Ajv harness) for other packages' tests. [B01]
+- Cockpit data layer (`apps/web/src/model`): a columnar `EventStore` with gap and duplicate
+  handling, `Folder` snapshots with exact seek, `WindowIndex` and `KindIndex`, a
+  `PresentationClock` (replay ×0.5–×16, live, global pause), and the `run`, `summary`,
+  `checks` (ADR-0015), `claims` and `agents` projections behind one cockpit state. [B02]
 
 ### Changed
 - `SchemaSet.event_errors` caches validators and skips the redundant whole-`oneOf` check when

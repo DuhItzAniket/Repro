@@ -41,9 +41,11 @@ Two facts constrain the definition:
      assessable; an invariant not evaluated.
    - Otherwise **passed** for `ok` and **flagged** for `fail`.
    - A `warn` check is **pending** until review. It becomes passed if a **supported** verdict
-     cites its evidence. It becomes flagged if a contradicted verdict cites it, or if the
-     review stage finishes without any supported verdict citing it (an unexplained
-     difference).
+     cites its evidence. It becomes flagged if a contradicted verdict cites it, or if review
+     ends without any supported verdict citing it (an unexplained difference). A
+     contradiction outweighs support. Review ends at `stage.finished` for `review`, or at the
+     card stage or `run.finished` when a run has no review stage (deterministic-only runs).
+     *(Precision added in B02.)*
 4. `CHECKS` counts all checks. `FLAGGED` counts flagged results. The index footer reads
    `N checks / P passed / F flagged`, followed by `/ U unassessed` and `/ R pending` when those
    are non-zero. One projection computes all of them.

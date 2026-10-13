@@ -125,8 +125,9 @@ class Exporter(Protocol):                             # F05, H04
     def export(self, card: Card) -> bytes: ...
 ```
 
-The UI side has three interfaces: `Projection<S>` (`init`, `apply(state, event)`), `Layer`
-(`init(gl)`, `update(view, t)`, `draw()`), and `Panel` (`draw(ctx, view, t)`, `isDirty(version)`).
+The UI side has three interfaces: `Projection<S>` (`init`, `apply(state, event, meta)` with
+`meta = { index, time }`, optional `clone` for snapshots; fixed in B02), `Layer` (`init(gl)`,
+`update(view, t)`, `draw()`), and `Panel` (`draw(ctx, view, t)`, `isDirty(version)`).
 
 ## 6. Engineering notes per stage
 

@@ -56,12 +56,14 @@ function logIssues(events: readonly ReproEvent[]): string[] {
     if (!(KIND_STAGES[event.kind] as readonly string[]).includes(event.stage)) {
       issues.push(`${at}: stage ${event.stage} not allowed`);
     }
-    for (const id of cited(event))
+    for (const id of cited(event)) {
       if (!evidence.has(id)) issues.push(`${at}: cites ${id} before it exists`);
+    }
     if (event.kind === "evidence.created") {
       evidence.add(event.payload.evidence.id);
-      if (event.payload.evidence.seq !== event.seq)
+      if (event.payload.evidence.seq !== event.seq) {
         issues.push(`${at}: evidence.seq is not its event's seq`);
+      }
     }
   });
   if (events[0]?.kind !== "run.started") issues.push("first event is not run.started");
@@ -87,8 +89,9 @@ const CHECK_KINDS = new Set([
 function recountChecks(events: readonly ReproEvent[]) {
   const explained = new Set<string>();
   for (const v of ofKind(events, "verdict.issued")) {
-    if (v.payload.verdict.verdict === "supported")
+    if (v.payload.verdict.verdict === "supported") {
       for (const id of v.payload.verdict.cited_evidence) explained.add(id);
+    }
   }
   const counts = { checks: 0, passed: 0, flagged: 0, unassessed: 0 };
   for (const e of events) {
@@ -167,8 +170,9 @@ describe.each([
       ]),
     );
     for (const v of ofKind(events, "verdict.issued")) {
-      for (const q of v.payload.verdict.quotes)
+      for (const q of v.payload.verdict.quotes) {
         expect(summaries.get(q.evidence_id)).toContain(q.text);
+      }
     }
   });
 

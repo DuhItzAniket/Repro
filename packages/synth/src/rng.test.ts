@@ -72,8 +72,9 @@ describe("Rng", () => {
 
   it("produces lowercase hex of the requested length", () => {
     const rng = new Rng(3);
-    for (const length of [1, 7, 8, 40, 64])
+    for (const length of [1, 7, 8, 40, 64]) {
       expect(rng.hex(length)).toMatch(new RegExp(`^[0-9a-f]{${length}}$`));
+    }
   });
 
   it("rejects seeds that are not uint32", () => {
