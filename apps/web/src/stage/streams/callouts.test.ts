@@ -2,14 +2,18 @@ import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
 import { computeLayout } from "../../shell/layout";
+import { targetFile } from "../ring/content";
 import {
   CALLOUT_MS,
   CalloutTracker,
   calloutText,
+  LANE_SPREAD,
+  laneAngle,
   MAX_CALLOUTS,
   notable,
   selectCallouts,
 } from "./callouts";
+import { streams } from "./style";
 
 const model = new CockpitModel();
 model.ingest(runEvents());
@@ -73,5 +77,20 @@ describe("callouts", () => {
       "no new dependencies",
       "missing",
     ]);
+  });
+});
+
+describe("callout lanes", () => {
+  it("fan across the ring's right side, one lane per file", () => {
+    const byFile = new Map<string, number[]>();
+    for (const event of runEvents()) {
+      if (!streams(event)) continue;
+      const angle = laneAngle(event);
+      expect(Math.abs(angle)).toBeLessThanOrEqual(LANE_SPREAD + 0.085 + 1e-9);
+      const file = targetFile(event.target);
+      if (file !== undefined) byFile.set(file, [...(byFile.get(file) ?? []), angle]);
+    }
+    for (const angles of byFile.values())
+      expect(Math.max(...angles) - Math.min(...angles)).toBeLessThanOrEqual(0.17 + 1e-9);
   });
 });

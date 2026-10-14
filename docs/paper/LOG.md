@@ -144,3 +144,68 @@ entry. If something turns out wrong, add a correcting entry.
 - With the whole cockpit running, the demo run replays at ×1 at 60 fps on an integrated GPU
   (Intel UHD) at 1920×1080, DPR 1.75: p50 16.7 ms, p95 17.0 ms over 2,867 frames, with 1.85%
   of frames over 25 ms (host jitter). The CPU, an i7-14650HX, is stronger than a mid laptop's.
+
+## 2026-10-14 · B14 · Measuring a visual reference instead of eyeballing it
+- B13's parity check passed on our own judgement, and the owner's review overturned it. A sharper
+  copy of the reference (1080×1350 at 60 fps) and two measurements replaced the
+  judgement:
+  - Geometry: circles fitted through three points on each rim give the inner radius as 1.02 ×
+    the stage height, the band as 0.215 of that radius, and the 3 o'clock point at 0.46 × the
+    width.
+  - Brightness: per-region statistics of 8-bit encoded luminance, compared at the same stage
+    height. In the reference the web's mean is 43 and the rays' 41 (64–83 next to the ring).
+    After B13, Repro's rays measured 9.
+- The look depends on the stage's shape. The reference's 1.15:1 composition cannot fit a 2.76:1
+  strip, so the panels moved beside the stage on landscape screens.
+- Its hairball can be reproduced from real edges by changing the layout, not by adding lines. A
+  chord layout ordered by the force simulation, with the circle's centre off-screen, turns 1,446
+  import edges into long crossing arcs instead of a ball of spokes.
+- Bright, persistent elements can be made flash-safe by construction rather than by budget. MAX
+  blending bounds a pixel by its brightest element, and a wall-clock floor on the fade bounds
+  how fast it can dim, so no 10% luminance fall fits in a second.
+- Motion was measured the same way. Cross-correlating a column of the ring between frames
+  gives its rotation, about 280 px/s at mid-band (about 15° a second), while the web stays still.
+  At 30 fps a strand lives 0.3–0.35 s: it shoots in for about 0.1 s and then rides the turning
+  ring. Our first pass had matched the stills but not this.
+- The owner's reading of the strands decided the model: one dim line per node of a network,
+  carrying a white bullet to the wheel, staying attached to its node and following the wheel
+  section it hit. Under a flash cap, how much each strand draws and how far it may aim decide how
+  many can be shown. Aiming within 10° of the node's bearing let the cap admit 24 of 190 demo
+  strands at ×1, against 8 when they could aim across the visible arc. A single line with a short
+  bullet, instead of a sheaf of curves, brought it to 31. The owner's last correction made each
+  event fire a bunch, one strand from every node that reaches the function (tests and callers,
+  from the log so far). The bunch is honest data, and the cap then admits 12 bunches at ×1.
+- Outside the wheel the reference's field moves with its sections. A column just outside the
+  rim cross-correlates frame to frame at the ring's own angular speed (correlation 0.85–0.99).
+  Tying each event's lines to its file's section, where its strands hit, makes the outside and
+  the inside one picture. Data shapes density: the demo touches few files, so its field is
+  sparser than the reference's.
+- The owner's seventh review made the outside a response to the inside: lines leave a section
+  only when a bunch hits it, and bounce (out to their length, then back into the rim). This
+  removed both B07's per-event streaks and B13–B14's long-lived rays. With every event that
+  names a function, test or file able to fire a bunch, and all dim lines MAX-blended at 0.32
+  (below the 10% luminance change that makes a flash), the cap admits 20 of 120 possible bunches
+  on the demo at ×1. Causality on screen is now one chain, nodes → strands → section → lines,
+  where before the lines outside fired whether or not anything hit.
+- A containment rule fixed what read as strands leaving the wheel. 82 of 1,500 mesh arcs bowed
+  past the ring's outer rim; keeping each arc's control point inside the web's circle bounds the
+  whole curve there, because a quadratic Bézier lies in the triangle of its points.
+- After B14 the demo replays at ×1 with the whole cockpit at 60 fps on an integrated GPU
+  (production build, 1440×900, DPR 1.75): p50 16.7 ms, p95 17.0 ms over 3,081 frames, with 1.14%
+  over 25 ms.
+
+## 2026-10-14 · B15 · Viewer settings inside a flash bound, and the cost of spreading the nodes
+- Viewer-adjustable visuals and a flash bound can coexist if the settings are split by how the
+  bound treats each part. Parts the governor does not count (MAX-blended dim lines) can only be
+  dimmed from their safe ceiling; parts it counts may be brighter or wider, because it counts
+  area whatever the intensity and re-decides at the chosen width. Applying the look as shader
+  uniforms keeps the layers' render models independent of it (a unit test hashes them).
+- A view is best modelled as the stage's geometry rather than a camera on top: the layers write
+  only what is on the stage and the governor admits bunches by where their sections are, so both
+  must see the viewer's view.
+- Spreading the run's nodes over the whole disc (the owner's request) has a measurable cost in
+  the default arc view. Strands come from further away, each bullet's path is longer, and the
+  flash cap admits fewer bunches: 13 of 120 on the demo at ×1 (20 before), none on the stress
+  run at ×16. In the whole-wheel view strands are short and the cap admits 71 of 399. Only 6 of
+  the demo's 47 nodes face the stage in the arc view. Where to place nodes is therefore also a
+  flash-budget decision, not only a visual one.

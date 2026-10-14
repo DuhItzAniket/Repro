@@ -8,6 +8,7 @@ import { type Signal, signal } from "@preact/signals";
 import { type ClockMode, type PresentationClock, SPEEDS, type Speed } from "../model/clock";
 import { rectStyle } from "./header";
 import type { Rect } from "./layout";
+import { SETTINGS_ID } from "./settings";
 
 /** The scrubber's and readout's resolution in run time (ms). */
 export const TIME_STEP = 100;
@@ -89,9 +90,11 @@ export interface TransportProps {
   readonly reduced: Signal<boolean>;
   /** Called after any command, so the strip reflects it before the next frame. */
   readonly onCommand?: () => void;
+  /** Whether the stage settings menu is open (B15); no Settings button without it. */
+  readonly settings?: Signal<boolean>;
 }
 
-export function Transport({ rect, state, clock, reduced, onCommand }: TransportProps) {
+export function Transport({ rect, state, clock, reduced, onCommand, settings }: TransportProps) {
   const s = state.value;
   const live = s.mode === "live";
   const run = (command: () => void) => () => {
@@ -148,6 +151,19 @@ export function Transport({ rect, state, clock, reduced, onCommand }: TransportP
       >
         Reduce motion
       </button>
+      {settings !== undefined && (
+        <button
+          type="button"
+          class="toggle"
+          aria-expanded={settings.value}
+          aria-controls={SETTINGS_ID}
+          onClick={() => {
+            settings.value = !settings.value;
+          }}
+        >
+          Settings
+        </button>
+      )}
     </fieldset>
   );
 }

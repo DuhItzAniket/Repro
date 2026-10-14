@@ -37,4 +37,15 @@ test.describe("cockpit", () => {
     await renderAt(page, 24_500, { reduced: true });
     await expect(page).toHaveScreenshot("cockpit-reduced-24500.png");
   });
+
+  test("showing the whole wheel during the trace burst (B15)", async ({ page }) => {
+    await renderAt(page, 24_500, { look: { zoom: 1 } });
+    await expect(page).toHaveScreenshot("cockpit-whole-24500.png");
+  });
+
+  test("with the stage settings open and a restyled look (B15)", async ({ page }) => {
+    const look = { parts: { mesh: { brightness: 0.6 }, strands: { width: 2 } } };
+    await renderAt(page, 24_500, { look, settings: true });
+    await expect(page).toHaveScreenshot("cockpit-settings-24500.png");
+  });
 });

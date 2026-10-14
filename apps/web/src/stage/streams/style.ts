@@ -1,7 +1,7 @@
 /**
- * How each event looks as a streak (DESIGN.md "Event streams"): whether it streaks at all, its
- * tint, how far it travels, and how long it lives. Pure functions of the event, so the same
- * event always streams the same way.
+ * How each event looks outside the wheel (DESIGN.md "Lines outside the wheel"): whether it
+ * streams at all, its tint and how far it travels. Pure functions of the event, so the same
+ * event always looks the same way.
  */
 import type { ReproEvent } from "@repro/events";
 
@@ -77,10 +77,3 @@ export function travel(event: ReproEvent): number {
   }
   return base;
 }
-
-/** Lifetime in presentation ms, within DESIGN.md's 600–1400 ms. */
-export function lifetime(event: ReproEvent): number {
-  return 600 + 800 * importance(event);
-}
-
-export const LONGEST_LIFE = 1400;

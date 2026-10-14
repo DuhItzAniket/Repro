@@ -467,11 +467,12 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   duplicate `seq` is ignored, and a gap stops ingestion so the transport resyncs with `?from=`.
   Unknown kinds, and known kinds with a newer `pv`, are stored but not interpreted.
 - **Two kinds of UI state.** *Folded* state (counters, index, agents, grids, log) comes from pure
-  reducers with snapshots for fast seek. *Transient* visuals (streaks, bundles, ring snap) are
+  reducers with snapshots for fast seek. *Transient* visuals (strands, ring snap) are
   pure functions of the events whose visual window contains `t`. Scrubbing never rebuilds
   accumulated animation state.
-- **Stage:** three.js `WebGLRenderer` with `RawShaderMaterial`, six instanced layers (edges, node
-  markers, bundles, ring cards, ring ticks, streaks), about one draw call each. GPU code sits
+- **Stage:** three.js `WebGLRenderer` with `RawShaderMaterial`, instanced layers (edges, nodes,
+  markers, strand bullets, dim strands, lines outside the wheel, ring cards, ring ticks, focus
+  highlights), about one draw call each. GPU code sits
   behind a `Layer` interface (about 200 lines of glue), so the renderer can be swapped if the
   budget demands it.
 - **Indexed state (B05, B08, B09).** Besides folded projections, append-only indexes record
@@ -494,8 +495,13 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   rotation and the web layout.
 - **Motion (B10, ADR-0011).** The frame loop passes every layer and panel the replay speed and
   reduced motion. Visual durations are wall-clock, so the stage is a pure function of (events,
-  t, motion). A `FlashGovernor` decides, in log order, which streaks and bundles are drawn and
+  t, motion). A `FlashGovernor` decides, in log order, which bunches of strands are drawn and
   which edges and markers flare, keeping the bright area that rises in any 333 ms under its cap.
+- **View and look (B15).** The stage's ring geometry comes from the layout and the viewer's zoom
+  (`viewRing`), so every layer, the governor and the hit tests follow the view. The viewer's look
+  (`Look`: per-part width and brightness multiples) reaches layers through `StageFrame.look`;
+  layers do not read it, the host applies it as shader uniforms, and the governor reads the
+  widths it counts. It is kept per viewer in `localStorage`, always read through `clampLook`.
 - **Shell:** Preact 11 + signals for header, controls, drawer and the accessible parallel DOM.
 - **Determinism:** no `Date.now()` or `Math.random()` in projections. Per-event visual jitter
   comes from `hash32(event.id)`. Layout initial positions are seeded from node-ID hashes (no

@@ -1,7 +1,7 @@
 /**
  * The stage's line primitive (ADR-0008): one instanced, anti-aliased quad per segment, drawn
- * in a single call per layer with additive blending. Edges, streaks, ticks, markers and bundles
- * are all segments; only what each layer writes differs.
+ * in a single call per layer, blended additively or with MAX. Edges, ticks, markers, strands and
+ * the lines outside the wheel are all segments; only what each layer writes differs.
  *
  * Each segment also carries the presentation time at which it **appears**. The shader hides it
  * before that time and brightens it briefly afterwards (recency). So a static layer, such as
@@ -32,11 +32,6 @@ export interface Recency {
   readonly flare: number;
   /** Decay time constant of the flare, wall-clock ms. */
   readonly flareMs: number;
-  /**
-   * If set, segments fade linearly to nothing over this much run time after appearing (B13's
-   * stream residue). Run time, not wall-clock: a fading trace does not move.
-   */
-  readonly fadeMs?: number;
 }
 
 export const NO_RECENCY: Recency = { flare: 0, flareMs: 1 };
@@ -49,8 +44,7 @@ export const NO_RECENCY: Recency = { flare: 0, flareMs: 1 };
 export function recencyFactor(appear: number, t: number, recency: Recency, flare = 1): number {
   const dt = t - appear;
   if (dt < 0) return 0;
-  const fade = recency.fadeMs === undefined ? 1 : Math.max(0, 1 - dt / recency.fadeMs);
-  return (1 + recency.flare * flare * Math.exp(-dt / recency.flareMs)) * fade;
+  return 1 + recency.flare * flare * Math.exp(-dt / recency.flareMs);
 }
 
 /** The alpha a segment is drawn with at `t` (before anti-aliasing and tails). */

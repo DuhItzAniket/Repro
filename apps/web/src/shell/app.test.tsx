@@ -37,18 +37,22 @@ describe("App shell", () => {
     const canvases = [...root.querySelectorAll<HTMLCanvasElement>(".panel-canvas")];
     expect(canvases.map((c) => c.dataset.panel)).toEqual(PANELS.map((p) => p.id));
     const stage = root.querySelector<HTMLElement>(".stage");
-    expect([stage?.style.top, stage?.style.height]).toEqual(["56px", "522px"]);
+    expect([stage?.style.top, stage?.style.width, stage?.style.height]).toEqual([
+      "56px",
+      "904px",
+      "844px",
+    ]);
     const last = root.querySelectorAll<HTMLElement>(".panel")[7];
     expect([last?.style.left, last?.style.top, last?.style.width, last?.style.height]).toEqual([
-      "1082px",
-      "743px",
-      "350px",
-      "149px",
+      "1176px",
+      "691px",
+      "256px",
+      "201px",
     ]);
     act(() => {
       layout.value = computeLayout(1920, 1080);
     });
-    expect(root.querySelector<HTMLElement>(".stage")?.style.height).toBe("641px");
+    expect(root.querySelector<HTMLElement>(".stage")?.style.height).toBe("1024px");
   });
 
   it("shows counters, stage progress and the index footer from the event stream", () => {

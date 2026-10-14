@@ -10,7 +10,6 @@ import { computeLayout } from "../shell/layout";
 import { type HudSnapshot, PerfHud, snapshot } from "../stage/hud";
 import { AtlasService, defaultAtlasBuild } from "../stage/ring/atlas-service";
 import { ringLayers } from "../stage/ring/layers";
-import { streakLayer } from "../stage/streams/layers";
 import { webLayers } from "../stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "../stage/web/layout-service";
 import { proxyLayers } from "./proxies";
@@ -61,16 +60,12 @@ async function main(): Promise<void> {
   await webLayout.request();
   const layoutMs = performance.now() - layoutStart;
   // Full load: the flash governor's cap is lifted, so the bench measures every element the
-  // layers can draw (2,048 streaks, every bundle), not the safer subset the app shows.
-  const unlimited = () => new FlashGovernor(model, webLayout, Number.POSITIVE_INFINITY);
+  // layers can draw (every bunch of strands), not the safer subset the app shows.
   const layers = () => {
     if (layerSet === "proxy") return proxyLayers(model);
-    const governor = unlimited();
-    return [
-      ...webLayers(model, webLayout, governor),
-      ...ringLayers(model, new AtlasService(defaultAtlasBuild())).layers,
-      streakLayer(model, governor),
-    ];
+    const ring = ringLayers(model, new AtlasService(defaultAtlasBuild()));
+    const governor = new FlashGovernor(model, webLayout, Number.POSITIVE_INFINITY, ring.ring);
+    return [...webLayers(model, webLayout, governor, ring.ring), ...ring.layers];
   };
   const start = busiestSecond(model) - 400;
   const { stage, ring } = computeLayout(window.innerWidth, window.innerHeight);
