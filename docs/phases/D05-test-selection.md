@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D04, C07 |
-| **Branch / PR** | `phase/D05-test-selection` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/D05-test-selection` · [#42](https://github.com/DuhItzAniket/Repro/pull/42) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Run only the tests a change can affect, and say which changed code no test runs. Selection
@@ -93,7 +93,7 @@ module-level changes, and the tests the change itself adds or edits.
 ## Evidence
 - Windows: the fixtures select exactly the expected tests; the `selection` base map is identical
   in Repro's image at L3 (Docker Desktop).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#42).
 
 ## Deviations from spec
 - `test.selected` and `no_covering_test` are produced and schema-checked, but the pipeline emits
