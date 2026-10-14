@@ -111,10 +111,16 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - Nodes = modules, symbols and tests. Edges = imports, calls and covers.
 - **Chord layout** (B14): modules sit on a circle under the ring's band (1.1 × the inner rim's
   radius), evenly spaced in the angular order a force-directed simulation gives them, so tightly
-  connected modules are neighbours. Symbols and tests, the nodes a run touches, sit **in
-  front**: spread across the sector of the disc the stage shows (within 28° of 3 o'clock, at 0.5–
-  0.86 of the circle's radius), in the same order, like the nodes of a network. Where a node sits
-  is a rule the engine can change later; today it is the simulation's order. The simulation
+  connected modules are neighbours. Symbols and tests, the nodes a run touches, are
+  **scattered across the whole part of the disc the stage shows** (from the stage's left edge to
+  just inside the inner rim, top to bottom), like the nodes of a network, by one placement rule
+  (`placeNode`, which the engine can replace later):
+  - height: the node's rank in the simulation's order, top to bottom, ± a third of a slot, so
+    connected nodes sit near each other;
+  - depth towards the wheel: by role, tests deeper in (4–60% of the way from the left edge to the
+    rim) and functions nearer the wheel (30–96%), placed within that range by a hash of the id.
+
+  The simulation
   (d3-force) runs once per graph in a worker, seeded from node-ID hashes (no trigonometry), with
   layout-only containment links that tie symbols and tests to their module; the result is cached
   by graph hash.
@@ -134,18 +140,22 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   `diff.behaviour` in `--flag`), a **bunch** fires at the function's ring card, as the owner
   described the reference's (B14):
   - its strands come from **the nodes that reach the function**: its tests (by `covers` edges and
-    trace samples) and its callers (by `calls` edges), the test that fired first; at most 12.
-    Membership uses only the log up to the firing event (`ReachIndex`);
+    trace samples) and its callers (by `calls` edges). The test that fired comes first, then the
+    reachers nearest the function's section, at most 8. Membership uses only the log up to the
+    firing event (`ReachIndex`);
   - **one strand per node**, each from its own point; they converge side by side on one bar at
     one section of the wheel, ordered by their nodes' bearings so they do not cross there;
-  - each strand is a **dim line** (alpha 0.32) revealed behind a **white bullet**, a bright 80 px
+  - each strand is a **dim line** (alpha 0.32, MAX-blended, so it never brightens a pixel enough
+    to flash) revealed behind a **white bullet**, a bright 80 px
     stretch that shoots from its node to the ring in the first 40% of a 1 s life (smoothstep;
     each strand starts up to 6% later). Its node lights up while the bullet is in flight, and
     the bar flashes when they land;
-  - the bunch aims at the card where it stood when the bunch fired, within 10° of the first
-    node's bearing; it stays **attached to its nodes** while its landing end **follows that
-    section of the ring** as it turns (by at most the ring's drift over the life), then fades from
-    60% of its life on;
+  - the bunch fires at **the function's section of the wheel** (its file's ring card), where the
+    section stood at that moment, and only if it was on screen then; the rays and streaks outside
+    the wheel leave from the same section (below). It stays **attached to its nodes** while its
+    landing end **follows that section** as the ring turns (by at most the ring's drift over the
+    life), then fades from 60% of its life on. While the user pins a file (the ring is held
+    still), no bunches fire;
   - at most one bunch per function rises per 333 ms window (the flash governor's aggregation).
 
   Each strand arrives at the rim along the ring's radius, sweeping a little towards the turning
@@ -185,19 +195,24 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   focuses is pinned at 3 o'clock without drift.
 
 ### Event streams (right)
-- Each event emits a streak from the ring's outer rim outward along a radial line, with a
-  motion-blurred tail. Length ∝ duration/importance; alpha decays.
+- **Sections** (B14): every event belongs to the section of the wheel of its file's ring card
+  (a trace: its function's file), the section its bunch of strands hits from inside. The lines
+  outside the wheel, streaks and rays, **emerge from that section and turn with the wheel**, so
+  they stay with it until they vanish, like the reference's field, which moves with its wheel
+  (measured: the field just outside the rim moves at the ring's angular speed, frame by frame).
+  An event whose file has no card has no section and draws no line outside the wheel.
+- Each event emits a streak from the ring's outer rim outward along a radial line at its
+  section, with a motion-blurred tail. Length ∝ duration/importance; alpha decays.
 - Tint: white = engine, `--violet` = agent, `--flag-deep`/`--flag` = fail/diff, `--ok` = pass.
   Priority (B07): fail, then diff, then a passing test, then agent, then engine.
 - Dense bursts are the point: a test batch should look like the reference's fan of streaks.
-- Lanes (B07): an event streams along its file's lane, a hash of the file mapped onto the
-  ring's right side, so one file's activity forms a band. Since B14 lanes span ±24°, the outer
-  rim's visible arc on a stage of the reference's shape, and each event deviates by up to ±4.9°
-  from its lane, so the bands merge into a field. Graph, stage, run and feed events do not stream;
+- Within its section an event's lines take a place from a hash of the event, across 80% of the
+  card's span, so one file's activity forms a band on its section. (B07–B14 used fixed lanes
+  hashed from the file, unrelated to the ring.) Graph, stage, run and feed events do not stream;
   at most 2,048 streaks are live (the newest).
-- **Rays** (B13's residue, restyled in B14): every streaming event also leaves a static ray along
-  its lane, from the outer rim towards the stage's edge (0.55–1.3 of the way, further for
-  findings and slow tests). It draws itself out over 900 ms of wall-clock time, behind its streak.
+- **Rays** (B13's residue, restyled in B14): every streaming event also leaves a ray at its
+  section, from the outer rim outward (0.55–1.3 of the room to the stage's right edge at 3
+  o'clock, further for findings and slow tests), turning with the wheel. It draws itself out over 900 ms of wall-clock time, behind its streak.
   It is brightest at the rim (0.42–0.92 by importance, 1.6 px), falls to 45% at its outer end,
   and fades over 90 s of run time. Busy files build dense bands, like the reference's
   long-exposure field. Rays are not flashes, by construction (ADR-0011, B14 note):

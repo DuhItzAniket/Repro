@@ -36,4 +36,5 @@ export const outerRadius = (ring: Ring): number => ring.r * (1 + BAND_SHARE);
  * left of the stage, so most of the web is off-screen and the stage shows the arcs crossing its
  * right part.
  */
-export const webRadius = (ring: Ring): number => ring.r * 1.1;
+export const WEB_SCALE = 1.1;
+export const webRadius = (ring: Ring): number => ring.r * WEB_SCALE;

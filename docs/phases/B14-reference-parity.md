@@ -50,11 +50,15 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
     with a white bullet, converging on one ring section; they stay attached to their nodes and
     follow that section as it turns, then fade (1 s), as the owner's second to fifth reviews
     asked (below). Membership comes from `ReachIndex` (`web/reach.ts`);
-  - arcs kept inside the web's circle (`web/arcs.ts`).
+  - arcs kept inside the web's circle (`web/arcs.ts`);
+  - nodes placed across the visible web by one rule (`placeNode`).
+- Sections (`ring/sections.ts`): each event's section of the wheel; bunches hit it, and the
+  streaks and rays outside leave from it and turn with the wheel.
 - Ring rotation: one turn per 24 s of wall-clock time at any replay speed (`RING_TURN_MS`), the
   reference's measured speed.
-- Streams: lanes ±24° with ±4.9° per event; rays from the outer rim, brightest there, growing
-  out over 900 ms (`growMs`), MAX-blended, with a 40 s wall-clock fade floor (`fadeWallMs`).
+- Streams: streaks and rays leave from their event's section of the wheel and turn with it
+  (sixth review); rays from the outer rim, brightest there, growing out over 900 ms (`growMs`),
+  MAX-blended, with a 40 s wall-clock fade floor (`fadeWallMs`).
 - Renderer: a `blend: "max"` layer option (premultiplied output, `MaxEquation`), `uGrowMs`,
   `uBand`, and no end overlap between chained segments.
 - The focus highlight split into a web part, drawn under the ring, and a ring part, drawn on top.
@@ -181,6 +185,32 @@ Changes:
   circle, so the curve is too; the farthest point of any arc is now 1.1 r, under the band
   (outer rim 1.215 r).
 
+## Sixth owner review (same day)
+Two changes: the node points can be anywhere within the circle, by some location criterion or
+formula; and the straight lines outside the wheel should only emerge and vanish from the same
+section of the wheel where the strands hit from inside.
+
+Measured on the reference: cross-correlating a column just outside the rim between frames at
+30 fps gives 5–12 px per frame with correlation 0.85–0.99, the same angular speed as the ring.
+The field outside belongs to the wheel's sections and moves with them.
+
+Changes:
+- nodes: one placement rule over the whole visible part of the disc (`NODE_REGION`,
+  `placeNode`). Height comes from the node's rank in the simulation's order; depth towards the
+  wheel comes from its role, tests deeper in;
+- sections (`ring/sections.ts`): an event belongs to its file's ring card (a trace: its
+  function's file). A bunch fires at its function's section only if that section is on screen
+  then; 74 of the demo's 187 traces qualify at ×1. Streaks and rays leave from their event's
+  section and turn with the wheel (the ray layer turns in the shader; streaks add the ring's
+  rotation). Events without a card draw no line outside (131 of 540 in the demo);
+- the dim strand lines moved to their own MAX-blended layer (`bundles.lines`). They cannot raise
+  a pixel's relative luminance by 10%, so the governor no longer counts them, only the bullets,
+  rings and bars;
+- a bunch fires from the reachers nearest its section (at most 8, the firing test first), which
+  keeps strands short. The cap admits 6 bunches at ×1 during the demo's one-second trace burst;
+- while the user pins a file the ring is held still, so no bunches fire (the governor's decisions
+  assume the ring's own motion).
+
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
       Measured at the same stage height:
@@ -193,13 +223,15 @@ Changes:
 
       Comparison images stay local, because the reference is third-party media.
 - [x] AC2: all tests and gates pass, with every changed pin explained:
-  - `@repro/web` 249 tests (17 new for the rays, strands, bunches, reach and front nodes);
-  - bundle 193.98 kB of 300 kB;
-  - frame-cost ratios p50 0.028–0.033 and p95 0.245–0.272 over three runs, against the
-    baseline's 0.0496 and 0.2749 (one earlier run on a busy host read 0.376 and failed; the gate
-    allows 30%);
-  - heap flat (−84 kB over 1,000 frames);
-  - stage allocation 24.1 kB per frame with the bunches (19.1 kB before them), within the 40 kB budget.
+  - `@repro/web` 252 tests (20 new for the rays, strands, bunches, reach, sections and node
+    placement);
+  - bundle 194.8 kB of 300 kB;
+  - frame-cost ratios p50 0.028–0.030 and p95 0.234–0.248 over three runs, against the
+    baseline's 0.0496 and 0.2749 (one run on a busy host earlier in the phase read 0.376 and
+    failed; the gate allows 30%);
+  - heap flat (−109 kB over 1,000 frames);
+  - stage allocation 12.8 kB per frame (fewer streaks now that only events with a section
+    stream), within the 40 kB budget.
 
   The visual baselines are regenerated in CI and checked by eye.
 - [x] AC3: flash safety holds. The governor's worst-window test passes at every speed, and the
@@ -214,9 +246,12 @@ Changes:
   - the reach index collects tests and callers, never the function itself, and a bunch uses only
     nodes that had joined by its event (agrees with an index built from the log prefix);
   - every mesh arc stays inside the web's circle;
+  - the run's nodes fill every quarter of the visible region's height and depth, inside it, with
+    tests deeper in than symbols;
+  - streaks and rays leave from their event's section and turn with the ring; a bunch fires only
+    when its section is on screen, and the governor agrees with the layer on which;
   - landing bars lie on the inner rim, within the landing arc or as far as they have followed;
   - the aim, follow, bullet and fade laws; the reach bound over the whole landing arc;
-  - the run's nodes are in the front sector, evenly spread, a file's members together;
   - the ring's turn per wall-clock second is the same at ×0.5–×16.
 
 ## Evidence

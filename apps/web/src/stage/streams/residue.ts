@@ -1,33 +1,35 @@
 /**
- * Stream rays (B13's residue, restyled in B14). Every streaming event leaves a static ray along
- * its file's lane, from the ring's outer rim outward. It draws itself out over RAY_GROW_MS of
- * wall-clock time, behind its streak, then stays and fades over RAY_FADE_MS of run time. Busy
- * files build dense bands and quiet ones sparse rays, like the reference's long-exposure field,
- * and the right of the stage shows where the run has been busy.
+ * Stream rays (B13's residue, restyled in B14). Every streaming event leaves a ray outside the
+ * wheel, from the outer rim outward, at **its section of the wheel**: its file's ring card, the
+ * section its strands hit from inside (`ring/sections.ts`). Rays turn with the wheel, so a ray
+ * stays with its section as it emerges and as it vanishes, like the reference's field, which moves
+ * with its wheel. An event whose file has no card draws no ray.
  *
- * Each ray maps to one event and does not move once drawn. Rays are not flashes, so the flash
- * governor does not count them (ADR-0011, B14 note):
+ * A ray draws itself out over RAY_GROW_MS of wall-clock time, behind its streak, then stays and
+ * fades over RAY_FADE_MS of run time. Busy files build dense bands and quiet ones sparse rays.
+ *
+ * Rays are not flashes, so the flash governor does not count them (ADR-0011, B14 note):
  * - they blend with MAX, so a pixel is only ever as bright as its brightest ray (at most 0.92),
  *   however many overlap;
  * - a ray fades over 90 s of run time, but never faster than over 40 s of wall-clock time, so a
  *   pixel's value falls by at most 0.023 a second. A fall of 10% relative luminance needs at
- *   least 0.05 (from 0.92; more from anything dimmer), over 2 s, so no pixel completes a rise
- *   and a fall of 10% within one second.
+ *   least 0.05 (from 0.92; more from anything dimmer), over 2 s, so no ray's own fade completes a
+ *   rise and a fall of 10% within one second.
  *
- * Under reduced motion rays appear whole, since nothing moves.
+ * Their turning with the wheel is the wheel's motion, which reduced motion stops (no drift).
  *
- * Like the edge layer, rays are written once, when their event arrives, with the event's time
- * as their appearance time. The shader hides, grows and fades them, so the layer is a pure
+ * Rays are written once per ring content, in the ring's own frame, each with its event's time as
+ * its appearance time; the shader hides, grows, fades and turns them, so the layer is a pure
  * function of (events, t, motion) and costs nothing per frame.
  */
-
 import type { ReproEvent } from "@repro/events";
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../../model/cockpit";
 import { outerRadius } from "../geometry";
 import type { StageFrame, StageLayer } from "../layer";
+import { type RingModel, rotationAt } from "../ring/layers";
+import { eventFile, sectionAngle } from "../ring/sections";
 import { type Recency, segmentBuffers, segmentWriter } from "../segments";
-import { laneAngle } from "./layers";
 import { importance, streams, TINTS, tintOf, travel } from "./style";
 
 /** Run time over which a ray fades to nothing (it does not move, so this is not wall-clock). */
@@ -54,75 +56,70 @@ export const RAY_END = 0.45;
 const RAY_WIDTH = 1.6;
 
 /**
- * How far a ray reaches, as a share of the way from the rim to the stage's edge: further for
- * findings and slow tests, with a per-event spread (`h`, 0–1), so the field ends raggedly.
+ * How far a ray reaches, as a share of the room from the rim to the stage's right edge (at 3
+ * o'clock): further for findings and slow tests, with a per-event spread (`h`, 0–1), so the
+ * field ends raggedly.
  */
 export function rayReach(event: ReproEvent, h: number): number {
   const travelled = Math.min(1, Math.max(0, (travel(event) - 90) / 530));
   return 0.55 + 0.45 * travelled + 0.3 * h;
 }
 
-/** Distance from (x, y) along (dx, dy) to the edge of a `w × h` stage; 0 when outside it. */
-export function toEdge(x: number, y: number, dx: number, dy: number, w: number, h: number): number {
-  if (x < 0 || y < 0 || x > w || y > h) return 0;
-  const along = dx > 1e-9 ? (w - x) / dx : dx < -1e-9 ? -x / dx : Number.POSITIVE_INFINITY;
-  const across = dy > 1e-9 ? (h - y) / dy : dy < -1e-9 ? -y / dy : Number.POSITIVE_INFINITY;
-  return Math.min(along, across);
-}
-
-export function residueLayer(model: CockpitModel): StageLayer {
+export function residueLayer(model: CockpitModel, ring: RingModel): StageLayer {
   const buffers = segmentBuffers(1024);
   const writer = segmentWriter(buffers);
   let written = 0;
-  let ring = { cx: Number.NaN, cy: Number.NaN, r: Number.NaN };
+  let drawnRing = -1;
+  let geometry = { cx: Number.NaN, cy: Number.NaN, r: Number.NaN };
   let width = Number.NaN;
-  let height = Number.NaN;
-  return {
+  const layer = {
     name: "residue",
-    primitive: "segments",
+    primitive: "segments" as const,
     buffers,
     recency: RAY_RECENCY,
-    blend: "max", // overlapping rays never add up: a pixel is as bright as its brightest ray
+    blend: "max" as const, // overlapping rays never add up: a pixel is as bright as its brightest ray
+    rotation: 0,
     update(frame: StageFrame) {
+      ring.sync();
+      layer.rotation = rotationAt(ring, frame.t, frame.motion, frame.focus);
       const { store } = model;
       const moved =
-        frame.ring.cx !== ring.cx ||
-        frame.ring.cy !== ring.cy ||
-        frame.ring.r !== ring.r ||
+        frame.ring.cx !== geometry.cx ||
+        frame.ring.cy !== geometry.cy ||
+        frame.ring.r !== geometry.r ||
         frame.width !== width ||
-        frame.height !== height;
+        ring.version !== drawnRing;
       if (!moved && written === store.length) return;
       // Room for every new event; growing reallocates, which needs a full rewrite.
       const generation = buffers.generation;
       buffers.reserve((moved ? 0 : buffers.count) + store.length - (moved ? 0 : written));
       if (moved || buffers.generation !== generation) {
-        ring = { cx: frame.ring.cx, cy: frame.ring.cy, r: frame.ring.r };
+        geometry = { cx: frame.ring.cx, cy: frame.ring.cy, r: frame.ring.r };
         width = frame.width;
-        height = frame.height;
+        drawnRing = ring.version;
         written = 0;
         writer.begin();
       } else {
         buffers.version++; // appending new events' rays
       }
-      const { cx, cy } = ring;
-      const start = outerRadius(ring) + 2;
+      const { cx, cy } = geometry;
+      const start = outerRadius(geometry) + 2;
+      const room = Math.max(0, width - (cx + start)); // from the rim to the right edge, at 3 o'clock
       for (let i = written; i < store.length; i++) {
         const event = store.event(i);
         if (event === null || !streams(event)) continue;
-        const angle = laneAngle(event);
+        const h = hash32(event.id);
+        const angle = sectionAngle(ring, eventFile(model, event), h);
+        if (Number.isNaN(angle)) continue; // no card: no section to emerge from
         const dx = Math.cos(angle);
         const dy = Math.sin(angle);
-        const x = cx + dx * start;
-        const y = cy + dy * start;
-        const room = toEdge(x, y, dx, dy, width, height);
-        if (room <= 0) continue; // its lane starts off the stage
-        const length = room * rayReach(event, hash32(event.id) / UNIT);
+        const length = room * rayReach(event, (Math.imul(h, 0x9e3779b1) >>> 0) / UNIT);
         const tint = TINTS[tintOf(event)];
         writer.push(
-          x,
-          y,
-          x + dx * length,
-          y + dy * length,
+          cx + dx * start,
+          cy + dy * start,
+          cx + dx * (start + length),
+          cy + dy * (start + length),
           RAY_WIDTH,
           tint[0],
           tint[1],
@@ -136,4 +133,5 @@ export function residueLayer(model: CockpitModel): StageLayer {
       written = store.length;
     },
   };
+  return layer;
 }

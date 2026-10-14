@@ -1,4 +1,6 @@
 // B14: the stream rays (B13's residue): geometry, append-only writes, and why they are not flashes.
+
+import { hash32 } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { SPEEDS } from "../../model/clock";
 import { CockpitModel } from "../../model/cockpit";
@@ -7,8 +9,10 @@ import { NORMAL_MOTION } from "../../motion/motion";
 import { computeLayout } from "../../shell/layout";
 import { outerRadius } from "../geometry";
 import type { StageFrame } from "../layer";
+import { AtlasService } from "../ring/atlas-service";
+import { RingModel, rotationAt } from "../ring/layers";
+import { eventFile, sectionAngle } from "../ring/sections";
 import { fadeAt, growFactor } from "../segments";
-import { laneAngle } from "./layers";
 import {
   RAY_FADE_MS,
   RAY_FADE_WALL_MS,
@@ -16,7 +20,6 @@ import {
   RAY_RECENCY,
   rayAlpha,
   residueLayer,
-  toEdge,
 } from "./residue";
 import { streams } from "./style";
 
@@ -34,50 +37,64 @@ const modelOf = (events: readonly unknown[]) => {
   model.ingest(events);
   return model;
 };
+const ringOf = (model: CockpitModel) => {
+  const wheel = new RingModel(model, new AtlasService(() => Promise.resolve(null)));
+  wheel.sync();
+  return wheel;
+};
 
 describe("stream rays", () => {
   const model = modelOf(runEvents());
-  const layer = residueLayer(model);
+  const wheel = ringOf(model);
+  const layer = residueLayer(model, wheel);
   layer.update(FRAME);
   const a = layer.buffers.array("a");
   const b = layer.buffers.array("b");
 
-  it("draws one ray per streaming event whose lane starts on the stage, from the outer rim", () => {
+  it("draws one ray per streaming event that has a section, from the outer rim at it (B14)", () => {
     const start = outerRadius(ring) + 2;
-    let expected = 0;
+    const angles: number[] = [];
     for (let i = 0; i < model.store.length; i++) {
       const event = model.store.event(i);
       if (event === null || !streams(event)) continue;
-      const angle = laneAngle(event);
-      const x = ring.cx + Math.cos(angle) * start;
-      const y = ring.cy + Math.sin(angle) * start;
-      if (toEdge(x, y, Math.cos(angle), Math.sin(angle), stage.w, stage.h) > 0) expected++;
+      const angle = sectionAngle(wheel, eventFile(model, event), hash32(event.id));
+      if (!Number.isNaN(angle)) angles.push(angle);
     }
-    expect(layer.buffers.count).toBe(expected);
-    expect(expected).toBeGreaterThan(400);
+    expect(layer.buffers.count).toBe(angles.length);
+    expect(angles.length).toBeGreaterThan(300);
     for (let i = 0; i < layer.buffers.count; i++) {
       const dx = (a[i * 2] as number) - ring.cx;
       const dy = (a[i * 2 + 1] as number) - ring.cy;
       expect(Math.sqrt(dx * dx + dy * dy)).toBeCloseTo(start, 2);
-      // It runs outward along its radius, into the stage.
+      // At its section (in the ring's own frame), running outward along its radius.
+      expect(Math.atan2(dy, dx)).toBeCloseTo(
+        Math.atan2(Math.sin(angles[i] as number), Math.cos(angles[i] as number)),
+        6,
+      );
       const ex = (b[i * 2] as number) - ring.cx;
       const ey = (b[i * 2 + 1] as number) - ring.cy;
       expect(Math.sqrt(ex * ex + ey * ey)).toBeGreaterThan(start);
-      expect((b[i * 2] as number) > (a[i * 2] as number)).toBe(true);
     }
   });
 
-  it("only appends: rays already written are not rewritten when events arrive", () => {
-    const events = runEvents();
-    const growing = modelOf(events.slice(0, 1200));
-    const rays = residueLayer(growing);
+  it("turns with the ring, so a ray stays with its section, and rewrites nothing as time passes", () => {
+    const rays = residueLayer(model, wheel);
+    rays.update({ ...FRAME, t: 20_000, cursor: model.store.cursorAt(20_000) });
+    const version = rays.buffers.version;
+    for (const t of [24_000, 30_500, 45_000]) {
+      rays.update({ ...FRAME, t, cursor: model.store.cursorAt(t) });
+      expect(rays.rotation).toBe(rotationAt(wheel, t, NORMAL_MOTION));
+    }
+    expect(rays.buffers.version).toBe(version);
+  });
+
+  it("only appends while the ring's content stays the same", () => {
+    const rays = residueLayer(model, wheel);
     rays.update(FRAME);
-    const first = rays.buffers.count;
-    const before = rays.buffers.array("b").slice(0, first * 2);
-    growing.ingest(events.slice(1200));
+    const generation = rays.buffers.generation;
+    const count = rays.buffers.count;
     rays.update(FRAME);
-    expect(rays.buffers.count).toBeGreaterThan(first);
-    expect([...rays.buffers.array("b").slice(0, first * 2)]).toEqual([...before]);
+    expect([rays.buffers.generation, rays.buffers.count]).toEqual([generation, count]);
   });
 
   it("draws itself out over 900 ms of wall-clock time, and whole under reduced motion", () => {
@@ -94,7 +111,7 @@ const luminance = (v: number): number => (v <= 0.04045 ? v / 12.92 : ((v + 0.055
 
 describe("stream rays are not flashes (ADR-0011, B14)", () => {
   const model = modelOf(runEvents());
-  const layer = residueLayer(model);
+  const layer = residueLayer(model, ringOf(model));
   layer.update(FRAME);
 
   it("blend with MAX, so overlapping rays never add up", () => {

@@ -175,6 +175,11 @@ entry. If something turns out wrong, add a correcting entry.
   bullet, instead of a sheaf of curves, brought it to 31. The owner's last correction made each
   event fire a bunch, one strand from every node that reaches the function (tests and callers,
   from the log so far). The bunch is honest data, and the cap then admits 12 bunches at ×1.
+- Outside the wheel the reference's field moves with its sections. A column just outside the
+  rim cross-correlates frame to frame at the ring's own angular speed (correlation 0.85–0.99).
+  Tying each event's lines to its file's section, where its strands hit, makes the outside and
+  the inside one picture. Data shapes density: the demo touches few files, so its field is
+  sparser than the reference's.
 - A containment rule fixed what read as strands leaving the wheel. 82 of 1,500 mesh arcs bowed
   past the ring's outer rim; keeping each arc's control point inside the web's circle bounds the
   whole curve there, because a quadratic Bézier lies in the triangle of its points.

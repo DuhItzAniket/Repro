@@ -1,4 +1,4 @@
-import { STRESS } from "@repro/synth";
+import { hash32, STRESS } from "@repro/synth";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
@@ -8,7 +8,10 @@ import { computeLayout } from "../../shell/layout";
 import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
+import { AtlasService } from "../ring/atlas-service";
 import { targetFile } from "../ring/content";
+import { RingModel, rotationAt } from "../ring/layers";
+import { eventFile, sectionAngle } from "../ring/sections";
 import {
   LANE_SPREAD,
   laneAngle,
@@ -38,6 +41,15 @@ const frameAt = (model: CockpitModel, t: number): StageFrame => ({
 /** The B07 capacity tests run without the flash governor's cap (B10 tests it). */
 const unlimited = (model: CockpitModel) =>
   new FlashGovernor(model, { positions: null, version: 0 }, Number.POSITIVE_INFINITY);
+const ringOf = (model: CockpitModel) => {
+  const ringModel = new RingModel(model, new AtlasService(() => Promise.resolve(null)));
+  ringModel.sync();
+  return ringModel;
+};
+const demoRing = ringOf(demo);
+/** Whether an event has a section of the wheel to stream from (its file has a ring card). */
+const hasSection = (event: Parameters<typeof eventFile>[1]) =>
+  !Number.isNaN(sectionAngle(demoRing, eventFile(demo, event), hash32(event.id)));
 const hashOf = (layer: StageLayer) =>
   hashRenderModels([{ layer: layer.name, buffers: layer.buffers }]);
 
@@ -86,10 +98,10 @@ describe("lanes", () => {
 
 describe("streak layer (B07: state at any t is reproducible after a scrub)", () => {
   it("gives the same render model whatever happened in earlier frames", () => {
-    const reused = streakLayer(demo, unlimited(demo));
+    const reused = streakLayer(demo, unlimited(demo), demoRing);
     fc.assert(
       fc.property(fc.integer({ min: 0, max: Math.ceil(demo.store.endTime) }), (t) => {
-        const fresh = streakLayer(demo, unlimited(demo));
+        const fresh = streakLayer(demo, unlimited(demo), ringOf(demo));
         fresh.update(frameAt(demo, t));
         reused.update(frameAt(demo, t));
         expect(hashOf(reused)).toBe(hashOf(fresh));
@@ -98,14 +110,14 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
     );
   });
 
-  it("draws exactly the streaming events still within their life", () => {
-    const layer = streakLayer(demo, unlimited(demo));
+  it("draws exactly the streaming events with a section still within their life", () => {
+    const layer = streakLayer(demo, unlimited(demo), demoRing);
     for (const t of [10_000, 21_000, 30_500, 34_000, 46_000]) {
       layer.update(frameAt(demo, t));
       let expected = 0;
       for (let i = 0; i < demo.store.cursorAt(t); i++) {
         const event = demo.store.event(i);
-        if (event === null || !streams(event)) continue;
+        if (event === null || !streams(event) || !hasSection(event)) continue;
         const age = t - (demo.store.time[i] as number);
         if (age >= 0 && age <= lifetime(event)) expected++;
       }
@@ -113,19 +125,52 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
     }
   });
 
-  it("caps the stress burst at 2,048 live streaks, keeping the newest", () => {
+  it("never draws more than 2,048 live streaks in the stress burst", () => {
     const stress = modelOf(runEvents(STRESS));
-    const layer = streakLayer(stress, unlimited(stress));
+    const layer = streakLayer(stress, unlimited(stress), ringOf(stress));
     let peak = 0;
     for (let t = 20_000; t <= 30_000; t += 100) {
       layer.update(frameAt(stress, t));
       peak = Math.max(peak, layer.buffers.count);
     }
-    expect(peak).toBe(MAX_STREAKS);
+    expect(peak).toBeGreaterThan(0);
+    expect(peak).toBeLessThanOrEqual(MAX_STREAKS);
+  });
+
+  it("streams each event from its section of the wheel, turning with the ring (B14)", () => {
+    const layer = streakLayer(demo, unlimited(demo), demoRing);
+    const a = layer.buffers.array("a");
+    let checked = 0;
+    for (const t of [24_000, 30_500, 34_000]) {
+      layer.update(frameAt(demo, t));
+      const rotation = rotationAt(demoRing, t, NORMAL_MOTION);
+      const expected: number[] = [];
+      for (let i = 0; i < demo.store.cursorAt(t); i++) {
+        const event = demo.store.event(i);
+        if (event === null || !streams(event)) continue;
+        const section = sectionAngle(demoRing, eventFile(demo, event), hash32(event.id));
+        if (!Number.isNaN(section)) expected.push(section + rotation);
+      }
+      for (let i = 0; i < layer.buffers.count; i++) {
+        const angle = Math.atan2(
+          (a[i * 2 + 1] as number) - ring.cy,
+          (a[i * 2] as number) - ring.cx,
+        );
+        const near = expected.some((e) => {
+          const d = Math.abs(
+            ((((angle - e) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI,
+          );
+          return d < 1e-4;
+        });
+        expect(near).toBe(true);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it("pins the demo stream at fixed times", () => {
-    const layer = streakLayer(demo, unlimited(demo));
+    const layer = streakLayer(demo, unlimited(demo), demoRing);
     const hashes = Object.fromEntries(
       [21_000, 30_500, 34_000, 46_000].map((t) => {
         layer.update(frameAt(demo, t));
@@ -135,9 +180,9 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
     expect(hashes).toMatchInlineSnapshot(`
       {
         "21000": "66d04c6cd55e9a9d/0",
-        "30500": "066d33f59674d47b/22",
-        "34000": "099b089aceebdf33/9",
-        "46000": "6fd178619a9ff249/4",
+        "30500": "20882f76e58b4efb/22",
+        "34000": "66d04c6cd55e9a9d/0",
+        "46000": "66d04c6cd55e9a9d/0",
       }
     `);
   });

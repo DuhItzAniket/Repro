@@ -9,13 +9,12 @@ import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
 import { AtlasService } from "../ring/atlas-service";
-import { RingModel } from "../ring/layers";
+import { RingModel, rotationAt } from "../ring/layers";
 import { RING_TURN_MS } from "../ring/rotation";
+import { cardCentre } from "../ring/sections";
 import { segmentAlpha } from "../segments";
 import { arcPieces, edgeHash } from "./arcs";
 import {
-  AIM,
-  aimRange,
   BUNDLE_MS,
   BUNDLE_STEPS,
   bulletAt,
@@ -30,6 +29,7 @@ import {
   MAX_BUNDLES,
   markerLayer,
   nodeLayer,
+  onScreen,
   pinLength,
   placedBunch,
   sortByBearing,
@@ -161,6 +161,47 @@ describe("marker layer", () => {
   });
 });
 
+/** A bundle layer over a fresh ring, with an uncapped governor that knows the ring. */
+function strands() {
+  const rings = ringModel();
+  rings.sync();
+  const governor = new FlashGovernor(model, layout, Number.POSITIVE_INFINITY, rings);
+  return { rings, governor, layer: bundleLayer(model, layout, governor, rings) };
+}
+
+/** Whether one of a layer's segments starts at (x, y). */
+function startsIn(layer: StageLayer, x: number, y: number): boolean {
+  const a = layer.buffers.array("a");
+  for (let k = 0; k < layer.buffers.count; k++) {
+    if (Math.abs((a[k * 2] as number) - x) < 1e-3 && Math.abs((a[k * 2 + 1] as number) - y) < 1e-3)
+      return true;
+  }
+  return false;
+}
+
+/** Whether the trace at store index `i` fired while its function's section was on screen. */
+function traceOnScreen(rings: RingModel, i: number): boolean {
+  const event = model.store.event(i);
+  if (event?.kind !== "trace.sample") return false;
+  const target = model.graph.nodeForSymbol(event.payload.symbol_id);
+  const card =
+    target === undefined ? undefined : rings.cardOf.get(model.graph.files[target] as string);
+  if (card === undefined) return false;
+  const then = rotationAt(rings, model.store.time[i] as number, NORMAL_MOTION);
+  return onScreen(cardCentre(rings, card) + then, landingArc(ring, stage.h));
+}
+
+/** The last trace whose function matches and whose section was on screen when it fired. */
+function lastTrace(rings: RingModel, match: (target: number) => boolean): number {
+  for (let i = model.store.length - 1; i >= 0; i--) {
+    const event = model.store.event(i);
+    if (event?.kind !== "trace.sample") continue;
+    const target = model.graph.nodeForSymbol(event.payload.symbol_id);
+    if (target !== undefined && match(target) && traceOnScreen(rings, i)) return i;
+  }
+  throw new Error("no trace on screen");
+}
+
 describe("node layer", () => {
   it("draws the run's nodes on the stage as small circles, each from its node's event", () => {
     const layer = nodeLayer(model, layout);
@@ -182,7 +223,7 @@ describe("node layer", () => {
 
 describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
   it("gives the same render model whatever happened in earlier frames", () => {
-    const fresh = () => bundleLayer(model, layout, unlimited(layout), ringModel());
+    const fresh = () => strands().layer;
     const reused = fresh();
     fc.assert(
       fc.property(fc.integer({ min: 0, max: Math.ceil(model.store.endTime) }), (t) => {
@@ -196,7 +237,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
   });
 
   it("only draws for events within a strand's life, and at most 40 strands", () => {
-    const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
+    const { layer } = strands();
     let peak = 0;
     for (let t = 0; t <= model.store.endTime; t += 250) {
       layer.update(frameAt(t));
@@ -212,10 +253,9 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
   });
 
   it("fires a bunch's first strand from the test's node, which lights up, and keeps it attached", () => {
-    const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
-    const first = model.kinds.last("trace.sample", model.store.length, 1)[0] as number;
+    const { rings, layer } = strands();
+    const first = lastTrace(rings, () => true);
     const t0 = model.store.time[first] as number;
-    const a = layer.buffers.array("a");
     const event = model.store.event(first);
     if (event?.kind !== "trace.sample") throw new Error("no trace");
     const origin = strandOrigin(
@@ -225,45 +265,30 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(origin).toBe(model.graph.byId.get(event.target?.test ?? ""));
     const [x, y] = at(origin as number);
-    const startsAt = (px: number, py: number) => {
-      for (let i = 0; i < layer.buffers.count; i++) {
-        if (
-          Math.abs((a[i * 2] as number) - px) < 1e-3 &&
-          Math.abs((a[i * 2 + 1] as number) - py) < 1e-3
-        )
-          return true;
-      }
-      return false;
-    };
     for (const life of [0.05, 0.2, 0.5, 0.9]) {
       layer.update(frameAt(t0 + life * BUNDLE_MS));
       // The dim strand starts at the node at every age: it stays attached.
-      expect(startsAt(x, y)).toBe(true);
+      expect(startsIn(layer.lines, x, y)).toBe(true);
       // The node's ring (from (x + 4.5, y)) shows while the bullet is in flight.
-      expect(startsAt(x + 4.5, y)).toBe(life < TRAVEL);
+      expect(startsIn(layer, x + 4.5, y)).toBe(life < TRAVEL);
     }
   });
 
   it("fires a bunch from the nodes that reach the function, converging on one section (B14)", () => {
-    const governor = unlimited(layout);
-    const layer = bundleLayer(model, layout, governor, ringModel());
+    const { rings, governor, layer } = strands();
     const { store, graph } = model;
     const parseDate = graph.byId.get("timekeeper.parse:parse_date#0") as number;
-    // The last trace of parse_date: by then many nodes reach it.
-    let i = store.length - 1;
-    for (; i >= 0; i--) {
-      const event = store.event(i);
-      if (
-        event?.kind === "trace.sample" &&
-        graph.nodeForSymbol(event.payload.symbol_id) === parseDate
-      )
-        break;
-    }
+    // The last trace of parse_date fired while its section was on screen.
+    const i = lastTrace(rings, (target) => target === parseDate);
     const event = store.event(i);
     if (event?.kind !== "trace.sample") throw new Error("no trace of parse_date");
     governor.prepare(frameAt(0)); // indexes the log, as the first frame does
     const members = new Int32Array(MAX_BUNCH);
     const first = strandOrigin(graph, event.target?.test, parseDate);
+    const card = rings.cardOf.get(graph.files[parseDate] as string) as number;
+    const fired =
+      cardCentre(rings, card) + rotationAt(rings, store.time[i] as number, NORMAL_MOTION);
+    const unit = (ring.r - 3) / webRadius(ring);
     const n = placedBunch(
       governor.reach,
       parseDate,
@@ -271,27 +296,19 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
       first,
       members,
       layout.positions as Float32Array,
+      Math.cos(fired) * unit,
+      Math.sin(fired) * unit,
     );
-    expect(n).toBeGreaterThan(5);
+    expect(n).toBe(MAX_BUNCH); // parse_date has more reachers than a bunch holds
     const t0 = store.time[i] as number;
-    // In flight: every node of the bunch lights up, each the start of its own strand.
+    // In flight: every node of the bunch lights up, each the start of its own dim strand.
     layer.update(frameAt(t0 + 0.05 * BUNDLE_MS));
     const a = layer.buffers.array("a");
-    const startsAt = (px: number, py: number) => {
-      for (let k = 0; k < layer.buffers.count; k++) {
-        if (
-          Math.abs((a[k * 2] as number) - px) < 1e-3 &&
-          Math.abs((a[k * 2 + 1] as number) - py) < 1e-3
-        )
-          return true;
-      }
-      return false;
-    };
     const origins = new Set<string>();
     for (let k = 0; k < n; k++) {
       const [x, y] = at(members[k] as number);
-      expect(startsAt(x, y)).toBe(true);
-      expect(startsAt(x + 4.5, y)).toBe(true);
+      expect(startsIn(layer.lines, x, y)).toBe(true);
+      expect(startsIn(layer, x + 4.5, y)).toBe(true);
       origins.add(`${x},${y}`);
     }
     expect(origins.size).toBe(n); // one strand per node, each from its own point
@@ -320,7 +337,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
   });
 
   it("lands each strand on the inner rim, in the landing arc or as far as it has followed the ring", () => {
-    const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
+    const { layer } = strands();
     const arc = landingArc(ring, stage.h);
     let pins = 0;
     for (let t = 20_000; t <= 28_000; t += 100) {
@@ -335,23 +352,39 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
         const my = ((a[i * 2 + 1] as number) + (b[i * 2 + 1] as number)) / 2 - ring.cy;
         expect(Math.sqrt(mx * mx + my * my)).toBeCloseTo(ring.r - 3, 0);
         expect(Math.abs(Math.atan2(my, mx))).toBeLessThanOrEqual(arc + FOLLOW + 1e-6);
-        expect(arc).toBeGreaterThan(AIM);
       }
     }
     expect(pins).toBeGreaterThan(0);
   });
 
-  it("fires at the card in front of its node and follows that ring section as it turns (B14)", () => {
-    // A node at bearing 0.05 fires within AIM of it, on the arc the stage shows.
-    const [lo, hi] = aimRange(0.05, 0.4);
-    expect([lo, hi]).toEqual([0.05 - AIM, 0.05 + AIM]);
-    expect(aimRange(0.35, 0.4)[1]).toBe(0.4);
-    expect(landingAngle(0.1, 0, lo, hi)).toBeCloseTo(0.1, 12); // the card, where it stood
-    expect(landingAngle(0.1, 0.05, lo, hi)).toBeCloseTo(0.15, 12); // then carried with the ring
-    expect(landingAngle(0.9, 0, lo, hi)).toBeCloseTo(hi, 12); // a card further off: its direction
-    expect(landingAngle(0.1 + Math.PI * 2, 0, lo, hi)).toBeCloseTo(0.1, 12);
-    expect(landingAngle(0.1, 10, lo, hi)).toBeCloseTo(0.1 + FOLLOW, 12); // a snap is not followed
+  it("lands on its section where it stood when it fired, and follows that section as it turns (B14)", () => {
+    expect(landingAngle(0.1, 0)).toBeCloseTo(0.1, 12); // the section, where it stood
+    expect(landingAngle(0.1, 0.05)).toBeCloseTo(0.15, 12); // then carried with the ring
+    expect(landingAngle(0.1 + Math.PI * 2, 0)).toBeCloseTo(0.1, 12);
+    expect(landingAngle(0.1, 10)).toBeCloseTo(0.1 + FOLLOW, 12); // a snap is not followed
     expect(FOLLOW).toBeCloseTo((Math.PI * 2 * BUNDLE_MS) / RING_TURN_MS, 12);
+    expect(onScreen(0.2, 0.3)).toBe(true);
+    expect(onScreen(0.4, 0.3)).toBe(false);
+    expect(onScreen(0.2 + Math.PI * 2, 0.3)).toBe(true);
+  });
+
+  it("fires a bunch only when its function's section is on screen, and the governor agrees", () => {
+    const rings = ringModel();
+    rings.sync();
+    const governor = new FlashGovernor(model, layout, Number.POSITIVE_INFINITY, rings);
+    governor.prepare(frameAt(0));
+    let on = 0;
+    let off = 0;
+    for (let i = 0; i < model.store.length; i++) {
+      const event = model.store.event(i);
+      if (event?.kind !== "trace.sample") continue;
+      const visible = traceOnScreen(rings, i);
+      expect(governor.bundle(i)).toBe(visible);
+      if (visible) on++;
+      else off++;
+    }
+    expect(on).toBeGreaterThan(0);
+    expect(off).toBeGreaterThan(0);
   });
 
   it("shoots a bullet from the node to the ring, then fades the strand while it stays attached (B14)", () => {
@@ -383,7 +416,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
       edgeLayer(model, layout, unlimited(layout)),
       nodeLayer(model, layout),
       markerLayer(model, layout, unlimited(layout)),
-      bundleLayer(model, layout, unlimited(layout), ringModel()),
+      strands().layer,
     ];
     const hashes = Object.fromEntries(
       [8_000, 22_000, 25_500, 45_000].map((t) => {
@@ -393,10 +426,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "f76a0359fbf04b4f",
-        "25500": "e93e946781ba9527",
-        "45000": "f76a0359fbf04b4f",
-        "8000": "8afc4528e6d75bdf",
+        "22000": "5ca302ce277a3a93",
+        "25500": "5876ec01a63f4ab3",
+        "45000": "5ca302ce277a3a93",
+        "8000": "c624d9b3831afa94",
       }
     `);
   });

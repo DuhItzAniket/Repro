@@ -20,7 +20,7 @@ import { signalsPanel } from "../panels/signals";
 import { workspacePanel } from "../panels/workspace";
 import { computeLayout } from "../shell/layout";
 import { focusLayers } from "../stage/focus-layer";
-import { FlashGovernor } from "../stage/governor";
+import { FLASH_BUDGET, FlashGovernor } from "../stage/governor";
 import type { StageFrame, StageLayer } from "../stage/layer";
 import { AtlasService } from "../stage/ring/atlas-service";
 import { ringLayers } from "../stage/ring/layers";
@@ -74,15 +74,15 @@ export async function pipeline(events: readonly unknown[]): Promise<Pipeline> {
   const layout = new LayoutService(model.graph, computeInline);
   await layout.request();
   const { stage, ring: geometry, panels: rects } = computeLayout(1440, 900);
-  const governor = new FlashGovernor(model, layout);
   const ring = ringLayers(model, new AtlasService(() => Promise.resolve(null)));
+  const governor = new FlashGovernor(model, layout, FLASH_BUDGET, ring.ring);
   const focus = focusLayers(model, layout, ring.ring);
   const layers: StageLayer[] = [
     ...webLayers(model, layout, governor, ring.ring),
     focus.web,
     ...ring.layers,
-    residueLayer(model),
-    streakLayer(model, governor),
+    residueLayer(model, ring.ring),
+    streakLayer(model, governor, ring.ring),
     focus.ring,
   ];
   const panels: Panel<never>[] = [

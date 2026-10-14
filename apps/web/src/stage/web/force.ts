@@ -5,9 +5,11 @@
  *   them, evenly spaced. Tightly connected modules end up next to each other, so their edges are
  *   short arcs near the rim, and edges between distant parts of the repo cross the disc as long
  *   curves: the reference's hairball, from real edges;
- * - symbols and tests, the nodes a run touches, sit **in front**: in the sector of the disc the
- *   stage shows (within FRONT_ANGLE of 3 o'clock, at FRONT_RADII), in the same order, spread
- *   like the nodes of a network. Strands fire from them to the ring.
+ * - symbols and tests, the nodes a run touches, are scattered across the whole part of the disc
+ *   the stage shows (`NODE_REGION`), by a placement rule (`placeNode`): their height from their
+ *   rank in the simulation's order, so connected nodes sit near each other; their depth towards
+ *   the wheel from their role, tests deeper in and functions nearer the wheel. Strands fire from
+ *   them to the ring. The rule is one function, so the engine can replace it later.
  *
  * Deterministic by construction:
  * - initial positions come from node-id hashes by rejection sampling (no trigonometry);
@@ -26,13 +28,52 @@ import {
   type SimulationLinkDatum,
   type SimulationNodeDatum,
 } from "d3-force";
+import { RING_ARC_X, RING_RADIUS, STAGE_ASPECT } from "../../shell/layout";
+import { WEB_SCALE } from "../geometry";
 import { fnv, type LayoutInput } from "./layout-input";
 
 export const LAYOUT_TICKS = 300;
-/** Half the angle of the front sector where symbols and tests sit (radians). */
-export const FRONT_ANGLE = (28 * Math.PI) / 180;
-/** Radii of the front sector, as shares of the modules' circle. */
-export const FRONT_RADII = [0.5, 0.86] as const;
+/**
+ * The part of the web's disc the stage shows, in unit-disc coordinates (unit = the modules'
+ * circle), with a margin: from the stage's left edge to just inside the ring's inner rim, and
+ * from its top to its bottom. Derived from the layout's ring rule at the side layout's stage
+ * shape (1.15:1); at other shapes it is close, and nodes outside the stage are simply not drawn.
+ */
+export const NODE_REGION = {
+  /** Unit x of the stage's left edge, plus a margin. */
+  left: (RING_RADIUS - RING_ARC_X * STAGE_ASPECT) / (WEB_SCALE * RING_RADIUS) + 0.035,
+  /** Largest |unit y| on the stage, less a margin. */
+  top: 0.5 / (WEB_SCALE * RING_RADIUS) - 0.025,
+  /** Unit radius just inside the inner rim. */
+  rim: 1 / WEB_SCALE - 0.03,
+} as const;
+
+/** How deep in the web a node sits, 0 (far side) to 1 (at the wheel), by its role. */
+const DEPTH = { test: [0.04, 0.6], symbol: [0.3, 0.96] } as const;
+
+/**
+ * Where a symbol or test goes (unit-disc coordinates), by the placement rule: `rank` of `count`
+ * sets its height (top to bottom, in the simulation's order, ± a third of a slot), and its role
+ * and a hash of its id set its depth from the region's left edge to the rim.
+ */
+export function placeNode(
+  rank: number,
+  count: number,
+  test: boolean,
+  id: string,
+  out: Float32Array,
+  at: number,
+): void {
+  const h = fnv(0x9747b28c, id);
+  const jitter = ((h & 0xffff) / 0xffff - 0.5) * (2 / 3);
+  const y = -NODE_REGION.top + (2 * NODE_REGION.top * (rank + 0.5 + jitter)) / count;
+  const [lo, hi] = test ? DEPTH.test : DEPTH.symbol;
+  const depth = lo + (hi - lo) * ((h >>> 16) / 0xffff);
+  // From the left edge to the rim at this height: the region is the disc cut by the stage.
+  const right = Math.sqrt(NODE_REGION.rim * NODE_REGION.rim - y * y);
+  out[at * 2] = NODE_REGION.left + (right - NODE_REGION.left) * depth;
+  out[at * 2 + 1] = y;
+}
 
 /** A deterministic point in the disc of radius `r` from an id (rejection sampling on its hash). */
 function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {
@@ -54,8 +95,8 @@ function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {
 
 /**
  * Runs the simulation and returns positions: modules on the unit circle, each at the angle of its
- * rank around the simulation's centroid; symbols and tests in the front sector, spread across it
- * in the same order, at radii from their ids' hashes.
+ * rank around the simulation's centroid; symbols and tests across the visible region, by
+ * `placeNode` in the same order.
  */
 export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Array {
   const n = input.ids.length;
@@ -116,18 +157,20 @@ export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Ar
   let moduleRank = 0;
   let innerRank = 0;
   for (const node of order) {
-    let angle: number;
-    let radius: number;
     if (inner[node] === 1) {
-      angle = -FRONT_ANGLE + (2 * FRONT_ANGLE * (innerRank++ + 0.5)) / innerCount;
-      const spread = (fnv(0x811c9dc5, input.ids[node] as string) % 1000) / 1000;
-      radius = FRONT_RADII[0] + (FRONT_RADII[1] - FRONT_RADII[0]) * spread;
-    } else {
-      angle = ((moduleRank++ + 0.5) / moduleCount) * Math.PI * 2;
-      radius = 1;
+      placeNode(
+        innerRank++,
+        innerCount,
+        input.tests[node] === 1,
+        input.ids[node] as string,
+        out,
+        node,
+      );
+      continue;
     }
-    out[node * 2] = Math.cos(angle) * radius;
-    out[node * 2 + 1] = Math.sin(angle) * radius;
+    const angle = ((moduleRank++ + 0.5) / moduleCount) * Math.PI * 2;
+    out[node * 2] = Math.cos(angle);
+    out[node * 2 + 1] = Math.sin(angle);
   }
   return out;
 }

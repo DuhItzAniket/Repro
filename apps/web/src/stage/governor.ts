@@ -23,15 +23,18 @@
 import type { CockpitModel } from "../model/cockpit";
 import { webRadius } from "./geometry";
 import type { StageFrame } from "./layer";
+import type { RingModel } from "./ring/layers";
+import { rotationAt } from "./ring/layers";
+import { cardCentre } from "./ring/sections";
 import { streakArea } from "./streams/layers";
 import { streams } from "./streams/style";
 import { arcArea, edgeHash } from "./web/arcs";
 import {
-  aimRange,
   EDGE_STYLE,
   FOLLOW,
   landingArc,
   MARKER_AREA,
+  onScreen,
   pinArea,
   pinLength,
   placedBunch,
@@ -100,6 +103,12 @@ export class FlashGovernor {
      * aggregation): the stress bench and the capacity tests measure the layers at full load.
      */
     private readonly budget = FLASH_BUDGET,
+    /**
+     * The ring, so a bunch is admitted only when its section is on screen (as the bundle layer
+     * draws it), and bounded by where it lands. Without it no bunch is admitted: bunches land on
+     * the ring's sections.
+     */
+    private readonly wheel?: RingModel,
   ) {
     this.reach = new ReachIndex(model);
   }
@@ -192,6 +201,7 @@ export class FlashGovernor {
   private extend(): void {
     const { store, graph } = this.model;
     this.reach.sync();
+    this.wheel?.sync();
     const positions = this.layout.positions;
     const radius = webRadius(this.ring);
     const { cx, cy } = this.ring;
@@ -252,27 +262,47 @@ export class FlashGovernor {
       }
       if (event.kind === "trace.sample" || event.kind === "diff.behaviour") {
         const target = graph.nodeForSymbol(event.payload.symbol_id);
+        // Where it lands: its function's section where it stood then, as the bundle layer draws
+        // it; it fires only if that section was on screen.
+        let fired = 0;
+        let visible = false;
+        if (target !== undefined && this.wheel !== undefined) {
+          const card = this.wheel.cardOf.get(graph.files[target] as string);
+          if (card === undefined) visible = false;
+          else {
+            const motion = { speed: this.speed, reduced: false };
+            fired = cardCentre(this.wheel, card) + rotationAt(this.wheel, t, motion);
+            visible = onScreen(fired, arc);
+          }
+        }
         const first = strandOrigin(graph, event.target?.test, target);
         const members = this.members;
+        const unit = (this.ring.r - 3) / radius; // the landing point in unit coordinates
         const n =
-          target === undefined || positions === null
+          target === undefined || positions === null || !visible
             ? 0
-            : placedBunch(this.reach, target, i, first, members, positions);
+            : placedBunch(
+                this.reach,
+                target,
+                i,
+                first,
+                members,
+                positions,
+                Math.cos(fired) * unit,
+                Math.sin(fired) * unit,
+              );
         if (target !== undefined && n > 0) {
           // One bunch per function per window: a later one at the same function is aggregated.
           const last = this.lastBundle.get(target);
           const aggregated =
             Number.isFinite(this.budget) && last !== undefined && t - last < this.window;
-          // Its strands land within AIM of the first node's bearing, spread along the bar, and
-          // follow the ring by at most FOLLOW either way.
+          // Its strands land around that point, spread along the bar, and follow the ring by at
+          // most FOLLOW either way.
           const p = positions as Float32Array;
-          const lead = members[0] as number;
-          const [lo, hi] = aimRange(
-            Math.atan2(p[lead * 2 + 1] as number, p[lead * 2] as number),
-            arc,
-          );
           const rim = this.ring.r - 3;
           const spread = pinLength(n) / 2 / rim + FOLLOW;
+          const lo = fired;
+          const hi = fired;
           let area = pinArea(n);
           for (let k = 0; k < n; k++) {
             const node = members[k] as number;

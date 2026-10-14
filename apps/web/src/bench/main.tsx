@@ -63,16 +63,15 @@ async function main(): Promise<void> {
   const layoutMs = performance.now() - layoutStart;
   // Full load: the flash governor's cap is lifted, so the bench measures every element the
   // layers can draw (2,048 streaks, every bundle), not the safer subset the app shows.
-  const unlimited = () => new FlashGovernor(model, webLayout, Number.POSITIVE_INFINITY);
   const layers = () => {
     if (layerSet === "proxy") return proxyLayers(model);
-    const governor = unlimited();
     const ring = ringLayers(model, new AtlasService(defaultAtlasBuild()));
+    const governor = new FlashGovernor(model, webLayout, Number.POSITIVE_INFINITY, ring.ring);
     return [
       ...webLayers(model, webLayout, governor, ring.ring),
       ...ring.layers,
-      residueLayer(model),
-      streakLayer(model, governor),
+      residueLayer(model, ring.ring),
+      streakLayer(model, governor, ring.ring),
     ];
   };
   const start = busiestSecond(model) - 400;

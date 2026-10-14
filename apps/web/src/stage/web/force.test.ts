@@ -2,7 +2,7 @@ import { STRESS } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
-import { FRONT_ANGLE, FRONT_RADII, forceLayout } from "./force";
+import { forceLayout, NODE_REGION, placeNode } from "./force";
 import { type LayoutInput, layoutHash, layoutInput } from "./layout-input";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -51,63 +51,84 @@ describe("forceLayout (B05: identical across reloads; a chord layout since B14)"
   });
 
   it("pins the demo layout (same on every OS in CI)", () => {
-    expect(digest(positions)).toMatchInlineSnapshot(`"f2df76af"`);
+    expect(digest(positions)).toMatchInlineSnapshot(`"fd69d2f7"`);
   });
 
-  it("puts modules evenly on the circle and the run's nodes in the front sector", () => {
+  it("puts modules evenly on the circle and scatters the run's nodes across the visible web", () => {
     const { graph } = demo;
     const modules: number[] = [];
-    const front: number[] = [];
+    const ys: number[] = [];
+    const xs: number[] = [];
     for (let n = 0; n < graph.nodeCount; n++) {
       const x = positions[n * 2] as number;
       const y = positions[n * 2 + 1] as number;
-      const r = Math.sqrt(x * x + y * y);
-      const angle = Math.atan2(y, x);
       if (graph.nodeTypeName(n) === "module") {
-        expect(r).toBeCloseTo(1, 6);
-        modules.push((angle + Math.PI * 2) % (Math.PI * 2));
-      } else {
-        expect(r).toBeGreaterThanOrEqual(FRONT_RADII[0] - 1e-6);
-        expect(r).toBeLessThanOrEqual(FRONT_RADII[1] + 1e-6);
-        expect(Math.abs(angle)).toBeLessThanOrEqual(FRONT_ANGLE + 1e-6);
-        front.push(angle);
+        expect(Math.sqrt(x * x + y * y)).toBeCloseTo(1, 6);
+        modules.push((Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2));
+        continue;
       }
+      // Inside the region the stage shows: right of its left edge, inside the rim, on the stage.
+      expect(x).toBeGreaterThanOrEqual(NODE_REGION.left - 1e-6);
+      expect(Math.abs(y)).toBeLessThanOrEqual(NODE_REGION.top + 1e-6);
+      expect(Math.sqrt(x * x + y * y)).toBeLessThanOrEqual(NODE_REGION.rim + 1e-6);
+      xs.push(x);
+      ys.push(y);
     }
-    // Evenly spaced: sorted, neighbours are one slot apart.
-    for (const [angles, slot] of [
-      [modules, (Math.PI * 2) / modules.length],
-      [front, (2 * FRONT_ANGLE) / front.length],
+    const sorted = [...modules].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) {
+      expect((sorted[i] as number) - (sorted[i - 1] as number)).toBeCloseTo(
+        (Math.PI * 2) / sorted.length,
+        5,
+      );
+    }
+    // Spread over the whole region: every quarter of its height and of its depth has nodes.
+    for (const [values, lo, hi] of [
+      [ys, -NODE_REGION.top, NODE_REGION.top],
+      [xs, NODE_REGION.left, NODE_REGION.rim],
     ] as const) {
-      const sorted = [...angles].sort((a, b) => a - b);
-      for (let i = 1; i < sorted.length; i++) {
-        expect((sorted[i] as number) - (sorted[i - 1] as number)).toBeCloseTo(slot, 5);
+      for (let q = 0; q < 4; q++) {
+        const from = lo + ((hi - lo) * q) / 4;
+        const to = lo + ((hi - lo) * (q + 1)) / 4;
+        expect(values.some((v) => v >= from && v <= to)).toBe(true);
       }
     }
   });
 
-  it("keeps a file's symbols and tests together in the front, in the circle's order", () => {
+  it("places by a rule: height by the simulation's order, depth by role (tests deeper in)", () => {
     const { graph } = demo;
-    const byFile = new Map<string, number[]>();
+    let tests = 0;
+    let testDepth = 0;
+    let symbols = 0;
+    let symbolDepth = 0;
     for (let n = 0; n < graph.nodeCount; n++) {
-      if (graph.nodeTypeName(n) === "module") continue;
-      const file = graph.files[n] as string;
-      byFile.set(file, [
-        ...(byFile.get(file) ?? []),
-        Math.atan2(positions[n * 2 + 1] as number, positions[n * 2] as number),
-      ]);
+      const type = graph.nodeTypeName(n);
+      if (type === "module") continue;
+      const x = positions[n * 2] as number;
+      if (type === "test") {
+        tests++;
+        testDepth += x;
+      } else {
+        symbols++;
+        symbolDepth += x;
+      }
     }
-    // Containment links pull a file's members together in the simulation, so they sit close in
-    // the front: the median file spans less than a fifth of the sector.
-    const spans = [...byFile.values()]
-      .filter((angles) => angles.length > 1)
-      .map((angles) => Math.max(...angles) - Math.min(...angles))
-      .sort((a, b) => a - b);
-    expect(spans.length).toBeGreaterThan(3);
-    expect(spans[Math.floor(spans.length / 2)] as number).toBeLessThan((2 * FRONT_ANGLE) / 5);
+    expect(testDepth / tests).toBeLessThan(symbolDepth / symbols);
+    // The rule itself: rank sets the height, top to bottom.
+    const out = new Float32Array(4);
+    placeNode(0, 10, false, "a", out, 0);
+    placeNode(9, 10, false, "a", out, 1);
+    expect(out[1] as number).toBeLessThan(out[3] as number);
+    // A test sits deeper in (further from the wheel) than a symbol with the same id and slot.
+    placeNode(4, 10, true, "b", out, 0);
+    placeNode(4, 10, false, "b", out, 1);
+    expect(out[1]).toBe(out[3]); // the same height
+    expect(out[0] as number).toBeLessThan(out[2] as number);
   });
 
   it("handles an empty graph and the stress graph", () => {
-    expect(forceLayout({ ids: [], links: new Int32Array(0), containment: 0 })).toHaveLength(0);
+    expect(
+      forceLayout({ ids: [], links: new Int32Array(0), containment: 0, tests: new Uint8Array(0) }),
+    ).toHaveLength(0);
     const stress = modelOf(runEvents(STRESS));
     const big = forceLayout(layoutInput(stress.graph), 20); // few ticks: shape, not quality
     expect(big).toHaveLength(stress.graph.nodeCount * 2);

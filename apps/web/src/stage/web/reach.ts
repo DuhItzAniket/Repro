@@ -9,8 +9,8 @@
  */
 import type { CockpitModel } from "../../model/cockpit";
 
-/** Most strands in one bunch. */
-export const MAX_BUNCH = 12;
+/** Most strands in one bunch: the nearest of the nodes that reach the function. */
+export const MAX_BUNCH = 8;
 
 export class ReachIndex {
   /** Per function node: the nodes that reach it, in the order they joined, and at which event. */

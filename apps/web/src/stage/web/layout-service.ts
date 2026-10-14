@@ -29,9 +29,12 @@ export function workerCompute(): LayoutCompute {
       };
     }
     const id = next++;
-    const links = input.links.slice(); // the copy is transferred; the caller keeps its own
-    worker.postMessage({ id, ids: input.ids, links, containment: input.containment }, [
+    // The copies are transferred; the caller keeps its own.
+    const links = input.links.slice();
+    const tests = input.tests.slice();
+    worker.postMessage({ id, ids: input.ids, links, containment: input.containment, tests }, [
       links.buffer,
+      tests.buffer,
     ]);
     return new Promise((resolve) => pending.set(id, resolve));
   };

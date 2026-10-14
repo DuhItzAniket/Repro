@@ -65,12 +65,16 @@ Flagged for the owner at the re-opened Stage B gate; no change of scope.
 
   A unit test checks both against the sRGB luminance curve at every replay speed.
 - **Areas.** An edge's flare counts only its arc pieces on the stage, since most of the web is
-  off-screen from B14. A bunch of strands counts every strand's dim line and bullet over the
-  curve's control polygon, each for its longest possible length (from its node to the far end of
-  the arc the bunch can land on: within 10° of the first node's bearing, spread along the bar,
-  plus how far it can follow the ring), and its bar. Aggregation is one bunch per function per
-  window. The worst-window test (×0.5–×16, both fixtures) still holds. On the demo the cap admits
-  12 of 190 bunches at ×1, 2 at ×4 and 1 at ×16.
+  off-screen from B14. A bunch of strands counts every strand's bullet over the curve's control
+  polygon, each for its longest possible length (from its node to its section, spread along the
+  bar, plus how far it can follow the ring), its nodes' rings and its bar. Its dim lines are not
+  counted: they are MAX-blended at 0.32 encoded, so a pixel under one rises at most to relative
+  luminance 0.084 from the background's 0.0024, under the 10% that makes a flash. A bunch fires
+  only when its section is on screen, as the layer draws it. Aggregation is one bunch per
+  function per window. The worst-window test (×0.5–×16, both fixtures) still holds. On the demo
+  the cap admits 6 bunches at ×1, 5 at ×4 and 2 at ×16, of 75–127 that could fire.
+- **Rays turn with the wheel** (B14). Their luminance changes as they pass a pixel are the
+  wheel's motion, like the cards' own; reduced motion stops the drift, and with it the rays.
 - **Wall-clock motion.** Bunches live 1 s of wall-clock time: the bullets' 0.4 s trip from their
   nodes, then the attached strands follow the ring and fade. The ring's drift is wall-clock too, one turn per 24 s at any replay
   speed, so ×16 does not spin it sixteen times as fast.

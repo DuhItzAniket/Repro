@@ -12,6 +12,8 @@ export interface LayoutInput {
   readonly links: Int32Array;
   /** How many of `links` (from the end) are containment links. */
   readonly containment: number;
+  /** 1 for test nodes, 0 for the rest (the placement rule puts tests deeper in the web). */
+  readonly tests: Uint8Array;
 }
 
 /** FNV-1a 32 over a string, continuing from `hash`. */
@@ -39,13 +41,15 @@ export function layoutInput(graph: GraphIndex): LayoutInput {
     links[e * 2 + 1] = graph.edgeTarget[e] as number;
   }
   links.set(contain, graph.edgeCount * 2);
-  return { ids: graph.ids.slice(), links, containment: contain.length / 2 };
+  const tests = new Uint8Array(graph.nodeCount);
+  for (let i = 0; i < graph.nodeCount; i++) tests[i] = graph.nodeTypeName(i) === "test" ? 1 : 0;
+  return { ids: graph.ids.slice(), links, containment: contain.length / 2, tests };
 }
 
 /** Cache key: changes whenever a node or link is added, removed or reordered. */
 export function layoutHash(input: LayoutInput): string {
   let a = 0x811c9dc5;
-  let b = fnv(0x811c9dc5, "repro-layout/3"); // 3: the chord layout with the run's nodes in front (B14)
+  let b = fnv(0x811c9dc5, "repro-layout/4"); // 4: the run's nodes placed across the visible web (B14)
   for (const id of input.ids) {
     a = fnv(a, id);
     b = fnv(b, `${id.length}`);

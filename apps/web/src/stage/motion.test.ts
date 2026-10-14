@@ -1,5 +1,6 @@
 // B10: wall-clock motion, the flash governor, reduced motion, and "scrub = play" for the stage.
 import { readFileSync } from "node:fs";
+import { hash32 } from "@repro/synth";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SPEEDS } from "../model/clock";
 import { CockpitModel } from "../model/cockpit";
@@ -20,6 +21,7 @@ import type { StageFrame, StageLayer } from "./layer";
 import { AtlasService } from "./ring/atlas-service";
 import { RingModel, ringLayers, rotationAt } from "./ring/layers";
 import { easeOutCubic, RING_DRIFT, SNAP_MS } from "./ring/rotation";
+import { eventFile, sectionAngle } from "./ring/sections";
 import { streakArea, streakLayer, streakShape, streakWidth } from "./streams/layers";
 import { residueLayer } from "./streams/residue";
 import { LONGEST_LIFE, lifetime, streams } from "./streams/style";
@@ -138,7 +140,9 @@ describe("layers follow the governor and wall-clock time", () => {
     const { store } = model;
     for (const speed of SPEEDS) {
       const governor = new FlashGovernor(model, stress.layout);
-      const layer = streakLayer(model, governor);
+      const wheel = ringOf(model);
+      wheel.sync();
+      const layer = streakLayer(model, governor, wheel);
       const burst = store.time[model.kinds.lastIndex("test.finished", store.length)] as number;
       for (const t of [burst - 600, burst, burst + 900 * speed]) {
         layer.update(frameOf(model, t, at(speed)));
@@ -146,6 +150,9 @@ describe("layers follow the governor and wall-clock time", () => {
         for (let i = store.firstAtOrAfter(t - LONGEST_LIFE * speed); i < store.cursorAt(t); i++) {
           const event = store.event(i);
           if (event === null || !streams(event) || !governor.streak(i)) continue;
+          // Only events with a section of the wheel stream (B14).
+          if (Number.isNaN(sectionAngle(wheel, eventFile(model, event), hash32(event.id))))
+            continue;
           const age = (t - (store.time[i] as number)) / speed;
           if (age >= 0 && age <= lifetime(event)) expected++;
         }
@@ -156,12 +163,16 @@ describe("layers follow the governor and wall-clock time", () => {
 
   it("draws strands for their wall-clock life, and none under reduced motion", () => {
     const { model, layout } = demo;
-    const traces = model.kinds.last("trace.sample", model.store.length, 1000);
-    const first = traces[0] as number;
-    const t0 = model.store.time[first] as number;
     for (const speed of [1, 16]) {
-      const governor = new FlashGovernor(model, layout);
-      const layer = bundleLayer(model, layout, governor, ringOf(model));
+      const wheel = ringOf(model);
+      wheel.sync();
+      const governor = new FlashGovernor(model, layout, FLASH_BUDGET, wheel);
+      const layer = bundleLayer(model, layout, governor, wheel);
+      governor.prepare(frameOf(model, 0, at(speed)));
+      // The first bunch admitted at this speed (its section was on screen when it fired).
+      let first = 0;
+      while (first < model.store.length && !governor.bundle(first)) first++;
+      const t0 = model.store.time[first] as number;
       layer.update(frameOf(model, t0 + BUNDLE_MS * speed * 0.5, at(speed)));
       expect(layer.buffers.count).toBeGreaterThan(0);
       layer.update(frameOf(model, t0 + BUNDLE_MS * speed * 0.5, { speed, reduced: true }));
@@ -234,7 +245,7 @@ describe("layers follow the governor and wall-clock time", () => {
     const { model, layout } = demo;
     const governor = new FlashGovernor(model, layout);
     const layers = [
-      streakLayer(model, governor),
+      streakLayer(model, governor, ringOf(model)),
       bundleLayer(model, layout, governor, ringOf(model)),
     ];
     for (const t of [24_000, 25_000, 30_500]) {
@@ -249,13 +260,13 @@ describe("layers follow the governor and wall-clock time", () => {
 describe("scrubbing gives the same frame as playing (golden)", () => {
   function stageLayers(): StageLayer[] {
     const { model, layout } = demo;
-    const governor = new FlashGovernor(model, layout);
     const ringed = ringLayers(model, new AtlasService(() => Promise.resolve(null)));
+    const governor = new FlashGovernor(model, layout, FLASH_BUDGET, ringed.ring);
     return [
       ...webLayers(model, layout, governor, ringed.ring),
       ...ringed.layers,
-      residueLayer(model),
-      streakLayer(model, governor),
+      residueLayer(model, ringed.ring),
+      streakLayer(model, governor, ringed.ring),
     ];
   }
   const hashAt = (layers: StageLayer[], t: number, motion: Motion) => {

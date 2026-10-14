@@ -1,7 +1,8 @@
 /**
  * The event-stream layer (B07; DESIGN.md "Event streams"). Each streaming event shoots a streak
- * outward from the ring's rim along its file's lane: one lane per file, so a file's activity
- * forms a band. The head eases out, the tail stretches with the head's speed, and alpha decays
+ * outward from the ring's outer rim at its section of the wheel: its file's ring card, where its
+ * strands hit from inside (B14, `ring/sections.ts`). Streaks turn with the wheel, so a file's
+ * activity forms a band on its section; an event whose file has no card does not stream. The head eases out, the tail stretches with the head's speed, and alpha decays
  * over the event's 600–1400 ms life. At most 2,048 streaks are live.
  *
  * A streak is a pure function of its event, `t` and the motion settings: nothing carries over
@@ -18,13 +19,15 @@ import { outerRadius } from "../geometry";
 import type { FlashGovernor } from "../governor";
 import type { StageFrame, StageLayer } from "../layer";
 import { targetFile } from "../ring/content";
+import { type RingModel, rotationAt } from "../ring/layers";
+import { eventFile, sectionAngle } from "../ring/sections";
 import { ALWAYS, segmentBuffers, segmentWriter } from "../segments";
 import { importance, LONGEST_LIFE, lifetime, streams, TINTS, tintOf, travel } from "./style";
 
 export const MAX_STREAKS = 2048;
 /**
- * Lanes fan across ±24° of the ring's right side: the outer rim's visible arc on a stage of the
- * reference's shape (B14).
+ * Fixed lanes across ±24° of the ring's right side (B07–B14). Streaks and rays now leave from
+ * their event's section of the wheel; the lanes only place the callout boxes.
  */
 export const LANE_SPREAD = (24 * Math.PI) / 180;
 /** Tail length = head speed × this many ms (velocity-stretched motion blur). */
@@ -93,13 +96,19 @@ export function streakShape(
   return true;
 }
 
-export function streakLayer(model: CockpitModel, governor: FlashGovernor): StageLayer {
+export function streakLayer(
+  model: CockpitModel,
+  governor: FlashGovernor,
+  ring: RingModel,
+): StageLayer {
   const buffers = segmentBuffers(MAX_STREAKS);
   const writer = segmentWriter(buffers, MAX_STREAKS);
   const shape: StreakOut = { angle: 0, from: 0, head: 0, tail: 0, alpha: 0 };
-  // Lane angle per store index, computed once per event (NaN = not yet), so frames allocate
-  // nothing. Float64, not 32: a rounded cache would draw differently from a fresh computation.
+  // Ring-local section angle per store index, computed once per event and ring content (NaN =
+  // not yet, Infinity = no section), so frames allocate nothing. Float64, not 32: a rounded cache
+  // would draw differently from a fresh computation.
   let lanes = new Float64Array(0);
+  let lanesRing = -1;
   return {
     name: "streaks",
     primitive: "segments",
@@ -110,11 +119,17 @@ export function streakLayer(model: CockpitModel, governor: FlashGovernor): Stage
       if (frame.motion.reduced) return; // reduced motion: no streaks (DESIGN.md "Motion")
       const { speed } = frame.motion;
       const { store } = model;
+      ring.sync();
+      if (lanesRing !== ring.version) {
+        lanes.fill(Number.NaN); // sections move when the ring's content changes
+        lanesRing = ring.version;
+      }
       if (lanes.length < store.length) {
         const grown = new Float64Array(Math.max(store.length, lanes.length * 2)).fill(Number.NaN);
         grown.set(lanes);
         lanes = grown;
       }
+      const rotation = rotationAt(ring, frame.t, frame.motion, frame.focus);
       const start = store.firstAtOrAfter(frame.t - LONGEST_LIFE * speed);
       const end = store.cursorAt(frame.t);
       const { cx, cy } = frame.ring;
@@ -122,11 +137,14 @@ export function streakLayer(model: CockpitModel, governor: FlashGovernor): Stage
       for (let i = end - 1; i >= start; i--) {
         const event = store.event(i);
         if (event === null || !streams(event) || !governor.streak(i)) continue;
-        let angle = lanes[i] as number;
-        if (Number.isNaN(angle)) {
-          angle = laneAngle(event);
-          lanes[i] = angle;
+        let section = lanes[i] as number;
+        if (Number.isNaN(section)) {
+          section = sectionAngle(ring, eventFile(model, event), hash32(event.id));
+          if (Number.isNaN(section)) section = Number.POSITIVE_INFINITY;
+          lanes[i] = section;
         }
+        if (section === Number.POSITIVE_INFINITY) continue; // no card: no section to stream from
+        const angle = section + rotation;
         const age = (frame.t - (store.time[i] as number)) / speed;
         if (!streakShape(event, age, angle, frame.ring, shape)) {
           continue;

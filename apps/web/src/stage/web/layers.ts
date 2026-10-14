@@ -4,13 +4,13 @@
  *   its `graph.edge` event happens and flares it briefly (recency), so playback and scrubbing
  *   cost no uploads. The web fills a disc just inside the ring, whose centre is left of the
  *   stage: the stage shows long arcs crossing its right part, like the reference.
- * - **nodes**: the run's nodes, tests and symbols, as small hollow circles in front of the web
- *   (the layout's front sector), revealed with their `graph.node` events: the points strands
- *   fire from.
+ * - **nodes**: the run's nodes, tests and symbols, as small hollow circles scattered across the
+ *   visible web (the layout's `placeNode` rule), revealed with their `graph.node` events: the
+ *   points strands fire from.
  * - **markers**: tiny hollow circles on the nodes in the latest blast radius.
  * - **bundles** (bunches of strands): when a test reaches a function (`trace.sample`, or
- *   `diff.behaviour` in `--flag`), a bunch fires at the function's ring card, like the
- *   reference's (B14). Each strand of the bunch comes from its own node, one of the nodes that
+ *   `diff.behaviour` in `--flag`), a bunch fires at the function's section of the wheel (its
+ *   file's ring card) when that section is on screen, like the reference's (B14). Each strand of the bunch comes from its own node, one of the nodes that
  *   reach the function (`ReachIndex`: its tests and its callers), and they converge side by side
  *   on one section of the ring. Each strand is a dim line along which a white bullet shoots to
  *   the ring, where a bar flashes. The strands stay attached to their nodes while their landing
@@ -28,8 +28,9 @@ import type { Ring } from "../../shell/layout";
 import { ringTracker, webRadius } from "../geometry";
 import type { FlashGovernor } from "../governor";
 import type { StageFrame, StageLayer } from "../layer";
-import { type RingModel, rotationAt } from "../ring/layers";
+import { pinnedCard, type RingModel, rotationAt } from "../ring/layers";
 import { RING_DRIFT } from "../ring/rotation";
+import { cardCentre } from "../ring/sections";
 import {
   ALWAYS,
   type Recency,
@@ -305,7 +306,11 @@ export const BUNDLE_STEPS = 24;
 export const TRAVEL = 0.4;
 /** From this share of its life on, the strand fades, still attached at both ends. */
 export const FADE_FROM = 0.6;
-/** The dim strand's alpha, and the bullet's at its head. */
+/**
+ * The dim strand's alpha, and the bullet's at its head. The dim line is MAX-blended, so a pixel
+ * under it rises at most to 0.32 encoded (relative luminance 0.084) from the #080808 background
+ * (0.0024): less than WCAG 2.3.1's 10% change, so a dim line is never a flash.
+ */
 export const STRAND_ALPHA = 0.32;
 const BULLET_ALPHA = 0.95;
 /** A bullet's length along its strand, px (at most 30% of the strand), and its pieces. */
@@ -338,13 +343,6 @@ export const strandFade = (life: number): number =>
  */
 export const FOLLOW = RING_DRIFT * BUNDLE_MS;
 
-/**
- * How far either side of its node's own bearing a strand can land, radians: it fires at its
- * file's card when the card is in front of the node, else at the ring in the card's direction,
- * so strands stay short, like the reference's.
- */
-export const AIM = (10 * Math.PI) / 180;
-
 /** Half the arc of the inner rim that strands land on: the part the stage shows, less a margin. */
 export function landingArc(ring: Ring, stageHeight: number): number {
   return 0.85 * Math.asin(Math.min(1, stageHeight / 2 / ring.r));
@@ -358,19 +356,16 @@ function wrap(angle: number): number {
   return a;
 }
 
-/** The range of angles a strand from a node at `bearing` fires at: within AIM of it, on the arc. */
-export function aimRange(bearing: number, arc: number): readonly [number, number] {
-  return [Math.max(-arc, bearing - AIM), Math.min(arc, bearing + AIM)];
-}
+/** Whether a screen angle on the ring is within the landing arc (±`arc` of 3 o'clock). */
+export const onScreen = (angle: number, arc: number): boolean => Math.abs(wrap(angle)) <= arc;
 
 /**
- * Where a strand lands, as an angle on the ring: where its target stood when it fired, kept
- * within [lo, hi] (its `aimRange`), then following the ring as it has turned since, by at most
- * FOLLOW either way.
+ * Where a bunch lands, as a screen angle on the ring: its section where the section stood when
+ * the bunch fired (`fired`), then following the ring as it has turned since, by at most FOLLOW
+ * either way (a focus snap is not followed, so strands stay bounded).
  */
-export function landingAngle(fired: number, turned: number, lo: number, hi: number): number {
-  const start = Math.min(hi, Math.max(lo, wrap(fired)));
-  return start + Math.min(FOLLOW, Math.max(-FOLLOW, turned));
+export function landingAngle(fired: number, turned: number): number {
+  return wrap(fired) + Math.min(FOLLOW, Math.max(-FOLLOW, turned));
 }
 
 /**
@@ -419,19 +414,19 @@ const DELAY = 0.06;
 export const pinLength = (n: number): number => n * LAND_SPACING + 8;
 
 /**
- * Upper bound of one strand's drawn area in CSS px², for the flash governor, for a strand at
- * most `len` long (node to landing point). Its curve is no longer than its control polygon (node
- * → control point → landing), at most len · (1 + 2 · √(bend² + SWEEP²)); the dim strand is a 1 px
- * line on it and the bullet a 2 px line on part of it, each with 2 px of anti-aliasing fringe and
- * its pieces' ends. Plus the ring on its node.
+ * Upper bound of the area one strand's bullet sweeps, in CSS px², for the flash governor, for a
+ * strand at most `len` long (node to landing point). The curve is no longer than its control
+ * polygon (node → control point → landing), at most len · (1 + 2 · √(bend² + SWEEP²)); the bullet
+ * is a 2 px line along it, with 2 px of anti-aliasing fringe and its pieces' ends. Plus the ring
+ * on its node. The dim line is not counted: it is MAX-blended at STRAND_ALPHA, which cannot raise
+ * a pixel's relative luminance by 10% (see `STRAND_ALPHA`), so it is not a flash.
  */
 export function strandArea(len: number): number {
   // sqrt, not Math.hypot: it is correctly rounded on every engine, so pins agree across OSes.
   const curve = len * (1 + 2 * Math.sqrt(MAX_BEND * MAX_BEND + SWEEP * SWEEP));
-  const strand = (curve + 2 * BUNDLE_STEPS) * (1 + 2);
   const bullet = (curve + 2 * BULLET_PIECES) * (BULLET_WIDTH + 2);
   const ring = NODE_SIDES * segmentArea(2 * NODE_RING * Math.sin(Math.PI / NODE_SIDES), 1);
-  return strand + bullet + ring;
+  return bullet + ring;
 }
 
 /** Upper bound of a bunch's bar's area in CSS px². */
@@ -470,6 +465,7 @@ const memberHash = (h: number, k: number): number =>
  * FADE_FROM on. `tx, ty` is the ring's turning direction at the landing point (unit length).
  */
 function drawStrand(
+  lines: SegmentWriter,
   writer: SegmentWriter,
   ox: number,
   oy: number,
@@ -505,7 +501,7 @@ function drawStrand(
     curvePoint(ox, oy, kx, ky, qx, qy, (reached * s) / steps);
     const x1 = at[0] as number;
     const y1 = at[1] as number;
-    if (!writer.push(x0, y0, x1, y1, 1, red, green, blue, STRAND_ALPHA * fade, 1, ALWAYS)) return;
+    if (!lines.push(x0, y0, x1, y1, 1, red, green, blue, STRAND_ALPHA * fade, 1, ALWAYS)) return;
     x0 = x1;
     y0 = y1;
   }
@@ -582,25 +578,44 @@ export function sortByBearing(
   }
 }
 
+/** The bundle layer: bullets, node rings and bars, plus `lines`, the MAX-blended dim strands. */
+export interface BundleLayer extends StageLayer {
+  /** The dim strands, written by this layer's update: add it after this layer. */
+  readonly lines: StageLayer;
+}
+
 export function bundleLayer(
   model: CockpitModel,
   layout: LayoutService,
   governor: FlashGovernor,
   ring: RingModel,
-): StageLayer {
-  const perBunch = MAX_BUNCH * (BUNDLE_STEPS + BULLET_PIECES + NODE_SIDES) + 1;
-  const buffers = segmentBuffers(MAX_BUNDLES * perBunch);
+): BundleLayer {
+  const buffers = segmentBuffers(MAX_BUNDLES * (MAX_BUNCH * (BULLET_PIECES + NODE_SIDES) + 1));
   const writer = segmentWriter(buffers);
+  const lineBuffers = segmentBuffers(MAX_BUNDLES * MAX_BUNCH * BUNDLE_STEPS);
+  const lineWriter = segmentWriter(lineBuffers);
+  const lines: StageLayer = {
+    name: "strands",
+    primitive: "segments",
+    buffers: lineBuffers,
+    blend: "max", // a dim line never brightens a pixel past STRAND_ALPHA: not a flash
+    update() {}, // written by the bundle layer, which updates first
+  };
   const members = new Int32Array(MAX_BUNCH);
   const bearings = new Float64Array(MAX_BUNCH);
   return {
     name: "bundles",
     primitive: "segments",
     buffers,
+    lines,
     update(frame: StageFrame) {
       writer.begin();
+      lineWriter.begin();
       governor.prepare(frame);
       if (frame.motion.reduced) return; // reduced motion: no strands (DESIGN.md "Motion")
+      // While the user pins a file the ring is held still; strands wait (the governor's
+      // decisions assume the ring's own motion).
+      if (pinnedCard(ring, frame.focus) >= 0) return;
       const positions = layout.positions;
       if (positions === null) return;
       ring.sync();
@@ -625,29 +640,28 @@ export function bundleLayer(
         // The bunch: the nodes that reach the function, the test that fired first.
         const target = graph.nodeForSymbol(event.payload.symbol_id);
         if (target === undefined) continue;
+        // It fires at the function's section of the wheel (its file's card), where the section
+        // stood then, if it was on screen, and follows the ring from there.
+        const card = ring.cardOf.get(graph.files[target] as string);
+        if (card === undefined) continue;
+        const then = rotationAt(ring, store.time[i] as number, frame.motion, frame.focus);
+        const fired = cardCentre(ring, card) + then;
+        if (!onScreen(fired, arc)) continue;
         const first = strandOrigin(graph, event.target?.test, target);
-        const n = placedBunch(governor.reach, target, i, first, members, positions);
+        const unit = rim / radius; // the landing point in the layout's unit coordinates
+        const n = placedBunch(
+          governor.reach,
+          target,
+          i,
+          first,
+          members,
+          positions,
+          Math.cos(fired) * unit,
+          Math.sin(fired) * unit,
+        );
         if (n === 0) continue;
         bunches++;
-        // It fires at the card where the card stood then, within AIM of the first node's
-        // bearing, and follows the ring from there; a file without a card is aimed at along that
-        // bearing.
-        const lead = members[0] as number;
-        const bearing = Math.atan2(
-          positions[lead * 2 + 1] as number,
-          positions[lead * 2] as number,
-        );
-        const [lo, hi] = aimRange(bearing, arc);
-        const card = ring.cardOf.get(graph.files[target] as string);
-        let fired = bearing;
-        let turned = 0;
-        if (card !== undefined) {
-          const then = rotationAt(ring, store.time[i] as number, frame.motion, frame.focus);
-          fired =
-            ((ring.angles.start[card] as number) + (ring.angles.end[card] as number)) / 2 + then;
-          turned = rotation - then;
-        }
-        const angle = landingAngle(fired, turned, lo, hi);
+        const angle = landingAngle(fired, rotation - then);
         const qx = cx + Math.cos(angle) * rim;
         const qy = cy + Math.sin(angle) * rim;
         const tx = -Math.sin(angle);
@@ -663,6 +677,7 @@ export function bundleLayer(
           const node = members[k] as number;
           const offset = (k - (n - 1) / 2) * LAND_SPACING;
           drawStrand(
+            lineWriter,
             writer,
             cx + (positions[node * 2] as number) * radius,
             cy + (positions[node * 2 + 1] as number) * radius,
@@ -699,9 +714,15 @@ export function bundleLayer(
   };
 }
 
+/** Nodes considered for a bunch, before the nearest are chosen. */
+const CANDIDATES = new Int32Array(64);
+const DISTANCES = new Float64Array(64);
+
 /**
- * The bunch for the event at store index `at`, keeping only nodes the layout has placed (the
- * same for the layer and the flash governor). Returns how many nodes it wrote to `out`.
+ * The bunch for the event at store index `at` (the same for the layer and the flash governor):
+ * the node that fired, then the nodes that reach the function nearest the landing point (lx, ly)
+ * in the layout's unit coordinates, up to `out.length`, keeping only nodes the layout has placed.
+ * Returns how many nodes it wrote to `out`. Allocation-free.
  */
 export function placedBunch(
   reach: ReachIndex,
@@ -710,13 +731,36 @@ export function placedBunch(
   first: number | undefined,
   out: Int32Array,
   positions: Float32Array,
+  lx: number,
+  ly: number,
 ): number {
-  const found = reach.bunch(target, at, first, out);
-  let n = 0;
+  const found = reach.bunch(target, at, first, CANDIDATES);
+  let placed = 0;
   for (let k = 0; k < found; k++) {
-    const node = out[k] as number;
-    if (node * 2 + 1 < positions.length) out[n++] = node;
+    const node = CANDIDATES[k] as number;
+    if (node * 2 + 1 >= positions.length) continue;
+    const dx = (positions[node * 2] as number) - lx;
+    const dy = (positions[node * 2 + 1] as number) - ly;
+    CANDIDATES[placed] = node;
+    DISTANCES[placed] = dx * dx + dy * dy;
+    placed++;
   }
+  // The node that fired stays first; the rest go nearest first (insertion sort, stable).
+  const keepFirst = placed > 0 && first !== undefined && CANDIDATES[0] === first ? 1 : 0;
+  for (let k = keepFirst + 1; k < placed; k++) {
+    const node = CANDIDATES[k] as number;
+    const d = DISTANCES[k] as number;
+    let j = k - 1;
+    while (j >= keepFirst && (DISTANCES[j] as number) > d) {
+      CANDIDATES[j + 1] = CANDIDATES[j] as number;
+      DISTANCES[j + 1] = DISTANCES[j] as number;
+      j--;
+    }
+    CANDIDATES[j + 1] = node;
+    DISTANCES[j + 1] = d;
+  }
+  const n = Math.min(placed, out.length);
+  for (let k = 0; k < n; k++) out[k] = CANDIDATES[k] as number;
   return n;
 }
 
@@ -726,10 +770,12 @@ export function webLayers(
   governor: FlashGovernor,
   ring: RingModel,
 ): StageLayer[] {
+  const bundles = bundleLayer(model, layout, governor, ring);
   return [
     edgeLayer(model, layout, governor),
     nodeLayer(model, layout),
     markerLayer(model, layout, governor),
-    bundleLayer(model, layout, governor, ring),
+    bundles,
+    bundles.lines,
   ];
 }
