@@ -531,7 +531,9 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   always ends with `run.finished` and, where possible, a card.
 - **Windows specifics:** `git -c core.longpaths=true` per command (the user's global config is
   never modified). Run roots are short (`%LOCALAPPDATA%\repro\r\<id8>`). Cleanup goes Job
-  Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. All paths use
+  Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. Opening the
+  database retries a transient "disk I/O error" for up to 5 s: Windows releases a killed
+  process's file locks with a delay (C02). All paths use
   `pathlib`, and tests cover backslashes and long paths.
 - **Versions:** toolchain versions are pinned in lockfiles. The verified-current versions as
   of 2026-10-13 are listed in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md#toolchain-baseline).

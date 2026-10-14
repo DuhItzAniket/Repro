@@ -97,9 +97,9 @@ holds only whole batches.
 - `engine/src/repro/store/`: `db.py`, `schema.py` (migration 1), `writer.py`, `reader.py`,
   `artifacts.py`; `repro/ids.py` (ULIDs) and `repro/clock.py` (timestamps, now also used by the
   logs); `repro doctor` checks SQLite (3.37+, required).
-- Tests: `test_store_schema.py` (15), `test_store_writer.py` (19), `test_store_crash.py` (4),
-  `test_store_artifacts.py` (28), `test_ids.py` (7), `test_doctor.py` (+3): pytest 590 → 666
-  (665 pass and 1 skips on Windows).
+- Tests: `test_store_schema.py` (16), `test_store_writer.py` (19), `test_store_crash.py` (4),
+  `test_store_artifacts.py` (28), `test_ids.py` (7), `test_doctor.py` (+3): pytest 590 → 667
+  (666 pass and 1 skips on Windows).
 
 ## Evidence
 - 100k `log.line` events submitted one by one through the writer (each checked against the
@@ -110,6 +110,14 @@ holds only whole batches.
   `PRAGMA integrity_check` and `foreign_key_check`, held only whole groups with `seq` from 1
   without gaps, and took the next event at the next `seq`.
 - CI run: linked in the PR.
+
+- The first CI run failed once on Windows: right after the writer process was killed, opening
+  the database raised "disk I/O error". Windows releases a dead process's file locks with a delay
+  that "depends upon available system resources", and access "may be denied" until then
+  [V: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex,
+  checked 2026-10-14]. Restarting after a crash must survive that, so opening a connection now
+  retries this error with growing delays for up to 5 s (`open_retrying`, unit-tested); other
+  errors are not retried. It did not reproduce locally in 15 runs.
 
 ## Deviations from spec
 - `artifacts` is keyed by `(run_id, sha256, path)` with `(run_id, path)` unique, rather than

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from repro.store import RUN_STATES, SCHEMA_VERSION, SchemaError, StoreError, StoreReader
-from repro.store.db import connect_reader, connect_writer
+from repro.store.db import connect_reader, connect_writer, open_retrying
 from repro.store.schema import MIGRATIONS, migrate, user_version
 from store_support import run_record
 
@@ -169,3 +169,32 @@ def test_a_reader_cannot_write(db: sqlite3.Connection, tmp_path: Path) -> None:
     reader = connect_reader(tmp_path / "repro.db")
     with pytest.raises(sqlite3.OperationalError, match="readonly"):
         reader.execute("UPDATE runs SET repo = 'x'")
+
+
+def test_opening_retries_a_transient_io_error_then_gives_up() -> None:
+    attempts: list[int] = []
+    slept: list[float] = []
+
+    def flaky() -> str:
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise sqlite3.OperationalError("disk I/O error")
+        return "open"
+
+    assert open_retrying(flaky, sleep=slept.append) == "open"
+    assert slept == [0.05, 0.1]
+
+    def broken() -> str:
+        raise sqlite3.OperationalError("disk I/O error")
+
+    with pytest.raises(sqlite3.OperationalError, match="disk I/O"):
+        open_retrying(broken, budget_s=0.3, sleep=lambda _: None)
+
+    def other() -> str:
+        attempts.append(1)
+        raise sqlite3.OperationalError("no such table: nope")
+
+    attempts.clear()
+    with pytest.raises(sqlite3.OperationalError, match="no such table"):
+        open_retrying(other, sleep=lambda _: None)
+    assert len(attempts) == 1  # not retried

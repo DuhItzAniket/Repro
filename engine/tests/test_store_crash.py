@@ -7,7 +7,6 @@ counting from 1 without gaps, and accept the next event at the next ``seq``.
 """
 
 import os
-import sqlite3
 import subprocess
 import sys
 import textwrap
@@ -17,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from repro.store import StoreReader
+from repro.store.db import connect_writer
 from store_support import log_line, started_writer
 
 TESTS = Path(__file__).parent
@@ -36,7 +36,7 @@ def child(code: str, db: Path) -> subprocess.Popen[str]:
 
 def check_consistent(db: Path) -> list[str]:
     """The database's integrity, and the messages of its one run's events in seq order."""
-    connection = sqlite3.connect(db)
+    connection = connect_writer(db)  # retries while Windows releases the dead process's locks
     try:
         assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
