@@ -21,6 +21,8 @@ from repro_events.log import read_log, validate_log
 from repro_events.schemas import load_schema_set
 
 runner = CliRunner()
+#: These tests are about the build stage and the cockpit: no target code runs (D06 has its own).
+ANALYSE = ["--analyse-only"]
 
 BASE = {
     "pkg/__init__.py": "",
@@ -56,7 +58,7 @@ def test_run_records_the_build_stage_and_cleans_up(
 ) -> None:
     repo, base, head = change
     env = clean_env(tmp_path, REPRO_RUN_ROOT=str(tmp_path / "scratch"))
-    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve"]
+    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve", *ANALYSE]
     result = runner.invoke(app, argv, env=env)
     assert result.exit_code == 0, result.output
     assert re.search(r"run_[0-9A-Z]{26} completed", result.output)
@@ -102,7 +104,7 @@ def test_run_refuses_what_it_cannot_reproduce(
     target = tmp_path / "not-a-repo" if message == "not a git repository" else repo
     target.mkdir(exist_ok=True)
     result = runner.invoke(
-        app, ["run", "--repo", str(target), *argv, "--no-serve"], env=clean_env(tmp_path)
+        app, ["run", "--repo", str(target), *argv, "--no-serve", *ANALYSE], env=clean_env(tmp_path)
     )
     assert result.exit_code == 2
     assert message in result.output
@@ -116,7 +118,18 @@ def test_run_on_a_busy_port_stops_before_the_run_starts(
         busy.bind(("127.0.0.1", 0))
         busy.listen()
         port = busy.getsockname()[1]
-        argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--port", str(port)]
+        argv = [
+            "run",
+            "--repo",
+            str(repo),
+            "--base",
+            base,
+            "--head",
+            head,
+            "--port",
+            str(port),
+            *ANALYSE,
+        ]
         result = runner.invoke(app, argv, env=clean_env(tmp_path))
     assert result.exit_code == 2
     assert f"cannot listen on 127.0.0.1:{port}" in result.output
@@ -156,7 +169,18 @@ def test_run_streams_live_to_the_cockpit_and_cleans_up(
 
     monkeypatch.setattr("repro.cli._run_server", fake_server)
     port = free_port()
-    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--port", str(port)]
+    argv = [
+        "run",
+        "--repo",
+        str(repo),
+        "--base",
+        base,
+        "--head",
+        head,
+        "--port",
+        str(port),
+        *ANALYSE,
+    ]
     result = runner.invoke(app, argv, env=env)
     assert result.exit_code == 0, result.output
     assert re.search(rf"cockpit at http://127.0.0.1:{port}/\?run=run_[0-9A-Z]{{26}}", result.output)
@@ -170,7 +194,7 @@ def test_replay_serves_a_stored_run_from_the_start(
 ) -> None:
     repo, base, head = change
     env = clean_env(tmp_path)
-    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve"]
+    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve", *ANALYSE]
     assert runner.invoke(app, argv, env=env).exit_code == 0
     stored = stored_events(tmp_path, env)
     run_id = stored[0]["run_id"]
@@ -197,7 +221,7 @@ def test_replay_serves_a_valid_event_log_and_refuses_an_invalid_one(
 ) -> None:
     repo, base, head = change
     env = clean_env(tmp_path)
-    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve"]
+    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve", *ANALYSE]
     assert runner.invoke(app, argv, env=env).exit_code == 0
     log = tmp_path / "run.jsonl"
     log.write_text("".join(json.dumps(e) + "\n" for e in stored_events(tmp_path, env)), "utf-8")
@@ -252,3 +276,23 @@ def test_serve_serves_the_built_cockpit_beside_the_api(
         env=clean_env(tmp_path, REPRO_UI_DIR=str(tmp_path)),
     )
     assert "the cockpit is not built" in result.output
+
+
+def test_entries_a_snapshot_leaves_out_are_a_warning(tmp_path: Path) -> None:
+    """A symlink is not written to a snapshot; the run says so, as a schema-valid warning."""
+    repo = Repo(tmp_path / "target")
+    base = repo.commit({**BASE, "link": ("pkg/core.py", "120000")})
+    head = repo.commit(HEAD)
+    env = clean_env(tmp_path, REPRO_RUN_ROOT=str(tmp_path / "scratch"))
+    argv = ["run", "--repo", str(repo.path), "--base", base, "--head", head, "--no-serve"]
+    result = runner.invoke(app, [*argv, *ANALYSE], env=env)
+    assert result.exit_code == 0, result.output
+    warnings = [
+        e["payload"]["message"]
+        for e in stored_events(tmp_path, env)
+        if e["kind"] == "log.line" and e["payload"]["level"] == "warning"
+    ]
+    assert sorted(w.split(":", 1)[0] for w in warnings if "entries not written" in w) == [
+        "snapshot base",
+        "snapshot head",
+    ]

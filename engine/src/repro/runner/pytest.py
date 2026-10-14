@@ -249,39 +249,50 @@ def run_tests(
     *,
     tests: Sequence[str] = (),
     seed: int = 0,
+    hash_seed: int | None = None,
     map_tests: bool = False,
     collect_only: bool = False,
+    directory: str | None = None,
     timeout_s: float | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> TestRun:
-    """Runs ``tests`` (node IDs; all if empty) with ``env``'s interpreter in ``sandbox``; with
-    ``map_tests``, records the functions each runs; with ``collect_only``, only lists them."""
+    """Runs ``tests`` (node IDs, in that order; all if empty) with ``env``'s interpreter in
+    ``sandbox``; with ``map_tests``, records the functions each runs; with ``collect_only``,
+    only lists them. ``hash_seed`` replaces the sandbox's ``PYTHONHASHSEED``; ``directory``
+    (relative to the snapshot, POSIX) runs from there instead of the snapshot's root."""
     name = f"pytest-{uuid.uuid4().hex[:12]}"
     extra = ["--collect-only"] if collect_only else []
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
+        root = sandbox.container_path(directory or ".")
+        variables = plugin_env(out, root=root, seed=seed, map_tests=map_tests)
+        if hash_seed is not None:
+            variables["PYTHONHASHSEED"] = str(hash_seed)
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=out, tests=tests, extra=extra),
-            env=plugin_env(out, root=WORK, seed=seed, map_tests=map_tests),
+            cwd=directory or ".",
+            env=variables,
             timeout_s=timeout_s,
             stop=stop,
         )
         results = sandbox.read_file(f"{relative}/{RESULTS}", limit=MAX_BYTES)
         junit = sandbox.read_file(f"{relative}/{JUNIT}", limit=MAX_BYTES)
     else:
-        directory = sandbox.work / name
+        output = sandbox.work / name
+        here = env.project.root / directory if directory else env.project.root
+        variables = plugin_env(str(output), root=str(here), seed=seed, map_tests=map_tests)
+        if hash_seed is not None:
+            variables["PYTHONHASHSEED"] = str(hash_seed)
         execution = sandbox.run(
-            pytest_argv(env.python, out_dir=directory.as_posix(), tests=tests, extra=extra),
-            cwd=env.project.root,
-            env=plugin_env(
-                str(directory), root=str(env.project.root), seed=seed, map_tests=map_tests
-            ),
+            pytest_argv(env.python, out_dir=output.as_posix(), tests=tests, extra=extra),
+            cwd=here,
+            env=variables,
             timeout_s=timeout_s,
             stop=stop,
-            writable=(directory,),
+            writable=(output,),
         )
-        results, junit = _read(directory / RESULTS), _read(directory / JUNIT)
+        results, junit = _read(output / RESULTS), _read(output / JUNIT)
     return TestRun(execution, read_results(results), junit)
 
 

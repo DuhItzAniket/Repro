@@ -1,0 +1,22 @@
+# Expected Repro outcome for the flaky fixture (D06 asserts the evidence).
+[fixture]
+name = "flaky"
+head = "change/strip-values"
+
+[expected]
+status = "UNVERIFIABLE"
+claims = ["record() stores values without surrounding whitespace"]
+# <evidence type>:<detail>:<target>. test_record_second fails when run before
+# test_record_first (A2 reverses the order): unstable, so not an outcome to diff.
+evidence = [
+  "test_outcome:P2P:tests/test_counter.py::test_record_first",
+  "test_outcome:flaky:tests/test_counter.py::test_record_second",
+]
+missing = ["unstable_observation:tests/test_counter.py::test_record_second"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_counter.py::test_record_first" = ["blast_radius"]
+"tests/test_counter.py::test_record_second" = ["blast_radius"]

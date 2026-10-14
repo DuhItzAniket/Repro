@@ -158,6 +158,45 @@ class DockerSandbox:
                 )
         return tree
 
+    def overlay(self, name: str, files: Mapping[str, bytes]) -> str:
+        """A copy of the snapshot at ``.repro/<name>`` with ``files`` (POSIX paths relative to
+        the snapshot) written over it; returns its path relative to the snapshot."""
+        if not name.isidentifier():
+            raise SandboxError(f"{name!r} is not a plain name")
+        relative = f".repro/{name}"
+        target = self.container_path(relative)
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w") as tar:
+            for path, data in sorted(files.items()):
+                inside = self.container_path(path)  # refuses paths outside the snapshot
+                info = tarfile.TarInfo(inside[len(WORK) + 1 :])
+                info.size, info.mode = len(data), 0o644
+                tar.addfile(info, io.BytesIO(data))
+        script = (
+            f"set -e; mkdir -p {target}; cd {WORK}; "
+            f"tar --exclude=./.repro -cf - . | tar -x -C {target}; "
+            f"tar -x -C {target} --no-same-owner"
+        )
+        command = [
+            self.docker, "run", "--rm", "-i", "--network", "none",
+            "-v", f"{self.volume}:{WORK}", "--user", USER,
+            "--entrypoint", "sh", self.image, "-c", script,
+        ]  # fmt: skip
+        try:
+            done = subprocess.run(  # noqa: S603 - docker, with Repro's own arguments
+                command,
+                input=archive.getvalue(),
+                capture_output=True,
+                timeout=DOCKER_TIMEOUT_S,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise SandboxError(f"docker run: {exc}") from None
+        if done.returncode != 0:
+            problem = done.stderr.decode("utf-8", "replace").strip().splitlines()
+            raise SandboxError(f"writing the overlay failed: {problem[-1] if problem else '?'}")
+        return relative
+
     def adopt_volume(self, volume: str, path: str) -> None:
         """Mounts ``volume`` at ``path`` in every later command, and removes it on ``close``."""
         self.mounts[volume] = path

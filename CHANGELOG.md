@@ -44,8 +44,19 @@ All notable changes to this project are documented here. The format follows
   Changed symbols no selected test runs, on either side, become `no_covering_test` items. Base
   maps are cached; the map is the same on the host and in a container. New fixtures `selection`
   and `untested`. [D05]
+- `repro run` runs the change: each side in its sandbox (Docker when available) with its
+  environment, the selected tests on base twice (the second time in reverse order with another
+  hash seed) and on head, flips rerun three times on both sides, and edited tests' base versions
+  run against head. Each test gets its outcome class (`F2P`, `P2P`, `P2F`, `F2F`, `new`,
+  `removed`, `modified`, `flaky`) as evidence, and changes to the tests themselves (removed tests,
+  new skips and xfails, removed or weakened assertions, widened `pytest.raises`, base tests
+  failing on head) as evidence too. Flaky tests, unfinished runs and collection errors are
+  missing items; an environment that cannot be built makes the change unverifiable, not the run
+  fail. `--analyse-only` keeps the build stage alone. New fixtures `flaky` and `test-tamper`. [D06]
 
 ### Fixed
+- A snapshot that left entries out (a symlink, a submodule) failed its job: the warning
+  it logged had a level the event schema does not allow. Log levels are now checked by type. [D06]
 - Evidence could not be emitted through the event bus: it validated `evidence.created` events
   without the evidence's `seq`, which only the store's writer assigns. [D01]
 

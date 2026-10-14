@@ -10,8 +10,16 @@ claims = [
   "discount() clamps its percentage to 0-100",
   "Cart.names() sorts without regard to case",
 ]
-# Test outcome evidence is asserted from D06 on.
-evidence = []
+# test_names was edited (its own code changed): its outcomes are of two different tests.
+evidence = [
+  "test_change:test_modified:tests/test_cart.py::test_names",
+  "test_outcome:P2P:tests/test_cart.py::test_total",
+  "test_outcome:P2P:tests/test_prices.py::test_discount",
+  "test_outcome:P2P:tests/test_prices.py::test_gross",
+  "test_outcome:P2P:tests/test_prices.py::test_net",
+  "test_outcome:modified:tests/test_cart.py::test_names",
+  "test_outcome:new:tests/test_prices.py::test_discount_is_clamped",
+]
 missing = []
 
 [selection]
