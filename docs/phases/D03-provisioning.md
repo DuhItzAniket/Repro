@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D02 |
-| **Branch / PR** | `phase/D03-provisioning` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/D03-provisioning` · [#40](https://github.com/DuhItzAniket/Repro/pull/40) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 Each side gets an environment its tests can run in: the same interpreter on both sides, the
@@ -63,9 +63,9 @@ UNVERIFIABLE with the reason, never a crash.
   cut-off for both sides.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): five fixture project types provision on both OSes.
-- [ ] AC2 (roadmap): a broken install gives UNVERIFIABLE with a reason, never a crash.
-- [ ] AC3: no target code runs while the network is on; anything but the index is refused.
+- [x] AC1 (roadmap): five fixture project types provision on both OSes.
+- [x] AC2 (roadmap): a broken install gives UNVERIFIABLE with a reason, never a crash.
+- [x] AC3: no target code runs while the network is on; anything but the index is refused.
 
 ## Test plan
 | Criterion | Check |
@@ -98,7 +98,7 @@ UNVERIFIABLE with the reason, never a crash.
 - A package that does not exist, the sdist-only `pyperclip` 1.9.0 (PyPI lists only
   `pyperclip-1.9.0.tar.gz`), and a failing `setup.py` each end in a `ProvisionError` with uv's
   reason and a valid `environment_failed` item.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#40).
 
 ## Deviations from spec
 - The read-only uv cache of ADR-0004 point 4 is replaced by a cached dependencies' environment
