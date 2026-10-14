@@ -22,6 +22,7 @@ from typing import Literal, Protocol
 
 from repro.logs import get_logger
 from repro.paths import RUN_ROOT_BUDGET
+from repro.store.db import MIN_SQLITE, sqlite_version
 
 Status = Literal["ok", "warn", "fail"]
 Version = tuple[int, ...]
@@ -112,6 +113,20 @@ def check_python(version: Version, implementation: str) -> Check:
         "fail",
         f"{found} is older than {show(MIN_PYTHON)}",
         hint="Repro needs Python 3.12 or newer (sys.monitoring): uv python install 3.13",
+        required=True,
+    )
+
+
+def check_sqlite(version: Version) -> Check:
+    """The SQLite library Python was built with: the store needs STRICT tables (3.37)."""
+    found = f"SQLite {show(version)}"
+    if version >= MIN_SQLITE:
+        return Check("sqlite", "ok", found, required=True)
+    return Check(
+        "sqlite",
+        "fail",
+        f"{found} is older than {show(MIN_SQLITE)}",
+        hint="Use a Python built with a newer SQLite: uv python install 3.13",
         required=True,
     )
 
@@ -309,6 +324,7 @@ class Machine:
 
     probe: Probe = field(default_factory=SubprocessProbe)
     python: Version = tuple(sys.version_info[:3])
+    sqlite: Version = field(default_factory=sqlite_version)
     implementation: str = platform.python_implementation()
     windows: bool = os.name == "nt"
     long_paths: Callable[[], bool | None] = windows_long_paths
@@ -374,6 +390,7 @@ def diagnose(
     checks: list[Check] = [
         *extra,
         check_python(machine.python, machine.implementation),
+        check_sqlite(machine.sqlite),
         check_git(machine.probe),
         check_uv(machine.probe),
         check_docker(machine.probe, windows=machine.windows),

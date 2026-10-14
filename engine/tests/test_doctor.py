@@ -23,6 +23,7 @@ from repro.doctor import (
     check_long_paths,
     check_python,
     check_run_root,
+    check_sqlite,
     check_uv,
     diagnose,
     parse_version,
@@ -238,6 +239,7 @@ def machine(answers: Mapping[str, Answer], *, windows: bool) -> Machine:
     return Machine(
         probe=FakeProbe(answers),
         python=(3, 13, 13),
+        sqlite=(3, 50, 4),
         implementation="CPython",
         windows=windows,
         long_paths=lambda: True,
@@ -251,7 +253,7 @@ def test_a_healthy_machine_is_ready(tmp_path: Path) -> None:
     )  # fmt: skip
     assert report.ok
     assert [check.name for check in report.checks] == [
-        "python", "git", "uv", "docker", "data dir", "run root", "long paths",
+        "python", "sqlite", "git", "uv", "docker", "data dir", "run root", "long paths",
     ]  # fmt: skip
     assert report.to_text().splitlines()[-1] == "Ready: every required check passed."
     assert report.to_text().isascii()
@@ -341,3 +343,11 @@ def test_doctor_runs_on_this_machine(tmp_path: Path) -> None:
     assert statuses["uv"] in {"ok", "warn"}
     assert statuses["docker"] in {"ok", "warn"}
     assert not (tmp_path / "data").exists()  # doctor did not create it
+
+
+@pytest.mark.parametrize(
+    ("version", "status"), [((3, 50, 4), "ok"), ((3, 37, 0), "ok"), ((3, 36, 9), "fail")]
+)
+def test_sqlite_needs_strict_tables(version: tuple[int, ...], status: str) -> None:
+    check = check_sqlite(version)
+    assert (check.status, check.required) == (status, True)

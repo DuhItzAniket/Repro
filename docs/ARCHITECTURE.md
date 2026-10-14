@@ -427,9 +427,17 @@ queued agents shown as `waiting`.
   **One writer task** batches events (N events or about 20–50 ms) into a `BEGIN IMMEDIATE`
   transaction, assigns `seq`, commits, and only then publishes to subscribers. Readers use
   separate read-only connections. `wal_checkpoint(TRUNCATE)` runs at run end.
+- **The schema enforces the log's rules** (C02, `repro.store.schema`): triggers make `events`
+  and `evidence` append-only and reject any event whose `seq` is not its run's next number;
+  `PRIMARY KEY (run_id, seq)` rejects duplicates; an evidence row must belong to an
+  `evidence.created` event. Migrations are numbered by `PRAGMA user_version`, one transaction
+  each; a database from a newer Repro is refused. The writer fills `seq` into the envelope and,
+  for `evidence.created`, into `payload.evidence`, and inserts the evidence row in the same
+  transaction. The run registry (`runs`) holds `running`, then the `run.finished` outcome.
 - **Artifacts** live at `~/.repro/runs/<run_id>/`: observations, JUnit, logs, snapshots
   manifest and reproducers. Each artifact is content-addressed by SHA-256 in the `artifacts`
-  table.
+  table, written to a temporary file, hashed, flushed and renamed into place, and never changed.
+  Paths are relative POSIX paths confined to the run's directory.
 - **WebSocket** `GET /runs/{id}/events?from=<seq>` uses replay-then-live without gaps. The
   client's bounded queue is subscribed **first**. Then rows with `seq > from` are streamed in
   pages, the queue is drained with `seq ≤ last_sent` deduplicated, and a `caught_up` frame is
@@ -523,7 +531,9 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   always ends with `run.finished` and, where possible, a card.
 - **Windows specifics:** `git -c core.longpaths=true` per command (the user's global config is
   never modified). Run roots are short (`%LOCALAPPDATA%\repro\r\<id8>`). Cleanup goes Job
-  Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. All paths use
+  Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. Opening the
+  database retries a transient "disk I/O error" for up to 5 s: Windows releases a killed
+  process's file locks with a delay (C02). All paths use
   `pathlib`, and tests cover backslashes and long paths.
 - **Versions:** toolchain versions are pinned in lockfiles. The verified-current versions as
   of 2026-10-13 are listed in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md#toolchain-baseline).
