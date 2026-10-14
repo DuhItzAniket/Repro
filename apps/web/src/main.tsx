@@ -1,7 +1,7 @@
 import "@fontsource-variable/jetbrains-mono/wght.css";
 import "./styles/tokens.css";
 import "./styles/shell.css";
-import { signal } from "@preact/signals";
+import { computed, effect, signal } from "@preact/signals";
 import { render } from "preact";
 import { FIXTURES, fixtureFromQuery, loadLog } from "./data/load";
 import { type DrawerView, drawerView } from "./focus/evidence";
@@ -25,11 +25,13 @@ import { computeLayout } from "./shell/layout";
 import type { LogEntry } from "./shell/mirror";
 import { createTransportState, formatTime, spaceToPause, syncTransport } from "./shell/transport";
 import { createShellView } from "./shell/view";
+import { meshDensity, viewRing } from "./stage/camera";
 import { focusLayers } from "./stage/focus-layer";
 import { FLASH_BUDGET, FlashGovernor } from "./stage/governor";
 import { hitStage } from "./stage/hit";
 import { StageHost } from "./stage/host";
 import { type HudSnapshot, pollHud } from "./stage/hud";
+import { type LookStorage, loadLook, saveLook } from "./stage/look";
 import { AtlasService, defaultAtlasBuild } from "./stage/ring/atlas-service";
 import { ringLayers } from "./stage/ring/layers";
 import { type Callout, CalloutTracker } from "./stage/streams/callouts";
@@ -55,6 +57,24 @@ const testMode = params.has("test");
 const hud = params.has("hud") ? signal<HudSnapshot | null>(null) : undefined;
 const callouts = signal<readonly Callout[]>([]);
 const executionSides = signal<ExecutionSides>("both");
+
+/** Where the viewer's look is kept (B15); none in test mode, so screenshots use the default. */
+function lookStorage(): LookStorage | null {
+  if (testMode) return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null; // blocked site data
+  }
+}
+const storage = lookStorage();
+const look = signal(loadLook(storage));
+const settingsOpen = signal(false);
+/** The ring the stage shows: the layout's arc, zoomed out by the viewer's look (B15). */
+const stageRing = computed(() => {
+  const { stage, ring } = layout.value;
+  return viewRing(ring, stage.w, stage.h, look.value.zoom);
+});
 
 // Reduced motion follows the system setting; the transport's toggle overrides it until the
 // setting changes again (DESIGN.md "Motion").
@@ -113,6 +133,7 @@ render(
       stageLabel,
       onFocus: setFocus,
     }}
+    settings={{ open: settingsOpen, look }}
     {...(hud === undefined ? {} : { hud })}
   />,
   root,
@@ -139,7 +160,7 @@ function mountStage(): StageHost | null {
     stage.add(focusHighlight.web); // under the band, like the web
     for (const layer of ringStageLayers) stage.add(layer);
     stage.add(focusHighlight.ring);
-    stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
+    stage.resize(layout.value.stage.w, layout.value.stage.h, stageRing.value);
     if (hud !== undefined) pollHud(stage, hud);
     return stage;
   } catch (error) {
@@ -150,6 +171,16 @@ function mountStage(): StageHost | null {
 }
 
 const host = mountStage();
+// The view (zoom) and the layout set the stage's ring; the look sets widths and brightness.
+effect(() => {
+  const ring = stageRing.value;
+  const { stage } = layout.value;
+  host?.resize(stage.w, stage.h, ring);
+});
+effect(() => {
+  host?.setLook(look.value, meshDensity(layout.value.ring, stageRing.value));
+  saveLook(storage, look.value);
+});
 /** The latest frame's inputs, for clicks between frames. */
 let frameMotion: Motion = { speed: 1, reduced: false };
 let stageFocus: FocusTargets = NO_FOCUS;
@@ -158,7 +189,7 @@ root.querySelector(".stage-canvas")?.addEventListener("click", (event) => {
   const hit = hitStage(
     offsetX,
     offsetY,
-    { t: clock.time(), ring: layout.value.ring, motion: frameMotion, focus: stageFocus },
+    { t: clock.time(), ring: stageRing.value, motion: frameMotion, focus: stageFocus },
     model,
     ringModel,
     webLayout,
@@ -270,7 +301,7 @@ loop.listen((t, cursor) => {
 });
 const calloutTracker = new CalloutTracker();
 loop.listen((t, _cursor, motion) => {
-  const next = calloutTracker.update(model, t, layout.value.ring, motion);
+  const next = calloutTracker.update(model, t, stageRing.value, motion);
   if (next !== null) callouts.value = next;
 });
 loop.listen(syncClock);
@@ -281,9 +312,7 @@ loop.listen(() => {
   const { innerWidth: w, innerHeight: h } = window;
   if (w !== viewport[0] || h !== viewport[1]) {
     viewport = [w, h];
-    layout.value = computeLayout(w, h);
-    const { stage, ring } = layout.value;
-    host?.resize(stage.w, stage.h, ring);
+    layout.value = computeLayout(w, h); // the effect above resizes the stage
   }
 });
 loop.start();
@@ -296,6 +325,8 @@ if (testMode) {
     host,
     focus,
     reduced,
+    look,
+    settings: settingsOpen,
     invalidatePanels: () => {
       for (const panel of panels.values()) panel.invalidate();
     },
@@ -331,5 +362,6 @@ if (import.meta.env.DEV) {
     host,
     layout,
     focus,
+    look,
   };
 }

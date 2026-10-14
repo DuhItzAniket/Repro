@@ -13,6 +13,7 @@ import { Header, rectStyle } from "./header";
 import type { CockpitLayout, Rect } from "./layout";
 import { FeedLog, FilePicker, type LogEntry, PanelMirror } from "./mirror";
 import { PANELS, SIGNALS_PARTIAL_CAPTION } from "./panels";
+import { Settings, type SettingsProps } from "./settings";
 import { Transport, type TransportProps } from "./transport";
 import type { ShellView } from "./view";
 
@@ -91,6 +92,8 @@ export interface AppProps {
   transport?: Omit<TransportProps, "rect">;
   /** Focus, drawer and accessible mirrors (B11). */
   focus?: FocusUi;
+  /** The stage settings menu (B15), opened from the transport. */
+  settings?: SettingsProps;
 }
 
 /** Panels drawn on a Canvas 2D (B08, B09): all eight. */
@@ -105,7 +108,16 @@ export const CANVAS_PANELS: ReadonlySet<string> = new Set([
   "index",
 ]);
 
-export function App({ layout, view, hud, callouts, executionSides, transport, focus }: AppProps) {
+export function App({
+  layout,
+  view,
+  hud,
+  callouts,
+  executionSides,
+  transport,
+  focus,
+  settings,
+}: AppProps) {
   const l = layout.value;
   return (
     <div class="cockpit" data-mode={l.mode} style={{ height: `${l.contentHeight}px` }}>
@@ -127,8 +139,15 @@ export function App({ layout, view, hud, callouts, executionSides, transport, fo
           {focus !== undefined && <FilePicker files={focus.files} onFocus={focus.onFocus} />}
           {callouts !== undefined && <Callouts items={callouts} />}
           {hud !== undefined && <PerfHud hud={hud} />}
+          {settings !== undefined && <Settings {...settings} />}
         </section>
-        {transport !== undefined && <Transport rect={l.transport} {...transport} />}
+        {transport !== undefined && (
+          <Transport
+            rect={l.transport}
+            {...transport}
+            {...(settings === undefined ? {} : { settings: settings.open })}
+          />
+        )}
         {PANELS.map((panel, i) => {
           const rect = l.panels[i];
           if (rect === undefined) return null;

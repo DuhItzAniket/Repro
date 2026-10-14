@@ -3,11 +3,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
 import { NORMAL_MOTION } from "../../motion/motion";
+import type { Ring } from "../../shell/layout";
 import { computeLayout } from "../../shell/layout";
+import { viewRing } from "../camera";
 import { outerRadius, webRadius } from "../geometry";
 import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
+import { clampLook, DEFAULT_LOOK, type Look } from "../look";
 import { AtlasService } from "../ring/atlas-service";
 import { RingModel, rotationAt } from "../ring/layers";
 import { RING_TURN_MS } from "../ring/rotation";
@@ -71,13 +74,13 @@ const unlimited = (placed: LayoutService) =>
 const hashOf = (layer: StageLayer) =>
   hashRenderModels([{ layer: layer.name, buffers: layer.buffers }]);
 const ringModel = () => new RingModel(model, new AtlasService(() => Promise.resolve(null)));
-/** A node's position on the stage. */
-const at = (n: number): [number, number] => {
+/** A node's position on the stage (in the arc view, or in `view`). */
+const at = (n: number, view: Ring = ring): [number, number] => {
   const positions = layout.positions as Float32Array;
-  const radius = webRadius(ring);
+  const radius = webRadius(view);
   return [
-    ring.cx + (positions[n * 2] as number) * radius,
-    ring.cy + (positions[n * 2 + 1] as number) * radius,
+    view.cx + (positions[n * 2] as number) * radius,
+    view.cy + (positions[n * 2 + 1] as number) * radius,
   ];
 };
 
@@ -215,21 +218,25 @@ function lastTrace(rings: RingModel, match: (target: number) => boolean): number
 }
 
 describe("node layer", () => {
-  it("draws the run's nodes on the stage as small circles, each from its node's event", () => {
-    const layer = nodeLayer(model, layout);
-    layer.update(frameAt(0));
+  it("draws the run's nodes on the stage as small circles: some in the arc, all in the whole wheel", () => {
     const { graph } = model;
-    const shown = graph.ids
-      .map((_, n) => n)
-      .filter((n) => {
-        if (graph.nodeTypeName(n) === "module") return false;
-        const [x, y] = at(n);
-        return x >= -3.2 && y >= -3.2 && x <= stage.w + 3.2 && y <= stage.h + 3.2;
-      });
-    // The layout puts symbols and tests in front, so most of them are on the stage.
     const inner = graph.ids.filter((_, n) => graph.nodeTypeName(n) !== "module").length;
-    expect(shown.length).toBeGreaterThan(inner * 0.8);
-    expect(layer.buffers.count).toBe(8 * shown.length);
+    const whole = viewRing(ring, stage.w, stage.h, 1);
+    for (const view of [ring, whole]) {
+      const layer = nodeLayer(model, layout);
+      layer.update({ ...frameAt(0), ring: view });
+      const shown = graph.ids
+        .map((_, n) => n)
+        .filter((n) => {
+          if (graph.nodeTypeName(n) === "module") return false;
+          const [x, y] = at(n, view);
+          return x >= -3.2 && y >= -3.2 && x <= stage.w + 3.2 && y <= stage.h + 3.2;
+        });
+      expect(layer.buffers.count).toBe(8 * shown.length);
+      // B15 spreads them over the whole disc: the arc view shows the part facing the stage.
+      if (view === ring) expect(shown.length).toBeGreaterThan(0);
+      else expect(shown.length).toBe(inner);
+    }
   });
 });
 
@@ -570,6 +577,29 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     }
   });
 
+  it("writes the same instances whatever the viewer's brightness and uncounted widths (B15)", () => {
+    const restyled = clampLook({
+      parts: {
+        strands: { width: 3, brightness: 0.2 },
+        lines: { width: 0.5, brightness: 0.5 },
+        nodes: { width: 2, brightness: 2 },
+        mesh: { brightness: 0.3 },
+        bullets: { brightness: 0.3 },
+      },
+    });
+    const drawn = (look: Look) => {
+      const { layer } = strands();
+      const nodes = nodeLayer(model, layout);
+      const edges = edgeLayer(model, layout, unlimited(layout));
+      const layers = [layer, layer.lines, layer.rays, nodes, edges];
+      for (const t of [24_400, 24_700]) {
+        for (const l of [layer, nodes, edges]) l.update({ ...frameAt(t), look });
+      }
+      return hashRenderModels(layers.map((l) => ({ layer: l.name, buffers: l.buffers })));
+    };
+    expect(drawn(restyled)).toBe(drawn(DEFAULT_LOOK));
+  });
+
   it("pins the demo run's web at fixed times", async () => {
     const layers = [
       edgeLayer(model, layout, unlimited(layout)),
@@ -585,10 +615,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "44dcdd6d69ce3293",
-        "25500": "6a5390581a6da54b",
-        "45000": "5ca302ce277a3a93",
-        "8000": "c624d9b3831afa94",
+        "22000": "aaf0e32ed9be12e2",
+        "25500": "d4b601318ea138b5",
+        "45000": "8394c3af7b9aa3c9",
+        "8000": "9bb76d36c0a1f000",
       }
     `);
   });

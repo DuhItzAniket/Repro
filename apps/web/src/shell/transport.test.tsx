@@ -9,6 +9,7 @@ import { runEvents } from "../model/test-support";
 import type { Motion } from "../motion/motion";
 import { FrameLoop, type FrameScheduler } from "./frame";
 import { computeLayout } from "./layout";
+import { SETTINGS_ID } from "./settings";
 import {
   createTransportState,
   formatTime,
@@ -94,6 +95,40 @@ describe("transport controls", () => {
     act(() => button("Reduce motion").click());
     expect(reduced.value).toBe(true);
     expect(button("Reduce motion").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("opens and closes the stage settings, and says which menu it controls (B15)", () => {
+    const state = createTransportState();
+    const settings = signal(false);
+    const { transport } = computeLayout(1440, 900);
+    act(() =>
+      render(
+        <Transport
+          rect={transport}
+          state={state}
+          clock={clock}
+          reduced={signal(false)}
+          settings={settings}
+        />,
+        root,
+      ),
+    );
+    const toggle = [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+      (b) => b.textContent === "Settings",
+    );
+    if (toggle === undefined) throw new Error("no Settings button");
+    expect(toggle.getAttribute("aria-controls")).toBe(SETTINGS_ID);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    act(() => toggle.click());
+    expect(settings.value).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    act(() => toggle.click());
+    expect(settings.value).toBe(false);
+  });
+
+  it("has no Settings button without a menu to open", () => {
+    const { buttons } = mount();
+    expect(buttons().some((b) => b.textContent === "Settings")).toBe(false);
   });
 
   it("re-renders only when what it shows changes (100 ms steps)", () => {

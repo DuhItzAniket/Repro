@@ -32,9 +32,8 @@ export const outerRadius = (ring: Ring): number => ring.r * (1 + BAND_SHARE);
 /**
  * Radius of the dependency web's circle of modules: under the band, so the edges' ends are hidden
  * and the stage shows long arcs passing under the ring, like the reference. Symbols and tests sit
- * in front, in the sector the stage shows (`FRONT_ANGLE`, `FRONT_RADII`). The ring's centre lies
- * left of the stage, so most of the web is off-screen and the stage shows the arcs crossing its
- * right part.
+ * inside it (`placeNode`). In the default view the ring's centre lies left of the stage, so most of
+ * the web is off-screen and the stage shows the arcs crossing its right part.
  */
 export const WEB_SCALE = 1.1;
 export const webRadius = (ring: Ring): number => ring.r * WEB_SCALE;

@@ -112,13 +112,16 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - **Chord layout** (B14): modules sit on a circle under the ring's band (1.1 × the inner rim's
   radius), evenly spaced in the angular order a force-directed simulation gives them, so tightly
   connected modules are neighbours. Symbols and tests, the nodes a run touches, are
-  **scattered across the whole part of the disc the stage shows** (from the stage's left edge to
-  just inside the inner rim, top to bottom), like the nodes of a network, by one placement rule
-  (`placeNode`, which the engine can replace later):
-  - height: the node's rank in the simulation's order, top to bottom, ± a third of a slot, so
-    connected nodes sit near each other;
-  - depth towards the wheel: by role, tests deeper in (4–60% of the way from the left edge to the
-    rim) and functions nearer the wheel (30–96%), placed within that range by a hash of the id.
+  **scattered over the whole disc inside the ring** (B15; B14 kept them to the part the default
+  view shows), like the nodes of a network, by one placement rule (`placeNode`, which the
+  engine can replace later):
+  - angle: the node's rank in the simulation's order, ± a third of a slot. Modules are spaced by
+    the same order, so a node sits near its module and connected nodes near each other;
+  - distance from the centre: by role, tests deeper in (0.18–0.78 of the rim) and functions
+    nearer the wheel (0.45–0.98), placed within that band by a hash of the id, evenly by area.
+
+  In the default view only the part of the disc facing the stage shows (6 of the demo's 47
+  nodes); the whole-wheel view shows them all.
 
   The simulation
   (d3-force) runs once per graph in a worker, seeded from node-ID hashes (no trigonometry), with
@@ -223,10 +226,37 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - B07–B14's per-event streaks, which fired whether or not a strand hit, and B13–B14's long-lived
   rays were removed in the seventh review.
 
+### View and look (B15)
+- **View**: the stage shows the reference's arc by default. A zoom (Settings → View) moves it
+  smoothly out to the **whole wheel**, centred on the stage with room for the lines outside it
+  (radius 251 px at 1440×900, against 861 for the arc). The view is the stage's ring geometry,
+  so every layer, the flash governor, the hit tests and the callouts follow it. Zoomed out, the
+  mesh dims by the square root of the radius ratio (×0.54 for the whole wheel), so the same arcs
+  over a smaller disc do not read as a white ball, and the card text is mipmapped.
+- **Look**: per part, a thickness and a brightness multiple, applied by the shader:
+
+  | Part | What it is | Thickness | Brightness |
+  |---|---|---|---|
+  | Strands | the dim lines from the nodes to the wheel | ×0.5–×3 | ×0.2–×1 |
+  | Bullets | the bright heads, their nodes' rings and the bars they hit | ×0.5–×2 | ×0.3–×1 |
+  | Mesh | the dependency arcs | ×0.5–×2.5 | ×0.3–×2 |
+  | Nodes | the functions and tests strands fire from | ×0.5–×2.5 | ×0.3–×2 |
+  | Lines outside | the lines that bounce out of a hit section | ×0.5–×3 | ×0.2–×1 |
+
+  The strands' and lines' brightness can only go down: ×1 is their flash-safe ceiling
+  (ADR-0011). The defaults are ×1 everywhere and the arc view.
+- **Settings menu**: a Settings button at the end of the transport opens it over the stage's
+  lower right (272 px wide, opaque `--panel`): View (Arc, Whole wheel, a zoom slider), then one
+  group per part with its description and two labelled sliders showing their multiple, and
+  Reset to defaults. Escape inside it closes it and returns focus to the button.
+- The look is kept per viewer in the browser (`localStorage`), never sent anywhere; a missing,
+  blocked or malformed entry gives the defaults.
+
 ### Tooltips / callouts
 - Small boxes with a 1px border (as at 12 s and 18 s in the video), label + one value,
   anchored beyond the outer rim on the right side, on their file's lane (±24°). Max 2 visible
-  at once.
+  at once. A box never crosses the stage's edges: near one it is pushed back inside (B15; in the
+  whole-wheel view the lanes sit near the right edge).
 
 ## Panels
 
@@ -305,7 +335,7 @@ surface — it stays plain and readable.
 - **Global pause** (Space) freezes the presentation clock while ingestion continues (WCAG 2.2.2).
   Space is left to a focused control (a button, the scrubber), which handles it itself.
 - **Transport** (B10): a strip along the bottom of the stage with Play/Pause, ×0.5 ×1 ×4 ×16,
-  a scrubber at 100 ms steps with an `m:ss.s` readout, Live and Reduce motion.
+  a scrubber at 100 ms steps with an `m:ss.s` readout, Live, Reduce motion and (B15) Settings.
 - **[ADR-0011]** Durations above are wall-clock, so in run time they scale with the replay speed;
   edge and marker flares (1,500 and 900 ms) and callouts (2.5 s) too. A flash governor caps the
   bright area that can rise within any 333 ms of wall-clock time (WCAG 2.3.1):
@@ -316,7 +346,9 @@ surface — it stays plain and readable.
     per graph edge before B14);
   - the dim strands and the lines outside the wheel are not counted: they blend with MAX at no
     more than 0.32 (relative luminance 0.084 over the #080808 background's 0.0024), less than
-    WCAG's 10% change, so they cannot flash (B14).
+    WCAG's 10% change, so they cannot flash (B14);
+  - the governor counts bullets and mesh flares at the viewer's chosen widths, and decides for
+    the view the viewer sees (B15).
 
 ## Accessibility
 
@@ -333,7 +365,11 @@ surface — it stays plain and readable.
   outline) and the focused row (light fill), so keyboard focus is always visible.
 - Landmarks: the header (banner), `main` (stage, transport, panels) and the drawer (aside).
 - Text uses `--text` or `--text-dim` (4.5:1 or better). Boxes over the stage (callouts,
-  transport) are opaque, so their text keeps its contrast whatever passes behind.
+  transport, the settings menu) are opaque, so their text keeps its contrast whatever passes
+  behind.
+- The settings menu (B15) is a disclosure: its button has `aria-expanded` and `aria-controls`;
+  every slider has a visible label, the part's description (`aria-describedby`) and an
+  `aria-valuetext` ("1.5×", "whole wheel").
 - Every focusable item (claim, file, agent, cell) is reachable by keyboard and triggers the same
   focus action as a click.
 - Colour is never the only carrier of state. Flagged rows also show the word and a glyph.

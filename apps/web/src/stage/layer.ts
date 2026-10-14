@@ -8,6 +8,7 @@ import type { FocusTargets } from "../focus/focus";
 import type { Motion } from "../motion/motion";
 import type { Ring } from "../shell/layout";
 import type { InstanceBuffers, RenderModel } from "./instances";
+import type { Look, LookPart } from "./look";
 import type { Recency } from "./segments";
 
 export interface StageFrame {
@@ -23,6 +24,11 @@ export interface StageFrame {
   readonly motion: Motion;
   /** What the user focused (B11): highlighted on the stage, its file pinned on the ring. */
   readonly focus?: FocusTargets;
+  /**
+   * The viewer's look (B15): widths and brightness per part. Layers write the same instances
+   * whatever it is (the shader applies it); the flash governor reads the widths it counts.
+   */
+  readonly look?: Look;
 }
 
 /** Which GPU primitive draws a layer's buffers. */
@@ -39,6 +45,8 @@ export interface StageLayer {
    * brighter of the two, so overlaps never add up (B14's stream rays).
    */
   readonly blend?: "add" | "max";
+  /** Which part of the viewer's look (B15) scales this layer's widths and alphas, if any. */
+  readonly part?: LookPart;
   /**
    * Rotation about the ring's centre (radians) for the frame last updated, for layers that turn
    * with the ring. The shader applies it, so a turning layer need not rewrite its buffers.

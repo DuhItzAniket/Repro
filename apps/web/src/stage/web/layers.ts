@@ -30,6 +30,7 @@ import { outerRadius, ringTracker, webRadius } from "../geometry";
 import type { FlashGovernor } from "../governor";
 import type { InstanceBuffers } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
+import type { LookPart } from "../look";
 import { targetFile } from "../ring/content";
 import { pinnedCard, type RingModel, rotationAt } from "../ring/layers";
 import { RING_DRIFT } from "../ring/rotation";
@@ -71,6 +72,7 @@ export function edgeLayer(
   return {
     name: "edges",
     primitive: "segments",
+    part: "mesh",
     buffers,
     recency: EDGE_RECENCY,
     update(frame: StageFrame) {
@@ -166,6 +168,7 @@ export function nodeLayer(model: CockpitModel, layout: LayoutService): StageLaye
   return {
     name: "nodes",
     primitive: "segments",
+    part: "nodes",
     buffers,
     update(frame: StageFrame) {
       const { graph, store } = model;
@@ -492,17 +495,18 @@ export const pinLength = (n: number): number => n * LAND_SPACING + 8;
  * polygon (node → control point → landing), at most len · (1 + 2 · √(bend² + SWEEP²)); the bullet
  * is a 2 px line along it, with 2 px of anti-aliasing fringe and its pieces' ends. Plus the ring
  * on its node. The dim line is not counted: it is MAX-blended at DIM_MAX, so it is not a flash.
+ * `width` is the viewer's width multiple for bullets (B15).
  */
-export function strandArea(len: number): number {
+export function strandArea(len: number, width = 1): number {
   // sqrt, not Math.hypot: it is correctly rounded on every engine, so pins agree across OSes.
   const curve = len * (1 + 2 * Math.sqrt(MAX_BEND * MAX_BEND + SWEEP * SWEEP));
-  const bullet = (curve + 2 * BULLET_PIECES) * (BULLET_WIDTH + 2);
-  const ring = NODE_SIDES * segmentArea(2 * NODE_RING * Math.sin(Math.PI / NODE_SIDES), 1);
+  const bullet = (curve + 2 * BULLET_PIECES) * (BULLET_WIDTH * width + 2);
+  const ring = NODE_SIDES * segmentArea(2 * NODE_RING * Math.sin(Math.PI / NODE_SIDES), width);
   return bullet + ring;
 }
 
-/** Upper bound of a bunch's bar's area in CSS px². */
-export const pinArea = (n: number): number => segmentArea(pinLength(n), 2);
+/** Upper bound of a bunch's bar's area in CSS px², at the viewer's bullet width multiple. */
+export const pinArea = (n: number, width = 1): number => segmentArea(pinLength(n), 2 * width);
 
 /** Upper bound of a segment's drawn area in CSS px² (2 px of anti-aliasing fringe each way). */
 export function segmentArea(len: number, width: number): number {
@@ -674,8 +678,8 @@ export interface BundleLayer extends StageLayer {
 }
 
 /** A layer whose buffers another layer writes; it only needs to be uploaded after that one. */
-function writtenBy(name: string, buffers: InstanceBuffers): StageLayer {
-  return { name, primitive: "segments", buffers, blend: "max", update() {} };
+function writtenBy(name: string, buffers: InstanceBuffers, part: LookPart): StageLayer {
+  return { name, primitive: "segments", buffers, blend: "max", part, update() {} };
 }
 
 export function bundleLayer(
@@ -699,9 +703,10 @@ export function bundleLayer(
   return {
     name: "bundles",
     primitive: "segments",
+    part: "bullets",
     buffers,
-    lines: writtenBy("strands", lineBuffers),
-    rays: writtenBy("rays", rayBuffers),
+    lines: writtenBy("strands", lineBuffers, "strands"),
+    rays: writtenBy("rays", rayBuffers, "lines"),
     update(frame: StageFrame) {
       writers.bright.begin();
       writers.lines.begin();

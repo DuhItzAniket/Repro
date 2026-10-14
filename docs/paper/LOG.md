@@ -193,3 +193,19 @@ entry. If something turns out wrong, add a correcting entry.
 - After B14 the demo replays at ×1 with the whole cockpit at 60 fps on an integrated GPU
   (production build, 1440×900, DPR 1.75): p50 16.7 ms, p95 17.0 ms over 3,081 frames, with 1.14%
   over 25 ms.
+
+## 2026-10-14 · B15 · Viewer settings inside a flash bound, and the cost of spreading the nodes
+- Viewer-adjustable visuals and a flash bound can coexist if the settings are split by how the
+  bound treats each part. Parts the governor does not count (MAX-blended dim lines) can only be
+  dimmed from their safe ceiling; parts it counts may be brighter or wider, because it counts
+  area whatever the intensity and re-decides at the chosen width. Applying the look as shader
+  uniforms keeps the layers' render models independent of it (a unit test hashes them).
+- A view is best modelled as the stage's geometry rather than a camera on top: the layers write
+  only what is on the stage and the governor admits bunches by where their sections are, so both
+  must see the viewer's view.
+- Spreading the run's nodes over the whole disc (the owner's request) has a measurable cost in
+  the default arc view. Strands come from further away, each bullet's path is longer, and the
+  flash cap admits fewer bunches: 13 of 120 on the demo at ×1 (20 before), none on the stress
+  run at ×16. In the whole-wheel view strands are short and the cap admits 71 of 399. Only 6 of
+  the demo's 47 nodes face the stage in the arc view. Where to place nodes is therefore also a
+  flash-budget decision, not only a visual one.
