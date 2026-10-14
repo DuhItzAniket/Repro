@@ -123,11 +123,19 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   calls 0.30, covers 0.16.
 - Tests are tiny hollow squares. Nodes in the latest blast radius get tiny hollow circles. These
   are the reference's scattered squares and circles.
-- **Bundles**: when an event touches an edge path (a test reaching a function: `trace.sample`,
-  `diff.behaviour`), a bright sheaf of 10–20 curves runs from the test towards the function's ring
-  card, lands on a short bar at the inner rim, and fades over ~1.2 s. These are the reference's
-  white brushes. The curves are irregularly spaced and start at staggered points, so the sheaf
-  fans out raggedly at its far end. A sheaf reaches at most 0.32 × the stage height.
+- **Strands** (bundles): when an event touches an edge path (a test reaching a function:
+  `trace.sample`, `diff.behaviour`), a bright sheaf of 10–20 curves runs from the test to the
+  function's ring card. These are the reference's white strands, and they move like them (B14):
+  - the head **shoots** from the test to the card in the first 30% of a 450 ms life (ease-out)
+    and lands on a short bar at the inner rim;
+  - its curves arrive along the ring's radius and sweep up into the rim from the side the cards
+    are moving towards, bending away towards the test;
+  - once landed, the landing end **rides along with the card** as the ring turns;
+  - the tail is then **pulled in** after the head until the strand is gone.
+
+  The curves are irregularly spaced and start at staggered points, so the strand fans out
+  raggedly at its far end. A strand reaches at most 0.28 × the stage height. Measured on the
+  reference: a strand lives about 0.3–0.35 s, about 0.1 s of it shooting in.
 - Rendering: edges are instanced anti-aliased quads with recency alpha computed in the shader.
   Arcs and bundles are chains of segments that do not overlap at their joints. Blending is
   additive. There is no post-processing (ADR-0008).
@@ -154,9 +162,12 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   come first.
 - Cards for files in the blast radius are brighter (ink 1.0, others 0.8). Changed files have a
   thin `--hot` edge on their leading side.
-- The ring rotates slowly (one card per ~2 s) and snaps the **focused file** to the 3 o'clock
-  position (500 ms ease-out-cubic) when an event targets it: `symbol.changed`,
-  `claim.extracted`, `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`.
+- The ring turns once every 24 s of wall-clock time at any replay speed (about 15° a second;
+  B14, measured on the reference, whose cards pass 3 o'clock at about 280 px/s at mid-band; it
+  was one card per ~2 s before). It snaps the **focused file** to the 3 o'clock position (500 ms
+  ease-out-cubic) when an event targets it: `symbol.changed`, `claim.extracted`,
+  `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`. A file the user
+  focuses is pinned at 3 o'clock without drift.
 
 ### Event streams (right)
 - Each event emits a streak from the ring's outer rim outward along a radial line, with a
@@ -246,8 +257,8 @@ surface — it stays plain and readable.
 
 - Every animated element maps to an event. Idle state (no run) may use slow ambient drift of
   the web only.
-- Durations: streak 600–1400 ms, bundle 1200 ms fade, panel row insert 150 ms, ring snap 500 ms
-  ease-out-cubic.
+- Durations: streak 600–1400 ms, strand 450 ms (B14: shoot, then pulled in), panel row insert
+  150 ms, ring snap 500 ms ease-out-cubic, one ring turn 24 s.
 - Replay supports speed ×0.5 / ×1 / ×4 / ×16 and scrubbing. Animation is a pure function of
   (events up to t, t, motion), where motion is the replay speed and reduced motion.
 - `prefers-reduced-motion`: no streaks or bundles, and state changes are instant. An in-app

@@ -80,7 +80,8 @@ export function pinnedCard(ring: RingModel, focus: FocusTargets | undefined): nu
 
 /**
  * The ring's angle at `t` for this frame's motion (ADR-0011): a snap lasts 500 ms of wall-clock
- * time at any replay speed, and reduced motion snaps instantly and does not drift. Closed-form
+ * time at any replay speed, the drift is wall-clock too (one turn per 24 s at any speed), and
+ * reduced motion snaps instantly and does not drift. Closed-form
  * per setting, so it stays a pure function of (events, t, motion). A user focus (B11) pins its
  * file's card at 3 o'clock instead, without drift, until the focus changes.
  */
@@ -98,7 +99,12 @@ export function rotationAt(
   if (rotation === undefined) {
     rotation = motion.reduced
       ? ringRotation(ring.angles, ring.content.focus, 0, 0)
-      : ringRotation(ring.angles, ring.content.focus, SNAP_MS * motion.speed);
+      : ringRotation(
+          ring.angles,
+          ring.content.focus,
+          SNAP_MS * motion.speed,
+          ring.angles.drift / motion.speed,
+        );
     ring.rotationCache.set(key, rotation);
   }
   return rotation.at(t);

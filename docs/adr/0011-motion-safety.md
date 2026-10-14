@@ -65,5 +65,9 @@ Flagged for the owner at the re-opened Stage B gate; no change of scope.
 
   A unit test checks both against the sRGB luminance curve at every replay speed.
 - **Areas.** An edge's flare counts only its arc pieces on the stage, since most of the web is
-  off-screen from B14. A bundle counts its longest possible reach (0.32 × the stage height). The
-  worst-window test (×0.5–×16, both fixtures) still holds.
+  off-screen from B14. A strand (bundle) counts the length of its curves' control polygons from
+  its longest possible reach (0.28 × the stage height). The worst-window test (×0.5–×16, both
+  fixtures) still holds.
+- **Wall-clock motion.** Strands live 450 ms of wall-clock time: they shoot in, then are pulled
+  in, as in the reference. The ring's drift is wall-clock too, one turn per 24 s at any replay
+  speed, so ×16 does not spin it sixteen times as fast.

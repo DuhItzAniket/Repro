@@ -128,10 +128,10 @@ describe("ring render model", () => {
     expect(hashes).toMatchInlineSnapshot(`
       {
         "0": "d3bfbe223ab4ebd5@0.000000",
-        "20000": "d3bfbe223ab4ebd5@0.667910",
-        "25500": "d3bfbe223ab4ebd5@0.397144",
-        "45000": "d3bfbe223ab4ebd5@1.868310",
-        "8000": "d3bfbe223ab4ebd5@1.871010",
+        "20000": "d3bfbe223ab4ebd5@2.454265",
+        "25500": "d3bfbe223ab4ebd5@1.010180",
+        "45000": "d3bfbe223ab4ebd5@9.129120",
+        "8000": "d3bfbe223ab4ebd5@2.860334",
       }
     `);
   });

@@ -19,7 +19,7 @@ import { hashRenderModels } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
 import { AtlasService } from "./ring/atlas-service";
 import { RingModel, ringLayers, rotationAt } from "./ring/layers";
-import { easeOutCubic, SNAP_MS } from "./ring/rotation";
+import { easeOutCubic, RING_DRIFT, SNAP_MS } from "./ring/rotation";
 import { streakArea, streakLayer, streakShape, streakWidth } from "./streams/layers";
 import { residueLayer } from "./streams/residue";
 import { LONGEST_LIFE, lifetime, streams } from "./streams/style";
@@ -203,7 +203,7 @@ describe("layers follow the governor and wall-clock time", () => {
     if (snap === undefined) throw new Error("no snap");
     for (const speed of [1, 16]) {
       const motion = at(speed);
-      const drift = ringModel.angles.drift;
+      const drift = ringModel.angles.drift / speed; // wall-clock drift, in run time
       const offset = (t: number) => rotationAt(ringModel, t, motion) - drift * t;
       const start = offset(snap.time);
       const end = offset(snap.time + SNAP_MS * speed);
@@ -213,6 +213,21 @@ describe("layers follow the governor and wall-clock time", () => {
     const reduced = { speed: 1, reduced: true };
     const still = rotationAt(ringModel, snap.time + 1, reduced);
     expect(rotationAt(ringModel, snap.time + 400, reduced)).toBe(still);
+  });
+
+  it("turns the ring at the same wall-clock speed at every replay speed (B14)", () => {
+    const ringModel = new RingModel(demo.model, new AtlasService(() => Promise.resolve(null)));
+    ringModel.sync();
+    const last = ringModel.content.focus.at(-1);
+    if (last === undefined) throw new Error("no snap");
+    for (const speed of SPEEDS) {
+      const motion = at(speed);
+      const from = last.time + SNAP_MS * speed + 1; // after every snap has settled
+      const wallMs = 1_000;
+      const turned =
+        rotationAt(ringModel, from + wallMs * speed, motion) - rotationAt(ringModel, from, motion);
+      expect(turned / wallMs).toBeCloseTo(RING_DRIFT, 12);
+    }
   });
 
   it("draws no streaks or bundles under reduced motion", () => {

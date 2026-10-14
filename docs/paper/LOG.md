@@ -163,6 +163,10 @@ entry. If something turns out wrong, add a correcting entry.
 - Bright, persistent elements can be made flash-safe by construction rather than by budget. MAX
   blending bounds a pixel by its brightest element, and a wall-clock floor on the fade bounds
   how fast it can dim, so no 10% luminance fall fits in a second.
+- Motion was measured the same way. Cross-correlating a column of the ring between frames
+  gives its rotation, about 280 px/s at mid-band (about 15° a second), while the web stays still.
+  At 30 fps a strand lives 0.3–0.35 s: it shoots in for about 0.1 s, then rides the turning
+  ring as its tail is pulled in. Our first pass had matched the stills but not this.
 - After B14 the demo replays at ×1 with the whole cockpit at 60 fps on an integrated GPU
   (production build, 1440×900, DPR 1.75): p50 16.7 ms, p95 17.0 ms over 3,081 frames, with 1.14%
   over 25 ms.

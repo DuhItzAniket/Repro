@@ -9,7 +9,7 @@ import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
 import { AtlasService } from "../ring/atlas-service";
-import { RingModel } from "../ring/layers";
+import { RingModel, rotationAt } from "../ring/layers";
 import { segmentAlpha } from "../segments";
 import { arcPieces, edgeHash } from "./arcs";
 import {
@@ -22,6 +22,9 @@ import {
   MAX_BUNDLES,
   markerLayer,
   nodeLayer,
+  SHOOT,
+  strandHead,
+  strandPull,
 } from "./layers";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -176,24 +179,48 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(peak).toBeLessThanOrEqual(MAX_BUNDLES * (20 * BUNDLE_STEPS + 1));
   });
 
-  it("lands each finished sheaf on its function's ring card, at the inner rim", () => {
+  it("lands each strand on its function's ring card at the inner rim, riding along as it turns", () => {
     const rings = ringModel();
     const layer = bundleLayer(model, layout, unlimited(layout), rings);
+    rings.sync();
+    const { start, end } = rings.angles;
     let pins = 0;
     for (let t = 20_000; t <= 28_000; t += 100) {
       layer.update(frameAt(t));
+      const rotation = rotationAt(rings, t, NORMAL_MOTION);
       const a = layer.buffers.array("a");
       const b = layer.buffers.array("b");
       const shape = layer.buffers.array("shape");
       for (let i = 0; i < layer.buffers.count; i++) {
-        if (shape[i * 2] !== 2) continue; // the bar a sheaf lands on
+        if (shape[i * 2] !== 2) continue; // the bar a strand lands on
         pins++;
         const mx = ((a[i * 2] as number) + (b[i * 2] as number)) / 2 - ring.cx;
         const my = ((a[i * 2 + 1] as number) + (b[i * 2 + 1] as number)) / 2 - ring.cy;
         expect(Math.sqrt(mx * mx + my * my)).toBeCloseTo(ring.r - 3, 0);
+        // At the centre of a card as the ring stands at this frame.
+        const angle = Math.atan2(my, mx) - rotation;
+        const onACard = Array.from(start).some((s, c) => {
+          const centre = (s + (end[c] as number)) / 2;
+          const d = Math.abs(((angle - centre) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+          return Math.min(d, Math.PI * 2 - d) < 1e-3;
+        });
+        expect(onACard).toBe(true);
       }
     }
     expect(pins).toBeGreaterThan(0);
+  });
+
+  it("shoots each strand in, then pulls its tail in after it (B14)", () => {
+    expect(strandHead(0)).toBe(0);
+    expect(strandHead(SHOOT)).toBe(1);
+    expect(strandHead(1)).toBe(1);
+    expect(strandPull(SHOOT)).toBe(0);
+    expect(strandPull(1)).toBe(1);
+    for (let life = 0; life < 1; life += 0.01) {
+      expect(strandHead(life + 0.01)).toBeGreaterThanOrEqual(strandHead(life));
+      expect(strandPull(life + 0.01)).toBeGreaterThanOrEqual(strandPull(life));
+      expect(strandPull(life)).toBeLessThanOrEqual(strandHead(life));
+    }
   });
 
   it("pins the demo run's web at fixed times", async () => {
@@ -212,7 +239,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(hashes).toMatchInlineSnapshot(`
       {
         "22000": "48be897551db5447",
-        "25500": "d254aa1421e6cdfa",
+        "25500": "b4d22bcf96ad4c8c",
         "45000": "48be897551db5447",
         "8000": "d147e84ccf4d6242",
       }

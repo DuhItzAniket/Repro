@@ -244,8 +244,8 @@ allocation and bundle-size gates are active in CI.
   where the reference's 1.15:1 composition could not fit.
 - Deliverables: a layout that keeps the stage near the reference's shape (panels beside the
   stage on landscape screens); the ring geometry measured on the reference; an opaque drum of
-  full-band code cards built from events; a chord layout with arc edges; bundles that land on
-  their function's card; bright stream rays that are safe by construction (ADR-0011 note).
+  full-band code cards built from events; a chord layout with arc edges; strands that shoot to
+  their function's card and ride along with it as the ring turns (at its measured speed); bright stream rays that are safe by construction (ADR-0011 note).
 - Accept: the side-by-side reads as the same visual family (the owner confirms). All tests and
   gates pass; every changed pin is explained; the flash bound holds at every speed.
 

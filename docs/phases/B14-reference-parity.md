@@ -46,7 +46,11 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
   - a chord layout from the force simulation's angular order (`force.ts`);
   - edges as arcs, only their pieces on the stage (`web/arcs.ts`);
   - tests as squares (`nodeLayer`);
-  - bundles as brushes that land on their function's card at the inner rim.
+  - strands (bundles) that shoot to their function's card, arrive along the radius, ride along
+    with the card as the ring turns, and have their tail pulled in after them (450 ms), as the
+    owner's second review asked (below).
+- Ring rotation: one turn per 24 s of wall-clock time at any replay speed (`RING_TURN_MS`), the
+  reference's measured speed.
 - Streams: lanes ±24° with ±4.9° per event; rays from the outer rim, brightest there, growing
   out over 900 ms (`growMs`), MAX-blended, with a 40 s wall-clock fade floor (`fadeWallMs`).
 - Renderer: a `blend: "max"` layer option (premultiplied output, `MaxEquation`), `uGrowMs`,
@@ -98,6 +102,27 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
   - bundles and streaks are pure functions;
   - the governor's worst window stays within the cap at ×0.5–×16 on both fixtures.
 
+## Second owner review (same day)
+The owner found the stage better but still not like the video: its strands move along with the
+section of the wheel they shoot to, and their tails move from their origin, before disappearing.
+Studied frame by frame at 30 fps (5.8–6.4 s):
+- a strand lives about 0.3–0.35 s. Its head shoots in from the web for about 0.1 s and a short
+  bar appears on the rim. Its tail then slides along the path into the bar while the bar moves
+  with the ring, and it is gone;
+- the ring itself turns fast. Cross-correlating the card column at 3 o'clock between frames gives
+  a steady 5–17 px per frame at 30 fps, about 280 px/s, or about 15° a second (a turn in about
+  24 s, close to the 22 s loop). The web does not move. Repro's ring drifted about 2.8° a second
+  (one card per 2 s), so strands landing on it barely moved.
+
+Changes:
+- the ring turns once per 24 s of wall-clock time, also at ×4 and ×16 (it scaled with the replay
+  speed before);
+- strands shoot in over 30% of a 450 ms life, land on their card at this frame's ring angle,
+  then are pulled in (`strandHead`, `strandPull`);
+- their curves arrive along the ring's radius and sweep up into the rim from the side the cards
+  are moving towards, like the reference's. Before, they bowed to a random side, which drew
+  "eye" shapes where two strands met one card.
+
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
       Measured at the same stage height:
@@ -119,6 +144,11 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
   The visual baselines are regenerated in CI and checked by eye.
 - [x] AC3: flash safety holds. The governor's worst-window test passes at every speed, and the
       rays' bound is unit-tested.
+- [x] AC4 (second review): strands ride along with their card and are pulled in, and the ring
+      turns at the reference's speed. Unit-tested:
+  - each landing bar sits at a card's centre for the ring angle of its frame;
+  - the head and pull laws are monotonic, with the tail never ahead of the head;
+  - the ring's turn per wall-clock second is the same at ×0.5–×16.
 
 ## Evidence
 - The demo at ×1 with the whole cockpit, production build, 1440×900, DPR 1.75, integrated GPU

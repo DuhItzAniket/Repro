@@ -6,10 +6,11 @@
  *   stage: the stage shows long arcs crossing its right part, like the reference.
  * - **nodes**: tests as tiny hollow squares, revealed with their `graph.node` events.
  * - **markers**: tiny hollow circles on the nodes in the latest blast radius.
- * - **bundles**: bright sheaves of 10–20 near-parallel curves from a test towards the ring card
- *   of the function it reaches (`trace.sample`, `diff.behaviour`), landing on a short bar at the
- *   inner rim and fading over 1.2 s. They are a pure function of the events in the window, `t`
- *   and the motion settings.
+ * - **bundles** (strands): bright sheaves of 10–20 curves from a test to the ring card of the
+ *   function it reaches (`trace.sample`, `diff.behaviour`), like the reference's (B14). A strand
+ *   shoots in and lands on a short bar at the inner rim; then its tail is pulled in after it,
+ *   while its landing end rides along with the card as the ring turns, and it is gone after
+ *   450 ms. They are a pure function of the events in the window, `t` and the motion settings.
  *
  * Durations are wall-clock (ADR-0011). The flash governor decides which bundles are drawn and
  * which edges and markers flare; reduced motion draws no bundles and the host turns flares off.
@@ -258,10 +259,11 @@ export function markerLayer(
   };
 }
 
-export const BUNDLE_MS = 1200;
+/** A strand's life, wall-clock ms (the reference's last about 0.3–0.35 s). */
+export const BUNDLE_MS = 450;
 export const MAX_BUNDLES = 40;
-/** A bundle reaches at most this share of the stage height from its landing point. */
-export const BUNDLE_REACH = 0.32;
+/** A strand reaches at most this share of the stage height from its landing point. */
+export const BUNDLE_REACH = 0.28;
 export const BUNDLE_STEPS = 12;
 /** Spacing between a sheaf's curves where it lands (px), where it starts, and at its bow. */
 const LAND_SPACING = 1.5;
@@ -271,29 +273,49 @@ const BOW_SPACING = 2.4;
 const OFFSET_JITTER = 0.45;
 /** Curves start up to this share of the way along, so the sheaf's far end is ragged. */
 const STAGGER = 0.3;
-/** Share of a bundle's life spent sweeping from source to target before it fades. */
-const SWEEP = 0.25;
+/** Share of a strand's life its head takes to shoot from the test to the ring. */
+export const SHOOT = 0.3;
+
+/** How far along its path a strand's head is at `life` (0–1): it shoots in, easing out. */
+export const strandHead = (life: number): number => 1 - (1 - Math.min(1, life / SHOOT)) ** 2;
+
+/** How far its tail has been pulled in at `life`: not at all until the head lands, then all. */
+export const strandPull = (life: number): number =>
+  life <= SHOOT ? 0 : ((Math.min(1, life) - SHOOT) / (1 - SHOOT)) ** 1.5;
 const TRACE = kindCode("trace.sample", 1);
 const BEHAVIOUR = kindCode("diff.behaviour", 1);
 
 /** Curves in a bundle, from the event's hash. */
 export const bundleCurves = (h: number): number => 10 + (h % 11);
-/** A bundle's bow: its middle bends to one side by 22–34% of its length (px, signed). */
-const bundleBow = (len: number, h: number): number =>
-  (0.22 + ((h >>> 8) % 100) / 833) * len * ((h & 1) === 1 ? 1 : -1);
+/**
+ * How far inside the landing point a strand's control point sits, as a share of its length
+ * (0.45–0.6): the strand arrives at the rim along the ring's radius and bends away from it
+ * towards the test, like the reference's.
+ */
+const bundleBend = (h: number): number => 0.45 + ((h >>> 8) % 100) / 666;
+/**
+ * How far the control point also sits along the ring's turning direction, as a share of the
+ * strand's length: strands sweep up into the rim from the side the cards are moving towards,
+ * like the reference's, whichever side their test is on.
+ */
+const SWEEP = 0.35;
 /** Length of the bar a bundle lands on, px. */
 const pinLength = (h: number): number => bundleCurves(h) * LAND_SPACING + 8;
 
 /**
- * Upper bound of a bundle's drawn area in CSS px², for the flash governor: the sheaf lies within
- * its control polygon (start → bowed middle → landing), widened by its widest spread, the 1 px
- * line and 2 px of anti-aliasing fringe, plus the 2 px bar it lands on.
+ * Upper bound of a strand's drawn area in CSS px², for the flash governor, from a start at most
+ * `len` from the landing point. Each curve is no longer than its control polygon (start →
+ * control point → landing). The control point is √(bend² + SWEEP²) · len from the landing, so
+ * the polygon is at most len · (1 + 2 · √(bend² + SWEEP²)) plus three times the widest spread.
+ * Each curve is a 1 px line with 2 px of anti-aliasing fringe. Plus the 2 px bar it lands on.
  */
 export function bundleArea(len: number, h: number): number {
   const curves = bundleCurves(h);
   const spread = START_SPACING * ((curves - 1) / 2 + OFFSET_JITTER);
-  const half = Math.sqrt((len / 2) ** 2 + (Math.abs(bundleBow(len, h)) + spread) ** 2);
-  return (2 * half + 2) * (2 * spread + 1 + 2) + (pinLength(h) + 2) * (2 + 2);
+  // sqrt, not Math.hypot: it is correctly rounded on every engine, so pins agree across OSes.
+  const bend = bundleBend(h);
+  const curve = len * (1 + 2 * Math.sqrt(bend * bend + SWEEP * SWEEP)) + 3 * spread;
+  return curves * segmentArea(curve, 1) + segmentArea(pinLength(h), 2);
 }
 
 /** Upper bound of a segment's drawn area in CSS px² (2 px of anti-aliasing fringe each way). */
@@ -306,9 +328,12 @@ const curveHash = (h: number, c: number): number =>
   Math.imul(h ^ Math.imul(c + 1, 0x9e3779b9), 0x85ebca6b) >>> 0;
 
 /**
- * Writes one sheaf of curves from a start point to a landing point at `life` (0–1 of
- * BUNDLE_MS), like the reference's brushes: side by side where they land on the bar, fanning out
- * and ending raggedly at the far end. `tx, ty` is the direction the bar runs in (unit length).
+ * Writes one strand from a start point to a landing point at `life` (0–1 of BUNDLE_MS), like the
+ * reference's: its curves land side by side on the bar and fan out raggedly towards the start.
+ * The head shoots from the start to the landing point (ease-out) in the first SHOOT of the life;
+ * then the tail is pulled in along the path after it while the strand fades. The landing point
+ * is wherever the card is at this frame, so a landed strand rides along with the ring. `tx, ty`
+ * is the direction the bar runs in (unit length).
  */
 function drawBundle(
   writer: SegmentWriter,
@@ -329,16 +354,19 @@ function drawBundle(
   const nx = -dy / len;
   const ny = dx / len;
   const curves = bundleCurves(h);
-  const bow = bundleBow(len, h);
-  const fade = (1 - life) ** 1.5;
-  const reach = Math.min(1, life / SWEEP); // the sheaf sweeps out first, then fades
-  const steps = Math.max(1, Math.ceil(BUNDLE_STEPS * reach));
+  // The control point sits inside the landing point along the radius (the bar's normal), so
+  // every curve arrives at the rim along the radius.
+  const bend = bundleBend(h) * len;
+  const sweep = SWEEP * len;
+  const cx = qx - ty * bend + tx * sweep;
+  const cy = qy + tx * bend + ty * sweep;
+  const head = strandHead(life);
+  const pull = strandPull(life);
+  const fade = 1 - pull * pull;
   const alpha = (flagged ? 0.8 : 0.7) * fade;
   const red = flagged ? 0.71 : 1; // --flag for behaviour differences, white otherwise
   const green = flagged ? 0.56 : 1;
   const blue = flagged ? 0.61 : 1;
-  const mx = (px + qx) / 2;
-  const my = (py + qy) / 2;
   for (let c = 0; c < curves; c++) {
     const hc = curveHash(h, c);
     const offset = c - (curves - 1) / 2 + ((hc & 0xffff) / 0xffff - 0.5) * 2 * OFFSET_JITTER;
@@ -347,14 +375,16 @@ function drawBundle(
     // The sheaf lands along the bar, side by side.
     const bx = qx + tx * offset * LAND_SPACING;
     const by = qy + ty * offset * LAND_SPACING;
-    const kx = mx + nx * (bow + offset * BOW_SPACING);
-    const ky = my + ny * (bow + offset * BOW_SPACING);
+    const kx = cx + tx * offset * BOW_SPACING;
+    const ky = cy + ty * offset * BOW_SPACING;
     const from = ((hc >>> 16) / 0xffff) * STAGGER;
-    if (reach <= from) continue;
+    const tail = from + (1 - from) * pull;
+    if (head <= tail) continue;
+    const steps = Math.max(1, Math.ceil(BUNDLE_STEPS * (head - tail)));
     let x0 = 0;
     let y0 = 0;
     for (let s = 0; s <= steps; s++) {
-      const u = from + ((reach - from) * s) / steps;
+      const u = tail + ((head - tail) * s) / steps;
       const v = 1 - u;
       const x1 = v * v * ax + 2 * v * u * kx + u * u * bx;
       const y1 = v * v * ay + 2 * v * u * ky + u * u * by;
@@ -363,7 +393,7 @@ function drawBundle(
       y0 = y1;
     }
   }
-  if (reach < 1) return;
+  if (head < 1) return;
   // The bar it lands on, like the reference's bright pins at the rim.
   const half = pinLength(h) / 2;
   writer.push(
@@ -401,7 +431,7 @@ export function bundleLayer(
       if (positions === null) return;
       ring.sync();
       const { store, graph } = model;
-      const life = BUNDLE_MS * frame.motion.speed; // the wall-clock fade, in run time
+      const life = BUNDLE_MS * frame.motion.speed; // the wall-clock life, in run time
       // Same range as window.active(t, life), without allocating a tuple each frame.
       const start = store.firstAtOrAfter(frame.t - life);
       const end = store.cursorAt(frame.t);

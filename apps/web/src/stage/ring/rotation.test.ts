@@ -1,6 +1,13 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { easeOutCubic, ringAngles, ringRotation, SNAP_MS, UNIT_ANGLE } from "./rotation";
+import {
+  easeOutCubic,
+  RING_TURN_MS,
+  ringAngles,
+  ringRotation,
+  SNAP_MS,
+  UNIT_ANGLE,
+} from "./rotation";
 
 const TAU = Math.PI * 2;
 // Card sizes in band units: these eight overfill the circle, so they share it in proportion.
@@ -35,8 +42,9 @@ describe("ringAngles", () => {
     expect(few.end[1] as number).toBeLessThan(TAU);
   });
 
-  it("drifts by one average card per 2 s", () => {
-    expect(angles.drift * 2000).toBeCloseTo(TAU / cards.length, 12);
+  it("turns once per 24 s, the reference's measured speed (B14)", () => {
+    expect(angles.drift * RING_TURN_MS).toBeCloseTo(TAU, 12);
+    expect(ringAngles([]).drift).toBe(0);
   });
 });
 
