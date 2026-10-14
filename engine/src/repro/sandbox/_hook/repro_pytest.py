@@ -180,11 +180,22 @@ class _Monitor:
                     return None
         return sys.monitoring.DISABLE
 
-    def returned(self, _code: Any, _offset: int, value: Any) -> None:
-        self.tracer.returned(sys._getframe(1), value)
+    def returned(self, code: Any, _offset: int, value: Any) -> Any:
+        if self.tracer.returned(sys._getframe(1), value) or not self.tracer.idle(code):
+            return None
+        return self._retire(code)
 
-    def yielded(self, _code: Any, _offset: int, value: Any) -> None:
-        self.tracer.yielded(sys._getframe(1), value)
+    def yielded(self, code: Any, _offset: int, value: Any) -> Any:
+        if self.tracer.yielded(sys._getframe(1), value) or not self.tracer.idle(code):
+            return None
+        return self._retire(code)
+
+    def _retire(self, code: Any) -> Any:
+        """A target past its budget with nothing in flight: its local events are removed (not
+        only disabled where they fired) until the next test sets them again."""
+        sys.monitoring.set_local_events(self.tool, code, 0)
+        self.local.discard(id(code))
+        return sys.monitoring.DISABLE
 
     def unwound(self, code: Any, _offset: int, exc: BaseException) -> Any:
         if id(code) in self.local:

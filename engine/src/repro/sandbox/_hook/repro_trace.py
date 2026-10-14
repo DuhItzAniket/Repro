@@ -12,14 +12,19 @@ and name match and its first line falls in the span.
   callback) before its body runs;
 - at PY_RETURN, the value returned; at PY_UNWIND, the exception's type and arguments;
 - at PY_YIELD, each value a generator or coroutine yields (at most ``MAX_YIELDS`` of them);
-- a call still suspended when its test ends (a generator never exhausted) is ``suspended``.
+- a generator closed before it finished (``GeneratorExit``, often when it is collected) is
+  ``closed``; a call still suspended when its test ends is ``suspended``.
 
 Calls in flight are keyed by their frame's identity; code objects are held, so identities are
 not reused. Each call is attributed to the test and the phase (setup, call, teardown) running
 when it started.
 
 **Budget.** Each (test, target) records its first ``BUDGET`` calls (200, measured in A08);
-then the target is disabled for the rest of the test, and a ``truncated`` record says so.
+then the target is disabled for the rest of the test, and a ``truncated`` record says so: its
+PY_START returns ``DISABLE``, and so do its PY_RETURN and PY_YIELD. Recorded calls still in
+flight at that moment (the outer frames of a recursion) end as ``unfinished``, their arguments
+known and their results not: keeping their returns would keep the target's return events
+firing for every later call (the E01 benchmark measured 27x on a recursive function).
 
 The standard library only, Python 3.12 to 3.15.
 """
@@ -45,9 +50,10 @@ def _names(code: Any) -> tuple[str, ...]:
 
 
 class _Call:
-    __slots__ = ("args", "args_complete", "index", "phase", "target", "test", "yields")
+    __slots__ = ("args", "args_complete", "code", "index", "phase", "target", "test", "yields")
 
-    def __init__(self, target: Target, test: str, phase: str, index: int) -> None:
+    def __init__(self, target: Target, test: str, phase: str, index: int, code: int) -> None:
+        self.code = code
         self.target = target
         self.test = test
         self.phase = phase
@@ -67,6 +73,7 @@ class Tracer:
         self.write = write
         self.known: dict[int, tuple[Any, Target | None]] = {}
         self.inflight: dict[int, _Call] = {}
+        self.open: dict[int, int] = {}  # id(code) -> recorded calls in flight
         self.counts: dict[tuple[str, Target], int] = {}
         self.test: str | None = None
         self.phase = "setup"
@@ -104,37 +111,67 @@ class Tracer:
                         "captured": BUDGET,
                     }
                 )
+                self._unfinished(id(code))
             return False
         self.counts[key] = index + 1
-        call = _Call(target, test, self.phase, index)
+        call = _Call(target, test, self.phase, index, id(code))
         local = frame.f_locals
         arguments = [(name, local[name]) for name in _names(code) if name in local]
         call.args, call.args_complete = digest(arguments)
         self.inflight[id(frame)] = call
+        self.open[id(code)] = self.open.get(id(code), 0) + 1
         return True
 
-    def returned(self, frame: Any, value: Any) -> None:
+    def _finish(self, frame: Any) -> _Call | None:
         call = self.inflight.pop(id(frame), None)
         if call is not None:
-            result, complete = digest(value)
-            self._emit(call, "return", result, complete, type_name(type(value)))
+            self.open[call.code] -= 1
+        return call
 
-    def yielded(self, frame: Any, value: Any) -> None:
+    def idle(self, code: Any) -> bool:
+        """Whether none of ``code``'s recorded calls is in flight (its local events can go)."""
+        return not self.open.get(id(code))
+
+    def returned(self, frame: Any, value: Any) -> bool:
+        """Records a return; False if the call was not being recorded."""
+        call = self._finish(frame)
+        if call is None:
+            return False
+        result, complete = digest(value)
+        self._emit(call, "return", result, complete, type_name(type(value)))
+        return True
+
+    def yielded(self, frame: Any, value: Any) -> bool:
         call = self.inflight.get(id(frame))
-        if call is not None and len(call.yields) < MAX_YIELDS:
+        if call is None:
+            return False
+        if len(call.yields) < MAX_YIELDS:
             call.yields.append(digest(value)[0])
+        return True
 
     def unwound(self, frame: Any, exc: BaseException) -> None:
-        call = self.inflight.pop(id(frame), None)
-        if call is not None:
-            kind = type_name(type(exc))
-            result, complete = digest(getattr(exc, "args", ()))
-            self._emit(call, "raise", result, complete, kind)
+        call = self._finish(frame)
+        if call is None:
+            return
+        if type(exc) is GeneratorExit:  # an unfinished generator closed (or collected)
+            self._emit(call, "closed", "", False, "")
+            return
+        kind = type_name(type(exc))
+        result, complete = digest(getattr(exc, "args", ()))
+        self._emit(call, "raise", result, complete, kind)
 
     # -- tests -----------------------------------------------------------------------------------
 
     def begin(self, test: str) -> None:
         self.test, self.phase = test, "setup"
+
+    def _unfinished(self, code: int) -> None:
+        """Ends the recorded calls of ``code`` still in flight, so its events can go."""
+        for key, call in list(self.inflight.items()):
+            if call.code == code:
+                del self.inflight[key]
+                self.open[code] -= 1
+                self._emit(call, "unfinished", "", False, "")
 
     def end(self) -> None:
         """The test is over: calls still suspended are recorded as such."""
@@ -142,6 +179,7 @@ class Tracer:
         for key, call in list(self.inflight.items()):
             if call.test == test:
                 del self.inflight[key]
+                self.open[call.code] -= 1
                 self._emit(call, "suspended", "", False, "")
         self.test = None
 

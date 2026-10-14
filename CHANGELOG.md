@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The tracer: for each function a change touches, every call in each test, its arguments read
+  before the body runs, its result, exception or yields, as stable digests (the same under any
+  hash seed and on Python 3.12 to 3.15), attributed to the test and its phase. 200 calls per
+  test and function, then the function is switched off completely; a run with no free
+  `sys.monitoring` tool ID, or past the budget, says so as a missing item. It runs beside
+  coverage.py. A benchmark harness (`scripts/bench_tracer.py`) tracks its overhead. [E01]
+
 ## [0.4.0] - 2026-10-15
 
 Stage D — Sandboxed two-sided execution. Gate record: `docs/phases/D-gate.md`.

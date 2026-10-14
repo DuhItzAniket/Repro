@@ -107,6 +107,14 @@ interleaved (ABBA); `assess` compares each: ratio of medians, BCa bootstrap inte
 Mann-Whitney with Benjamini-Hochberg, a noise floor from the A/A spread, and a timing floor
 under which a test is not assessable. `repro run` does it in its `perf` and `perf-diff` jobs.
 
+## Tracing
+
+`run_tests(..., trace=targets)` records every call of the target functions (`TraceTarget`:
+file, qualified name, line span) in each test: argument and result digests, exceptions,
+generator yields (`sandbox/_hook/repro_trace.py`, `repro_encode.py`). `repro.runner.trace`
+builds targets from C06 symbols, groups calls by target, and gives the missing items.
+`scripts/bench_tracer.py` measures the overhead.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,

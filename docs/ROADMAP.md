@@ -397,7 +397,7 @@ control.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| E01 | Tracer core & overhead benchmark | L | D04, A08 | planned |
+| E01 | Tracer core & overhead benchmark | L | D04, A08 | in progress |
 | E02 | Canonical value encoder | L | E01 | planned |
 | E03 | Observation store & stability analysis | M | E02 | planned |
 | E04 | Behaviour diff engine & reproducers | M | E03 | planned |

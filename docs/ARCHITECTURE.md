@@ -180,6 +180,13 @@ sides, runs them and emits `test.selected`, `test.started` / `test.finished`, `t
   capture 2.3–11.4 µs per call (dominated by encoding), and budgeted capture runs at about
   baseline speed.
 
+As built (E01, `sandbox/_hook/repro_trace.py`): the plugin's one tool serves the map and the
+tracer; targets are named by file, qualified name and line span; outcomes are `return`,
+`raise`, `closed` (a generator closed early), `suspended` and `unfinished`. When a target's
+budget runs out, its recorded calls still in flight end as `unfinished` and its return and yield
+events are disabled too: keeping them for a recursion's outer frames cost 27x in the E01
+benchmark.
+
 **Canonical encoder.** A structural, CBOR-like tagged encoding is hashed with BLAKE2b-128.
 It **never calls user-defined dunders** (`__repr__`, `__eq__`, properties, iterators). It
 normalises paths (`<ROOT>`, `<TMP>`, `<HOME>`, `/`) and memory addresses. Floats use
