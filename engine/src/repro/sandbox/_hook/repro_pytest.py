@@ -5,8 +5,19 @@ environment, never in Repro's (ARCHITECTURE §3). It talks to the engine through
 ``REPRO_OUT``:
 
 - ``results.jsonl``: one JSON object per line, written as the run goes (a crash still leaves
-  what came before): ``{"kind": "test", ...}`` per test, ``{"kind": "collect_error", ...}``
-  per module that failed to collect, and ``{"kind": "session", ...}`` last.
+  what came before): ``{"kind": "collected", ...}`` per test collected, with where its function
+  is; ``{"kind": "test", ...}`` per test run; ``{"kind": "collect_error", ...}`` per module that
+  failed to collect; with ``REPRO_MAP=1``, ``{"kind": "map", ...}`` per test, the functions it
+  ran; and ``{"kind": "session", ...}`` last.
+
+A function is a *place*: its file relative to ``REPRO_ROOT`` (the snapshot), its code object's
+qualified name and first line, which the engine turns into a symbol. Code outside the root (the
+standard library, installed packages) has no place and is not recorded.
+
+The map (D05) uses ``sys.monitoring``: PY_START is recorded once per function and test, then
+disabled at that place until the next test restarts events, so a function already seen costs
+nothing more in that test. Repro takes tool ID 4, 3, 2 or 5, whichever is free first, and leaves
+0 (debuggers) and 1 (coverage) to their owners; with none free the map is reported unavailable.
 
 Determinism: before each test, ``random`` is seeded from ``REPRO_SEED`` and the test's node ID,
 so a test's random draws do not depend on which tests ran before it. With ``REPRO_NET_GUARD=1``
@@ -16,9 +27,11 @@ on every isolation level, instead of hanging or flaking. It detects; it is not a
 (ADR-0004): UDP ``sendto`` and C extensions are not stopped, only recorded by the audit hook
 beside this file.
 """
+# ruff: noqa: PTH109, PTH118 - os.path on purpose: plain strings, compared once per function
 
 import errno
 import hashlib
+import inspect
 import ipaddress
 import json
 import os
@@ -34,7 +47,11 @@ import pytest
 _OUT = os.environ.get("REPRO_OUT")
 _SEED = int(os.environ.get("REPRO_SEED", "0") or 0)
 _LONGREPR = 2000
-_STATE: dict[str, Any] = {"file": None, "tests": {}}
+#: sys.monitoring tool IDs tried in turn: 0 (debuggers) and 1 (coverage) are left alone.
+_TOOL_IDS = (4, 3, 2, 5)
+_STATE: dict[str, Any] = {"file": None, "tests": {}, "places": None, "collector": None}
+
+Place = tuple[str, str, int]
 
 
 def _write(record: dict[str, Any]) -> None:
@@ -102,12 +119,128 @@ def _guard_network() -> None:
     socket.getaddrinfo = getaddrinfo
 
 
+class _Places:
+    """Each code object's place, or None outside the root; computed once per code object (keyed
+    by identity and held, since equal code objects in two files compare equal)."""
+
+    def __init__(self, root: str) -> None:
+        self.root = os.path.join(os.path.realpath(root), "")
+        self.folded = os.path.normcase(self.root)
+        self.known: dict[int, tuple[Any, Place | None]] = {}
+
+    def of(self, code: Any) -> Place | None:
+        known = self.known.get(id(code))
+        if known is not None:
+            return known[1]
+        place = None
+        filename = code.co_filename
+        if filename and not filename.startswith("<"):
+            real = os.path.realpath(filename)
+            if os.path.normcase(real).startswith(self.folded):
+                relative = real[len(self.root) :].replace(os.sep, "/")
+                place = (relative, code.co_qualname, code.co_firstlineno)
+        self.known[id(code)] = (code, place)
+        return place
+
+
+class _Collector:
+    """The places each test runs: PY_START once per function and test, then DISABLE."""
+
+    def __init__(self, places: _Places, tool: int) -> None:
+        self.places = places
+        self.tool = tool
+        self.current: set[Place] | None = None
+
+    def started(self, code: Any, _offset: int) -> Any:
+        current = self.current
+        if current is not None:
+            place = self.places.of(code)
+            if place is not None:
+                current.add(place)
+        return sys.monitoring.DISABLE
+
+    def begin(self) -> None:
+        self.current = set()
+        sys.monitoring.restart_events()
+
+    def end(self) -> list[list[Any]]:
+        found, self.current = self.current or set(), None
+        return [list(place) for place in sorted(found)]
+
+    def stop(self) -> None:
+        monitoring = sys.monitoring
+        monitoring.set_events(self.tool, 0)
+        monitoring.register_callback(self.tool, monitoring.events.PY_START, None)
+        monitoring.free_tool_id(self.tool)
+
+
+def _start_collector(places: _Places) -> _Collector | None:
+    monitoring = sys.monitoring
+    for tool in _TOOL_IDS:
+        try:
+            monitoring.use_tool_id(tool, "repro")
+        except ValueError:
+            continue
+        collector = _Collector(places, tool)
+        monitoring.register_callback(tool, monitoring.events.PY_START, collector.started)
+        monitoring.set_events(tool, monitoring.events.PY_START)
+        return collector
+    return None
+
+
 def pytest_configure() -> None:
     if _OUT:
         Path(_OUT).mkdir(parents=True, exist_ok=True)
         _STATE["file"] = (Path(_OUT) / "results.jsonl").open("w", encoding="utf-8")
     if os.environ.get("REPRO_NET_GUARD") == "1":
         _guard_network()
+    places = _Places(os.environ.get("REPRO_ROOT") or os.getcwd())
+    _STATE["places"] = places
+    if os.environ.get("REPRO_MAP") == "1":
+        collector = _start_collector(places)
+        _STATE["collector"] = collector
+        if collector is None:
+            _write({"kind": "map_unavailable", "reason": "no sys.monitoring tool ID is free"})
+
+
+def pytest_unconfigure() -> None:
+    collector = _STATE["collector"]
+    if collector is not None:
+        collector.stop()
+        _STATE["collector"] = None
+
+
+def _test_place(item: Any) -> Place | None:
+    """Where a test's own function is (None for tests that are not Python functions)."""
+    function = getattr(item, "function", None)
+    try:
+        function = inspect.unwrap(function) if function is not None else None
+    except ValueError:  # a cycle of __wrapped__
+        return None
+    code = getattr(function, "__code__", None)
+    places: _Places | None = _STATE["places"]
+    return places.of(code) if code is not None and places is not None else None
+
+
+def pytest_collection_finish(session: Any) -> None:
+    for item in session.items:
+        place = _test_place(item)
+        _write({"kind": "collected", "nodeid": item.nodeid, "test": list(place) if place else None})
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_protocol(item: Any) -> Any:
+    """With the map on: the places a test runs, from its setup to its teardown."""
+    collector: _Collector | None = _STATE["collector"]
+    if collector is None:
+        yield
+        return
+    collector.begin()
+    try:
+        yield
+    finally:
+        functions = collector.end()
+        _write({"kind": "map", "nodeid": item.nodeid, "functions": functions})
 
 
 @pytest.hookimpl(tryfirst=True)  # before the fixtures, so their draws are seeded too

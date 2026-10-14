@@ -1,0 +1,25 @@
+# Expected Repro outcome for the untested fixture (D05 asserts the selection).
+[fixture]
+name = "untested"
+head = "feat/report-total"
+
+[expected]
+status = "UNVERIFIABLE"
+claims = ["summary() includes the cart total in euros"]
+evidence = []
+# <reason>:<target>
+missing = [
+  "no_covering_test:shop.prices:rounding#0",
+  "no_covering_test:shop.report:<module>#0",
+  "no_covering_test:shop.report:summary#0",
+]
+
+[selection]
+uncovered = [
+  "shop.prices:rounding#0",
+  "shop.report:<module>#0",
+  "shop.report:summary#0",
+]
+
+[selection.selected]
+# No test imports shop.report or runs the changed code.

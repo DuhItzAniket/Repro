@@ -11,7 +11,7 @@ function, method or class.
 """
 
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,24 +43,30 @@ class BlastRadius:
         }
 
 
-def blast_radius(
-    changes: Sequence[SymbolChange], base: ImportGraph, head: ImportGraph
-) -> BlastRadius:
-    changed = tuple(dict.fromkeys(change.symbol_id for change in changes))
-    ids = [i for c in changes for i in (c.symbol_id, c.previous_symbol_id) if i is not None]
-    sources = {module_of(i) for i in ids}
-    module_level = sorted({module_of(i) for i in ids if f":{MODULE_QUALNAME}#" in i})
+def downstream(sources: Iterable[str], base: ImportGraph, head: ImportGraph) -> dict[str, int]:
+    """``sources`` at distance 0, their importers at 1, and so on, over both sides' imports."""
     importers: dict[str, set[str]] = {}
     for importer, imported in base.imports | head.imports:
         importers.setdefault(imported, set()).add(importer)
-    distance = dict.fromkeys(sources, 0)
-    queue = deque(sorted(sources))
+    start = sorted(set(sources))
+    distance = dict.fromkeys(start, 0)
+    queue = deque(start)
     while queue:
         module = queue.popleft()
         for importer in sorted(importers.get(module, ())):
             if importer not in distance:
                 distance[importer] = distance[module] + 1
                 queue.append(importer)
+    return distance
+
+
+def blast_radius(
+    changes: Sequence[SymbolChange], base: ImportGraph, head: ImportGraph
+) -> BlastRadius:
+    changed = tuple(dict.fromkeys(change.symbol_id for change in changes))
+    ids = [i for c in changes for i in (c.symbol_id, c.previous_symbol_id) if i is not None]
+    module_level = sorted({module_of(i) for i in ids if f":{MODULE_QUALNAME}#" in i})
+    distance = downstream((module_of(i) for i in ids), base, head)
     excluded = set(changed)
     affected = sorted(
         (

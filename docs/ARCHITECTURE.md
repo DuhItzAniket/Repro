@@ -131,6 +131,13 @@ selected = tests touching any blast-radius function            (dynamic map, bas
 The map is cached keyed by `(base commit, lockfile digest, interpreter)`. If a change has no
 selected tests, the card gets a `no_covering_test` missing item for each uncovered changed symbol.
 
+As built (D05, `runner/selection.py`): the map records, per test, each function's *place* (file
+relative to the snapshot, qualified name, first line), which the engine resolves to symbols; the
+cache key adds the platform and the map's format. Module-level code runs at import, so its
+changes select by imports (and a changed `conftest.py` selects the tests below it). A changed
+symbol is covered when a selected test ran it on base or, mapped again, on head; every other
+changed symbol outside test code becomes a `no_covering_test` item.
+
 ### 4.2 Outcome classification (`diff/outcome`)
 Every selected test is classified on base vs head: **F2P** (fail→pass), **P2P**, **P2F**,
 **F2F**, **new**, **removed**, **modified** (test code differs between sides, so outcomes

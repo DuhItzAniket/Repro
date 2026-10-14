@@ -1,0 +1,29 @@
+# Expected Repro outcome for the selection fixture (D05 asserts the selection).
+[fixture]
+name = "selection"
+head = "change/prices-and-names"
+
+[expected]
+status = "VERIFIED"
+claims = [
+  "net() raises ValueError for negative amounts",
+  "discount() clamps its percentage to 0-100",
+  "Cart.names() sorts without regard to case",
+]
+# Test outcome evidence is asserted from D06 on.
+evidence = []
+missing = []
+
+[selection]
+# Every changed function is run by a selected test; nothing is uncovered.
+uncovered = []
+
+[selection.selected]
+# Exactly these tests, with these reasons. tests/test_cart.py::test_empty_total runs neither
+# changed function, so it is not selected.
+"tests/test_cart.py::test_names" = ["blast_radius", "modified_test"]
+"tests/test_cart.py::test_total" = ["blast_radius"]
+"tests/test_prices.py::test_discount" = ["blast_radius"]
+"tests/test_prices.py::test_discount_is_clamped" = ["new_test"]
+"tests/test_prices.py::test_gross" = ["blast_radius"]
+"tests/test_prices.py::test_net" = ["blast_radius"]
