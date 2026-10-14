@@ -253,7 +253,8 @@ def test_a_healthy_machine_is_ready(tmp_path: Path) -> None:
     )  # fmt: skip
     assert report.ok
     assert [check.name for check in report.checks] == [
-        "python", "sqlite", "git", "uv", "docker", "data dir", "run root", "long paths",
+        "python", "sqlite", "git", "uv", "docker", "containment", "data dir", "run root",
+        "long paths",
     ]  # fmt: skip
     assert report.to_text().splitlines()[-1] == "Ready: every required check passed."
     assert report.to_text().isascii()

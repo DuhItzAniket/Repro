@@ -338,7 +338,7 @@ The sandbox escape suite passes at the level the card claims.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| D01 | Sandbox abstraction & process isolation (L0–L2) | M | C03, A08 | planned |
+| D01 | Sandbox abstraction & process isolation (L0–L2) | M | C03, A08 | in progress |
 | D02 | Container backend (L3) | M | D01 | planned |
 | D03 | Environment provisioning | L | D02 | planned |
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | planned |

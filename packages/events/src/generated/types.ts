@@ -123,7 +123,7 @@ export type VerdictValue = "supported" | "contradicted" | "unverifiable";
 
 export type CardStatus = "VERIFIED" | "FLAGGED" | "UNVERIFIABLE";
 
-export type EvidenceType = "test_outcome" | "test_change" | "behaviour_diff" | "probe_diff" | "api_diff" | "dep_diff" | "lock_drift" | "perf_diff" | "invariant" | "selection" | "network_attempt" | "environment" | "static_change" | "policy_change";
+export type EvidenceType = "test_outcome" | "test_change" | "behaviour_diff" | "probe_diff" | "api_diff" | "dep_diff" | "lock_drift" | "perf_diff" | "invariant" | "selection" | "network_attempt" | "subprocess_attempt" | "file_attempt" | "environment" | "static_change" | "policy_change";
 
 export type MissingReason = "no_covering_test" | "environment_failed" | "collection_error" | "timeout" | "unstable_observation" | "trace_unavailable" | "trace_truncated" | "subprocess_untraced" | "encoding_failed" | "network_not_enforced" | "perf_not_assessable" | "unsupported_project" | "verdict_rejected" | "claim_unverifiable";
 

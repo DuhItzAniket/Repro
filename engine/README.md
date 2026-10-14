@@ -58,6 +58,15 @@ for packages, in a process of its own; `ast` for tests and scripts outside packa
 `analyse(git, base, head, workdir)` returns the changed symbols, both graphs and the blast
 radius, with `graph_payloads` and `blast.payload()` giving their events.
 
+## Sandbox
+
+`repro.sandbox.ProcessSandbox(work, limits)` runs a command at L0 to L2 (ADR-0004):
+`run(argv, cwd=…, env=…, timeout_s=…, stop=…)` returns an `Execution` (outcome, exit status,
+output, whether processes were left running, and the network, subprocess and file-write
+attempts the audit hook detected). `detection_evidence` turns detections into evidence records;
+`ready_payload(side)` is the `sandbox.ready` payload. Containment is a Job Object on Windows and
+a process group with resource limits on POSIX; the network is detected, not enforced (L3, D02).
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,

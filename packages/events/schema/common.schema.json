@@ -145,6 +145,8 @@
         "invariant",
         "selection",
         "network_attempt",
+        "subprocess_attempt",
+        "file_attempt",
         "environment",
         "static_change",
         "policy_change"

@@ -349,6 +349,12 @@ Rules:
   shared cache through hardlinks (research/03 §7).
 - Target code never runs in a linked worktree on the host. A linked worktree shares the host
   repo's `.git` config and hooks.
+- **L0–L2 as built (D01, `repro.sandbox`):** a minimal environment with a fresh home and
+  temporary directory; Repro's audit hook first on `PYTHONPATH`, in every Python process of the
+  command; on Windows a Job Object (the command created suspended, assigned, resumed), on POSIX
+  a new session with resource limits set by a launcher before `exec`; a wall-clock timeout that
+  kills the tree, and processes left behind killed and reported. `sandbox.ready` states the
+  level reached and `network: detected-only`.
 
 ## 9. Static analysis — see ADR-0006
 
