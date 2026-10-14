@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C01 |
-| **Branch / PR** | `phase/C05-git-layer` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C05-git-layer` · [#33](https://github.com/DuhItzAniket/Repro/pull/33) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 Repro can read any commit of a target repository safely: resolve the refs a run names, know
