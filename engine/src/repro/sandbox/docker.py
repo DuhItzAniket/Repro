@@ -94,6 +94,8 @@ class DockerSandbox:
         self.image = image
         self.docker = docker
         self.volume = f"repro-{uuid.uuid4().hex[:12]}"
+        #: Volumes adopted for every command's container: volume -> path (an environment).
+        self.mounts: dict[str, str] = {}
         self._runs = 0
         self._lock = threading.Lock()
         self.work.mkdir(parents=True, exist_ok=True)
@@ -156,9 +158,14 @@ class DockerSandbox:
                 )
         return tree
 
+    def adopt_volume(self, volume: str, path: str) -> None:
+        """Mounts ``volume`` at ``path`` in every later command, and removes it on ``close``."""
+        self.mounts[volume] = path
+
     def close(self) -> None:
-        """Removes the volume and everything in it."""
-        self._docker("volume", "rm", "-f", self.volume, check=False)
+        """Removes the volume, the volumes it adopted, and everything in them."""
+        for volume in [*self.mounts, self.volume]:
+            self._docker("volume", "rm", "-f", volume, check=False)
 
     def __enter__(self) -> "DockerSandbox":
         return self
@@ -220,6 +227,7 @@ class DockerSandbox:
         command = [
             self.docker, "run", "--name", name, *self._hardening(),
             "-v", f"{self.volume}:{WORK}", "-v", f"{HOOK_DIR}:{HOOK_MOUNT}:ro",
+            *[flag for volume, path in self.mounts.items() for flag in ("-v", f"{volume}:{path}")],
             "-w", self.container_path(cwd),
             *_env_flags(self._environment(audit, env)),
             "--entrypoint", argv[0], self.image, *argv[1:],

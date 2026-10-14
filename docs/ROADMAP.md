@@ -340,7 +340,7 @@ The sandbox escape suite passes at the level the card claims.
 |---|---|---|---|---|
 | D01 | Sandbox abstraction & process isolation (L0–L2) | M | C03, A08 | done |
 | D02 | Container backend (L3) | M | D01 | done |
-| D03 | Environment provisioning | L | D02 | planned |
+| D03 | Environment provisioning | L | D02 | done |
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | planned |
 | D05 | Test selection via per-test function map | M | D04, C07 | planned |
 | D06 | Two-sided execution, outcome & test-change diff, flake control | L | D05 | planned |
@@ -698,3 +698,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Gate C | 2026-10-14 | [#37](https://github.com/DuhItzAniket/Repro/pull/37) | Stage C complete; release v0.3.0 ([gate record](phases/C-gate.md)); Gate C's end-to-end test passes in CI (Linux) and on Windows (Edge) |
 | D01 | 2026-10-14 | [#38](https://github.com/DuhItzAniket/Repro/pull/38) | The process sandbox, L0 to L2: minimal environment; audit-hook detection of network, subprocess and file-write attempts as evidence; Job Objects (created suspended) on Windows, a session and resource limits on POSIX; bounded fork-bomb, memory-hog and timeout fixtures contained on both |
 | D02 | 2026-10-14 | [#39](https://github.com/DuhItzAniket/Repro/pull/39) | The container sandbox, L3: the commit streamed from its tree object into a volume; hardened containers with no network, read-only root, exec tmpfs, no capabilities, uid 1000, limits; the escape suite blocked; `repro doctor` reports the isolation level runs reach |
+| D03 | 2026-10-14 | [#40](https://github.com/DuhItzAniket/Repro/pull/40) | Provisioning: project kind and requirements read from files (index only); dependencies from wheels in a cached environment no target code has touched, copied per side; the project built offline in the sandbox; five fixture kinds on the host and in containers; uv cannot use a read-only cache (ADR-0004 note) |

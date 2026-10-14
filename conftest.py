@@ -14,6 +14,9 @@ settings.register_profile("ci", derandomize=True, deadline=None, max_examples=20
 settings.register_profile("dev", deadline=None, max_examples=100)
 settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
+# Fixture projects (D03) are target code with tests of their own, run only inside a sandbox.
+collect_ignore_glob = ["engine/tests/data/*"]
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(

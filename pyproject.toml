@@ -39,7 +39,8 @@ target-version = "py312"
 line-length = 100
 src = ["engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests", "scripts"]
 # Code blocks in docs are illustrative sketches, not source; Ruff 0.17 would otherwise format them.
-extend-exclude = ["docs", "packages/events/python/src/repro_events/models.py"]
+# D03's fixture projects are target code for the sandbox, not Repro's own.
+extend-exclude = ["docs", "packages/events/python/src/repro_events/models.py", "engine/tests/data"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -86,3 +87,5 @@ warn_unreachable = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
 files = ["conftest.py", "engine/src", "engine/tests", "bench/src", "packages/events/python/src", "packages/events/python/tests", "scripts"]
 mypy_path = "scripts,engine/tests"
+# Fixture projects (D03) are target code for the sandbox, not Repro's own.
+exclude = ["^engine/tests/data/"]

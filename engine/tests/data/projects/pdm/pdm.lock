@@ -1,0 +1,41 @@
+# A fixture in pdm.lock's format: Repro reads each package's name, version, marker and
+# source.
+[metadata]
+groups = ["default", "test"]
+lock_version = "4.5.0"
+
+[[package]]
+name = "colorama"
+version = "0.4.6"
+requires_python = ">=3.8"
+groups = ["default", "test"]
+marker = 'sys_platform == "win32"'
+files = []
+
+[[package]]
+name = "iniconfig"
+version = "2.0.0"
+requires_python = ">=3.8"
+groups = ["default", "test"]
+files = []
+
+[[package]]
+name = "packaging"
+version = "24.2"
+requires_python = ">=3.8"
+groups = ["default", "test"]
+files = []
+
+[[package]]
+name = "pluggy"
+version = "1.5.0"
+requires_python = ">=3.8"
+groups = ["default", "test"]
+files = []
+
+[[package]]
+name = "pytest"
+version = "8.3.3"
+requires_python = ">=3.8"
+groups = ["default", "test"]
+files = []
