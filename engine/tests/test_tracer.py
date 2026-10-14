@@ -110,7 +110,7 @@ def test_each_kind_of_call(side: Side) -> None:
     assert generated.yields == (digest(0), digest(2), digest(4))
     (abandoned,) = calls(results, "test_abandoned_generator", "gen")
     # Collected when its test returned: Python closes it with GeneratorExit.
-    assert (abandoned.outcome, abandoned.yields) == ("closed", (digest(0),))
+    assert (abandoned.outcome, abandoned.yields) == ("suspended", (digest(0),))
     recursion = calls(results, "test_recursion", "recurse")
     assert [c.args for c in recursion] == [digest((n,)) for n in range(5, -1, -1)]
     assert [c.result for c in recursion] == [digest(n) for n in range(5, -1, -1)]

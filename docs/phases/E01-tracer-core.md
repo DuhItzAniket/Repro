@@ -17,9 +17,8 @@ from inside the target's own tests, cheaply enough to run on every change: the r
 - **The tracer** (`sandbox/_hook/repro_trace.py`, standard library only, Python 3.12–3.15):
   for each target function, every call's arguments (read from the callee's frame at PY_START),
   its result (PY_RETURN), its exception (PY_UNWIND), a generator's yields (PY_YIELD, at most
-  32), each attributed to the running test and its phase. Outcomes `return`, `raise`, `closed`
-  (a generator closed before it finished), `suspended` (still suspended when its test ended),
-  `unfinished` (in flight when its target's budget ran out).
+  32), each attributed to the running test and its phase. Outcomes `return`, `raise`,
+  `suspended` (a generator that did not run to its end), `unfinished` (in flight when its target's budget ran out).
 - **Tool ID**: the plugin's one `sys.monitoring` tool serves D05's map and the tracer, claimed
   in the order 4, 3, 2, 5; none free is a `trace_unavailable` missing item. Beside coverage.py's
   `sysmon` core (tool 1), both measure.
@@ -54,8 +53,10 @@ from inside the target's own tests, cheaply enough to run on every change: the r
   events on. So when the budget runs out, recorded calls still in flight end as `unfinished`
   (arguments known, results not, never compared) and the target's return and yield events are
   disabled as soon as they next fire. The same function then ran at 1.03×.
-- **Closed is not raised.** An abandoned generator is closed when it is collected, which raises
-  `GeneratorExit` inside it; that is recorded as `closed`, not as the function raising.
+- **An unfinished generator is `suspended`, however it ends.** An abandoned generator is
+  closed when it is collected, which raises `GeneratorExit` inside it: that is not the function
+  raising. Whether that happens before its test ends is the collector's timing: on Ubuntu CI,
+  Python 3.12 collected it after the test, every other run before. So both are `suspended`.
 - **No user code runs to encode.** Only exact builtin types are walked; a subclass, like any
   object, is a type name read from the type itself. A hostile `__eq__`, `__repr__` or property is
   never called.
