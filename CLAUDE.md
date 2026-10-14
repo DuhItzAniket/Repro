@@ -100,7 +100,9 @@ pnpm build              # production build of apps/web
 uv run pytest           # Python tests
 uv run repro --version  # engine CLI
 uv run repro doctor     # can this machine run Repro? (--json for a report)
-uv run repro serve      # read-only API + event stream on 127.0.0.1:8780
+uv run repro run --repo <path> --base <ref> --head <ref>   # live in the cockpit (C08)
+uv run repro replay <run id | log.jsonl>                    # replayed from the start
+uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
 
 pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply
 uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)
@@ -112,6 +114,9 @@ uv run python scripts/check_licenses.py   # licence allow-list over all installe
 uv run repro-events validate <log.jsonl>   # schema + log invariants of an event log
 pnpm fixtures                             # regenerate apps/web/fixtures/*.jsonl (review the diff!)
 uv run pytest --update-goldens            # rewrite golden files (review the diff!)
+pnpm --filter @repro/web exec playwright test -c playwright.gate.config.ts
+                        # Gate C end to end; needs pnpm build, uv sync and REPRO_GATE_REPO
+                        # (a clone of pallets/itsdangerous); REPRO_GATE_CHANNEL=msedge on Windows
 ```
 
 Optional: `uvx pre-commit install` enables local hooks for Ruff and Biome.

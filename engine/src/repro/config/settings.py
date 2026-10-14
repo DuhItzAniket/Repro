@@ -56,16 +56,18 @@ class Settings(BaseModel):
     log_format: LogFormat = "json"
     concurrency: int = Field(default_factory=default_concurrency, ge=1, le=MAX_CONCURRENCY)
     sandbox: SandboxChoice = "auto"
+    #: The built cockpit (``pnpm build``'s ``apps/web/dist``); unset: this checkout's, if built.
+    ui_dir: Path | None = None
 
     @field_validator("log_level", "log_format", "sandbox", mode="before")
     @classmethod
     def _lowercase(cls, value: object) -> object:
         return value.lower() if isinstance(value, str) else value
 
-    @field_validator("data_dir", "run_root")
+    @field_validator("data_dir", "run_root", "ui_dir")
     @classmethod
-    def _absolute(cls, value: Path) -> Path:
-        if not value.is_absolute():
+    def _absolute(cls, value: Path | None) -> Path | None:
+        if value is not None and not value.is_absolute():
             raise ValueError("must be an absolute path")
         return value
 
@@ -193,7 +195,7 @@ def load_settings(
     for layer, source in layers:
         for name, value in layer.items():
             values[name], sources[name] = value, source(name)
-    for name in ("data_dir", "run_root"):
+    for name in ("data_dir", "run_root", "ui_dir"):
         if name in values:
             values[name] = _expand(values[name], home)
 

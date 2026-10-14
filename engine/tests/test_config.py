@@ -111,6 +111,14 @@ def test_an_invalid_value_names_its_source(home: Path) -> None:
 def test_relative_paths_are_rejected(home: Path) -> None:
     with pytest.raises(SettingsError, match=r"REPRO_RUN_ROOT: .*absolute"):
         load_settings(env=environment(home, REPRO_RUN_ROOT="relative/dir"))
+    with pytest.raises(SettingsError, match=r"REPRO_UI_DIR: .*absolute"):
+        load_settings(env=environment(home, REPRO_UI_DIR="apps/web/dist"))
+
+
+def test_the_cockpit_directory_is_unset_by_default_and_expands_home(home: Path) -> None:
+    assert load_settings(env=environment(home)).ui_dir is None
+    settings = load_settings(env=environment(home, REPRO_UI_DIR="~/cockpit"))
+    assert settings.ui_dir == home / "cockpit"
 
 
 def test_malformed_toml_is_an_error_naming_the_file(home: Path) -> None:

@@ -6,5 +6,13 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact"
   },
-  "include": ["src", "e2e", "vite.config.ts", "vitest.perf.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "e2e",
+    "gate",
+    "vite.config.ts",
+    "vitest.perf.config.ts",
+    "playwright.config.ts",
+    "playwright.gate.config.ts"
+  ]
 }

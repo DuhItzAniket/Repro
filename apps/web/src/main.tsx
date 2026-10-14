@@ -3,11 +3,14 @@ import "./styles/tokens.css";
 import "./styles/shell.css";
 import { computed, effect, signal } from "@preact/signals";
 import { render } from "preact";
-import { FIXTURES, fixtureFromQuery, loadLog } from "./data/load";
+import { FIXTURES, loadLog } from "./data/load";
+import { latestRun, type Source, sourceFromQuery, streamUrl } from "./data/source";
+import { browserSocket, RunStream } from "./data/stream";
 import { type DrawerView, drawerView } from "./focus/evidence";
 import { type Focus, type FocusTargets, focusKey, focusTargets, NO_FOCUS } from "./focus/focus";
 import { PresentationClock } from "./model/clock";
 import { CockpitModel } from "./model/cockpit";
+import type { AppendSummary } from "./model/store";
 import { type Motion, REDUCED_MOTION_QUERY } from "./motion/motion";
 import { behaviourPanel } from "./panels/behaviour";
 import { indexPanel } from "./panels/check-index";
@@ -333,25 +336,92 @@ if (testMode) {
   });
 }
 
-const fixture = fixtureFromQuery(window.location.search);
-view.status.value = `loading ${fixture} run…`;
-loadLog(FIXTURES[fixture])
-  .then(({ values, badLines }) => {
-    const result = model.ingest(values);
-    void webLayout.request();
-    clock.setEnd(model.store.endTime);
-    clock.play();
-    const problems = [
-      badLines > 0 ? `${badLines} unreadable lines` : null,
-      result.stopped === undefined
-        ? null
-        : `stopped at event ${result.appended + 1}: ${result.stopped.status}`,
-    ].filter((p) => p !== null);
-    view.status.value = problems.length === 0 ? null : problems.join(" · ");
-  })
-  .catch((error: unknown) => {
-    view.status.value = error instanceof Error ? error.message : String(error);
-  });
+/** Takes events into the model and tells the layout and the clock how far the data reaches. */
+function ingest(values: readonly unknown[]): AppendSummary {
+  const result = model.ingest(values);
+  void webLayout.request();
+  clock.setEnd(model.store.endTime);
+  return result;
+}
+
+/** A whole log at once (a fixture, or one the engine serves): replayed from the start. */
+function replayLog(url: string, label: string): void {
+  view.status.value = `loading ${label}…`;
+  loadLog(url)
+    .then(({ values, badLines }) => {
+      const result = ingest(values);
+      clock.play();
+      const problems = [
+        badLines > 0 ? `${badLines} unreadable lines` : null,
+        result.stopped === undefined
+          ? null
+          : `stopped at event ${result.appended + 1}: ${result.stopped.status}`,
+      ].filter((p) => p !== null);
+      view.status.value = problems.length === 0 ? null : problems.join(" · ");
+    })
+    .catch((error: unknown) => {
+      view.status.value = error instanceof Error ? error.message : String(error);
+    });
+}
+
+/**
+ * A run from the engine's event stream (C08). Live, the clock follows the newest event once the
+ * stored part has arrived; as a replay, it plays from the start like a log.
+ */
+function followRun(runId: string, replay: boolean): void {
+  view.status.value = `connecting to ${runId}…`;
+  let playing = false;
+  const stream = new RunStream(
+    (from) => streamUrl(window.location, runId, from),
+    {
+      ingest: (events) => {
+        const result = ingest(events);
+        if (replay && !playing && model.store.length > 0) {
+          playing = true;
+          clock.play();
+        }
+        return result;
+      },
+      held: () => model.store.length,
+      caughtUp: () => {
+        if (!replay) clock.goLive();
+      },
+      ended: () => {
+        view.status.value = null;
+        // Nothing more will come: live time would run on past the data. Wait at the end, as a
+        // replay does, so the live view and the replay end in the same state.
+        if (clock.mode === "live") clock.seek(clock.end);
+      },
+      status: (text) => {
+        view.status.value = text;
+      },
+    },
+    browserSocket,
+  );
+  stream.start();
+}
+
+function load(source: Source): void {
+  switch (source.kind) {
+    case "fixture":
+      replayLog(FIXTURES[source.name], `${source.name} run`);
+      break;
+    case "log":
+      replayLog(source.url, source.url);
+      break;
+    case "run":
+      followRun(source.runId, source.replay);
+      break;
+    case "latest":
+      // Served by the engine: its newest run; on the dev server (or with no runs): the demo.
+      void latestRun().then((runId) =>
+        runId === null ? load({ kind: "fixture", name: "demo" }) : followRun(runId, false),
+      );
+      break;
+  }
+}
+
+load(sourceFromQuery(window.location.search));
 
 // Development only: a handle for inspecting the running cockpit from the console.
 if (import.meta.env.DEV) {

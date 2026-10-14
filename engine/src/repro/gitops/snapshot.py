@@ -20,8 +20,12 @@ faithfully on this machine is skipped and listed, never written somewhere else:
 Size and file-count limits guard the disk (THREAT_MODEL T4); they are checked before anything is
 written. On Windows, files are written through extended-length paths, so deep trees work even
 when long paths are disabled.
+
+``tree_sha256`` fingerprints what was written: the SHA-256 of one line per written entry, its
+mode, blob SHA, a tab and its path, then a newline, in path order.
 """
 
+import hashlib
 import os
 import re
 import shutil
@@ -68,6 +72,7 @@ class Snapshot:
     files: int
     bytes: int
     skipped: tuple[Skipped, ...]
+    tree_sha256: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -297,7 +302,13 @@ def snapshot(
             continue
         target.symlink_to(link_target)
         files += 1
-    return Snapshot(root, sha, files, size, tuple(skipped))
+    left_out = {item.path for item in skipped}
+    digest = hashlib.sha256()
+    for entry in sorted(to_write, key=lambda e: e.path):
+        if entry.path not in left_out:
+            line = f"{entry.mode} {entry.sha}\t{entry.path}\n"
+            digest.update(line.encode("utf-8", "surrogateescape"))
+    return Snapshot(root, sha, files, size, tuple(skipped), digest.hexdigest())
 
 
 def remove_snapshot(root: Path) -> None:

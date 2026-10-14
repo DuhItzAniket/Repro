@@ -289,7 +289,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | done |
 | C06 | Symbol table & changed-symbol mapping | M | C05 | done |
 | C07 | Import graph & blast radius | M | C06 | done |
-| C08 | Live UI wiring & end-to-end | M | B12, C04, C07 | planned |
+| C08 | Live UI wiring & end-to-end | M | B12, C04, C07 | in progress |
 
 **C01** Typer CLI (`run`, `replay`, `serve`, `doctor`, `export`), settings (env plus
 `~/.repro/config.toml`), structured logging, Windows-safe data paths. *Accept:* `repro doctor`

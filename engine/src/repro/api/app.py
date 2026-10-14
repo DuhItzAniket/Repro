@@ -10,7 +10,8 @@ Local-only by default (THREAT_MODEL T13, T16):
   Clients that are not browsers send no ``Origin``; they are other local processes (T13, whose
   per-session token arrives in H03).
 
-Nothing here changes state.
+Nothing here changes state. With ``ui_dir``, the built cockpit is served at ``/`` (C08); with
+``replay_log``, one event log file is served at ``/replay.jsonl`` for the cockpit to replay.
 """
 
 import re
@@ -21,6 +22,7 @@ from typing import Annotated, Any, Final
 from fastapi import FastAPI, HTTPException, Query, WebSocket
 from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from repro import __version__
@@ -47,6 +49,8 @@ def create_app(
     allowed_hosts: Sequence[str] = LOCAL_HOSTS,
     allowed_origins: Collection[str] = (),
     max_pending: int = DEFAULT_MAX_PENDING,
+    ui_dir: Path | None = None,
+    replay_log: Path | None = None,
 ) -> FastAPI:
     """The API over the store at ``database``; live events come from ``bus``, if given."""
     runs_dir = runs_dir if runs_dir is not None else database.parent / "runs"
@@ -134,7 +138,21 @@ def create_app(
             max_pending=max_pending,
         )
 
+    _add_cockpit(app, ui_dir, replay_log)
     return app
+
+
+def _add_cockpit(app: FastAPI, ui_dir: Path | None, replay_log: Path | None) -> None:
+    """The cockpit's files at ``/`` and a log to replay at ``/replay.jsonl``, when given."""
+    if replay_log is not None:
+        log_file = replay_log
+
+        @app.get("/replay.jsonl")
+        def replay() -> FileResponse:
+            return FileResponse(log_file, media_type="application/x-ndjson")
+
+    if ui_dir is not None:  # mounted last: the API's routes take precedence over files
+        app.mount("/", StaticFiles(directory=ui_dir, html=True), name="cockpit")
 
 
 def _run_json(run: Any, last_seq: int) -> dict[str, Any]:

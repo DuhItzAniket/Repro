@@ -51,7 +51,9 @@ node_modules/
 .vite/
 apps/web/dist/
 playwright-report/
+playwright-report-gate/
 test-results/
+test-results-gate/
 # Perf gate output (B12); the committed baseline lives in apps/web/perf/
 perf-results/
 blob-report/
