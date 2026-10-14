@@ -26,11 +26,14 @@ directory replaced by ``<ROOT>``, ``<TMP>`` and ``<HOME>`` (and then ``\\`` made
 hexadecimal addresses (``0x`` and six or more hex digits) by ``<ADDR>``: base and head run from
 different directories, and default ``repr`` strings embed addresses.
 
-**Two digests, one walk.** Every dictionary is written with its entries sorted by their
-encodings, and its insertion order is kept apart, as the positions its entries came in. The
-order-insensitive digest hashes the sorted bytes; the digest hashes them with the orders: two
-values that differ only in the order of some dictionary have the same first and different
-second digests, so a difference in order alone can be told apart.
+**Dictionaries.** ``digest`` writes a dictionary in insertion order, which is the same in
+every process (only sets depend on the hash seed). ``digests`` also gives an order-insensitive
+digest, in one walk: every dictionary is written sorted, its insertion order kept apart as the
+positions its entries came in; one digest hashes the sorted bytes, the other adds the orders.
+Two values differing only in some dictionary's order have equal order-insensitive and
+different order-keeping digests, so a difference in order alone can be told apart. Sorting
+costs time, so the tracer asks for it only for results: arguments are its join keys, and the
+same test builds them the same way on both sides.
 
 **Guards.** Deeper than ``MAX_DEPTH``, past ``MAX_NODES`` values or ``MAX_SECONDS``, or back at a
 container or object already on the path (a cycle), the walk writes a tag and the encoding is
@@ -175,19 +178,24 @@ def _build_adapters() -> dict[type, Callable[[Any], str]]:
 class _Walk:
     __slots__ = (
         "adapters", "complete", "deadline", "nodes", "normalise", "orders", "path", "shortest",
+        "sort",
     )  # fmt: skip
 
-    def __init__(self) -> None:
+    def __init__(self, *, sort: bool) -> None:
+        self.sort = sort  # dictionaries sorted, their orders kept apart (``digests``)
         self.nodes = 0
         self.complete = True
         self.orders = bytearray()  # each dictionary's insertion order, as sorted positions
-        normaliser = _normaliser()
-        self.normalise = normaliser.text
-        # Strings shorter than every directory replaced cannot hold one.
-        self.shortest = normaliser.shortest if normaliser.pairs else 1 << 62
-        self.path: set[int] = set()
-        self.deadline = time.perf_counter() + MAX_SECONDS
+        self.normalise, self.shortest = _strings()
+        self.path: set[int] | None = None  # objects on the path, once one is walked
+        self.deadline = 0.0  # set at the first checkpoint: smaller walks are bounded by nodes
         self.adapters: dict[type, Callable[[Any], str]] | None = None  # when first needed
+
+    def past_deadline(self) -> bool:
+        now = time.perf_counter()
+        if not self.deadline:
+            self.deadline = now + MAX_SECONDS
+        return now > self.deadline
 
     def load_adapters(self) -> dict[type, Callable[[Any], str]]:
         self.adapters = _adapters()
@@ -202,7 +210,7 @@ class _Walk:
         if self.nodes > MAX_NODES or depth > MAX_DEPTH:
             self.stop(out)
             return
-        if self.nodes % _CHECK_EVERY == 0 and time.perf_counter() > self.deadline:
+        if not self.nodes % _CHECK_EVERY and self.past_deadline():
             self.stop(out)
             return
         kind = type(value)
@@ -288,19 +296,7 @@ class _Walk:
                 self.value(item, depth + 1, out)
             out += b"]"
         elif kind is dict:
-            pairs = []
-            for key, item in dict.items(value):
-                pair = bytearray()
-                self.value(key, depth + 1, pair)
-                self.value(item, depth + 1, pair)
-                pairs.append(bytes(pair))
-            ordered = sorted(pairs)
-            if ordered == pairs:
-                self.orders += b"."
-            else:  # its insertion order, as the sorted positions its entries came in
-                ranked = sorted(range(len(pairs)), key=pairs.__getitem__)
-                self.orders += b"(" + ",".join(map(str, ranked)).encode() + b")"
-            out += b"M%d{" % len(pairs) + b"".join(ordered) + b"}"
+            self.dictionary(value, depth, out, subclass=subclass)
         else:
             # Elements in the order of their encodings, and the orders of any dictionaries
             # inside them with them: a set's iteration order depends on the hash seed.
@@ -316,6 +312,59 @@ class _Walk:
             del self.orders[start:]
             self.orders += b"".join(orders for _, orders in parts)
             out += _SETS[kind] + b"%d(" % len(parts) + b"".join(part for part, _ in parts) + b")"
+
+    def dictionary(self, value: Any, depth: int, out: bytearray, *, subclass: bool) -> None:
+        if not self.sort:  # insertion order: the same in every process
+            out += b"N%d{" % dict.__len__(value)
+            for key, item in dict.items(value):
+                self.value(key, depth + 1, out)
+                self.value(item, depth + 1, out)
+            out += b"}"
+            return
+        if not subclass and depth < MAX_DEPTH and self.text_keyed(value, depth, out):
+            return
+        pairs = []
+        for key, item in dict.items(value):
+            pair = bytearray()
+            self.value(key, depth + 1, pair)
+            self.value(item, depth + 1, pair)
+            pairs.append(bytes(pair))
+        ordered = sorted(pairs)
+        if ordered == pairs:
+            self.orders += b"."
+        else:  # its insertion order, as the sorted positions its entries came in
+            ranked = sorted(range(len(pairs)), key=pairs.__getitem__)
+            self.orders += b"(" + ",".join(map(str, ranked)).encode() + b")"
+        out += b"M%d{" % len(pairs) + b"".join(ordered) + b"}"
+
+    def text_keyed(self, value: dict[Any, Any], depth: int, out: bytearray) -> bool:
+        """The common case of a dictionary whose keys are all exact strings (JSON-like data),
+        written without encoding each entry apart: entries in the order of their keys'
+        normalised text. False, with nothing written, for any other dictionary, or when two
+        keys normalise alike (the general path then orders them by their whole encodings)."""
+        items = list(value.items())  # an exact dict: its own iteration
+        texts = []
+        for key, _ in items:
+            if type(key) is not str:
+                return False
+            if len(key) >= self.shortest or "0x" in key or "0X" in key:
+                key = self.normalise(key)  # noqa: PLW2901 - its normalised text
+            texts.append(key)
+        if len(set(texts)) != len(texts):
+            return False
+        ranked = sorted(range(len(items)), key=texts.__getitem__)
+        if ranked == list(range(len(items))):
+            self.orders += b"."
+        else:  # its insertion order, as the sorted positions its entries came in
+            self.orders += b"(" + ",".join(map(str, ranked)).encode() + b")"
+        out += b"M%d{" % len(items)
+        for index in ranked:
+            self.nodes += 1  # the key, as the general path counts it
+            data = texts[index].encode("utf-8", "surrogatepass")
+            out += b"S%d:" % len(data) + data
+            self.value(items[index][1], depth + 1, out)
+        out += b"}"
+        return True
 
     def exception(self, value: BaseException, kind: type, depth: int, out: bytearray) -> None:
         out += b"R" + type_name(kind).encode("utf-8", "surrogatepass") + b"("
@@ -362,6 +411,8 @@ class _Walk:
         if state is None:
             out += b"O" + name + b";"
             return
+        if self.path is None:
+            self.path = set()
         if id(value) in self.path:
             self.stop(out, b"Y")
             return
@@ -458,9 +509,21 @@ def _normaliser() -> Normaliser:
     return _DEFAULT[0]
 
 
-def _run(value: Any) -> tuple[bytes, bytes, bool]:
-    """The canonical bytes (dictionaries sorted), the dictionaries' orders, completeness."""
-    walk = _Walk()
+_STRINGS: list[tuple[Callable[[str], str], int]] = []
+
+
+def _strings() -> tuple[Callable[[str], str], int]:
+    """The normaliser's ``text``, and the length under which a string cannot hold a directory
+    (strings that short skip it unless they may hold an address)."""
+    if not _STRINGS:
+        normaliser = _normaliser()
+        _STRINGS.append((normaliser.text, normaliser.shortest if normaliser.pairs else 1 << 62))
+    return _STRINGS[0]
+
+
+def _run(value: Any, *, sort: bool) -> tuple[bytes, bytes, bool]:
+    """The canonical bytes, the dictionaries' orders (when ``sort``), completeness."""
+    walk = _Walk(sort=sort)
     out = bytearray()
     try:
         walk.value(value, 0, out)
@@ -471,10 +534,10 @@ def _run(value: Any) -> tuple[bytes, bytes, bool]:
 
 
 def encode(value: Any) -> tuple[bytes, bool]:
-    """The canonical bytes of ``value`` (with its dictionaries' orders, when it holds any), and
-    whether the walk was complete."""
-    data, orders, complete = _run(value)
-    return (data + b"#" + orders if orders else data), complete
+    """The canonical bytes of ``value`` (dictionaries in insertion order), and whether the
+    walk was complete."""
+    data, _, complete = _run(value, sort=False)
+    return data, complete
 
 
 def digest(value: Any) -> tuple[str, bool]:
@@ -486,7 +549,7 @@ def digest(value: Any) -> tuple[str, bool]:
 def digests(value: Any) -> tuple[str, str, bool]:
     """The digest, the order-insensitive digest (the same when ``value`` holds no dictionary),
     and whether the walk was complete; one walk."""
-    data, orders, complete = _run(value)
+    data, orders, complete = _run(value, sort=True)
     hashed = blake2b(data, digest_size=16)
     unordered = hashed.hexdigest()
     if not orders:

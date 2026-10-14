@@ -60,8 +60,7 @@ def _names(code: Any) -> tuple[str, ...]:
 
 class _Call:
     __slots__ = (
-        "args", "args_any_order", "args_complete", "code", "index", "phase", "target", "test",
-        "yields",
+        "args", "args_complete", "code", "index", "phase", "target", "test", "yields",
     )  # fmt: skip
 
     def __init__(self, target: Target, test: str, phase: str, index: int, code: int) -> None:
@@ -71,7 +70,6 @@ class _Call:
         self.phase = phase
         self.index = index
         self.args = ""
-        self.args_any_order = ""
         self.args_complete = True
         self.yields: list[str] = []
 
@@ -132,7 +130,7 @@ class Tracer:
         # The parameters' values in their order (their names are the function's, the same in
         # every call); one deleted before PY_START (it cannot be) would show as the marker.
         arguments = tuple(local.get(name, _UNSET) for name in _names(code))
-        call.args, call.args_any_order, call.args_complete = digests(arguments)
+        call.args, call.args_complete = digest(arguments)  # dictionaries in their order
         self.inflight[id(frame)] = call
         self.open[id(code)] = self.open.get(id(code), 0) + 1
         return True
@@ -223,10 +221,8 @@ class Tracer:
             "yields": call.yields,
             "yields_complete": len(call.yields) < MAX_YIELDS,
         }
-        # Digests with every dictionary sorted, only where they differ: a difference in
-        # dictionary order alone is told apart from a difference in content (E04).
-        if call.args_any_order and call.args_any_order != call.args:
-            record["args_any_order"] = call.args_any_order
+        # The result's digest with every dictionary sorted, only where it differs: a
+        # difference in dictionary order alone is told apart from one in content (E04).
         if any_order and any_order != result:
             record["result_any_order"] = any_order
         self.write(record)

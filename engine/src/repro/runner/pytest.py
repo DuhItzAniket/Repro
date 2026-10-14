@@ -198,8 +198,7 @@ class TraceCall:
     type: str  # the value's (or the exception's) type, module.qualname
     yields: tuple[str, ...]
     yields_complete: bool
-    #: The digests with every dictionary sorted, when they differ from the ordered ones.
-    args_any_order: str | None = None
+    #: The result's digest with every dictionary sorted, when it differs from ``result``.
     result_any_order: str | None = None
 
 
@@ -241,7 +240,6 @@ def _call(record: dict[str, Any]) -> TraceCall:
         type=str(record["type"])[:_TEXT],
         yields=tuple(_hex(item) for item in yields),
         yields_complete=record["yields_complete"] is True,
-        args_any_order=_optional_hex(record.get("args_any_order")),
         result_any_order=_optional_hex(record.get("result_any_order")),
     )
 

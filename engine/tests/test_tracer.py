@@ -122,10 +122,9 @@ def test_each_kind_of_call(side: Side) -> None:
     assert (method.outcome, method.result, method.args_complete) == ("return", digest(3), True)
     (keyed,) = calls(results, "test_dict_order", "ordered")
     returned = {"bb": 2, "a": 1}
-    assert keyed.result == digest(returned)
-    assert keyed.result_any_order == ENCODE.digests(returned)[1]  # with its keys sorted
+    ordered, any_order, _ = ENCODE.digests(returned)
+    assert (keyed.result, keyed.result_any_order) == (ordered, any_order)
     assert keyed.result_any_order != keyed.result
-    assert keyed.args_any_order is None  # no dictionary among its arguments
     (fixture,) = calls(results, "test_setup_phase", "add")
     assert fixture.phase == "setup"
     assert {c.phase for c in calls(results, "test_add", "add")} == {"call"}
