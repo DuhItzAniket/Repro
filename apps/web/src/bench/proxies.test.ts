@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../model/cockpit";
 import { runEvents } from "../model/test-support";
 import { NORMAL_MOTION } from "../motion/motion";
-import { computeLayout } from "../shell/layout";
 import { hashRenderModels } from "../stage/instances";
 import { renderModels, type StageFrame, type StageLayer } from "../stage/layer";
 import { proxyLayers } from "./proxies";
@@ -21,7 +20,10 @@ function modelOf(events: readonly unknown[]): CockpitModel {
 
 const demo = modelOf(runEvents());
 const stress = modelOf(runEvents(STRESS));
-const { stage, ring } = computeLayout(1920, 1080);
+// A fixed stage and ring (what `computeLayout(1920, 1080)` gave until B13), so these pins track
+// the proxy layers alone, not the cockpit's layout.
+const stage = { w: 1920, h: 641 };
+const ring = { cx: 1920 * 0.46 - 641 * 0.9, cy: 641 / 2, r: 641 * 0.9 };
 
 function renderAt(model: CockpitModel, layers: StageLayer[], t: number): string {
   const frame: StageFrame = {

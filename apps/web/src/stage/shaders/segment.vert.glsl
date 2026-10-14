@@ -15,7 +15,6 @@ uniform float uDpr;
 uniform float uTime; // presentation time, ms
 uniform float uFlare; // recency: extra alpha multiple right after appearing
 uniform float uFlareMs; // recency decay time constant, presentation ms (wall-clock × speed)
-uniform float uFadeMs; // > 0: fade linearly to nothing over this much run time after appearing
 uniform vec2 uCenter; // rotation centre, stage px (the ring's centre)
 uniform vec2 uSpin; // cos and sin of the layer's rotation (1, 0 for layers that do not turn)
 
@@ -29,24 +28,24 @@ vec2 spin(vec2 p) {
 }
 
 void main() {
+  float dt = uTime - appear;
   vec2 pa = spin(a);
   vec2 pb = spin(b);
   vec2 d = pb - pa;
   float len = length(d);
   vec2 dir = len > 1e-4 ? d / len : vec2(1.0, 0.0);
   vec2 normal = vec2(-dir.y, dir.x);
-  // One device pixel of margin around the segment for anti-aliasing.
+  // One device pixel of margin across the segment for anti-aliasing. None along it: arcs are
+  // chains of segments, and overlapping ends would add up into bright dots at every joint (B14).
   float margin = 1.0 / uDpr;
   float halfWidth = 0.5 * shape.x;
-  float along = corner.x * len + (corner.x * 2.0 - 1.0) * margin;
+  float along = corner.x * len;
   float across = corner.y * (halfWidth + margin);
   vec2 p = pa + dir * along + normal * across;
 
   // Recency (mirrors recencyFactor in segments.ts): hidden before `appear`, then a flare that
   // decays back to the base alpha.
-  float dt = uTime - appear;
-  float fade = uFadeMs > 0.0 ? max(0.0, 1.0 - dt / uFadeMs) : 1.0;
-  float recency = dt < 0.0 ? 0.0 : (1.0 + uFlare * flare * exp(-dt / uFlareMs)) * fade;
+  float recency = dt < 0.0 ? 0.0 : 1.0 + uFlare * flare * exp(-dt / uFlareMs);
 
   vAcross = across;
   vHalfWidth = halfWidth;

@@ -2,7 +2,7 @@ import { STRESS } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
-import { forceLayout } from "./force";
+import { forceLayout, NODE_REGION, placeNode } from "./force";
 import { type LayoutInput, layoutHash, layoutInput } from "./layout-input";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -43,7 +43,7 @@ describe("layoutInput", () => {
   });
 });
 
-describe("forceLayout (B05: identical across reloads)", () => {
+describe("forceLayout (B05: identical across reloads; a chord layout since B14)", () => {
   const positions = forceLayout(input);
 
   it("is deterministic", () => {
@@ -51,26 +51,84 @@ describe("forceLayout (B05: identical across reloads)", () => {
   });
 
   it("pins the demo layout (same on every OS in CI)", () => {
-    expect(digest(positions)).toMatchInlineSnapshot(`"6dc5d9d6"`);
+    expect(digest(positions)).toMatchInlineSnapshot(`"fd69d2f7"`);
   });
 
-  it("keeps every node inside the disc and spreads them evenly", () => {
-    const radii: number[] = [];
-    for (let i = 0; i < positions.length; i += 2) {
-      const x = positions[i] as number;
-      const y = positions[i + 1] as number;
-      expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
-      radii.push(Math.sqrt(x * x + y * y));
+  it("puts modules evenly on the circle and scatters the run's nodes across the visible web", () => {
+    const { graph } = demo;
+    const modules: number[] = [];
+    const ys: number[] = [];
+    const xs: number[] = [];
+    for (let n = 0; n < graph.nodeCount; n++) {
+      const x = positions[n * 2] as number;
+      const y = positions[n * 2 + 1] as number;
+      if (graph.nodeTypeName(n) === "module") {
+        expect(Math.sqrt(x * x + y * y)).toBeCloseTo(1, 6);
+        modules.push((Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2));
+        continue;
+      }
+      // Inside the region the stage shows: right of its left edge, inside the rim, on the stage.
+      expect(x).toBeGreaterThanOrEqual(NODE_REGION.left - 1e-6);
+      expect(Math.abs(y)).toBeLessThanOrEqual(NODE_REGION.top + 1e-6);
+      expect(Math.sqrt(x * x + y * y)).toBeLessThanOrEqual(NODE_REGION.rim + 1e-6);
+      xs.push(x);
+      ys.push(y);
     }
-    expect(Math.max(...radii)).toBeLessThanOrEqual(0.97 + 1e-6);
-    // Equalised towards a uniform disc: the median radius sits near 0.97·√0.5 ≈ 0.69.
-    const median = [...radii].sort((a, b) => a - b)[Math.floor(radii.length / 2)] as number;
-    expect(median).toBeGreaterThan(0.55);
-    expect(median).toBeLessThan(0.8);
+    const sorted = [...modules].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) {
+      expect((sorted[i] as number) - (sorted[i - 1] as number)).toBeCloseTo(
+        (Math.PI * 2) / sorted.length,
+        5,
+      );
+    }
+    // Spread over the whole region: every quarter of its height and of its depth has nodes.
+    for (const [values, lo, hi] of [
+      [ys, -NODE_REGION.top, NODE_REGION.top],
+      [xs, NODE_REGION.left, NODE_REGION.rim],
+    ] as const) {
+      for (let q = 0; q < 4; q++) {
+        const from = lo + ((hi - lo) * q) / 4;
+        const to = lo + ((hi - lo) * (q + 1)) / 4;
+        expect(values.some((v) => v >= from && v <= to)).toBe(true);
+      }
+    }
+  });
+
+  it("places by a rule: height by the simulation's order, depth by role (tests deeper in)", () => {
+    const { graph } = demo;
+    let tests = 0;
+    let testDepth = 0;
+    let symbols = 0;
+    let symbolDepth = 0;
+    for (let n = 0; n < graph.nodeCount; n++) {
+      const type = graph.nodeTypeName(n);
+      if (type === "module") continue;
+      const x = positions[n * 2] as number;
+      if (type === "test") {
+        tests++;
+        testDepth += x;
+      } else {
+        symbols++;
+        symbolDepth += x;
+      }
+    }
+    expect(testDepth / tests).toBeLessThan(symbolDepth / symbols);
+    // The rule itself: rank sets the height, top to bottom.
+    const out = new Float32Array(4);
+    placeNode(0, 10, false, "a", out, 0);
+    placeNode(9, 10, false, "a", out, 1);
+    expect(out[1] as number).toBeLessThan(out[3] as number);
+    // A test sits deeper in (further from the wheel) than a symbol with the same id and slot.
+    placeNode(4, 10, true, "b", out, 0);
+    placeNode(4, 10, false, "b", out, 1);
+    expect(out[1]).toBe(out[3]); // the same height
+    expect(out[0] as number).toBeLessThan(out[2] as number);
   });
 
   it("handles an empty graph and the stress graph", () => {
-    expect(forceLayout({ ids: [], links: new Int32Array(0), containment: 0 })).toHaveLength(0);
+    expect(
+      forceLayout({ ids: [], links: new Int32Array(0), containment: 0, tests: new Uint8Array(0) }),
+    ).toHaveLength(0);
     const stress = modelOf(runEvents(STRESS));
     const big = forceLayout(layoutInput(stress.graph), 20); // few ticks: shape, not quality
     expect(big).toHaveLength(stress.graph.nodeCount * 2);

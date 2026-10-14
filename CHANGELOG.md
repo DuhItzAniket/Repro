@@ -94,6 +94,32 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
   - Stream lanes within the visible arc (±28°).
   - A stream residue: each event's faint, static trace along its lane, faded by the shader over
     90 s of run time.
+- Reference parity, second pass, against a sharper copy of the reference (1080×1350), at the
+  owner's Gate B review. [B14]
+  - Layout: on landscape screens the eight panels sit beside the stage in 4 rows × 2, so the
+    stage keeps the reference's near-square shape (904×844 at 1440×900). Portrait screens get the
+    reference's own arrangement, with the stage on top.
+  - Ring: geometry measured on the reference (inner radius 1.02·H, band 0.215 of it). It is an
+    opaque drum with a lit bezel and ruler combs. Code cards fill the band at their natural size:
+    a `// package / module` header, numbered rows of symbols and imports, a neighbour dot grid and
+    labels.
+  - Web: a chord layout, with modules on a circle under the band in the force simulation's order
+    and edges as arcs, so the stage shows the reference's hairball of long curves. The run's
+    nodes, symbols and tests, sit in front as small circles.
+  - Strands (bundles): when an event names a function, a test or a file and its section of the
+    wheel (its file's card) is on screen, a bunch fires there. It holds one dim strand from each
+    of the nodes connected to it nearest that section (a function's tests and callers, a test's
+    functions, a file's own nodes, from the log so far; at most 8), with a white bullet shooting
+    along each. The strands converge side by side on the section, stay
+    attached to their nodes, follow the section as the ring turns, and fade after 1 s. The ring
+    turns once per 24 s of wall-clock time, the reference's measured speed. The mesh's arcs are
+    curvier and dimmer, and none leaves the wheel.
+  - Nodes (symbols and tests) are scattered across the whole visible part of the web by one
+    placement rule: height by the simulation's order, depth by role (tests deeper in).
+  - Lines outside the wheel answer a hit: when a bunch lands, its section's recent events shoot
+    out from the outer rim at their places on that section, then rebound into the rim and vanish
+    (a bounce, 0.6 s), turning with the wheel. Nothing leaves the wheel without a hit; the
+    per-event streaks (B07) and the long-lived rays (B13's residue) are removed.
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the
@@ -105,6 +131,10 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
   count per geometry and would otherwise draw no more instances than the first capacity. [B05]
 
 ### Changed
+- The dim strands and the lines outside the wheel blend with MAX at no more than 0.32, under
+  WCAG's 10% luminance change, so they are not flashes (ADR-0011 note). The flash governor
+  aggregates one bunch per section of the wheel per window. Segment arcs no longer overlap at
+  their joints. The B04 proxy pins use a fixed stage, independent of the cockpit layout. [B14]
 - `--text-dim` is `#868686` (was the reference's `#6e6e6e`, 3.9:1) to reach WCAG 1.4.3's
   4.5:1. `--text-faint` is no longer used for text, and callouts and the transport are opaque.
   [B11]

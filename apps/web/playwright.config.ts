@@ -14,6 +14,8 @@ export default defineConfig({
   snapshotPathTemplate: "e2e/__screenshots__/{arg}{ext}",
   fullyParallel: false,
   workers: 1,
+  // Room for the screenshot timeout below, plus loading and rendering the page.
+  timeout: 90_000,
   retries: 0,
   forbidOnly: Boolean(process.env.CI),
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
@@ -22,6 +24,11 @@ export default defineConfig({
     // SwiftShader renders deterministically: allow only a few pixels of anti-aliasing noise, so
     // a 1 px layout shift (thousands of pixels) fails.
     toHaveScreenshot: { maxDiffPixels: 50, animations: "disabled" },
+    // A page screenshot is a software render of the whole stage. Since B14's denser stage, one
+    // takes 1.3 s or more in CI, and a new baseline needs two identical ones in a row: the 5 s
+    // default ran out on the first test of a fresh browser (CI run 38520017920). The comparison
+    // itself is unchanged.
+    timeout: 30_000,
   },
   use: {
     baseURL: `http://localhost:${PORT}`,

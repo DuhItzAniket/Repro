@@ -1,18 +1,17 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { RingCard } from "./content";
-import { easeOutCubic, ringAngles, ringRotation, SNAP_MS } from "./rotation";
+import {
+  easeOutCubic,
+  RING_TURN_MS,
+  ringAngles,
+  ringRotation,
+  SNAP_MS,
+  UNIT_ANGLE,
+} from "./rotation";
 
 const TAU = Math.PI * 2;
-const card = (weight: number): RingCard => ({
-  file: `f${weight}`,
-  lines: [],
-  meta: [],
-  weight,
-  appear: 0,
-  blastAt: 0,
-  changedAt: 0,
-});
+// Card sizes in band units: these eight overfill the circle, so they share it in proportion.
+const card = (size: number) => ({ units: size * 200 });
 const cards = [3, 5, 2, 8, 4, 6, 1, 7].map(card);
 const angles = ringAngles(cards);
 const centre = (i: number) => ((angles.start[i] as number) + (angles.end[i] as number)) / 2;
@@ -25,19 +24,27 @@ function screenAngle(rotation: ReturnType<typeof ringRotation>, i: number, t: nu
 }
 
 describe("ringAngles", () => {
-  it("shares the circle in proportion to weight, without gaps", () => {
+  it("shares the circle in proportion to size when the cards overfill it, without gaps", () => {
     expect(angles.start[0]).toBe(0);
     expect(angles.end[cards.length - 1]).toBeCloseTo(TAU, 12);
     for (let i = 1; i < cards.length; i++) expect(angles.start[i]).toBe(angles.end[i - 1]);
-    const total = cards.reduce((s, c) => s + c.weight, 0);
+    const total = cards.reduce((s, c) => s + c.units, 0);
     expect((angles.end[3] as number) - (angles.start[3] as number)).toBeCloseTo(
-      (8 / total) * TAU,
+      ((8 * 200) / total) * TAU,
       12,
     );
   });
 
-  it("drifts by one card per 2 s", () => {
-    expect(angles.drift * 2000).toBeCloseTo(TAU / cards.length, 12);
+  it("gives each card its natural angle when they fit, leaving the rest of the band empty", () => {
+    const few = ringAngles([{ units: 90 }, { units: 40 }]);
+    expect(few.end[0]).toBeCloseTo(90 * UNIT_ANGLE, 12);
+    expect(few.end[1]).toBeCloseTo(130 * UNIT_ANGLE, 12);
+    expect(few.end[1] as number).toBeLessThan(TAU);
+  });
+
+  it("turns once per 24 s, the reference's measured speed (B14)", () => {
+    expect(angles.drift * RING_TURN_MS).toBeCloseTo(TAU, 12);
+    expect(ringAngles([]).drift).toBe(0);
   });
 });
 

@@ -17,5 +17,24 @@ export function ringTracker(): (ring: Ring) => boolean {
   };
 }
 
-/** Radius of the dependency web: inside the ring's band (DESIGN.md "Ring": a ≈ 90 px band). */
-export const WEB_INSET = 80;
+/**
+ * The ring band's thickness as a share of its inner radius. Measured on the 1080×1350 reference
+ * (B14): inner rim radius ≈ 957 px, band ≈ 205 px.
+ */
+export const BAND_SHARE = 0.215;
+
+/** The band's thickness in px. */
+export const ringBand = (ring: Ring): number => ring.r * BAND_SHARE;
+
+/** Radius of the band's outer rim, where the streams start. */
+export const outerRadius = (ring: Ring): number => ring.r * (1 + BAND_SHARE);
+
+/**
+ * Radius of the dependency web's circle of modules: under the band, so the edges' ends are hidden
+ * and the stage shows long arcs passing under the ring, like the reference. Symbols and tests sit
+ * in front, in the sector the stage shows (`FRONT_ANGLE`, `FRONT_RADII`). The ring's centre lies
+ * left of the stage, so most of the web is off-screen and the stage shows the arcs crossing its
+ * right part.
+ */
+export const WEB_SCALE = 1.1;
+export const webRadius = (ring: Ring): number => ring.r * WEB_SCALE;

@@ -2,17 +2,31 @@
  * Ring geometry and rotation (DESIGN.md "Ring"). Both are closed-form, pure functions, so the
  * ring at any time `t` is exact after a scrub (B06).
  *
- * - Cards share the circumference in proportion to their weight; card i covers
- *   [start_i, end_i) radians, clockwise from 3 o'clock on screen (y down).
- * - The ring drifts by about one card per 2 s.
+ * - Each card takes its natural angle: its size in band units at the same scale along the arc
+ *   (at the band's middle) as across the band, so its text is not stretched (B14). Card i
+ *   covers [start_i, end_i) radians, clockwise from 3 o'clock on screen (y down). Cards that do
+ *   not fill the circle leave the rest of the band empty; cards that overfill it are scaled
+ *   down to fit.
+ * - The ring turns once per RING_TURN_MS of wall-clock time (B14; it drifted one card per 2 s
+ *   before), measured on the reference.
  * - A focus event snaps its card's centre to 3 o'clock with a 500 ms ease-out-cubic. A snap that
  *   starts while another is running starts from where that one has got to.
  */
-import type { FocusEvent, RingCard } from "./content";
+import { BAND_SHARE } from "../geometry";
+import { CARD_UNITS } from "./atlas";
+import type { FocusEvent } from "./content";
 
 export const SNAP_MS = 500;
-export const SECONDS_PER_CARD = 2;
 const TAU = Math.PI * 2;
+/**
+ * One turn of the ring, wall-clock ms. Measured on the reference (B14): its cards pass 3 o'clock
+ * at about 280 px/s at mid-band, about 15° a second.
+ */
+export const RING_TURN_MS = 24_000;
+/** The ring's drift, radians per wall-clock ms. */
+export const RING_DRIFT = TAU / RING_TURN_MS;
+/** Radians per band unit along the arc at the band's middle radius (r · (1 + BAND_SHARE / 2)). */
+export const UNIT_ANGLE = BAND_SHARE / (CARD_UNITS * (1 + BAND_SHARE / 2));
 
 export const easeOutCubic = (x: number): number => {
   const clamped = Math.min(1, Math.max(0, x));
@@ -23,22 +37,23 @@ export interface RingAngles {
   /** Start and end angle of each card (radians, before rotation). */
   readonly start: Float64Array;
   readonly end: Float64Array;
-  /** Drift speed in radians per ms. */
+  /** Drift speed in radians per ms, at ×1. */
   readonly drift: number;
 }
 
-export function ringAngles(cards: readonly RingCard[]): RingAngles {
+export function ringAngles(cards: readonly { readonly units: number }[]): RingAngles {
   const n = cards.length;
   const start = new Float64Array(n);
   const end = new Float64Array(n);
-  const total = cards.reduce((sum, card) => sum + card.weight, 0) || 1;
+  const total = cards.reduce((sum, card) => sum + card.units, 0);
+  const perUnit = Math.min(UNIT_ANGLE, total > 0 ? TAU / total : UNIT_ANGLE);
   let at = 0;
   cards.forEach((card, i) => {
-    start[i] = (at / total) * TAU;
-    at += card.weight;
-    end[i] = (at / total) * TAU;
+    start[i] = at * perUnit;
+    at += card.units;
+    end[i] = at * perUnit;
   });
-  const drift = n === 0 ? 0 : TAU / n / (SECONDS_PER_CARD * 1000);
+  const drift = n === 0 ? 0 : RING_DRIFT;
   return { start, end, drift };
 }
 

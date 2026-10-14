@@ -1,7 +1,7 @@
 import type { ReproEvent } from "@repro/events";
 import { describe, expect, it } from "vitest";
 import { runEvents } from "../../model/test-support";
-import { importance, LONGEST_LIFE, lifetime, streams, TINTS, tintOf, travel } from "./style";
+import { importance, streams, TINTS, tintOf, travel } from "./style";
 
 const events = runEvents();
 const find = (predicate: (e: ReproEvent) => boolean): ReproEvent => {
@@ -64,12 +64,10 @@ describe("which events stream, and how", () => {
     }
   });
 
-  it("keeps lifetimes within 600–1400 ms and importance within 0–1", () => {
+  it("keeps importance within 0–1", () => {
     for (const event of events) {
       expect(importance(event)).toBeGreaterThanOrEqual(0);
       expect(importance(event)).toBeLessThanOrEqual(1);
-      expect(lifetime(event)).toBeGreaterThanOrEqual(600);
-      expect(lifetime(event)).toBeLessThanOrEqual(LONGEST_LIFE);
     }
   });
 

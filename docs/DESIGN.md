@@ -9,11 +9,16 @@ building Stage B. `reference/paper-lab-reference.mp4` shows the motion (22 s loo
 are third-party media, kept locally and not committed (see `reference/README.md`). This document
 is the spec.
 
-Note on orientation: the reference is **portrait** (1280×1600, with the stage taking about 70% of
-the height). Repro is **landscape-first** for desktop monitors, with the same grid: the stage
-takes at least 55% of the height and the panels sit beneath it. Matching the reference's visual
-family matters, not its aspect ratio. The reference's progress bar has 5 segments aligned under
-its counters. Repro uses 7, one per pipeline stage.
+Note on orientation: the reference is **portrait** (1080×1350 at 60 fps in the copy used since
+B14), with a nearly square stage (about 1.15:1) taking about 70% of the height and the panels
+beneath it. Its composition depends on that stage shape, so Repro keeps the stage near it (B14):
+on a landscape screen the panels sit **beside** the stage; on a portrait one they sit beneath
+it, as in the reference. Matching the reference's visual family matters, not its page aspect
+ratio. The reference's progress bar has 5 segments aligned under its counters. Repro uses 7, one
+per pipeline stage.
+
+The reference also pans and zooms its camera now and then (for example 7.2–9.5 s). Repro keeps
+its home view fixed: every movement on its stage maps to an event (see Motion).
 
 The Paper Lab mapping → Repro mapping:
 
@@ -30,41 +35,44 @@ The Paper Lab mapping → Repro mapping:
 | 12 agents / dispatch | **Agents / dispatch** — same |
 | Method / reference index | **Change × check index** — rows = changes/claims, cols = checks |
 
-## Layout (desktop, landscape first)
+## Layout (desktop: the stage keeps the reference's shape)
 
 ```
-┌ HEADER 56px ──────────────────────────────────────────────────────────────┐
-│ REPRO                     CLAIMS  AGENTS  FILES  CHECKS  FLAGGED          │
-│ agent changes → reproduced evidence  4      12     147     28      4      │
-│ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬  (stage progress: 7 segments)   │
-├ STAGE (flex, ≥ 55% of height) ────────────────────────────────────────────┤
-│  dependency web (left, circle clipped by ring) │ ring │ event streams →   │
-├ PANELS 2 rows × 4 cols (≈ 34% height, 8px gaps) ──────────────────────────┤
-│ Investigation feed │ Execution        │ Agent workspace │ Behaviour diff   │
-│ Change routes      │ Signals          │ Agents/dispatch │ Change×check idx │
-└───────────────────────────────────────────────────────────────────────────┘
+┌ HEADER 56px ─────────────────────────────────────────────────────────────────┐
+│ REPRO                     CLAIMS  AGENTS  FILES  CHECKS  FLAGGED             │
+│ agent changes → reproduced evidence  4      12     147     28      4         │
+│ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬ ▬▬▬▬▬  (stage progress: 7 segments)      │
+├ STAGE (≈ 1.15:1) ───────────────────────────┬ PANELS 4 rows × 2 ──────────────┤
+│                                              │ Investigation feed │ Execution   │
+│ dependency web │ ring │ event streams →      │ Agent workspace    │ Behaviour   │
+│ (inside the ring, centre off-screen left)    │ Change routes      │ Signals     │
+│                                              │ Agents/dispatch    │ Change×check│
+│ ─ transport ─────────────────────────────── │                    │             │
+└──────────────────────────────────────────────┴─────────────────────────────────┘
 ```
 
-- The ring is a large circle whose **left part is off-screen**, so mainly the right arc shows,
-  like the reference. In the reference the arc spans the whole stage height and its 3 o'clock
-  point sits near the middle of the width (centre ≈ 0.15·W, radius ≈ 0.55·H on its *portrait*
-  stage). On a landscape stage the same picture needs a larger radius relative to the height
-  (B13):
-  - radius = 0.9·H of the stage, and the 3 o'clock point at x = 0.46·W, so centre x = 0.46·W − r;
-  - at 1440×900: centre x 192.6, radius 469.8, with the top, bottom and left of the circle
-    off-screen.
-
-  B03–B12 used the portrait proportions directly, which left a small ring and an empty right
-  half; B13's side-by-side check against the 6 s reference frame found it.
-- Geometry is computed by one pure function, `computeLayout(width, height)`
-  (`apps/web/src/shell/layout.ts`, B03). At 1440×900 the result is: header 56 px, stage 522 px
-  (58%), panels 350×149. At 1920×1080: stage 641 px (59%), panels 470×179/180.
+- Three modes, computed by one pure function, `computeLayout(width, height)`
+  (`apps/web/src/shell/layout.ts`, B03, B14):
+  - **side** (width ≥ 1100 and at least 1.3 × the height): the stage on the left, as close to
+    1.15:1 as the panels allow, and the 8 panels in 4 rows × 2 columns beside it (each 256 px to
+    1.6 × its height wide). At 1440×900: stage 904×844, panels 256×201. At 1920×1080: stage
+    1178×1024, panels 359×246. The evidence drawer covers the panels, so the stage stays in view.
+  - **stacked** (width ≥ 1100, portrait-ish): the reference's own arrangement, the stage on top
+    (at least 55% of the height) and 2 rows × 4 panels in about 30% of the height.
+  - **narrow** (< 1100 px): the stage keeps 60% of the height (≥ 50vh), and the panels become 2
+    columns that scroll.
+- B03–B13 used the stacked arrangement on landscape screens too. That made the stage a wide strip
+  (1440×522 at 1440×900) into which the reference's composition did not fit; the owner's Gate B
+  review found the stage still did not read as the reference's (B14).
+- The ring, measured on the 1080×1350 reference by fitting circles to its rims (B14): the inner
+  rim's radius is 1.02 × the stage height, its 3 o'clock point sits at 0.46 × the stage width (so
+  the centre lies left of the stage), and the band is 0.215 × the inner radius thick. At 1440×900:
+  centre (−445, 422), inner radius 861 px, band 185 px.
 - Header counters are left-aligned columns with tiny uppercase labels above large numerals.
   CLAIMS = `claim.extracted` events; AGENTS = distinct spawned agents; FILES = distinct files of
   module nodes in the dependency graph; CHECKS and FLAGGED follow the check model (ADR-0015).
 - Progress bar: one segment per stage (read, build, run, diff, check, review, card). The active
   segment is bright white, completed ones mid-grey, pending ones dark grey.
-- < 1100 px wide: panels become 2 columns and scroll; stage keeps ≥ 50vh.
 
 ## Palette (sampled from the reference)
 
@@ -99,57 +107,126 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 
 ## The stage
 
-### Dependency web (left)
-- Nodes = modules (and symbols when zoomed). Edges = imports/calls.
-- Draw edges as **thin 1px straight lines** with low alpha — thousands of them make the texture
-  in the reference. Node markers: tiny 4px hollow circles, only for nodes in the blast radius.
-- **Bundles**: when an event touches an edge path (e.g. a test traverses a call chain), draw a
-  bright bundle of 8–20 near-parallel curves along it that fades over ~1.2 s. These are the
-  bright white sweeps in the reference.
-- Layout: force-directed (d3-force), computed once per run in a worker, then frozen. Positions are
-  clipped to the inside of the ring. Initial positions are seeded from node-ID hashes (no trig),
-  so the layout is reproducible, and it is cached by graph hash. Symbols and tests are tied to
-  their module by layout-only containment links, and radii are equalised towards a uniform disc
-  so hub-heavy graphs still read as an even hairball (B05).
+### Dependency web (inside the ring)
+- Nodes = modules, symbols and tests. Edges = imports, calls and covers.
+- **Chord layout** (B14): modules sit on a circle under the ring's band (1.1 × the inner rim's
+  radius), evenly spaced in the angular order a force-directed simulation gives them, so tightly
+  connected modules are neighbours. Symbols and tests, the nodes a run touches, are
+  **scattered across the whole part of the disc the stage shows** (from the stage's left edge to
+  just inside the inner rim, top to bottom), like the nodes of a network, by one placement rule
+  (`placeNode`, which the engine can replace later):
+  - height: the node's rank in the simulation's order, top to bottom, ± a third of a slot, so
+    connected nodes sit near each other;
+  - depth towards the wheel: by role, tests deeper in (4–60% of the way from the left edge to the
+    rim) and functions nearer the wheel (30–96%), placed within that range by a hash of the id.
+
+  The simulation
+  (d3-force) runs once per graph in a worker, seeded from node-ID hashes (no trigonometry), with
+  layout-only containment links that tie symbols and tests to their module; the result is cached
+  by graph hash.
+- Edges are **thin arcs**: quadratic curves bowed to one side by 25–60% of their length, with
+  the side and amount taken from a hash of the endpoints. Every arc stays **inside the web's
+  circle** (its control point is kept within it, so the curve is too), whose edge is under the
+  ring's band: no edge bows out past the wheel. Before this rule, 82 of the demo's 1,500 arcs
+  showed beyond the ring's outer rim. The circle's centre is off-screen to the
+  left and its edge is under the band, so the stage shows long curves crossing the web, like the
+  reference's hairball, not a ball of spokes. B03–B13 drew straight lines on a force-directed
+  disc, which read as a starburst. Only the pieces on the stage are written. Alpha: imports 0.17,
+  calls 0.22, covers 0.12, so the strands read over them.
+- Symbols and tests are small hollow circles (tests 3.2 px, symbols 2.2 px): the points strands
+  fire from, like the reference's scattered circles. Nodes in the latest blast radius get a
+  brighter ring.
+- **Bunches of strands** (bundles): every streaming event that names a function, a test or a
+  file fires a **bunch** at that file's ring card, as the owner described the reference's (B14):
+  - its strands come from **the nodes connected to what the event is about**. For a function
+    (`trace.sample`, `diff.behaviour` and other events whose target names a symbol): its tests (by
+    `covers` edges and trace samples) and its callers (by `calls` edges), the test that ran first.
+    For a test: the test, then the functions it reaches. For a file: its own functions, classes
+    and tests. After the node that fired come the nodes nearest the landing point, at most 8.
+    Membership uses only the log up to the firing event (`ReachIndex`);
+  - **one strand per node**, each from its own point; they converge side by side on one bar at
+    one section of the wheel, ordered by their nodes' bearings so they do not cross there;
+  - each strand is a **dim line** (alpha 0.32, MAX-blended, so it never brightens a pixel enough
+    to flash) revealed behind a **white bullet**, a bright 80 px
+    stretch that shoots from its node to the ring in the first 40% of a 1 s life (smoothstep;
+    each strand starts up to 6% later). Its node lights up while the bullet is in flight, and
+    the bar flashes when they land;
+  - the bunch fires at **its section of the wheel** (its file's ring card), where the section
+    stood at that moment, and only if its landing point was on the stage then (24 px inside its
+    edges); the lines outside the wheel answer from the same section (below). It stays
+    **attached to its nodes** while its
+    landing end **follows that section** as the ring turns (by at most the ring's drift over the
+    life), then fades from 60% of its life on. While the user pins a file (the ring is held
+    still), no bunches fire;
+  - at most one bunch per section rises per 333 ms window (the flash governor's aggregation).
+
+  Each strand arrives at the rim along the ring's radius, sweeping a little towards the turning
+  direction; node, control point and landing point are inside the inner rim, so the strand is
+  too. Measured on the reference: a strand's bright part travels to the ring in about 0.1 s.
 - Rendering: edges are instanced anti-aliased quads with recency alpha computed in the shader.
-  Bundles are instanced Bézier segments. Blending is additive. There is no post-processing
-  (ADR-0008).
+  Arcs and bundles are chains of segments that do not overlap at their joints. Blending is
+  additive. There is no post-processing (ADR-0008).
 
 ### Ring (centre)
-- A thick band (about 120 px: content from r − 72 to r + 10, metadata from r + 12 to r + 50) made
-  of stacked **file cards**: dense monospace text blocks. Text is about 4–5 px on screen, legible
-  up close like the reference's. At most 64 cards (B13; was 160), so about a dozen large cards
-  are visible on the arc. Files the run is about come first. No v1 event carries file contents, so a card is the file's
-  **outline from events** (B06): its path, its imports (`graph.edge`), and its functions and
-  classes (`graph.node`). An outer column of metadata cards shows the file name, counts and
-  changed symbols.
-- Cards for files in the blast radius are brighter (ink 1.0, others 0.72); changed files have a
-  thin `--hot` edge.
-- The ring rotates slowly (one card per ~2 s) and snaps the **focused file** to the 3 o'clock
-  position (500 ms ease-out-cubic) when an event targets it: `symbol.changed`,
-  `claim.extracted`, `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`.
-- Thin tick marks + tiny labels on the outer edge (file paths), like the reference's scale.
-- The band is opaque (normal blending) and hides the web behind it; every other stage layer is
-  additive.
+- A thick, opaque band, 0.215 × its inner radius (185 px at 1440×900), drawn as a drum like the
+  reference's (B14): a lit bezel and a ruler comb along the inner rim, the cards, and a second comb
+  inside the outer rim. It hides the web behind it; every other stage layer is drawn over it or
+  beside it.
+- **File cards** fill the band from rim to rim, one per file, with text running outward. No v1
+  event carries file contents, so a card is the file's **outline from events** (B06), laid out
+  like the reference's code cards (B14):
+  - a header, `// package / module`, with a rule after it;
+  - rows of `line  code`: its functions, classes and tests with their line numbers (`graph.node`),
+    changed ones in `--flag` (`symbol.changed`), then its imports as `from a import b`
+    (`graph.edge`); at most 10 rows;
+  - a neighbour fingerprint: a 16 × 4 grid of dots, one per bucket of the repo's modules in path
+    order, lit where the file imports or is imported by a module in that bucket (the reference's
+    dot matrices);
+  - right-aligned labels on the outer column: imports, importers, symbols and changes.
+- Each card takes its natural size, at the same scale along the arc as across the band, so text
+  is not stretched (about 5–6 px on screen at 1440×900). At most 64 cards. They fill the circle
+  for a repo of the demo's size and are scaled down if they overfill it. Files the run is about
+  come first.
+- Cards for files in the blast radius are brighter (ink 1.0, others 0.8). Changed files have a
+  thin `--hot` edge on their leading side.
+- The ring turns once every 24 s of wall-clock time at any replay speed (about 15° a second;
+  B14, measured on the reference, whose cards pass 3 o'clock at about 280 px/s at mid-band; it
+  was one card per ~2 s before). It snaps the **focused file** to the 3 o'clock position (500 ms
+  ease-out-cubic) when an event targets it: `symbol.changed`, `claim.extracted`,
+  `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`. A file the user
+  focuses is pinned at 3 o'clock without drift.
 
-### Event streams (right)
-- Each event emits a streak from the ring's outer edge outward along a radial line, with a
-  motion-blurred tail. Length ∝ duration/importance; alpha decays.
+### Lines outside the wheel (right)
+- **Sections** (B14): every event belongs to the section of the wheel of its file's ring card
+  (a trace: its function's file), the section its bunch of strands hits from inside. An event
+  whose file has no card has no section and draws nothing outside the wheel.
+- **They answer a hit** (B14, seventh owner review): nothing leaves the wheel on its own. When a
+  bunch's bullets land, its section's most recent events (up to 24, newest first, none after the
+  bunch's event) shoot out as straight lines from the outer rim, each at its own place on the
+  section: a hash of the event, across 80% of the card's span, so one file's activity forms a
+  band. A section that is not hit stays quiet.
+- **Bounce**: each line shoots out to its length (ease-out, the first 35% of its bounce), then
+  rebounds into the rim, shortening until it is gone (ease-in, the remaining 65%). The bounces
+  take the 0.6 s after the bullets land and start up to 20% of it apart, so a spray is not a
+  block. Verified frame by frame on the app's own capture at 23.8–24.4 s of the demo run.
+- **Length**: 0.45–1.0 of 0.42 × the ring radius beyond the outer rim (163–362 px at
+  1440×900), further for findings and slow tests, with a per-event spread so a spray ends
+  raggedly.
+- **They turn with the wheel**: a section's lines follow it by as much as the bunch's landing
+  end does, like the reference's field, which moves with its wheel (measured: the field just
+  outside the rim moves at the ring's angular speed, frame by frame).
+- 1.6 px, brightest at the rim (0.32) and 60% of that at the tip, MAX-blended, so they are never
+  flashes (ADR-0011, B14 note).
 - Tint: white = engine, `--violet` = agent, `--flag-deep`/`--flag` = fail/diff, `--ok` = pass.
-  Priority (B07): fail, then diff, then a passing test, then agent, then engine.
-- Dense bursts are the point: a test batch should look like the reference's fan of streaks.
-- Lanes (B07): an event streams along its file's lane, a hash of the file mapped onto the
-  ring's right side, so one file's activity forms a band. Since B13 lanes span ±28°, within the
-  visible arc, so streams run near-horizontal like the reference's. Graph, stage, run and feed
-  events do not stream; at most 2,048 streaks are live (the newest).
-- Residue (B13): every streaming event also leaves a faint, static trace along its lane,
-  written once with the event's time and faded by the shader over 90 s of run time. Busy files
-  build dense horizontal bands, like the reference's long-exposure streams. A trace adds at most
-  9% luminance, under WCAG 2.3.1's 10% flash threshold, and never moves.
+  Priority (B07): fail, then diff, then a passing test, then agent, then engine. Graph, stage,
+  run and feed events do not stream.
+- B07–B14's per-event streaks, which fired whether or not a strand hit, and B13–B14's long-lived
+  rays were removed in the seventh review.
 
 ### Tooltips / callouts
 - Small boxes with a 1px border (as at 12 s and 18 s in the video), label + one value,
-  anchored to a streak or node. Max 2 visible at once.
+  anchored beyond the outer rim on the right side, on their file's lane (±24°). Max 2 visible
+  at once.
 
 ## Panels
 
@@ -215,11 +292,13 @@ surface — it stays plain and readable.
 
 - Every animated element maps to an event. Idle state (no run) may use slow ambient drift of
   the web only.
-- Durations: streak 600–1400 ms, bundle 1200 ms fade, panel row insert 150 ms, ring snap 500 ms
-  ease-out-cubic.
+- Durations: strand bunch 1 s (B14: the bullets' 0.4 s trip, then the attached strands follow
+  the ring and fade while the section's lines outside bounce), panel row insert 150 ms, ring
+  snap 500 ms ease-out-cubic, one ring turn 24 s.
 - Replay supports speed ×0.5 / ×1 / ×4 / ×16 and scrubbing. Animation is a pure function of
   (events up to t, t, motion), where motion is the replay speed and reduced motion.
-- `prefers-reduced-motion`: no streaks or bundles, and state changes are instant. An in-app
+- `prefers-reduced-motion`: no strands or lines outside the wheel, and state changes are
+  instant. An in-app
   toggle mirrors this setting. Instant here also means: no recency flares, no ring drift, snaps
   in one step, whole feed rows and typed lines, a steady workspace cursor, and running tests
   held still.
@@ -232,9 +311,12 @@ surface — it stays plain and readable.
   bright area that can rise within any 333 ms of wall-clock time (WCAG 2.3.1):
   - the cap is 43,648 CSS px², half of WCAG's 87,296 CSS px² flashing area;
   - areas are upper bounds from each element's geometry;
-  - over the cap, streaks and bundles are not drawn, and edges and markers appear without their
-    flare;
-  - at most one bundle per graph edge rises per window (aggregation).
+  - over the cap, bunches are not drawn, and edges and markers appear without their flare;
+  - at most one bunch of strands per section rises per window (aggregation; per function, and
+    per graph edge before B14);
+  - the dim strands and the lines outside the wheel are not counted: they blend with MAX at no
+    more than 0.32 (relative luminance 0.084 over the #080808 background's 0.0024), less than
+    WCAG's 10% change, so they cannot flash (B14).
 
 ## Accessibility
 
@@ -260,8 +342,8 @@ surface — it stays plain and readable.
 
 - 60 fps on a mid laptop with 10k edges and 2k live streaks. Use instanced geometry and one draw
   call per layer (about 6 stage draw calls). No per-frame object allocations in the stage
-  layers (B12 measured about 25 kB a frame at the stress burst, all of it V8 boxing doubles at
-  calls it does not inline, short-lived). The heap stays flat across frames (B12 gate). Panels
+  layers (B12 measured about 25 kB a frame at the stress burst and B14 24 kB, all of it V8
+  boxing doubles at calls it does not inline, short-lived). The heap stays flat across frames (B12 gate). Panels
   redraw only on new events, batched per animation frame.
 - Initial load under 300 KB of JS, gzipped (fonts excluded). The measured baseline is about
   146 KB for three.js `WebGLRenderer`, Preact 11, signals and d3-force (research/05 §1.2).

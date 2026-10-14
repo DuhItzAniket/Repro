@@ -35,6 +35,11 @@ export interface StageLayer {
   /** How segments brighten after appearing (default: no flare). */
   readonly recency?: Recency;
   /**
+   * How the layer's segments combine with what is under them: added (the default), or the
+   * brighter of the two, so overlaps never add up (B14's stream rays).
+   */
+  readonly blend?: "add" | "max";
+  /**
    * Rotation about the ring's centre (radians) for the frame last updated, for layers that turn
    * with the ring. The shader applies it, so a turning layer need not rewrite its buffers.
    */

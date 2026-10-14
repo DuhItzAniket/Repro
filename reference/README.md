@@ -7,7 +7,7 @@ The media itself is **not committed to this repository**. We did not create it a
 the right to redistribute it. Contributors who have a local copy keep it at:
 
 ```
-reference/paper-lab-reference.mp4   22 s loop, portrait 1280x1600
+reference/paper-lab-reference.mp4   22 s loop, portrait 1080x1350, 60 fps (the sharper copy used since B14)
 reference/frames/frame_{1,6,12,18}s.png
 reference/panels/{header,stage,panel_1..panel_8}.png
 ```
