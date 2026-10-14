@@ -1,5 +1,10 @@
 /**
- * Force-directed layout of the dependency web (DESIGN.md "Dependency web"; ARCHITECTURE §13).
+ * Layout of the dependency web (DESIGN.md "Dependency web"; ARCHITECTURE §13). A force-directed
+ * simulation orders the nodes, and the result is a **chord layout** (B14): modules sit on a
+ * circle just inside the ring, in the angular order the simulation gave them, evenly spaced, and
+ * symbols and tests sit a little inside, beside their module. Tightly connected modules end up
+ * next to each other, so their edges are short arcs near the rim, and edges between distant
+ * parts of the repo cross the disc as long curves: the reference's hairball, from real edges.
  *
  * Deterministic by construction:
  * - initial positions come from node-id hashes by rejection sampling (no trigonometry);
@@ -21,8 +26,9 @@ import {
 import { fnv, type LayoutInput } from "./layout-input";
 
 export const LAYOUT_TICKS = 300;
-/** How far node radii move towards a uniform disc (0 = raw force layout, 1 = fully uniform). */
-export const EQUALISE = 0.85;
+/** Radius of symbols and tests, inside the modules' circle (unit radius), ± a per-node jitter. */
+export const INNER_RADIUS = 0.9;
+const INNER_JITTER = 0.04;
 
 /** A deterministic point in the disc of radius `r` from an id (rejection sampling on its hash). */
 function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {
@@ -43,8 +49,8 @@ function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {
 }
 
 /**
- * Runs the simulation and returns positions in the unit disc (radius 0.97), centred on the
- * centroid, with radii equalised towards a uniform disc (`EQUALISE`).
+ * Runs the simulation and returns positions on the unit circle (modules) and just inside it
+ * (symbols and tests), each at the angle of its rank around the simulation's centroid.
  */
 export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Array {
   const n = input.ids.length;
@@ -75,10 +81,9 @@ export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Ar
     .stop();
   simulation.tick(ticks);
 
-  // Normalise around the centroid, then equalise radii: a hub-heavy import graph collapses into
-  // a dense core, but the stage should read as an even hairball (DESIGN.md). Each node keeps its
-  // angle and its radial rank; its radius moves most of the way to the rank's position in a
-  // uniform disc, sqrt((rank + 0.5) / n).
+  // Order the nodes by their angle around the centroid, then space them evenly on the circle.
+  // The order is all that is kept of the simulation: a hub-heavy import graph collapses into a
+  // dense core, and spacing by rank keeps every part of the rim equally busy.
   let cx = 0;
   let cy = 0;
   for (const node of nodes) {
@@ -87,26 +92,26 @@ export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Ar
   }
   cx /= n;
   cy /= n;
-  // sqrt is correctly rounded on every engine (Math.hypot is only "implementation-approximated").
-  const distance = (x: number, y: number) => Math.sqrt(x * x + y * y);
-  const radii = nodes.map((node) => distance((node.x ?? 0) - cx, (node.y ?? 0) - cy));
-  const order = radii
-    .map((_, i) => i)
-    .sort((p, q) => (radii[p] as number) - (radii[q] as number) || p - q);
-  const rank = new Int32Array(n);
-  order.forEach((node, i) => {
-    rank[node] = i;
-  });
-  const maxRadius = radii[order[n - 1] as number] || 1;
-  nodes.forEach((node, i) => {
-    const r = radii[i] as number;
-    const uniform = Math.sqrt(((rank[i] as number) + 0.5) / n);
-    const target = (1 - EQUALISE) * (r / maxRadius) + EQUALISE * uniform;
+  // A pseudo-angle (monotonic in the true angle, no trigonometry), so ties and order do not
+  // depend on how an engine rounds atan2.
+  const pseudo = nodes.map((node) => {
     const dx = (node.x ?? 0) - cx;
     const dy = (node.y ?? 0) - cy;
-    const scale = r > 0 ? (target * 0.97) / r : 0;
-    out[i * 2] = dx * scale;
-    out[i * 2 + 1] = dy * scale;
+    const p = dy / (Math.abs(dx) + Math.abs(dy) || 1); // −1..1
+    return dx < 0 ? 2 - p : p < 0 ? 4 + p : p; // 0..4 around the circle
+  });
+  const order = pseudo
+    .map((_, i) => i)
+    .sort((p, q) => (pseudo[p] as number) - (pseudo[q] as number) || p - q);
+  // Symbols and tests: the members of containment links, which come after the drawn edges.
+  const inner = new Uint8Array(n);
+  for (let i = drawn; i < input.links.length / 2; i++) inner[input.links[i * 2 + 1] as number] = 1;
+  order.forEach((node, rank) => {
+    const angle = ((rank + 0.5) / n) * Math.PI * 2;
+    const jitter = ((fnv(0x811c9dc5, input.ids[node] as string) % 1000) / 1000 - 0.5) * 2;
+    const radius = inner[node] === 1 ? INNER_RADIUS + INNER_JITTER * jitter : 1;
+    out[node * 2] = Math.cos(angle) * radius;
+    out[node * 2 + 1] = Math.sin(angle) * radius;
   });
   return out;
 }

@@ -45,7 +45,7 @@ export function layoutInput(graph: GraphIndex): LayoutInput {
 /** Cache key: changes whenever a node or link is added, removed or reordered. */
 export function layoutHash(input: LayoutInput): string {
   let a = 0x811c9dc5;
-  let b = fnv(0x811c9dc5, "repro-layout/1");
+  let b = fnv(0x811c9dc5, "repro-layout/2"); // 2: the chord layout (B14)
   for (const id of input.ids) {
     a = fnv(a, id);
     b = fnv(b, `${id.length}`);

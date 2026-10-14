@@ -2,13 +2,13 @@
  * Builds the card atlas (in a worker when the browser can) and keeps the latest one. Layers
  * read `bitmap` and `version`; the host uploads the texture when `version` changes.
  */
-import { type AtlasCard, atlasLayout, drawAtlas } from "./atlas";
+import { type AtlasCard, atlasLayout, cardUnits, drawAtlas } from "./atlas";
 
 export type AtlasBuild = (cards: readonly AtlasCard[]) => Promise<ImageBitmap | null>;
 
 /** Main-thread fallback: an OffscreenCanvas or a detached canvas element. */
 export const buildInline: AtlasBuild = async (cards) => {
-  const layout = atlasLayout(cards.length);
+  const layout = atlasLayout(cards.map(cardUnits));
   if (typeof OffscreenCanvas !== "undefined") {
     const canvas = new OffscreenCanvas(layout.width, layout.height);
     const context = canvas.getContext("2d");
@@ -39,7 +39,17 @@ export function workerBuild(): AtlasBuild {
       };
     }
     const id = next++;
-    worker.postMessage({ id, cards: cards.map(({ lines, meta }) => ({ lines, meta })) });
+    // Only the drawn fields: a card's other fields need not cross to the worker.
+    worker.postMessage({
+      id,
+      cards: cards.map(({ header, rows, dots, dotRows, meta }) => ({
+        header,
+        rows,
+        dots,
+        dotRows,
+        meta,
+      })),
+    });
     return new Promise((resolve) => pending.set(id, resolve));
   };
 }

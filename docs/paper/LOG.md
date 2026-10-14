@@ -144,3 +144,25 @@ entry. If something turns out wrong, add a correcting entry.
 - With the whole cockpit running, the demo run replays at ×1 at 60 fps on an integrated GPU
   (Intel UHD) at 1920×1080, DPR 1.75: p50 16.7 ms, p95 17.0 ms over 2,867 frames, with 1.85%
   of frames over 25 ms (host jitter). The CPU, an i7-14650HX, is stronger than a mid laptop's.
+
+## 2026-10-14 · B14 · Measuring a visual reference instead of eyeballing it
+- B13's parity check passed on our own judgement, and the owner's review overturned it. A sharper
+  copy of the reference (1080×1350 at 60 fps) and two measurements replaced the
+  judgement:
+  - Geometry: circles fitted through three points on each rim give the inner radius as 1.02 ×
+    the stage height, the band as 0.215 of that radius, and the 3 o'clock point at 0.46 × the
+    width.
+  - Brightness: per-region statistics of 8-bit encoded luminance, compared at the same stage
+    height. In the reference the web's mean is 43 and the rays' 41 (64–83 next to the ring).
+    After B13, Repro's rays measured 9.
+- The look depends on the stage's shape. The reference's 1.15:1 composition cannot fit a 2.76:1
+  strip, so the panels moved beside the stage on landscape screens.
+- Its hairball can be reproduced from real edges by changing the layout, not by adding lines. A
+  chord layout ordered by the force simulation, with the circle's centre off-screen, turns 1,446
+  import edges into long crossing arcs instead of a ball of spokes.
+- Bright, persistent elements can be made flash-safe by construction rather than by budget. MAX
+  blending bounds a pixel by its brightest element, and a wall-clock floor on the fade bounds
+  how fast it can dim, so no 10% luminance fall fits in a second.
+- After B14 the demo replays at ×1 with the whole cockpit at 60 fps on an integrated GPU
+  (production build, 1440×900, DPR 1.75): p50 16.7 ms, p95 17.0 ms over 3,081 frames, with 1.14%
+  over 25 ms.

@@ -25,7 +25,7 @@ import { computeLayout } from "./shell/layout";
 import type { LogEntry } from "./shell/mirror";
 import { createTransportState, formatTime, spaceToPause, syncTransport } from "./shell/transport";
 import { createShellView } from "./shell/view";
-import { focusLayer } from "./stage/focus-layer";
+import { focusLayers } from "./stage/focus-layer";
 import { FlashGovernor } from "./stage/governor";
 import { hitStage } from "./stage/hit";
 import { StageHost } from "./stage/host";
@@ -136,11 +136,13 @@ function mountStage(): StageHost | null {
       ...(testMode ? { fixedDpr: 1 } : {}),
     });
     const governor = new FlashGovernor(model, webLayout);
-    for (const layer of webLayers(model, webLayout, governor)) stage.add(layer);
+    const focusHighlight = focusLayers(model, webLayout, ringModel);
+    for (const layer of webLayers(model, webLayout, governor, ringModel)) stage.add(layer);
+    stage.add(focusHighlight.web); // under the band, like the web
     for (const layer of ringStageLayers) stage.add(layer);
     stage.add(residueLayer(model));
     stage.add(streakLayer(model, governor));
-    stage.add(focusLayer(model, webLayout, ringModel));
+    stage.add(focusHighlight.ring);
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
     if (hud !== undefined) pollHud(stage, hud);
     return stage;

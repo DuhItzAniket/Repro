@@ -8,9 +8,9 @@ import type { Focus, FocusTargets } from "../focus/focus";
 import type { CockpitModel } from "../model/cockpit";
 import type { Motion } from "../motion/motion";
 import type { Ring } from "../shell/layout";
-import { WEB_INSET } from "./geometry";
+import { outerRadius, webRadius } from "./geometry";
 import type { PlacedNodes } from "./governor";
-import { CONTENT_BAND, META_BAND, type RingModel, rotationAt } from "./ring/layers";
+import { type RingModel, rotationAt } from "./ring/layers";
 
 /** How close (CSS px) a click must be to a node's centre. */
 export const NODE_HIT_PX = 8;
@@ -37,7 +37,7 @@ export function hitStage(
   const distance = Math.sqrt(dx * dx + dy * dy);
 
   // The ring band: find the card whose angular span holds the point.
-  if (distance >= r + CONTENT_BAND[0] && distance <= r + META_BAND[1]) {
+  if (distance >= r && distance <= outerRadius(frame.ring)) {
     ringModel.sync();
     const rotation = rotationAt(ringModel, frame.t, frame.motion, frame.focus);
     const angle = (((Math.atan2(dy, dx) - rotation) % TAU) + TAU) % TAU;
@@ -54,7 +54,7 @@ export function hitStage(
 
   // The web: the nearest placed, appeared node within reach.
   const positions = layout.positions;
-  const radius = r - WEB_INSET;
+  const radius = webRadius(frame.ring);
   if (positions === null || distance > radius + NODE_HIT_PX) return null;
   const { graph, store } = model;
   let best = -1;

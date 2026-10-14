@@ -9,8 +9,10 @@
  *
  * Why this bounds flashing: if at most B px² can rise in any 333 ms, at most 3B can rise in any
  * second, so the area that flashes more than three times a second is at most 3B/4 < B. Areas are
- * upper bounds from each element's own geometry (`streakArea`, `bundleArea`, `segmentArea`), and
+ * upper bounds from each element's own geometry (`streakArea`, `bundleArea`, `arcArea`), and
  * the budget applies to the whole stage, not per 10° field, so the estimate errs on the safe side.
+ * An edge counts only its pieces on the stage (most of the web is off-screen since B14), and a
+ * bundle its longest possible reach.
  *
  * Decisions are made greedily in log order and depend only on the events up to each onset, the
  * replay speed and the stage geometry. They are therefore a pure function of (events, speed,
@@ -18,11 +20,12 @@
  */
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../model/cockpit";
-import { WEB_INSET } from "./geometry";
+import { webRadius } from "./geometry";
 import type { StageFrame } from "./layer";
 import { streakArea } from "./streams/layers";
 import { streams } from "./streams/style";
-import { bundleArea, EDGE_STYLE, MARKER_AREA, segmentArea } from "./web/layers";
+import { arcArea, edgeHash } from "./web/arcs";
+import { BUNDLE_REACH, bundleArea, EDGE_STYLE, MARKER_AREA } from "./web/layers";
 
 /** What the governor needs from the web layout (a `LayoutService`, or a stub in tests). */
 export interface PlacedNodes {
@@ -67,6 +70,8 @@ export class FlashGovernor {
   private log: OnsetLog = { time: [], area: [], kind: [] };
   private speed = Number.NaN;
   private ring = { cx: Number.NaN, cy: Number.NaN, r: Number.NaN };
+  private width = Number.NaN;
+  private height = Number.NaN;
   private layoutVersion = -1;
 
   constructor(
@@ -88,10 +93,14 @@ export class FlashGovernor {
       ring.cx !== this.ring.cx ||
       ring.cy !== this.ring.cy ||
       ring.r !== this.ring.r ||
+      frame.width !== this.width ||
+      frame.height !== this.height ||
       this.layout.version !== this.layoutVersion
     ) {
       this.speed = speed;
       this.ring = { cx: ring.cx, cy: ring.cy, r: ring.r };
+      this.width = frame.width;
+      this.height = frame.height;
       this.layoutVersion = this.layout.version;
       this.reset();
     }
@@ -163,18 +172,28 @@ export class FlashGovernor {
   private extend(): void {
     const { store, graph } = this.model;
     const positions = this.layout.positions;
-    const radius = this.ring.r - WEB_INSET;
+    const radius = webRadius(this.ring);
+    const { cx, cy } = this.ring;
+    const reach = BUNDLE_REACH * this.height;
     const n = store.length;
     this.streakOk = grow(this.streakOk, n);
     this.bundleOk = grow(this.bundleOk, n);
     this.markerOk = grow(this.markerOk, n);
     this.edgeOk = grow(this.edgeOk, graph.edgeCount);
-    /** Length in CSS px between two graph nodes, or -1 if the layout has not placed them. */
-    const lengthOf = (a: number, b: number): number => {
-      if (positions === null || Math.max(a, b) * 2 + 1 >= positions.length) return -1;
-      const dx = ((positions[a * 2] as number) - (positions[b * 2] as number)) * radius;
-      const dy = ((positions[a * 2 + 1] as number) - (positions[b * 2 + 1] as number)) * radius;
-      return Math.sqrt(dx * dx + dy * dy);
+    const placed = (a: number): boolean => positions !== null && a * 2 + 1 < positions.length;
+    /** On-stage area of the arc between two placed graph nodes. */
+    const arcOf = (a: number, b: number, width: number): number => {
+      const p = positions as Float32Array;
+      return arcArea(
+        cx + (p[a * 2] as number) * radius,
+        cy + (p[a * 2 + 1] as number) * radius,
+        cx + (p[b * 2] as number) * radius,
+        cy + (p[b * 2 + 1] as number) * radius,
+        edgeHash(a, b),
+        this.width,
+        this.height,
+        width,
+      );
     };
     for (let i = this.processed; i < n; i++) {
       const event = store.event(i);
@@ -185,9 +204,13 @@ export class FlashGovernor {
           this.nextEdge++;
         const e = this.nextEdge;
         if (e < graph.edgeCount && graph.edgeEvent[e] === i) {
-          const len = lengthOf(graph.edgeSource[e] as number, graph.edgeTarget[e] as number);
-          const width = EDGE_STYLE[graph.edgeTypeName(e)].width;
-          if (len >= 0 && this.admit(t, segmentArea(len, width), "edge")) this.edgeOk[e] = 1;
+          const s = graph.edgeSource[e] as number;
+          const target = graph.edgeTarget[e] as number;
+          if (placed(s) && placed(target)) {
+            const area = arcOf(s, target, EDGE_STYLE[graph.edgeTypeName(e)].width);
+            // An edge entirely off the stage draws nothing and cannot flash.
+            if (area === 0 || this.admit(t, area, "edge")) this.edgeOk[e] = 1;
+          }
         }
         continue;
       }
@@ -198,7 +221,7 @@ export class FlashGovernor {
           ...event.payload.changed,
         ]) {
           const node = graph.nodeForSymbol(s);
-          if (node !== undefined && lengthOf(node, node) >= 0) markers++;
+          if (node !== undefined && placed(node)) markers++;
         }
         if (this.admit(t, markers * MARKER_AREA, "marker")) this.markerOk[i] = 1;
         continue;
@@ -207,14 +230,13 @@ export class FlashGovernor {
         const test = event.target?.test;
         const from = test === undefined ? undefined : graph.byId.get(test);
         const to = graph.nodeForSymbol(event.payload.symbol_id);
-        const len = from === undefined || to === undefined ? -1 : lengthOf(from, to);
-        if (from !== undefined && to !== undefined && len >= 1) {
+        if (from !== undefined && to !== undefined && placed(from) && placed(to)) {
           // One bundle per edge per window: a later one on the same edge is aggregated into it.
           const key = from * 1_048_576 + to;
           const last = this.lastBundle.get(key);
           const aggregated =
             Number.isFinite(this.budget) && last !== undefined && t - last < this.window;
-          if (!aggregated && this.admit(t, bundleArea(len, hash32(event.id)), "bundle")) {
+          if (!aggregated && this.admit(t, bundleArea(reach, hash32(event.id)), "bundle")) {
             this.bundleOk[i] = 1;
             this.lastBundle.set(key, t);
           }

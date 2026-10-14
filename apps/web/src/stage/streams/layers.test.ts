@@ -75,12 +75,12 @@ describe("lanes", () => {
     for (const event of runEvents()) {
       if (!streams(event)) continue;
       const angle = laneAngle(event);
-      expect(Math.abs(angle)).toBeLessThanOrEqual(LANE_SPREAD + 0.03 + 1e-9);
+      expect(Math.abs(angle)).toBeLessThanOrEqual(LANE_SPREAD + 0.085 + 1e-9);
       const file = targetFile(event.target);
       if (file !== undefined) byFile.set(file, [...(byFile.get(file) ?? []), angle]);
     }
     for (const angles of byFile.values())
-      expect(Math.max(...angles) - Math.min(...angles)).toBeLessThanOrEqual(0.06 + 1e-9);
+      expect(Math.max(...angles) - Math.min(...angles)).toBeLessThanOrEqual(0.17 + 1e-9);
   });
 });
 
@@ -135,9 +135,9 @@ describe("streak layer (B07: state at any t is reproducible after a scrub)", () 
     expect(hashes).toMatchInlineSnapshot(`
       {
         "21000": "66d04c6cd55e9a9d/0",
-        "30500": "e5159621518a7705/22",
-        "34000": "4b6afce20fbf6540/9",
-        "46000": "e0d2e45683cf86f1/4",
+        "30500": "066d33f59674d47b/22",
+        "34000": "099b089aceebdf33/9",
+        "46000": "6fd178619a9ff249/4",
       }
     `);
   });

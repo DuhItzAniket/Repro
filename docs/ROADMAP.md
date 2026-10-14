@@ -13,7 +13,7 @@
 | Stage | Name | Phases | Release | Outcome |
 |---|---|---|---|---|
 | **A** | Foundation | A01–A08 | v0.1.0 | Monorepo, schema-as-contract, CI on Windows + Linux, risks measured |
-| **B** | Cockpit on fixtures | B01–B13 | v0.2.0 | Complete animated cockpit driven only by a recorded event log |
+| **B** | Cockpit on fixtures | B01–B14 | v0.2.0 | Complete animated cockpit driven only by a recorded event log |
 | **C** | Engine core & live stream | C01–C08 | v0.3.0 | `repro run` shows a real repo's graph and blast radius live |
 | **D** | Sandboxed two-sided execution | D01–D07 | v0.4.0 | Selected tests run on base and head in isolation, with outcome, test-change and perf evidence |
 | **E** | Behaviour evidence | E01–E07 | v0.5.0 | A silent behaviour change is caught with no failing test |
@@ -124,9 +124,11 @@ ADRs or phase records.
 **Goal:** the complete visual product, driven only by a recorded event log, built to the
 DESIGN.md spec and performance budget.
 
-**Gate B (passed 2026-10-14, v0.2.0, record: [`phases/B-gate.md`](phases/B-gate.md); the mid-laptop
-60 fps check is still owed by the owner):** side by side with the reference frame at 6 s, it
-reads as the same visual family.
+**Gate B (first passed 2026-10-14. Re-opened the same day: the owner's review against a sharper
+copy of the reference found that the stage still did not match it, and B14 was added. v0.2.0 is
+tagged once the owner confirms the new side-by-side. Record: [`phases/B-gate.md`](phases/B-gate.md);
+the mid-laptop 60 fps check is still owed by the owner):** side by side with the reference frame
+at 6 s, it reads as the same visual family.
 The reference log replays at ×1 at 60 fps on a mid laptop (measured, with the method recorded).
 Scrubbing and all speeds work. All panels are driven only by events. Visual-regression,
 allocation and bundle-size gates are active in CI.
@@ -146,6 +148,7 @@ allocation and bundle-size gates are active in CI.
 | B11 | Focus, evidence drawer & accessibility | M | B10 | done |
 | B12 | UI quality gate | M | B11 | done |
 | B13 | Visual parity with the reference (added before Gate B) | S | B12 | done |
+| B14 | Reference parity II: the stage composition (added at the owner's Gate B review) | M | B13 | done |
 
 **B01 · Deterministic fixture generator & reference log**
 - Deliverables: a seeded generator (TS or Python) that produces a realistic run (1 PR, 4 claims,
@@ -233,6 +236,18 @@ allocation and bundle-size gates are active in CI.
   file cards, lanes within the visible arc, and an event-driven stream residue.
 - Accept: the side-by-side reads as the same visual family. All B01–B12 tests and gates still
   pass, with the changed pins explained by the intended constants only.
+
+**B14 · Reference parity II** (added 2026-10-14, at the owner's Gate B review)
+- Why: the owner judged that the cockpit still did not look like the reference video and
+  supplied a sharper copy (1080×1350, 60 fps). Measured against it, the web was a ball of
+  spokes, the ring a thin band and the right of the stage nearly empty, on a 2.76:1 stage
+  where the reference's 1.15:1 composition could not fit.
+- Deliverables: a layout that keeps the stage near the reference's shape (panels beside the
+  stage on landscape screens); the ring geometry measured on the reference; an opaque drum of
+  full-band code cards built from events; a chord layout with arc edges; bundles that land on
+  their function's card; bright stream rays that are safe by construction (ADR-0011 note).
+- Accept: the side-by-side reads as the same visual family (the owner confirms). All tests and
+  gates pass; every changed pin is explained; the flash bound holds at every speed.
 
 ---
 
@@ -646,4 +661,5 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B11 | 2026-10-14 | [#22](https://github.com/DuhItzAniket/Repro/pull/22) | Focus from click or keyboard (stage highlight, ring pin, panel outlines), evidence drawer, accessible parallel DOM; axe-core 0 violations; text contrast to WCAG AA |
 | B12 | 2026-10-14 | [#23](https://github.com/DuhItzAniket/Repro/pull/23) | Visual regression (SwiftShader, CI baselines), flat-heap allocation, size-limit 300 kB, calibrated perf gate (nightly); each gate rejects an injected regression in CI |
 | B13 | 2026-10-14 | [#24](https://github.com/DuhItzAniket/Repro/pull/24) | Visual parity found missing at the gate check: landscape ring geometry, 64 legible cards, lanes in the visible arc, shader-faded stream residue |
-| Gate B | 2026-10-14 | [#25](https://github.com/DuhItzAniket/Repro/pull/25) | Stage B complete; release v0.2.0 ([gate record](phases/B-gate.md)); mid-laptop 60 fps check owed by the owner |
+| Gate B | 2026-10-14 | [#25](https://github.com/DuhItzAniket/Repro/pull/25) | Stage B complete; release v0.2.0 ([gate record](phases/B-gate.md)); mid-laptop 60 fps check owed by the owner. Re-opened the same day at the owner's review (B14) |
+| B14 | 2026-10-14 | (this PR) | Reference parity II: panels beside a near-square stage, measured ring geometry, a drum of event-built code cards, a chord-layout web of arcs, bundles landing on cards, flash-safe bright rays |

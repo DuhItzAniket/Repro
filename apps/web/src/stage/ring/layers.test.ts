@@ -3,10 +3,20 @@ import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
 import { NORMAL_MOTION } from "../../motion/motion";
 import { computeLayout } from "../../shell/layout";
+import { outerRadius } from "../geometry";
 import { hashRenderModels } from "../instances";
 import type { StageFrame } from "../layer";
 import { AtlasService } from "./atlas-service";
-import { cardLayer, RingModel, ringLayers, tickLayer } from "./layers";
+import { NEVER } from "./content";
+import {
+  BAND_PIECES,
+  COMB_PITCH,
+  cardLayer,
+  RIM_SEGMENTS,
+  RingModel,
+  ringLayers,
+  tickLayer,
+} from "./layers";
 
 const model = new CockpitModel();
 model.ingest(runEvents());
@@ -22,21 +32,38 @@ const frameAt = (t: number): StageFrame => ({
 const noAtlas = () => new AtlasService(() => Promise.resolve(null));
 
 describe("card layer (B06: one draw call for the cards)", () => {
-  it("writes a content card and a metadata card per file into one buffer", () => {
+  it("writes the bare band, then one card per file spanning it, into one buffer", () => {
     const ringModel = new RingModel(model, noAtlas());
     const layer = cardLayer(ringModel);
     layer.update(frameAt(0));
     expect(layer.primitive).toBe("cards");
-    expect(layer.buffers.count).toBe(ringModel.content.cards.length * 2);
+    const { cards } = ringModel.content;
+    expect(layer.buffers.count).toBe(BAND_PIECES + cards.length);
     const times = layer.buffers.array("times");
-    ringModel.content.cards.forEach((card, c) => {
-      expect([...times.subarray(c * 8, c * 8 + 4)]).toEqual([
+    const span = layer.buffers.array("span");
+    // The band: the whole circle, from the first card's appearance, never highlighted.
+    expect(span[0]).toBe(0);
+    expect(span[(BAND_PIECES - 1) * 4 + 1]).toBeCloseTo(Math.PI * 2, 5);
+    expect([...times.subarray(0, 4)]).toEqual([
+      Math.fround(ringModel.firstAppear),
+      Math.fround(NEVER),
+      Math.fround(NEVER),
+      2,
+    ]);
+    cards.forEach((card, c) => {
+      const i = BAND_PIECES + c;
+      expect([...times.subarray(i * 4, i * 4 + 4)]).toEqual([
         Math.fround(card.appear),
         Math.fround(card.blastAt),
         Math.fround(card.changedAt),
         0,
       ]);
-      expect(times[c * 8 + 7]).toBe(1);
+      expect([...span.subarray(i * 4, i * 4 + 4)]).toEqual([
+        Math.fround(ringModel.angles.start[c] as number),
+        Math.fround(ringModel.angles.end[c] as number),
+        0,
+        1,
+      ]);
     });
   });
 
@@ -66,12 +93,12 @@ describe("card layer (B06: one draw call for the cards)", () => {
 });
 
 describe("tick layer", () => {
-  it("draws rims and a scale once; the shader turns it with the ring", () => {
+  it("draws the rims and their ruler combs once; the shader turns them with the ring", () => {
     const ringModel = new RingModel(model, noAtlas());
     const layer = tickLayer(ringModel);
     layer.update(frameAt(20_000));
-    const cards = ringModel.content.cards.length;
-    expect(layer.buffers.count).toBe(192 * 2 + cards * 5);
+    const combs = [ring.r, outerRadius(ring)].map((r) => Math.ceil((Math.PI * 2 * r) / COMB_PITCH));
+    expect(layer.buffers.count).toBe(RIM_SEGMENTS * 3 + (combs[0] ?? 0) + (combs[1] ?? 0));
     const version = layer.buffers.version;
     const appear = layer.buffers.array("appear");
     expect(appear[0]).toBe(Math.fround(ringModel.firstAppear)); // hidden until the first card
@@ -100,11 +127,11 @@ describe("ring render model", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "0": "35d133bf64ea368b@0.000000",
-        "20000": "35d133bf64ea368b@0.674643",
-        "25500": "35d133bf64ea368b@0.403877",
-        "45000": "35d133bf64ea368b@1.982273",
-        "8000": "35d133bf64ea368b@1.984973",
+        "0": "d3bfbe223ab4ebd5@0.000000",
+        "20000": "d3bfbe223ab4ebd5@0.667910",
+        "25500": "d3bfbe223ab4ebd5@0.397144",
+        "45000": "d3bfbe223ab4ebd5@1.868310",
+        "8000": "d3bfbe223ab4ebd5@1.871010",
       }
     `);
   });

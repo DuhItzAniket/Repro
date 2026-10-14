@@ -7,6 +7,7 @@ import { parseJsonl } from "../model/jsonl";
 import { runEvents } from "../model/test-support";
 import { type Motion, NORMAL_MOTION } from "../motion/motion";
 import { computeLayout } from "../shell/layout";
+import { webRadius } from "./geometry";
 import {
   FLASH_BUDGET,
   FLASH_WINDOW_MS,
@@ -22,6 +23,7 @@ import { easeOutCubic, SNAP_MS } from "./ring/rotation";
 import { streakArea, streakLayer, streakShape, streakWidth } from "./streams/layers";
 import { residueLayer } from "./streams/residue";
 import { LONGEST_LIFE, lifetime, streams } from "./streams/style";
+import { arcPieces, edgeHash } from "./web/arcs";
 import { BUNDLE_MS, bundleLayer, edgeLayer, webLayers } from "./web/layers";
 import { computeInline, LayoutService } from "./web/layout-service";
 
@@ -50,6 +52,8 @@ const frameOf = (model: CockpitModel, t: number, motion: Motion = NORMAL_MOTION)
   motion,
 });
 const at = (speed: number): Motion => ({ speed, reduced: false });
+const ringOf = (model: CockpitModel) =>
+  new RingModel(model, new AtlasService(() => Promise.resolve(null)));
 
 /** The largest admitted area rising within any window of `window` ms (brute force). */
 function worstWindow(log: OnsetLog, window: number): number {
@@ -157,7 +161,7 @@ describe("layers follow the governor and wall-clock time", () => {
     const t0 = model.store.time[first] as number;
     for (const speed of [1, 16]) {
       const governor = new FlashGovernor(model, layout);
-      const layer = bundleLayer(model, layout, governor);
+      const layer = bundleLayer(model, layout, governor, ringOf(model));
       layer.update(frameOf(model, t0 + BUNDLE_MS * speed * 0.5, at(speed)));
       expect(layer.buffers.count).toBeGreaterThan(0);
       layer.update(frameOf(model, t0 + BUNDLE_MS * speed * 0.5, { speed, reduced: true }));
@@ -170,14 +174,25 @@ describe("layers follow the governor and wall-clock time", () => {
     const governor = new FlashGovernor(model, layout);
     const layer = edgeLayer(model, layout, governor);
     layer.update(frameOf(model, 0, at(16)));
-    expect(layer.buffers.count).toBe(model.graph.edgeCount); // one segment per edge, in order
+    // Each edge's pieces on the stage, in edge order, carry its flare decision.
+    const positions = layout.positions as Float32Array;
+    const radius = webRadius(ring);
+    const x = (n: number) => ring.cx + (positions[n * 2] as number) * radius;
+    const y = (n: number) => ring.cy + (positions[n * 2 + 1] as number) * radius;
     const flares = layer.buffers.array("flare");
+    let i = 0;
     let on = 0;
-    for (let e = 0; e < layer.buffers.count; e++) {
-      expect(flares[e]).toBe(governor.edgeFlare(e) ? 1 : 0);
-      on += flares[e] as number;
+    let shown = 0;
+    for (let e = 0; e < model.graph.edgeCount; e++) {
+      const s = model.graph.edgeSource[e] as number;
+      const t = model.graph.edgeTarget[e] as number;
+      const pieces = arcPieces(x(s), y(s), x(t), y(t), edgeHash(s, t), stage.w, stage.h);
+      if (pieces > 0) shown++;
+      if (pieces > 0 && governor.edgeFlare(e)) on++;
+      for (let k = 0; k < pieces; k++) expect(flares[i++]).toBe(governor.edgeFlare(e) ? 1 : 0);
     }
-    expect(on).toBeLessThan(layer.buffers.count); // 10k edges cannot all flare at ×16
+    expect(i).toBe(layer.buffers.count);
+    expect(on).toBeLessThan(shown); // the edges on the stage cannot all flare at ×16
   });
 
   it("snaps the ring over 500 ms of wall-clock time, and instantly without drift when reduced", () => {
@@ -203,7 +218,10 @@ describe("layers follow the governor and wall-clock time", () => {
   it("draws no streaks or bundles under reduced motion", () => {
     const { model, layout } = demo;
     const governor = new FlashGovernor(model, layout);
-    const layers = [streakLayer(model, governor), bundleLayer(model, layout, governor)];
+    const layers = [
+      streakLayer(model, governor),
+      bundleLayer(model, layout, governor, ringOf(model)),
+    ];
     for (const t of [24_000, 25_000, 30_500]) {
       for (const layer of layers) {
         layer.update(frameOf(model, t, { speed: 1, reduced: true }));
@@ -217,9 +235,10 @@ describe("scrubbing gives the same frame as playing (golden)", () => {
   function stageLayers(): StageLayer[] {
     const { model, layout } = demo;
     const governor = new FlashGovernor(model, layout);
+    const ringed = ringLayers(model, new AtlasService(() => Promise.resolve(null)));
     return [
-      ...webLayers(model, layout, governor),
-      ...ringLayers(model, new AtlasService(() => Promise.resolve(null))).layers,
+      ...webLayers(model, layout, governor, ringed.ring),
+      ...ringed.layers,
       residueLayer(model),
       streakLayer(model, governor),
     ];

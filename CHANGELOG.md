@@ -94,6 +94,19 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
   - Stream lanes within the visible arc (±28°).
   - A stream residue: each event's faint, static trace along its lane, faded by the shader over
     90 s of run time.
+- Reference parity, second pass, against a sharper copy of the reference (1080×1350), at the
+  owner's Gate B review. [B14]
+  - Layout: on landscape screens the eight panels sit beside the stage in 4 rows × 2, so the
+    stage keeps the reference's near-square shape (904×844 at 1440×900). Portrait screens get the
+    reference's own arrangement, with the stage on top.
+  - Ring: geometry measured on the reference (inner radius 1.02·H, band 0.215 of it). It is an
+    opaque drum with a lit bezel and ruler combs. Code cards fill the band at their natural size:
+    a `// package / module` header, numbered rows of symbols and imports, a neighbour dot grid and
+    labels.
+  - Web: a chord layout, with modules on a circle under the band in the force simulation's order
+    and edges as arcs, so the stage shows the reference's hairball of long curves. Tests are drawn
+    as squares, and bundles land on their function's ring card.
+  - Streams: rays from the outer rim, brightest at the rim, drawn out behind their streak.
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the
@@ -105,6 +118,10 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
   count per geometry and would otherwise draw no more instances than the first capacity. [B05]
 
 ### Changed
+- Stream rays (B13's residue) blend with MAX and fade no faster than over 40 s of wall-clock
+  time, so no pixel can lose 10% relative luminance within a second. B13's 9% cap is dropped
+  and rays reach 0.92 at the rim (ADR-0011 note). Segment arcs no longer overlap at their
+  joints. The B04 proxy pins use a fixed stage, independent of the cockpit layout. [B14]
 - `--text-dim` is `#868686` (was the reference's `#6e6e6e`, 3.9:1) to reach WCAG 1.4.3's
   4.5:1. `--text-faint` is no longer used for text, and callouts and the transport are opaque.
   [B11]

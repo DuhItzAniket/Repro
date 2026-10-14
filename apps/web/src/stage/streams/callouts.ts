@@ -8,7 +8,7 @@ import type { ReproEvent } from "@repro/events";
 import type { CockpitModel } from "../../model/cockpit";
 import { type Motion, NORMAL_MOTION } from "../../motion/motion";
 import type { Ring } from "../../shell/layout";
-import { META_BAND } from "../ring/layers";
+import { outerRadius } from "../geometry";
 import { laneAngle } from "./layers";
 import { type TintName, tintOf } from "./style";
 
@@ -113,7 +113,7 @@ export function selectCallouts(
     const text = calloutText(event);
     if (text === null) continue;
     const angle = laneAngle(event);
-    const radius = ring.r + META_BAND[1] + 54;
+    const radius = outerRadius(ring) + 54;
     let y = ring.cy + Math.sin(angle) * radius;
     const previous = out[0];
     if (previous !== undefined && Math.abs(previous.y - y) < MIN_GAP_PX) {

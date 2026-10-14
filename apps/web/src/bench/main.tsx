@@ -11,6 +11,7 @@ import { type HudSnapshot, PerfHud, snapshot } from "../stage/hud";
 import { AtlasService, defaultAtlasBuild } from "../stage/ring/atlas-service";
 import { ringLayers } from "../stage/ring/layers";
 import { streakLayer } from "../stage/streams/layers";
+import { residueLayer } from "../stage/streams/residue";
 import { webLayers } from "../stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "../stage/web/layout-service";
 import { proxyLayers } from "./proxies";
@@ -66,9 +67,11 @@ async function main(): Promise<void> {
   const layers = () => {
     if (layerSet === "proxy") return proxyLayers(model);
     const governor = unlimited();
+    const ring = ringLayers(model, new AtlasService(defaultAtlasBuild()));
     return [
-      ...webLayers(model, webLayout, governor),
-      ...ringLayers(model, new AtlasService(defaultAtlasBuild())).layers,
+      ...webLayers(model, webLayout, governor, ring.ring),
+      ...ring.layers,
+      residueLayer(model),
       streakLayer(model, governor),
     ];
   };

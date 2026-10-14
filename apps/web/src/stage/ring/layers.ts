@@ -5,13 +5,13 @@
 import type { FocusTargets } from "../../focus/focus";
 import type { CockpitModel } from "../../model/cockpit";
 import { type Motion, motionKey } from "../../motion/motion";
-import { ringTracker } from "../geometry";
+import { outerRadius, ringBand, ringTracker } from "../geometry";
 import { type AttributeSpec, InstanceBuffers } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
 import { segmentBuffers, segmentWriter } from "../segments";
-import { atlasLayout } from "./atlas";
+import { atlasLayout, CARD_UNITS } from "./atlas";
 import type { AtlasService } from "./atlas-service";
-import { type RingContent, ringContent } from "./content";
+import { NEVER, type RingContent, ringContent } from "./content";
 import { type RingAngles, type RingRotation, ringAngles, ringRotation, SNAP_MS } from "./rotation";
 
 /** Per-instance card attributes (see card.vert.glsl). */
@@ -21,11 +21,13 @@ export const CARD_ATTRIBUTES: readonly AttributeSpec[] = [
   { name: "times", size: 4 },
 ];
 
-/** Radial extent of the band's two columns, as offsets from the ring radius (DESIGN: ≈ 90 px). */
-export const CONTENT_BAND = [-72, 10] as const;
-export const META_BAND = [12, 50] as const;
-/** Gap between neighbouring cards, as a share of a card's angle. */
-const CARD_GAP = 0.08;
+/**
+ * The opaque band under the cards, in this many pieces (each a straight quad), so it hides the
+ * web all the way round even where there are no cards (yet).
+ */
+export const BAND_PIECES = 120;
+const KIND_CARD = 0;
+const KIND_BAND = 2;
 
 /** The ring's content, geometry and rotation for the log as it is now. */
 export class RingModel {
@@ -110,7 +112,7 @@ export interface CardLayer extends StageLayer {
 }
 
 export function cardLayer(ring: RingModel): CardLayer {
-  const buffers = new InstanceBuffers(CARD_ATTRIBUTES, 64);
+  const buffers = new InstanceBuffers(CARD_ATTRIBUTES, BAND_PIECES + 64);
   let drawn = -1;
   const layer = {
     name: "cards",
@@ -125,25 +127,30 @@ export function cardLayer(ring: RingModel): CardLayer {
       drawn = ring.version;
       const { cards } = ring.content;
       const { start, end } = ring.angles;
-      const atlas = atlasLayout(cards.length);
-      buffers.reserve(cards.length * 2);
+      buffers.reserve(BAND_PIECES + cards.length);
       const span = buffers.array("span");
       const uv = buffers.array("uv");
       const times = buffers.array("times");
       let i = 0;
-      cards.forEach((card, c) => {
-        const a0 = start[c] as number;
-        const a1 = end[c] as number;
-        const gap = (a1 - a0) * CARD_GAP;
-        for (const kind of [0, 1]) {
-          const [r0, r1] = kind === 0 ? CONTENT_BAND : META_BAND;
-          const cell = kind === 0 ? atlas.content[c] : atlas.meta[c];
-          if (cell === undefined) continue;
-          span.set([a0 + gap / 2, a1 - gap / 2, r0, r1], i * 4);
-          uv.set([cell.u0, cell.v0, cell.u1, cell.v1], i * 4);
-          times.set([card.appear, card.blastAt, card.changedAt, kind], i * 4);
+      if (cards.length > 0) {
+        // The bare band first, from the first card's appearance; the cards draw over it.
+        for (let p = 0; p < BAND_PIECES; p++) {
+          const a0 = (p / BAND_PIECES) * Math.PI * 2;
+          const a1 = ((p + 1) / BAND_PIECES) * Math.PI * 2;
+          span.set([a0, a1, 0, 1], i * 4);
+          uv.set([0, 0, 0, 0], i * 4);
+          times.set([ring.firstAppear, NEVER, NEVER, KIND_BAND], i * 4);
           i++;
         }
+      }
+      const atlas = atlasLayout(cards.map((card) => card.units));
+      cards.forEach((card, c) => {
+        const cell = atlas.cells[c];
+        if (cell === undefined) return;
+        span.set([start[c] as number, end[c] as number, 0, 1], i * 4);
+        uv.set([cell.u0, cell.v0, cell.u1, cell.v1], i * 4);
+        times.set([card.appear, card.blastAt, card.changedAt, KIND_CARD], i * 4);
+        i++;
       });
       buffers.count = i;
       buffers.version++;
@@ -152,19 +159,21 @@ export function cardLayer(ring: RingModel): CardLayer {
   return layer;
 }
 
-const MINOR_TICKS = 4;
-const RIM_SEGMENTS = 192;
+export const RIM_SEGMENTS = 256;
 const RIM = Array.from({ length: RIM_SEGMENTS + 1 }, (_, i) => {
   const angle = (i / RIM_SEGMENTS) * Math.PI * 2;
   return [Math.cos(angle), Math.sin(angle)] as const;
 });
+/** Arc length between comb ticks, px; every fifth tick is longer, like a ruler. */
+export const COMB_PITCH = 3.4;
 
 /**
- * The band's rims and a tick scale that turns with the cards. Written once per ring content or
- * size; the shader turns it by `rotation`, so the scale costs no per-frame upload.
+ * The band's rims and the ruler combs along both of them (B14, from the reference), turning
+ * with the cards. Written once per ring content or size; the shader turns it by `rotation`, so
+ * the scale costs no per-frame upload.
  */
-export function tickLayer(ring: RingModel, cardCapacity = 160): StageLayer {
-  const buffers = segmentBuffers(cardCapacity * (MINOR_TICKS + 1) + RIM_SEGMENTS * 2);
+export function tickLayer(ring: RingModel): StageLayer {
+  const buffers = segmentBuffers(4096);
   const writer = segmentWriter(buffers);
   const ringChanged = ringTracker();
   let drawn = -1;
@@ -179,13 +188,15 @@ export function tickLayer(ring: RingModel, cardCapacity = 160): StageLayer {
       const moved = ringChanged(frame.ring);
       if (ring.version === drawn && !moved) return;
       drawn = ring.version;
-      writer.begin();
       const { cx, cy, r } = frame.ring;
+      const band = ringBand(frame.ring);
+      const outer = outerRadius(frame.ring);
+      const combs = [r, outer].map((radius) => Math.ceil((Math.PI * 2 * radius) / COMB_PITCH));
+      buffers.reserve(RIM_SEGMENTS * 3 + (combs[0] as number) + (combs[1] as number));
+      writer.begin();
       if (ring.content.cards.length === 0) return;
       const appear = ring.firstAppear;
-      // Thin rims on both sides of the band.
-      for (let side = 0; side < 2; side++) {
-        const radius = side === 0 ? r + CONTENT_BAND[0] - 2 : r + META_BAND[1] + 2;
+      const rim = (radius: number, width: number, alpha: number) => {
         for (let i = 0; i < RIM_SEGMENTS; i++) {
           const [ax, ay] = RIM[i] as readonly [number, number];
           const [bx, by] = RIM[i + 1] as readonly [number, number];
@@ -194,42 +205,44 @@ export function tickLayer(ring: RingModel, cardCapacity = 160): StageLayer {
             cy + ay * radius,
             cx + bx * radius,
             cy + by * radius,
+            width,
             1,
             1,
             1,
-            1,
-            0.22,
+            alpha,
             1,
             appear,
           );
         }
-      }
-      // A major tick at each card boundary and minor ticks between, outside the band.
-      const { start, end } = ring.angles;
-      const outer = r + META_BAND[1] + 4;
-      for (let c = 0; c < start.length; c++) {
-        const a0 = start[c] as number;
-        const a1 = end[c] as number;
-        for (let m = 0; m <= MINOR_TICKS; m++) {
-          const angle = a0 + ((a1 - a0) * m) / (MINOR_TICKS + 1);
+      };
+      rim(r, 1.2, 0.55); // the inner rim
+      rim(r + (band * 12.5) / CARD_UNITS, 1, 0.16); // the edge of the bezel
+      rim(outer, 1.2, 0.6); // the outer rim
+      // Ruler combs on the inside of both rims.
+      combs.forEach((count, side) => {
+        for (let k = 0; k < count; k++) {
+          const angle = (k / count) * Math.PI * 2;
           const dx = Math.cos(angle);
           const dy = Math.sin(angle);
-          const length = m === 0 ? 7 : 3;
+          const major = k % 5 === 0;
+          const length = major ? 9 : 5;
+          const from = side === 0 ? r + 1.5 : outer - 1.5;
+          const to = side === 0 ? from + length : from - length;
           writer.push(
-            cx + dx * outer,
-            cy + dy * outer,
-            cx + dx * (outer + length),
-            cy + dy * (outer + length),
+            cx + dx * from,
+            cy + dy * from,
+            cx + dx * to,
+            cy + dy * to,
             1,
             1,
             1,
             1,
-            m === 0 ? 0.45 : 0.22,
+            major ? 0.62 : 0.4,
             1,
             appear,
           );
         }
-      }
+      });
     },
   };
   return layer;

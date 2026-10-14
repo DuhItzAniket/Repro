@@ -2,7 +2,7 @@ import { STRESS } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
-import { forceLayout } from "./force";
+import { forceLayout, INNER_RADIUS } from "./force";
 import { type LayoutInput, layoutHash, layoutInput } from "./layout-input";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -43,7 +43,7 @@ describe("layoutInput", () => {
   });
 });
 
-describe("forceLayout (B05: identical across reloads)", () => {
+describe("forceLayout (B05: identical across reloads; a chord layout since B14)", () => {
   const positions = forceLayout(input);
 
   it("is deterministic", () => {
@@ -51,22 +51,45 @@ describe("forceLayout (B05: identical across reloads)", () => {
   });
 
   it("pins the demo layout (same on every OS in CI)", () => {
-    expect(digest(positions)).toMatchInlineSnapshot(`"6dc5d9d6"`);
+    expect(digest(positions)).toMatchInlineSnapshot(`"695320fe"`);
   });
 
-  it("keeps every node inside the disc and spreads them evenly", () => {
-    const radii: number[] = [];
-    for (let i = 0; i < positions.length; i += 2) {
-      const x = positions[i] as number;
-      const y = positions[i + 1] as number;
-      expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
-      radii.push(Math.sqrt(x * x + y * y));
+  it("puts modules on the circle, symbols and tests just inside, evenly spaced by angle", () => {
+    const { graph } = demo;
+    const angles: number[] = [];
+    for (let n = 0; n < graph.nodeCount; n++) {
+      const x = positions[n * 2] as number;
+      const y = positions[n * 2 + 1] as number;
+      const r = Math.sqrt(x * x + y * y);
+      if (graph.nodeTypeName(n) === "module") expect(r).toBeCloseTo(1, 6);
+      else expect(Math.abs(r - INNER_RADIUS)).toBeLessThanOrEqual(0.04 + 1e-6);
+      angles.push((Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2));
     }
-    expect(Math.max(...radii)).toBeLessThanOrEqual(0.97 + 1e-6);
-    // Equalised towards a uniform disc: the median radius sits near 0.97·√0.5 ≈ 0.69.
-    const median = [...radii].sort((a, b) => a - b)[Math.floor(radii.length / 2)] as number;
-    expect(median).toBeGreaterThan(0.55);
-    expect(median).toBeLessThan(0.8);
+    // One node per slot of 2π / n: sorted, neighbours are one slot apart.
+    angles.sort((a, b) => a - b);
+    const slot = (Math.PI * 2) / graph.nodeCount;
+    for (let i = 1; i < angles.length; i++) {
+      expect((angles[i] as number) - (angles[i - 1] as number)).toBeCloseTo(slot, 5);
+    }
+  });
+
+  it("keeps a module's symbols and tests beside it, so their edges stay short", () => {
+    const { graph } = demo;
+    const moduleOf = new Map<string, number>();
+    for (let n = 0; n < graph.nodeCount; n++)
+      if (graph.nodeTypeName(n) === "module") moduleOf.set(graph.files[n] as string, n);
+    const gaps: number[] = [];
+    for (let n = 0; n < graph.nodeCount; n++) {
+      const owner = moduleOf.get(graph.files[n] as string);
+      if (graph.nodeTypeName(n) === "module" || owner === undefined) continue;
+      const a = Math.atan2(positions[n * 2 + 1] as number, positions[n * 2] as number);
+      const b = Math.atan2(positions[owner * 2 + 1] as number, positions[owner * 2] as number);
+      const d = Math.abs(a - b);
+      gaps.push(Math.min(d, Math.PI * 2 - d));
+    }
+    // Containment links pull them together: the median member sits within 20° of its module.
+    const median = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)] as number;
+    expect(median).toBeLessThan((20 * Math.PI) / 180);
   });
 
   it("handles an empty graph and the stress graph", () => {

@@ -14,16 +14,19 @@ import type { ReproEvent } from "@repro/events";
 import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../../model/cockpit";
 import type { Ring } from "../../shell/layout";
+import { outerRadius } from "../geometry";
 import type { FlashGovernor } from "../governor";
 import type { StageFrame, StageLayer } from "../layer";
 import { targetFile } from "../ring/content";
-import { META_BAND } from "../ring/layers";
 import { ALWAYS, segmentBuffers, segmentWriter } from "../segments";
 import { importance, LONGEST_LIFE, lifetime, streams, TINTS, tintOf, travel } from "./style";
 
 export const MAX_STREAKS = 2048;
-/** Lanes fan across ±64° of the ring's right side, where the stage has room (DESIGN.md layout). */
-export const LANE_SPREAD = (28 * Math.PI) / 180;
+/**
+ * Lanes fan across ±24° of the ring's right side: the outer rim's visible arc on a stage of the
+ * reference's shape (B14).
+ */
+export const LANE_SPREAD = (24 * Math.PI) / 180;
 /** Tail length = head speed × this many ms (velocity-stretched motion blur). */
 const TAIL_MS = 160;
 const UNIT = 4294967296;
@@ -54,7 +57,7 @@ export interface StreakShape {
 export function laneAngle(event: ReproEvent): number {
   const file = targetFile(event.target);
   const lane = hash32(file ?? event.kind) / UNIT; // 0–1
-  const jitter = (hash32(event.id) / UNIT - 0.5) * 0.06;
+  const jitter = (hash32(event.id) / UNIT - 0.5) * 0.17;
   return (lane * 2 - 1) * LANE_SPREAD + jitter;
 }
 
@@ -82,7 +85,7 @@ export function streakShape(
   const p = age / life;
   const length = travel(event);
   out.angle = angle;
-  out.from = ring.r + META_BAND[1] + 14;
+  out.from = outerRadius(ring) + 4;
   out.head = length * (1 - (1 - p) * (1 - p)); // ease-out
   const speed = (length * 2 * (1 - p)) / life; // d(head)/d(age), px per ms
   out.tail = Math.max(0, out.head - speed * TAIL_MS - 2);

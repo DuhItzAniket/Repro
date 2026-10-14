@@ -50,3 +50,20 @@ owner at the Stage B gate.
   not the bound): every 333 ms window at ×0.5, ×1, ×4 and ×16, on the demo and
   stress fixtures, stays within the cap. At ×16 the stress run draws 717 of 5,789 streaks, 3 of
   192 bundles and 337 of 10,000 edge flares.
+
+## Implementation notes (B14)
+Flagged for the owner at the re-opened Stage B gate; no change of scope.
+- **Stream rays are not flashes.** B13's residue was capped at 9% luminance so that it could not
+  flash. B14 drops the cap so the rays can be as bright as the reference's, and makes them safe
+  by construction instead:
+  - they blend with MAX, so a pixel is as bright as its brightest ray (at most 0.92, encoded),
+    however many overlap;
+  - a ray fades over 90 s of run time, but never faster than over 40 s of wall-clock time, so a
+    pixel loses at most 0.023 a second. A 10% fall in relative luminance needs a fall of at least
+    0.05 (from 0.92, more from anything dimmer): over 2 s. No pixel can complete a rise and a fall
+    within one second.
+
+  A unit test checks both against the sRGB luminance curve at every replay speed.
+- **Areas.** An edge's flare counts only its arc pieces on the stage, since most of the web is
+  off-screen from B14. A bundle counts its longest possible reach (0.32 × the stage height). The
+  worst-window test (×0.5–×16, both fixtures) still holds.
