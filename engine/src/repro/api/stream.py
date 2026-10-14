@@ -20,6 +20,7 @@ import asyncio
 import contextlib
 from collections import deque
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from typing import Final
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -93,21 +94,29 @@ async def stream_run(
     bus: EventBus | None,
     max_pending: int,
 ) -> None:
-    """Serves one accepted connection until the run ends, the client leaves, or it must resync."""
-    reader = await asyncio.to_thread(open_reader)
+    """Serves one accepted connection until the run ends, the client leaves, or it must resync.
+
+    The connection's store reader lives on one thread of its own. A SQLite connection must never
+    be used by two threads at once, and a client that leaves mid-replay cancels this coroutine
+    while a read may still be running: closing on the same single thread queues the close behind
+    that read instead of racing it.
+    """
+    loop = asyncio.get_running_loop()
+    thread = ThreadPoolExecutor(max_workers=1, thread_name_prefix="repro-stream-reader")
+    reader = await loop.run_in_executor(thread, open_reader)
     unsubscribe: Callable[[], None] | None = None
     gone = asyncio.Event()
     watcher = asyncio.create_task(_watch_disconnect(websocket, gone))
     try:
-        if await asyncio.to_thread(reader.run, run_id) is None:
+        if await loop.run_in_executor(thread, reader.run, run_id) is None:
             await websocket.close(UNKNOWN_RUN, "unknown run")
             return
-        mailbox = Mailbox(asyncio.get_running_loop(), run_id, max_pending)
+        mailbox = Mailbox(loop, run_id, max_pending)
         if bus is not None:
             unsubscribe = bus.subscribe(mailbox.listener)
         last = after
         while True:  # the replay
-            page = await asyncio.to_thread(reader.events, run_id, last, REPLAY_PAGE)
+            page = await loop.run_in_executor(thread, reader.events, run_id, last, REPLAY_PAGE)
             if not page:
                 break
             await websocket.send_text(events_frame(page))
@@ -127,7 +136,10 @@ async def stream_run(
         if unsubscribe is not None:
             unsubscribe()
         watcher.cancel()
-        await asyncio.to_thread(reader.close)
+        thread.submit(
+            reader.close
+        )  # after any read still in flight; not awaited: we may be cancelled
+        thread.shutdown(wait=False)
 
 
 async def _relay(websocket: WebSocket, mailbox: Mailbox, last: int, gone: asyncio.Event) -> None:
