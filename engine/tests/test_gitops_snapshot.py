@@ -1,5 +1,6 @@
 """Snapshots: the commit byte for byte, nothing outside the directory, on every OS (C05)."""
 
+import hashlib
 import os
 import stat
 import sys
@@ -191,3 +192,14 @@ def test_regular_files_lists_blobs_by_their_exact_path(repo: Repo) -> None:
     files = regular_files(Git(repo.path), sha)
     assert set(files) == {"pkg/naïve café.py", "run.py"}
     assert files["run.py"] == repo.git("rev-parse", f"{sha}:run.py")
+
+
+def test_the_tree_digest_names_exactly_what_was_written(repo: Repo, tmp_path: Path) -> None:
+    sha = repo.commit({"b.txt": "b", "a/x.py": ("x = 1", "100755")})
+    first = snapshot(Git(repo.path), sha, tmp_path / "s1")
+    blob = {path: repo.git("rev-parse", f"{sha}:{path}") for path in ("a/x.py", "b.txt")}
+    text = f"100755 {blob['a/x.py']}\ta/x.py\n100644 {blob['b.txt']}\tb.txt\n"  # path order
+    assert first.tree_sha256 == hashlib.sha256(text.encode()).hexdigest()
+    assert snapshot(Git(repo.path), sha, tmp_path / "s2").tree_sha256 == first.tree_sha256
+    with_skipped = repo.commit({"con": "a Windows device name: skipped on every OS"})
+    assert snapshot(Git(repo.path), with_skipped, tmp_path / "s3").tree_sha256 == first.tree_sha256

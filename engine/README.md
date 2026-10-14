@@ -9,12 +9,16 @@ The import package is `repro` (src layout: `engine/src/repro/`). The console scr
 ```
 uv run repro --version
 uv run repro doctor          # Python, SQLite, git, uv, Docker and the data paths (--json)
+uv run repro run --repo <path> --base <ref> --head <ref>   # the cockpit shows it live
+uv run repro replay <run id | log.jsonl>                    # from the start
+uv run repro serve           # the cockpit, the read-only API and the event stream
 uv run pytest
 ```
 
-`repro serve` serves the read-only API and the event stream on `127.0.0.1:8780` (loopback only;
-`--allow-origin` for a dev server). `run`, `replay` and `export` are declared and exit with
-status 2, naming the phase that brings them (C08, C08, F05).
+`run`, `replay` and `serve` listen on `127.0.0.1:8780` (loopback only; `--port`, `--open` to
+open the browser, `--allow-origin` for a dev server) and serve the built cockpit (`pnpm build`;
+the `ui_dir` setting points elsewhere). `run --no-serve` waits for the run and exits 0 if it
+completed, 1 if not. `export` is declared and exits with status 2, naming its phase (F05).
 
 ## Store
 
@@ -75,6 +79,7 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `log_format` | `REPRO_LOG_FORMAT` | `json` (one object per line on stderr), or `text` |
 | `concurrency` | `REPRO_CONCURRENCY` | the CPU count, at most 4 (1–64) |
 | `sandbox` | `REPRO_SANDBOX` | `auto` (`docker`, `process`) |
+| `ui_dir` | `REPRO_UI_DIR` | this checkout's `apps/web/dist`, if built (`pnpm build`) |
 
 Unknown keys and invalid values are errors that name their source. Paths must be absolute
 after `~` is expanded.

@@ -1,17 +1,26 @@
 """The ``repro`` command line.
 
-``doctor`` and ``serve`` work. ``run``, ``replay`` and ``export`` take the options their phases
-need and exit with status 2, naming the phase that brings them: nothing pretends to work.
+``doctor``, ``run``, ``replay`` and ``serve`` work. ``export`` takes the options its phase needs
+and exits with status 2, naming the phase that brings it: nothing pretends to work.
+
+``run``, ``replay`` and ``serve`` serve the cockpit on a loopback port: ``run`` streams its run
+live from the same process, ``replay`` shows a stored run or an event log from the start.
 
 Global options override the environment and the configuration file (``repro.config``). Logs go
 to stderr; a command's output goes to stdout.
 """
 
 import os
+import re
+import socket
+import sys
+import threading
+import webbrowser
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, NoReturn
 
 import typer
 
@@ -20,11 +29,35 @@ from repro.config import CONFIG_ENV, Settings, SettingsError, load_settings
 from repro.doctor import Check, Machine, diagnose
 from repro.logs import configure_logging, get_logger
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from fastapi import FastAPI
+
+    from repro.bus import EventBus
+    from repro.gitops import Git
+    from repro.orchestrator import Job, Orchestrator, RunHandle, RunResult
+    from repro.pipeline import Change
+
 #: Exit status of a command that is not available yet.
 NOT_YET = 2
 #: The API's port: a project choice (C04).
 DEFAULT_PORT = 8780
 LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
+#: How long ``run`` waits for a cancelled run to wind down after Ctrl+C.
+STOP_WAIT_S = 30.0
+_RUN_ID = re.compile(r"^run_[0-9A-HJKMNP-TV-Z]{26}$")
+
+HostOption = Annotated[str, typer.Option("--host", help="Loopback address to listen on.")]
+PortOption = Annotated[int, typer.Option("--port", min=1, max=65535, help="Port.")]
+OpenOption = Annotated[bool, typer.Option("--open", help="Open the cockpit in the browser.")]
+AllowOriginOption = Annotated[
+    list[str] | None,
+    typer.Option(
+        "--allow-origin",
+        help="Another origin whose pages may open the event stream (a dev server). Repeatable.",
+    ),
+]
 
 log = get_logger("cli")
 
@@ -184,69 +217,271 @@ def doctor(
         raise typer.Exit(1)
 
 
+def _bind(host: str, port: int) -> socket.socket:
+    """The listening socket, open before anything starts, so a busy port fails at once."""
+    if host not in LOOPBACK:
+        typer.echo(
+            f"repro: {host} is not a loopback address. Until the per-session token arrives "
+            "(H03), the cockpit listens on 127.0.0.1 or ::1 only.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    if sys.platform != "win32":  # on Windows, SO_REUSEADDR would let another process share it
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind((host, port))
+        # Listening from now on: a browser opened as soon as the URL is printed waits in the
+        # backlog until the server accepts, instead of being refused.
+        sock.listen()
+    except OSError as exc:
+        sock.close()
+        typer.echo(f"repro: cannot listen on {host}:{port}: {exc.strerror or exc}", err=True)
+        raise typer.Exit(2) from None
+    return sock
+
+
+def _serve(
+    settings: Settings,
+    sock: socket.socket,
+    *,
+    page: str,
+    allow_origin: list[str] | None,
+    bus: "EventBus | None" = None,
+    replay_log: Path | None = None,
+    open_browser: bool = False,
+    started: Callable[[], None] | None = None,
+) -> None:
+    """Serves the API and the cockpit on ``sock`` until Ctrl+C; ``page`` is the URL to show."""
+    # Imported here: the API's dependencies are not needed by the other commands.
+    from repro.api import create_app  # noqa: PLC0415
+    from repro.api.ui import find_ui  # noqa: PLC0415
+
+    host, port = sock.getsockname()[:2]
+    shown = f"[{host}]" if ":" in host else host
+    origins = {f"http://{shown}:{port}", f"http://localhost:{port}", *(allow_origin or [])}
+    ui = find_ui(settings.ui_dir)
+    api = create_app(
+        settings.paths.database,
+        runs_dir=settings.paths.runs,
+        bus=bus,
+        allowed_origins=origins,
+        ui_dir=ui,
+        replay_log=replay_log,
+    )
+    url = f"http://{shown}:{port}{page}"
+    if ui is None:
+        typer.echo(
+            "repro: the cockpit is not built (pnpm build) or ui_dir holds no index.html; "
+            "serving the API only.",
+            err=True,
+        )
+    log.info("serving", extra={"fields": {"host": host, "port": port}})
+    typer.echo(f"repro: cockpit at {url} (Ctrl+C to stop)", err=True)
+    if started is not None:
+        started()
+    if open_browser and ui is not None:
+        webbrowser.open(url)
+    _run_server(api, sock, settings.log_level)
+
+
+def _run_server(api: "FastAPI", sock: socket.socket, log_level: str) -> None:
+    """Runs uvicorn on the bound socket until Ctrl+C (tests replace this)."""
+    import uvicorn  # noqa: PLC0415
+
+    config = uvicorn.Config(api, log_level=log_level, ws="websockets-sansio")
+    uvicorn.Server(config).run(sockets=[sock])
+
+
+def _report(result: "RunResult") -> None:
+    counts = ", ".join(f"{count} {name}" for name, count in sorted(result.counts.items()))
+    typer.echo(f"repro: {result.run_id} {result.outcome} ({counts})", err=True)
+
+
+class _Run:
+    """One run of ``repro run``: started in the background or run to its end, then reported, and
+    its scratch directory removed as soon as it is over."""
+
+    def __init__(
+        self,
+        orchestrator: "Orchestrator",
+        change: "Change",
+        jobs: "Sequence[Job]",
+        *,
+        run_id: str,
+        work: Path,
+    ) -> None:
+        self.orchestrator = orchestrator
+        self.change = change
+        self.jobs = jobs
+        self.run_id = run_id
+        self.work = work
+        self.handle: RunHandle | None = None
+        self.reporter: threading.Thread | None = None
+
+    def run_to_end(self) -> "RunResult":
+        result = self.orchestrator.run(self.change.spec(), self.jobs, run_id=self.run_id)
+        _report(result)
+        return result
+
+    def start(self) -> None:
+        from repro.pipeline import remove_work  # noqa: PLC0415
+
+        handle = self.orchestrator.start(self.change.spec(), self.jobs, run_id=self.run_id)
+        self.handle = handle
+
+        def finished() -> None:
+            _report(handle.wait())
+            remove_work(self.work)  # now, not at Ctrl+C: the cockpit needs only the store
+
+        self.reporter = threading.Thread(target=finished, name="repro-run-report", daemon=True)
+        self.reporter.start()
+
+    def stop(self) -> None:
+        """Cancels the run if it is still going, and waits for it and its report."""
+        if self.handle is not None:
+            self.handle.cancel()
+            try:
+                self.handle.wait(STOP_WAIT_S)
+            except TimeoutError:
+                typer.echo(f"repro run: {self.run_id} did not stop in {STOP_WAIT_S:g} s", err=True)
+        if self.reporter is not None:
+            self.reporter.join(STOP_WAIT_S)  # it removes the scratch too: one at a time
+
+
+def _resolve(repo: Path, base: str, head: str) -> "tuple[Git, Change]":
+    """The repository and both commits, or exit 2 saying why not."""
+    from repro.gitops import Git, GitError  # noqa: PLC0415
+    from repro.pipeline import Change  # noqa: PLC0415
+
+    git = Git(repo)
+    if not git.is_repository():
+        typer.echo(f"repro run: {repo} is not a git repository", err=True)
+        raise typer.Exit(2)
+    try:
+        return git, Change.resolve(git, repo, base, head)
+    except GitError as exc:
+        typer.echo(f"repro run: {exc}", err=True)
+        raise typer.Exit(2) from None
+
+
 @app.command()
 def run(
     ctx: typer.Context,
     repo: Annotated[Path, typer.Option("--repo", help="The target repository.")],
     base: Annotated[str, typer.Option("--base", help="The base ref.")],
     head: Annotated[str, typer.Option("--head", help="The head ref.")],
+    *,
+    serve: Annotated[
+        bool, typer.Option("--serve/--no-serve", help="Show the run live in the cockpit.")
+    ] = True,
+    host: HostOption = "127.0.0.1",
+    port: PortOption = DEFAULT_PORT,
+    open_browser: OpenOption = False,
+    allow_origin: AllowOriginOption = None,
 ) -> None:
-    """Reproduce a change: run base and head, and record what each side does."""
-    _session(ctx).settings()
-    _not_yet(
-        "run",
-        "C08 (end to end, on the orchestrator from C03)",
-        repo=str(repo),
-        base=base,
-        head=head,
-    )
+    """Reproduce a change: analyse base and head, and record what each side does.
+
+    With --serve (the default) the cockpit shows the run live, and keeps serving after it ends
+    until Ctrl+C. With --no-serve the command waits for the run and exits: status 0 if it
+    completed, 1 if it did not.
+    """
+    settings = _session(ctx).settings()
+    from repro.bus import EventBus  # noqa: PLC0415
+    from repro.ids import new_run_id  # noqa: PLC0415
+    from repro.orchestrator import Orchestrator  # noqa: PLC0415
+    from repro.pipeline import build_jobs, remove_work  # noqa: PLC0415
+    from repro.store import StoreWriter  # noqa: PLC0415
+
+    git, change = _resolve(repo, base, head)
+    sock = _bind(host, port) if serve else None
+    settings.paths.data_dir.mkdir(parents=True, exist_ok=True)
+    run_id = new_run_id()
+    work = settings.paths.scratch(run_id)
+    writer = StoreWriter(settings.paths.database).start()
+    orchestrator = Orchestrator(EventBus(writer), concurrency=settings.concurrency)
+    job_run = _Run(orchestrator, change, build_jobs(git, change, work), run_id=run_id, work=work)
+    try:
+        if sock is None:
+            if job_run.run_to_end().outcome != "completed":
+                raise typer.Exit(1)
+            return
+        _serve(
+            settings,
+            sock,
+            page=f"/?run={run_id}",
+            allow_origin=allow_origin,
+            bus=orchestrator.bus,
+            open_browser=open_browser,
+            started=job_run.start,
+        )
+    finally:
+        job_run.stop()
+        writer.close()
+        remove_work(work)
 
 
 @app.command()
 def replay(
     ctx: typer.Context,
     source: Annotated[str, typer.Argument(help="A run ID or an event log (.jsonl).")],
+    *,
+    host: HostOption = "127.0.0.1",
+    port: PortOption = DEFAULT_PORT,
+    open_browser: OpenOption = False,
+    allow_origin: AllowOriginOption = None,
 ) -> None:
-    """Replay a recorded run in the cockpit, exactly as it happened."""
-    _session(ctx).settings()
-    _not_yet("replay", "C08 (live UI wiring)", source=source)
+    """Replay a recorded run in the cockpit from the start, exactly as it happened."""
+    settings = _session(ctx).settings()
+    if _RUN_ID.match(source):
+        from repro.store import StoreError, StoreReader  # noqa: PLC0415
+
+        try:
+            with StoreReader(settings.paths.database) as reader:
+                record = reader.run(source)
+        except StoreError as exc:
+            typer.echo(f"repro replay: the store is not available: {exc}", err=True)
+            raise typer.Exit(2) from None
+        if record is None:
+            typer.echo(f"repro replay: no run {source} in {settings.paths.database}", err=True)
+            raise typer.Exit(2)
+        sock = _bind(host, port)
+        _serve(settings, sock, page=f"/?run={source}&replay", allow_origin=allow_origin,
+               open_browser=open_browser)  # fmt: skip
+        return
+    path = Path(source)
+    if not path.is_file():
+        typer.echo(f"repro replay: {source} is neither a run ID nor an event log file", err=True)
+        raise typer.Exit(2)
+    from repro_events.log import read_log, validate_log  # noqa: PLC0415
+    from repro_events.schemas import load_schema_set  # noqa: PLC0415
+
+    lines, issues = read_log(path)
+    issues += validate_log(load_schema_set(), lines) if lines else []
+    errors = [issue for issue in issues if issue.severity == "error"]
+    for issue in errors[:20]:
+        typer.echo(f"repro replay: {path.name}: {issue}", err=True)
+    if errors:
+        typer.echo(f"repro replay: {len(errors)} problems; the log is not replayed", err=True)
+        raise typer.Exit(1)
+    sock = _bind(host, port)
+    _serve(settings, sock, page="/?log=/replay.jsonl", allow_origin=allow_origin,
+           replay_log=path.resolve(), open_browser=open_browser)  # fmt: skip
 
 
 @app.command()
 def serve(
     ctx: typer.Context,
-    host: Annotated[str, typer.Option("--host", help="Loopback address to listen on.")] = (
-        "127.0.0.1"
-    ),
-    port: Annotated[int, typer.Option("--port", min=1, max=65535, help="Port.")] = DEFAULT_PORT,
-    allow_origin: Annotated[
-        list[str] | None,
-        typer.Option(
-            "--allow-origin",
-            help="Another origin whose pages may open the event stream (a dev server). Repeatable.",
-        ),
-    ] = None,
+    host: HostOption = "127.0.0.1",
+    port: PortOption = DEFAULT_PORT,
+    allow_origin: AllowOriginOption = None,
+    open_browser: OpenOption = False,
 ) -> None:
-    """Serve the read-only API and the event stream on this machine (the cockpit arrives in C08)."""
+    """Serve the cockpit, the read-only API and the event stream on this machine."""
     settings = _session(ctx).settings()
-    if host not in LOOPBACK:
-        typer.echo(
-            f"repro serve: {host} is not a loopback address. Until the per-session token "
-            "arrives (H03), the API listens on 127.0.0.1 or ::1 only.",
-            err=True,
-        )
-        raise typer.Exit(2)
-    # Imported here: the API's dependencies are not needed by the other commands.
-    import uvicorn  # noqa: PLC0415
-
-    from repro.api import create_app  # noqa: PLC0415
-
-    shown = f"[{host}]" if ":" in host else host
-    origins = {f"http://{shown}:{port}", f"http://localhost:{port}", *(allow_origin or [])}
-    api = create_app(settings.paths.database, runs_dir=settings.paths.runs, allowed_origins=origins)
-    log.info("serving", extra={"fields": {"host": host, "port": port}})
-    typer.echo(f"repro: serving http://{shown}:{port} (read-only; Ctrl+C to stop)", err=True)
-    uvicorn.run(api, host=host, port=port, log_level=settings.log_level, ws="websockets-sansio")
+    sock = _bind(host, port)
+    _serve(settings, sock, page="/", allow_origin=allow_origin, open_browser=open_browser)
 
 
 @app.command()

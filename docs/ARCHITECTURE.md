@@ -460,6 +460,14 @@ queued agents shown as `waiting`.
 - **REST:** `/runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`, `/runs/{id}/card`, and
   `/runs/{id}/artifacts/{sha}` (served only while the file matches its digest). Read-only. All
   bind to `127.0.0.1` by default; `repro serve` listens on loopback only until H03.
+- **The cockpit's client (C08):** the page's query picks the source: `?run=<id>` follows a run
+  live, `?run=<id>&replay` replays it from the start, `?log=` loads a fixture or a same-origin
+  log. Frames go to the cockpit's store, which ignores duplicates and stops at a gap; the
+  client then reconnects with `?from=` its last `seq` (as after a 4000 "resync"). Lost
+  connections are retried with backoff; 4400, 4404 and refused handshakes are reported. When a
+  live stream ends, the clock waits at the end of the data, as a replay does, so a live view
+  and its replay end in the same state. `repro run`, `replay` and `serve` serve the built
+  cockpit at `/`, after the API's routes.
 
 ## 12. Configuration
 

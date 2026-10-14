@@ -45,8 +45,8 @@ export function injectedBloat(): Plugin {
 export default defineConfig({
   plugins: [fontLicence(), injectedBloat()],
   test: {
-    // Playwright specs (e2e/) run in their own runner.
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    // Playwright specs (e2e/, gate/) run in their own runner.
+    exclude: [...configDefaults.exclude, "e2e/**", "gate/**"],
     // SDLC.md §5: the projections and the store are at least 90% covered (`pnpm coverage`).
     coverage: {
       provider: "v8",

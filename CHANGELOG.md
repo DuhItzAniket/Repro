@@ -65,6 +65,16 @@ All notable changes to this project are documented here. The format follows
   `sys.path`, so no target code runs whatever the package names (THREAT_MODEL T19). Unparsable
   files, unsafe paths and a slow grimp are reported. `graph.node`, `graph.edge` and
   `blast.computed` payloads. New dependency: grimp 3.17 (BSD-2-Clause). [C07]
+- `repro run --repo <path> --base <ref> --head <ref>`: reproduces a change's build stage
+  (snapshots of both sides and the static analysis) and shows it in the cockpit live, from the
+  same process; `--no-serve` waits and exits 0 or 1. `repro replay <run id | log.jsonl>` shows
+  a stored run or a validated event log from the start; `repro serve` serves the built cockpit
+  beside the API (`ui_dir` setting). What the analysis could not read is a `missing.recorded`
+  item. Snapshots name their content (`tree_sha256`). [C08]
+- The cockpit follows the engine's event stream: `?run=<id>` live, `?run=<id>&replay` from the
+  start, or the engine's newest run. Gaps and resyncs are recovered from the engine's store, lost
+  connections retried, refusals reported; a finished live run ends in the same state as its
+  replay. Gate C's end-to-end test runs in CI on pallets/itsdangerous. [C08]
 
 ## [0.2.0] - 2026-10-14
 

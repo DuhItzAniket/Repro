@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import subprocess
 import sys
@@ -10,6 +9,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
+from cli_support import clean_env, free_port
 from repro import __version__
 from repro.cli import NOT_YET, app
 
@@ -43,25 +43,12 @@ def test_module_entry_point_runs_in_a_fresh_interpreter() -> None:
     assert completed.stdout.strip() == f"repro {__version__}"
 
 
-def clean_env(tmp_path: Path, **variables: str) -> dict[str, str]:
-    """The real environment without REPRO_* variables, with the data under ``tmp_path``."""
-    env = {key: value for key, value in os.environ.items() if not key.startswith("REPRO_")}
-    return {**env, "REPRO_DATA_DIR": str(tmp_path / "data"), **variables}
-
-
-@pytest.mark.parametrize(
-    ("argv", "phase"),
-    [
-        (["run", "--repo", ".", "--base", "main", "--head", "fix"], "C08"),
-        (["replay", "01J9ZQ4R6M3X8T2K5V7N0P1QWE"], "C08"),
-        (["export", "01J9ZQ4R6M3X8T2K5V7N0P1QWE", "--format", "sarif"], "F05"),
-    ],
-)
-def test_unfinished_commands_say_so_and_exit_2(tmp_path: Path, argv: list[str], phase: str) -> None:
+def test_an_unfinished_command_says_so_and_exits_2(tmp_path: Path) -> None:
+    argv = ["export", "01J9ZQ4R6M3X8T2K5V7N0P1QWE", "--format", "sarif"]
     result = runner.invoke(app, argv, env=clean_env(tmp_path))
     assert result.exit_code == NOT_YET
     assert "not available yet" in result.output
-    assert phase in result.output
+    assert "F05" in result.output
 
 
 def test_run_requires_its_refs(tmp_path: Path) -> None:
@@ -133,21 +120,24 @@ def test_serve_starts_the_api_with_its_own_origins(
         writer.create_run(run).result(30)
         writer.submit(log_line(run.id)).result(30)
     started: dict[str, Any] = {}
-    monkeypatch.setattr("uvicorn.run", lambda api, **options: started.update(options, api=api))
+
+    def fake_server(api: Any, sock: Any, log_level: str) -> None:
+        started.update(api=api, address=sock.getsockname()[:2], log_level=log_level)
+        sock.close()
+
+    monkeypatch.setattr("repro.cli._run_server", fake_server)
+    port = free_port()
     result = runner.invoke(
         app,
-        ["serve", "--port", "9123", "--allow-origin", "http://localhost:5173"],
+        ["serve", "--port", str(port), "--allow-origin", "http://localhost:5173"],
         env=clean_env(tmp_path),
     )
     assert result.exit_code == 0, result.output
-    assert (started["host"], started["port"], started["ws"]) == (
-        "127.0.0.1",
-        9123,
-        "websockets-sansio",
-    )
+    assert started["address"] == ("127.0.0.1", port)  # bound before the server started
     url = f"ws://127.0.0.1/runs/{run.id}/events"
     with TestClient(started["api"], base_url="http://127.0.0.1") as client:
-        for origin in ("http://127.0.0.1:9123", "http://localhost:9123", "http://localhost:5173"):
+        own = (f"http://127.0.0.1:{port}", f"http://localhost:{port}", "http://localhost:5173")
+        for origin in own:
             with client.websocket_connect(url, headers={"origin": origin}) as socket:
                 assert socket.receive_json()["type"] == "events"
         with (
