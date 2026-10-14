@@ -100,6 +100,7 @@ pnpm build              # production build of apps/web
 uv run pytest           # Python tests
 uv run repro --version  # engine CLI
 uv run repro doctor     # can this machine run Repro? (--json for a report)
+uv run repro serve      # read-only API + event stream on 127.0.0.1:8780
 
 pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply
 uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)

@@ -22,6 +22,8 @@ exists. This model is reviewed at every stage gate and formally in phase H03.
   dependency tree.
 - **A4 Network observer / local process:** another process on the machine connecting to
   Repro's API.
+- **A5 Hostile web page:** a site the user visits while Repro serves, scripting the user's own
+  browser against `127.0.0.1` (C04).
 
 ## 3. Trust boundaries
 ```
@@ -47,7 +49,8 @@ exists. This model is reviewed at every stage gate and formally in phase H03.
 | T10 | PR weakens or deletes tests to pass | A1 | Test-file diff (`test_change` evidence). Base versions of modified tests run on head | D06 | Subtle assertion weakening may evade the heuristics. Reviewers see the test diff |
 | T11 | Target manipulates traces or results (writes fake observation files, patches the tracer) | A1 | Container results directory is collected and validated against schema. Tracer state lives in the plugin's private module. Anomalies (missing or extra files, schema errors) become missing items, never passes | D04, E01 | In-process code can interfere with the tracer. Evidence from a hostile run is tagged with the isolation level and anomaly flags |
 | T12 | Secrets leak into events, logs, cards or PR comments | — | Minimal sandbox env (no host env vars). Bus-level secret scrubbing. Gitleaks in CI. API keys read only by the agents module | A06, C03, H03 | Secrets embedded in target repo content may appear in evidence snippets. Snippets are scrubbed with the same patterns |
-| T13 | Local process abuses Repro's API | A4 | Bind to 127.0.0.1, per-session token for WS/REST (from H03), no state-changing endpoints without the token | C04, H03 | Same-user malware is out of scope |
+| T13 | Local process abuses Repro's API | A4 | Bind to 127.0.0.1 (`repro serve` refuses other addresses until H03), per-session token for WS/REST (from H03), no state-changing endpoints without the token (C04 has none) | C04, H03 | Same-user malware is out of scope. Until H03, any local process can read runs through the API |
+| T16 | A web page in the user's browser reads the local API: cross-site WebSocket hijacking, or DNS rebinding of its own domain to 127.0.0.1 | A5 | A WebSocket handshake carrying an `Origin` must match an allow-list (the server's own origins and explicit `--allow-origin`); every request must name a local `Host` | C04 | A page served from an allow-listed origin can read runs |
 | T14 | Untrusted pickles or objects deserialised on the host | A1 | Observations are CBOR/JSON only. Pickle is never unpickled. Encoder output is data, not code | E02–E03 | None known |
 | T15 | Code-executing analysers on the host (griffe inspection, jedi) | A1 | griffe `allow_inspection=False`. Executing analysers run only inside the sandbox | C06, E05 | None known |
 

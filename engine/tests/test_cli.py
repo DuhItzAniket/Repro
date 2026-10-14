@@ -5,6 +5,7 @@ import subprocess
 import sys
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any
 
 import pytest
 from typer.testing import CliRunner
@@ -51,9 +52,8 @@ def clean_env(tmp_path: Path, **variables: str) -> dict[str, str]:
 @pytest.mark.parametrize(
     ("argv", "phase"),
     [
-        (["run", "--repo", ".", "--base", "main", "--head", "fix"], "C03"),
+        (["run", "--repo", ".", "--base", "main", "--head", "fix"], "C08"),
         (["replay", "01J9ZQ4R6M3X8T2K5V7N0P1QWE"], "C08"),
-        (["serve"], "C04"),
         (["export", "01J9ZQ4R6M3X8T2K5V7N0P1QWE", "--format", "sarif"], "F05"),
     ],
 )
@@ -72,7 +72,7 @@ def test_run_requires_its_refs(tmp_path: Path) -> None:
 
 
 def test_a_configuration_error_stops_a_command_with_its_source(tmp_path: Path) -> None:
-    result = runner.invoke(app, ["serve"], env=clean_env(tmp_path, REPRO_CONCURRENCY="lots"))
+    result = runner.invoke(app, ["replay", "x"], env=clean_env(tmp_path, REPRO_CONCURRENCY="lots"))
     assert result.exit_code == 2
     assert "configuration error: REPRO_CONCURRENCY" in result.output
 
@@ -109,6 +109,50 @@ def test_global_options_override_the_environment(tmp_path: Path) -> None:
 def test_config_option_names_the_file(tmp_path: Path) -> None:
     config = tmp_path / "custom.toml"
     config.write_text('sandbox = "nonsense"\n', encoding="utf-8")
-    result = runner.invoke(app, ["--config", str(config), "serve"], env=clean_env(tmp_path))
+    result = runner.invoke(app, ["--config", str(config), "replay", "x"], env=clean_env(tmp_path))
     assert result.exit_code == 2
     assert "custom.toml (sandbox)" in result.output
+
+
+def test_serve_listens_on_loopback_only(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["serve", "--host", "0.0.0.0"], env=clean_env(tmp_path))  # noqa: S104
+    assert result.exit_code == 2
+    assert "not a loopback address" in result.output
+
+
+def test_serve_starts_the_api_with_its_own_origins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi.testclient import TestClient  # noqa: PLC0415
+    from starlette.websockets import WebSocketDisconnect  # noqa: PLC0415
+
+    from store_support import log_line, run_record, started_writer  # noqa: PLC0415
+
+    run = run_record()
+    with started_writer(tmp_path / "data" / "repro.db") as writer:
+        writer.create_run(run).result(30)
+        writer.submit(log_line(run.id)).result(30)
+    started: dict[str, Any] = {}
+    monkeypatch.setattr("uvicorn.run", lambda api, **options: started.update(options, api=api))
+    result = runner.invoke(
+        app,
+        ["serve", "--port", "9123", "--allow-origin", "http://localhost:5173"],
+        env=clean_env(tmp_path),
+    )
+    assert result.exit_code == 0, result.output
+    assert (started["host"], started["port"], started["ws"]) == (
+        "127.0.0.1",
+        9123,
+        "websockets-sansio",
+    )
+    url = f"ws://127.0.0.1/runs/{run.id}/events"
+    with TestClient(started["api"], base_url="http://127.0.0.1") as client:
+        for origin in ("http://127.0.0.1:9123", "http://localhost:9123", "http://localhost:5173"):
+            with client.websocket_connect(url, headers={"origin": origin}) as socket:
+                assert socket.receive_json()["type"] == "events"
+        with (
+            pytest.raises(WebSocketDisconnect) as refused,
+            client.websocket_connect(url, headers={"origin": "https://evil.example"}),
+        ):
+            pass
+        assert refused.value.code == 1008

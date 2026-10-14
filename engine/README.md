@@ -12,8 +12,9 @@ uv run repro doctor          # Python, SQLite, git, uv, Docker and the data path
 uv run pytest
 ```
 
-`run`, `replay`, `serve` and `export` are declared and exit with status 2, naming the phase that
-brings them (C03, C08, C04, F05).
+`repro serve` serves the read-only API and the event stream on `127.0.0.1:8780` (loopback only;
+`--allow-origin` for a dev server). `run`, `replay` and `export` are declared and exit with
+status 2, naming the phase that brings them (C08, C08, F05).
 
 ## Store
 
@@ -32,6 +33,14 @@ to the writer; subscribers get events only after they are committed. `repro.orch
 run's jobs as a DAG on daemon threads (at most `concurrency` at once), with per-job timeouts and
 cancellation; failures, timeouts and skipped jobs are recorded as `fail` events and missing
 items, and `run.finished` is always emitted.
+
+## API
+
+`repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,
+`/runs/{id}/artifacts/{sha256}` and `/runs/{id}/card`, and the WebSocket
+`/runs/{id}/events?from=<seq>`: replay, a `caught_up` frame, then live events from the bus, each
+exactly once in `seq` order. A client that falls behind is closed with 4000 "resync" and resumes
+with `?from=`. Requests must name a local host; WebSocket origins must be allow-listed.
 
 ## Settings
 
