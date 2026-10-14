@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `repro doctor`: checks Python (3.12+), git (2.40+), uv (the 0.13 baseline), Docker (daemon,
+  Linux containers, kernel), the data directory and, on Windows, the run root's length and
+  long-path support. Each check is ok, warn or fail with a hint; `--json` prints a report; exit
+  status 1 when a required check fails. It does not change the machine. [C01]
+- Engine settings from flags, `REPRO_*` variables and a TOML file, validated, with errors naming
+  their source; default data paths per platform (`~/.repro`, a short run root under
+  `%LOCALAPPDATA%` on Windows); structured JSON logs on stderr with credentials redacted. [C01]
+- `repro run`, `replay`, `serve` and `export` are declared with their options and exit with
+  status 2, naming the phase that brings them. [C01]
+
 ## [0.2.0] - 2026-10-14
 
 Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.

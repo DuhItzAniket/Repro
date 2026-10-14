@@ -98,7 +98,8 @@ pnpm typecheck          # tsc --noEmit across JS packages
 pnpm test               # Vitest across JS packages
 pnpm build              # production build of apps/web
 uv run pytest           # Python tests
-uv run repro --version  # engine CLI (subcommands arrive in C01)
+uv run repro --version  # engine CLI
+uv run repro doctor     # can this machine run Repro? (--json for a report)
 
 pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply
 uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)

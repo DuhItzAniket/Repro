@@ -282,7 +282,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| C01 | Engine skeleton, configuration & CLI | S | A05 | planned |
+| C01 | Engine skeleton, configuration & CLI | S | A05 | done |
 | C02 | Storage & evidence store | M | C01 | planned |
 | C03 | Event bus & orchestrator | M | C02 | planned |
 | C04 | API & WebSocket transport | M | C03 | planned |
@@ -686,3 +686,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B14 | 2026-10-14 | [#26](https://github.com/DuhItzAniket/Repro/pull/26) | Reference parity II: panels beside a near-square stage, measured ring geometry, a drum of event-built code cards, a chord-layout web of arcs, bunches of strands landing on sections, lines outside that bounce from the hit section |
 | B15 | 2026-10-14 | [#27](https://github.com/DuhItzAniket/Repro/pull/27) | Stage settings (thickness and brightness per part, kept per viewer, inside the flash bound), a zoom from the arc to the whole wheel, the run's nodes over the whole disc, callouts kept inside the stage |
 | Gate B (closed) | 2026-10-14 | [#28](https://github.com/DuhItzAniket/Repro/pull/28) | The owner approved the look after B14 and B15; gate record re-measured; release v0.2.0 ([gate record](phases/B-gate.md)) |
+| C01 | 2026-10-14 | [#29](https://github.com/DuhItzAniket/Repro/pull/29) | `repro doctor` (Python, git, uv, Docker, data paths, Windows long paths), layered settings with source-named errors, platform data paths, JSON logs on stderr; the other commands declared |
