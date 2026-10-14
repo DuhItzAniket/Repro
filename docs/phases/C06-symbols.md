@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C05 |
-| **Branch / PR** | `phase/C06-symbols` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C06-symbols` · [#34](https://github.com/DuhItzAniket/Repro/pull/34) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 For a change, Repro knows which symbols it touched, on both sides: functions, methods, classes
@@ -109,7 +109,7 @@ moved to another module, and emits one `symbol.changed` event per touched symbol
   0.24 s on the development machine, and names modules as Python and pytest would import them
   (`repro.api.stream`, `test_gitops_diff`). The first run named them `engine.src.repro…`, which
   is why module naming walks up through packages.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#34).
 
 ## Deviations from spec
 - "Changed lines → changed symbols": the diff selects files, and own code decides which symbols

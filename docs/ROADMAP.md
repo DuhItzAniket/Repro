@@ -287,7 +287,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | C03 | Event bus & orchestrator | M | C02 | done |
 | C04 | API & WebSocket transport | M | C03 | done |
 | C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | done |
-| C06 | Symbol table & changed-symbol mapping | M | C05 | in progress |
+| C06 | Symbol table & changed-symbol mapping | M | C05 | done |
 | C07 | Import graph & blast radius | M | C06 | planned |
 | C08 | Live UI wiring & end-to-end | M | B12, C04, C07 | planned |
 
@@ -691,3 +691,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | C03 | 2026-10-14 | [#31](https://github.com/DuhItzAniket/Repro/pull/31) | Event bus (envelopes, credential scrubbing, per-kind validation, publish after commit) and orchestrator (job DAG, concurrency, timeouts, cancellation with tool-tree kill, failures as `fail` events and missing items, guaranteed `run.finished`); golden stub-pipeline log |
 | C04 | 2026-10-14 | [#32](https://github.com/DuhItzAniket/Repro/pull/32) | Read-only REST and a replay-then-live WebSocket (subscribe first, dedupe, `caught_up`, batched frames, resync on overflow, lossless `?from=`); local `Host` and allow-listed `Origin` (THREAT_MODEL T16); `repro serve` on loopback |
 | C05 | 2026-10-14 | [#33](https://github.com/DuhItzAniket/Repro/pull/33) | Hardened git (no repo hooks or fsmonitor), refs and merge bases, exact-path diffs with line ranges, byte-for-byte snapshots from tree objects (not `git archive`) with unsafe entries skipped, worktrees cleaned up past Windows locks |
+| C06 | 2026-10-14 | [#34](https://github.com/DuhItzAniket/Repro/pull/34) | Module names from packages, `ast` symbol tables with stable IDs, and changed symbols by own code (comments and reformatting are not changes); repeated names aligned, renames and moves by AST similarity, unreadable files reported, never guessed |
