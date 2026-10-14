@@ -115,7 +115,7 @@ class ArtifactStore:
                 os.fsync(handle.fileno())
             sha256 = digest.hexdigest()
             if target.exists():
-                if _sha256_of(target) != sha256:
+                if sha256_of(target) != sha256:
                     raise ArtifactError(f"{path} already holds other content in {run_id}")
                 temporary.unlink()
             else:
@@ -132,12 +132,12 @@ class ArtifactStore:
         target = self.file_of(run_id, ref.path)
         if not target.is_file():
             raise ArtifactError(f"{ref.path} is missing from {run_id}")
-        if _sha256_of(target) != ref.sha256:
+        if sha256_of(target) != ref.sha256:
             raise ArtifactError(f"{ref.path} in {run_id} no longer matches its digest")
         return target.open("rb")
 
 
-def _sha256_of(path: Path) -> str:
+def sha256_of(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(CHUNK), b""):

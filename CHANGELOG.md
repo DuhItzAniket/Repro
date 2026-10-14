@@ -32,6 +32,13 @@ All notable changes to this project are documented here. The format follows
   become `fail` events and missing items; `stage.started`/`stage.finished` frame each stage; and
   `run.finished` (outcome, duration, counts) is always emitted, followed by the run registry and
   a WAL checkpoint. A golden log pins a stub pipeline. [C03]
+- The API (`repro serve`, FastAPI and uvicorn): read-only REST for runs, evidence, verified
+  artifacts and cards, and a WebSocket that replays a run then follows it live, every event
+  exactly once in `seq` order (subscribe first, replay in pages, deduplicate, `caught_up`). A
+  client that falls behind is closed with "resync" and resumes losslessly with `?from=`; the
+  writer never waits for clients. Local only: requests must name a local host (DNS rebinding),
+  WebSocket origins must be allow-listed (cross-site WebSocket hijacking, THREAT_MODEL T16), and
+  `repro serve` listens on loopback only. [C04]
 
 ## [0.2.0] - 2026-10-14
 

@@ -1,6 +1,6 @@
 """The ``repro`` command line.
 
-``doctor`` works. ``run``, ``replay``, ``serve`` and ``export`` take the options their phases
+``doctor`` and ``serve`` work. ``run``, ``replay`` and ``export`` take the options their phases
 need and exit with status 2, naming the phase that brings them: nothing pretends to work.
 
 Global options override the environment and the configuration file (``repro.config``). Logs go
@@ -22,6 +22,9 @@ from repro.logs import configure_logging, get_logger
 
 #: Exit status of a command that is not available yet.
 NOT_YET = 2
+#: The API's port: a project choice (C04).
+DEFAULT_PORT = 8780
+LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 
 log = get_logger("cli")
 
@@ -191,7 +194,11 @@ def run(
     """Reproduce a change: run base and head, and record what each side does."""
     _session(ctx).settings()
     _not_yet(
-        "run", "C03 (orchestrator) and end to end in C08", repo=str(repo), base=base, head=head
+        "run",
+        "C08 (end to end, on the orchestrator from C03)",
+        repo=str(repo),
+        base=base,
+        head=head,
     )
 
 
@@ -206,10 +213,40 @@ def replay(
 
 
 @app.command()
-def serve(ctx: typer.Context) -> None:
-    """Serve the API and the cockpit on localhost."""
-    _session(ctx).settings()
-    _not_yet("serve", "C04 (API) and C08 (the cockpit)")
+def serve(
+    ctx: typer.Context,
+    host: Annotated[str, typer.Option("--host", help="Loopback address to listen on.")] = (
+        "127.0.0.1"
+    ),
+    port: Annotated[int, typer.Option("--port", min=1, max=65535, help="Port.")] = DEFAULT_PORT,
+    allow_origin: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--allow-origin",
+            help="Another origin whose pages may open the event stream (a dev server). Repeatable.",
+        ),
+    ] = None,
+) -> None:
+    """Serve the read-only API and the event stream on this machine (the cockpit arrives in C08)."""
+    settings = _session(ctx).settings()
+    if host not in LOOPBACK:
+        typer.echo(
+            f"repro serve: {host} is not a loopback address. Until the per-session token "
+            "arrives (H03), the API listens on 127.0.0.1 or ::1 only.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    # Imported here: the API's dependencies are not needed by the other commands.
+    import uvicorn  # noqa: PLC0415
+
+    from repro.api import create_app  # noqa: PLC0415
+
+    shown = f"[{host}]" if ":" in host else host
+    origins = {f"http://{shown}:{port}", f"http://localhost:{port}", *(allow_origin or [])}
+    api = create_app(settings.paths.database, runs_dir=settings.paths.runs, allowed_origins=origins)
+    log.info("serving", extra={"fields": {"host": host, "port": port}})
+    typer.echo(f"repro: serving http://{shown}:{port} (read-only; Ctrl+C to stop)", err=True)
+    uvicorn.run(api, host=host, port=port, log_level=settings.log_level, ws="websockets-sansio")
 
 
 @app.command()

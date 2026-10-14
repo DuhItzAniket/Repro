@@ -114,6 +114,14 @@ class StoreReader:
         rows = self._query("SELECT body FROM evidence WHERE run_id = ? ORDER BY seq", (run_id,))
         return [json.loads(row[0]) for row in rows]
 
+    def card(self, run_id: str) -> dict[str, Any] | None:
+        """The run's card, once it exists (F05)."""
+        row = self._query("SELECT body FROM cards WHERE run_id = ?", (run_id,)).fetchone()
+        if row is None:
+            return None
+        value: dict[str, Any] = json.loads(row[0])
+        return value
+
     def artifact(self, run_id: str, sha256: str) -> ArtifactRow | None:
         """A run's artifact by digest (its first path, if the content is stored at several)."""
         row = self._query(

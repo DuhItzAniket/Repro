@@ -444,8 +444,14 @@ queued agents shown as `waiting`.
   sent before live events continue. Frames carry arrays of events batched every 16–33 ms. A
   client that falls behind is closed with a "resync" reason and reconnects with `?from=`. The
   writer never waits for clients.
+- **Frames and closes (C04):** `{"type": "events", "events": [...]}` carries stored bodies
+  verbatim; `{"type": "caught_up", "seq": n}` ends the replay. The server closes with 1000
+  "finished" after `run.finished`, 4000 "resync" when a client falls behind, 4400 for a bad
+  request and 4404 for an unknown run. A handshake whose `Origin` is not allow-listed is refused
+  (HTTP 403), and every request must name a local `Host` (THREAT_MODEL T16).
 - **REST:** `/runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`, `/runs/{id}/card`, and
-  `/runs/{id}/artifacts/{sha}`. All bind to `127.0.0.1` by default.
+  `/runs/{id}/artifacts/{sha}` (served only while the file matches its digest). Read-only. All
+  bind to `127.0.0.1` by default; `repro serve` listens on loopback only until H03.
 
 ## 12. Configuration
 
