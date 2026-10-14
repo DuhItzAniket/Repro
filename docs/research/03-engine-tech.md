@@ -385,7 +385,7 @@ The card records the highest layer actually achieved [A].
   - `pytest-rerunfailures 16.7` (2026-09-17): `--reruns`, `--reruns-delay`, `--only-rerun REGEX`, `--rerun-except REGEX`, `@pytest.mark.flaky(reruns=N)`. Requires xdist ≥ 2.3 to rerun crashed tests [V].
   - `pytest-repeat 0.9.4` [V]. `pytest-flakefinder 1.1.0` (2022) [V].
 - **Repro policy [A]:**
-  1. Fixed env for base and head: `PYTHONHASHSEED=0`, `-p no:randomly` (or the same `--randomly-seed`), `-p no:xdist` or Repro-level deterministic sharding, `PYTHONUTF8=1`, `TZ`/locale pinned (how `TZ` behaves on Windows is unverified [U]), a minimal environment, and an empty `addopts` override where needed (`-o addopts=`).
+  1. Fixed env for base and head: `PYTHONHASHSEED=0`, `-p no:randomly` (or the same `--randomly-seed`), `-p no:xdist` or Repro-level deterministic sharding, `PYTHONUTF8=1`, `TZ`/locale pinned (`TZ=UTC` is honoured on Windows too: measured in D04 with CPython 3.12–3.15 on a host whose own time zone is not UTC, `time.localtime(0)` is midnight), a minimal environment, and an empty `addopts` override where needed (`-o addopts=`).
   2. **Run base twice.** The second run uses a different `PYTHONHASHSEED` and a reversed test order.
      - A test whose outcome differs is `flaky`.
      - An observation field that differs is `unstable` and is masked from the base/head diff.

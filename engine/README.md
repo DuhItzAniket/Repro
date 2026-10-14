@@ -78,6 +78,13 @@ dependencies' environment from wheels, cache it, copy it for the side and instal
 offline in the sandbox; `Environment.payload()` is `env.provisioned`, and a failure is a
 `ProvisionError` whose reason `environment_missing` turns into an `environment_failed` item.
 
+## Running tests
+
+`repro.runner.run_tests(sandbox, env, tests=..., seed=...)` runs node IDs (or every test) with
+the environment's interpreter, under Repro's pytest plugin (`sandbox/_hook/repro_pytest.py`) and
+Repro's own options, whatever the project configures. It returns the execution, the plugin's
+results read back as untrusted input (`complete` only with the session record) and the JUnit XML.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,

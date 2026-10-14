@@ -12,7 +12,8 @@ def test_name_resolution_is_refused():
 
 
 def test_outside_connection_is_refused():
-    # 192.0.2.1 is TEST-NET-1 (RFC 5737): never routed, so only the guard can answer at once.
+    # 192.0.2.1 is in TEST-NET-1, reserved for documentation (RFC 5737): nothing should answer
+    # there, so an immediate failure is the guard's.
     with pytest.raises(OSError, match="network access is off"):
         socket.create_connection(("192.0.2.1", 9), timeout=30)
 

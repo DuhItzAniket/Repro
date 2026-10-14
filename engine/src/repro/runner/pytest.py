@@ -7,10 +7,10 @@ plugin, which the sandboxes already put first on ``PYTHONPATH`` beside the audit
 ``--continue-on-collection-errors`` keeps one module that fails to import from hiding every
 other test's outcome. JUnit XML is written too, as an artifact for people and other tools.
 
-The environment adds ``PYTHONUTF8=1`` and ``TZ=UTC`` to the sandbox's own (fixed hash seed,
-no host variables), ``REPRO_SEED`` for the plugin's per-test random seeds, and
-``REPRO_NET_GUARD=1`` so a test that needs the network fails at once, and the same way on
-every isolation level.
+The environment adds ``PYTHONUTF8=1``, ``TZ=UTC`` and the ``C.UTF-8`` locale to the
+sandbox's own (fixed hash seed, no host secrets), ``REPRO_SEED`` for the plugin's per-test
+random seeds, and ``REPRO_NET_GUARD=1`` so a test that needs the network fails at once, and the
+same way on every isolation level.
 
 What the plugin wrote comes from inside the target's process, so it is read as untrusted: a
 record that is not well formed is counted and skipped, and a run with no session record (a
@@ -54,7 +54,14 @@ def pytest_argv(
 
 def plugin_env(out_dir: str, *, seed: int = 0, net_guard: bool = True) -> dict[str, str]:
     """What the plugin and the determinism controls need, on top of the sandbox's environment."""
-    env = {"REPRO_OUT": out_dir, "REPRO_SEED": str(seed), "PYTHONUTF8": "1", "TZ": "UTC"}
+    env = {
+        "REPRO_OUT": out_dir,
+        "REPRO_SEED": str(seed),
+        "PYTHONUTF8": "1",
+        "TZ": "UTC",
+        "LC_ALL": "C.UTF-8",
+        "LANG": "C.UTF-8",
+    }
     if net_guard:
         env["REPRO_NET_GUARD"] = "1"
     return env

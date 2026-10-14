@@ -25,6 +25,7 @@ from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_availabl
 from repro.sandbox.image import sandbox_image
 
 SUITE = Path(__file__).parent / "data" / "plugin_suite"
+PROJECTS = Path(__file__).parent / "data" / "projects"
 PYTHONS = ("3.12", "3.13", "3.14", "3.15")
 OUTCOMES = "tests/test_outcomes.py::"
 EXPECTED = {
@@ -46,6 +47,7 @@ EXPECTED = {
     "tests/test_network.py::test_outside_connection_is_refused": "passed",
     "tests/test_network.py::test_localhost_resolves": "passed",
     "tests/test_network.py::test_loopback_still_works": "passed",
+    "tests/test_pinned.py::test_the_run_is_pinned": "passed",
 }
 DRAW = "tests/test_random.py::test_reports_its_draw"
 
@@ -185,6 +187,22 @@ def test_a_run_killed_for_its_timeout_is_incomplete(side: Side) -> None:
     assert run.execution.outcome == "timeout"
     assert not run.results.complete
     assert run.results.tests == {}
+
+
+def test_an_older_pytest(cache: Path, tmp_path: Path) -> None:
+    """A target's own pytest runs the plugin: D03's requirements fixture pins pytest 8.3.3."""
+    snapshot = tmp_path / "snapshot"
+    shutil.copytree(PROJECTS / "requirements", snapshot)
+    box = ProcessSandbox(tmp_path / "work", Limits(timeout_s=300))
+    provisioner = HostProvisioner(cache, exclude_newer="2025-01-01T00:00:00Z")
+    run = run_tests(box, provisioner.provision("base", inspect_project(snapshot), box))
+    assert run.results.complete, run.execution.stdout.decode(errors="replace")
+    assert run.results.outcomes() == {
+        "tests/test_calc.py::test_add": "passed",
+        "tests/test_calc.py::test_a_dependency_is_installed": "passed",
+    }
+    assert run.results.session is not None
+    assert run.results.session["pytest"] == "8.3.3"
 
 
 docker = pytest.mark.skipif(

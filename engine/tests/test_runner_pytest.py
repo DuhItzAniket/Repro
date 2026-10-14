@@ -49,6 +49,8 @@ def test_the_environment() -> None:
         "REPRO_SEED": "7",
         "PYTHONUTF8": "1",
         "TZ": "UTC",
+        "LC_ALL": "C.UTF-8",
+        "LANG": "C.UTF-8",
         "REPRO_NET_GUARD": "1",
     }
     assert "REPRO_NET_GUARD" not in plugin_env("/out", net_guard=False)
