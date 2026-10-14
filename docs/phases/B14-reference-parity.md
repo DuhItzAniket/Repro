@@ -240,6 +240,7 @@ and ×16, 8 and 5 (ADR-0011 B14 note). Checked frame by frame on the app's own c
 
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
+      The owner approved the look on 2026-10-14, after the seventh review and B15.
       Measured at the same stage height:
 
       | Region (mean, 8-bit) | Reference (3, 6, 12 s) | After B13 | After B14 (30.5 s, end) |

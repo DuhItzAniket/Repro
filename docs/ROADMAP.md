@@ -124,10 +124,10 @@ ADRs or phase records.
 **Goal:** the complete visual product, driven only by a recorded event log, built to the
 DESIGN.md spec and performance budget.
 
-**Gate B (first passed 2026-10-14. Re-opened the same day: the owner's review against a sharper
-copy of the reference found that the stage still did not match it, and B14 was added. v0.2.0 is
-tagged once the owner confirms the new side-by-side. Record: [`phases/B-gate.md`](phases/B-gate.md);
-the mid-laptop 60 fps check is still owed by the owner):** side by side with the reference frame
+**Gate B (passed 2026-10-14. Re-opened the same day: the owner's review against a sharper copy
+of the reference found that the stage still did not match it, and B14 and B15 were added; the
+owner approved the look the same day and v0.2.0 was tagged. Record:
+[`phases/B-gate.md`](phases/B-gate.md); the mid-laptop 60 fps check is still owed by the owner):** side by side with the reference frame
 at 6 s, it reads as the same visual family.
 The reference log replays at ×1 at 60 fps on a mid laptop (measured, with the method recorded).
 Scrubbing and all speeds work. All panels are driven only by events. Visual-regression,
@@ -685,3 +685,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Gate B | 2026-10-14 | [#25](https://github.com/DuhItzAniket/Repro/pull/25) | Stage B complete; release v0.2.0 ([gate record](phases/B-gate.md)); mid-laptop 60 fps check owed by the owner. Re-opened the same day at the owner's review (B14) |
 | B14 | 2026-10-14 | [#26](https://github.com/DuhItzAniket/Repro/pull/26) | Reference parity II: panels beside a near-square stage, measured ring geometry, a drum of event-built code cards, a chord-layout web of arcs, bunches of strands landing on sections, lines outside that bounce from the hit section |
 | B15 | 2026-10-14 | [#27](https://github.com/DuhItzAniket/Repro/pull/27) | Stage settings (thickness and brightness per part, kept per viewer, inside the flash bound), a zoom from the arc to the whole wheel, the run's nodes over the whole disc, callouts kept inside the stage |
+| Gate B (closed) | 2026-10-14 | [#28](https://github.com/DuhItzAniket/Repro/pull/28) | The owner approved the look after B14 and B15; gate record re-measured; release v0.2.0 ([gate record](phases/B-gate.md)) |
