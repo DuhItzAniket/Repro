@@ -105,14 +105,22 @@ def path_problem(path: str) -> str | None:
     return next((problem for problem in problems if problem is not None), None)
 
 
-def extended(path: Path) -> str:
-    """``path`` as the OS should be given it: an extended-length path on Windows."""
-    text = str(path.absolute())
-    if sys.platform != "win32" or text.startswith("\\\\?\\"):
-        return text
-    if text.startswith("\\\\"):
-        return "\\\\?\\UNC\\" + text[2:]
-    return "\\\\?\\" + text
+if sys.platform == "win32":
+
+    def extended(path: Path) -> str:
+        """``path`` as an extended-length path, so deep trees work without long-path support."""
+        text = str(path.absolute())
+        if text.startswith("\\\\?\\"):
+            return text
+        if text.startswith("\\\\"):
+            return "\\\\?\\UNC\\" + text[2:]
+        return "\\\\?\\" + text
+
+else:
+
+    def extended(path: Path) -> str:
+        """``path`` as given to the OS (POSIX has no 260-character limit)."""
+        return str(path.absolute())
 
 
 def _list_tree(git: Git, commit: str) -> list[_Entry]:
