@@ -614,11 +614,15 @@ name = "repro-engine"
 version = "0.2.0"
 source = { editable = "engine" }
 dependencies = [
+    { name = "pydantic" },
     { name = "typer" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "typer", specifier = ">=0.27.3" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.14.1" },
+    { name = "typer", specifier = ">=0.27.3" },
+]
 
 [[package]]
 name = "repro-events"

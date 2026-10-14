@@ -447,6 +447,10 @@ queued agents shown as `waiting`.
 | Repository policy | `repro.yml` in the target repo (read from **base**, never head) | invariants, thresholds, protected paths, claim requirements |
 | Run options | CLI flags | refs, PR text file, deterministic-only, export formats |
 
+Engine settings resolve in this order: command-line flag, `REPRO_<NAME>` variable, the TOML
+file (`REPRO_CONFIG`, else `config.toml` in the data directory), default. Unknown keys and invalid
+values are errors naming their source (C01; `engine/README.md` lists the settings).
+
 Policy is read from the base ref because a PR must not be able to weaken the rules it is
 judged by. If head changes `repro.yml`, that becomes a gap item and is flagged by default.
 
