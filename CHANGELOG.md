@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
+Stage C — Engine core & live stream. Gate record: `docs/phases/C-gate.md`.
+
 ### Fixed
 - The event stream could crash the engine (a segmentation fault, seen once on the Ubuntu runner):
   a client leaving mid-replay cancelled the handler while a SQLite read still ran on a worker
@@ -263,5 +267,7 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.3.0
+[0.2.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.2.0
 [0.1.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.1.0
