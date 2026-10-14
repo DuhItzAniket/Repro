@@ -59,7 +59,8 @@ const FRAME_MS = 33;
 
 const laneOf = (side: Side): "base" | "head" => (side === "head" ? "head" : "base");
 
-function kindOf(run: TestRun, cursor: number): ParticleKind {
+/** How a run is drawn as of `cursor`: running, or settled by outcome. */
+export function kindOf(run: TestRun, cursor: number): ParticleKind {
   if (run.finished < 0 || run.finished >= cursor) return "running";
   if (run.outcome === "passed" || run.outcome === "xfailed") return "passed";
   if (run.outcome === "skipped") return "skipped";

@@ -1,0 +1,18 @@
+# Expected Repro outcome for the breaks-one fixture (Gate D: exactly one test flips).
+[fixture]
+name = "breaks-one"
+head = "change/discount-percent"
+
+[expected]
+status = "FLAGGED"
+claims = ["No behaviour change"]
+# discount(50, 10) now returns 5.0 instead of 45.0: test_discount, the only test that runs
+# discount(), passes on base and fails on head, every time.
+evidence = ["test_outcome:P2F:tests/test_prices.py::test_discount"]
+missing = []
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_prices.py::test_discount" = ["blast_radius"]

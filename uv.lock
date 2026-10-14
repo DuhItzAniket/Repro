@@ -788,7 +788,7 @@ wheels = [
 
 [[package]]
 name = "repro-bench"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "bench" }
 dependencies = [
     { name = "repro-engine" },
@@ -799,7 +799,7 @@ requires-dist = [{ name = "repro-engine", editable = "engine" }]
 
 [[package]]
 name = "repro-engine"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "engine" }
 dependencies = [
     { name = "fastapi" },
@@ -824,7 +824,7 @@ requires-dist = [
 
 [[package]]
 name = "repro-events"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "packages/events/python" }
 dependencies = [
     { name = "jsonschema" },

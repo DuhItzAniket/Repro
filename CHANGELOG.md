@@ -6,7 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-15
+
+Stage D — Sandboxed two-sided execution. Gate record: `docs/phases/D-gate.md`.
+
 ### Added
+- Gate D's browser test (`apps/web/gate/gate-d.spec.ts`, CI job `gate-d`): Repro's fixtures through
+  `repro run` in full, read in the cockpit's Execution, Change routes and index. The cockpit's
+  test hook summarises those panels from their own views. A fixture `breaks-one`, and
+  `python -m fixtures` to build any fixture repository. [Gate D]
 - The process sandbox (L0 to L2): a command runs with a minimal environment, Repro's audit
   hook in every Python process it starts, and containment: a Job Object on Windows (created
   suspended, assigned, resumed; job-wide memory, a process limit, kill-on-close), a process
@@ -334,7 +342,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.4.0
 [0.3.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.2.0
 [0.1.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.1.0

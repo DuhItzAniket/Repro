@@ -1,8 +1,10 @@
 /**
- * Gate C (C08): the cockpit against the real engine on a real repository. The spec starts
- * `repro run` and `repro replay` itself, so there is no web server here. It needs a built
- * cockpit (`pnpm build`), the Python environment (`uv sync`) and a clone of the target named by
- * REPRO_GATE_REPO (see gate/gate-c.spec.ts); CI's `gate-c` job provides all three.
+ * The gates' browser tests: the cockpit against the real engine. The specs start `repro run`
+ * and `repro replay` themselves, so there is no web server here. Both need a built cockpit
+ * (`pnpm build`) and the Python environment (`uv sync`). Gate C (C08) also needs a clone of
+ * its target named by REPRO_GATE_REPO (see gate/gate-c.spec.ts); Gate D builds Repro's own
+ * fixture repositories and needs the package index (and Docker for containers). CI's `gate-c`
+ * and `gate-d` jobs run one spec each.
  */
 import { defineConfig, devices } from "@playwright/test";
 

@@ -59,6 +59,7 @@ OS**. A test pins them.
 | `flaky` | Test with random outcome | observation marked `unstable` | not diffed; listed under *missing* |
 | `untested` | Change no test reaches | blast radius with no covering tests | UNVERIFIABLE / *missing* |
 | `selection` | Changes whose affected tests a person can name, beside a test none affects | exactly the expected selected tests and reasons; no gaps (D05) | VERIFIED |
+| `breaks-one` | A change that breaks exactly one test | that test P2F, in Execution, Change routes and the index (Gate D) | FLAGGED |
 | `forbidden-path` | Edits a protected path | invariant failure | FLAGGED (`forbidden_paths`) |
 | `test-tamper` | Deletes a failing assertion and adds `@pytest.mark.skip` to another test | `test_change` evidence. Base version of the edited test fails on head | FLAGGED |
 | `probe-only` | Wrong output on inputs no existing test uses | `probe_diff` from generated probes | FLAGGED (Stage E06/G07) |
@@ -68,7 +69,7 @@ OS**. A test pins them.
 Each fixture's expected outcome lives next to the specs as `<name>.toml` (stdlib `tomllib`).
 From Stage D on, integration tests assert it end to end. Fixtures are added by the phase that
 first needs them; `honest-fix` exists since A07, `selection` and `untested` since D05,
-`flaky` and `test-tamper` since D06, `perf-regress` since D07.
+`flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D.
 
 ### Golden files and property tests
 

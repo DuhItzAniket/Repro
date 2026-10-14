@@ -9,18 +9,16 @@
  * Environment: REPRO_GATE_REPO, a clone of the library holding both commits. Without it the
  * test is skipped locally and fails in CI.
  */
-import { type ChildProcess, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { expect, type Page, test } from "@playwright/test";
-import type { CockpitSummary } from "../src/test-hook";
+import { expect, test } from "@playwright/test";
+import { startRepro, stop, summaryWhenFinished } from "./support";
 
 const REPO = process.env.REPRO_GATE_REPO ?? "";
 const BASE = "93ae366874bbd4f69d90495c45b2cd336387496c";
 const HEAD = "7f4dcf83a07bb3d53f4e0e65ef1b43327b4cca90";
-const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 const MODULES = [
   "conf", // docs/conf.py
@@ -50,66 +48,6 @@ const AFFECTED = [
   // url_safe reaches signer only through serializer and timed.
   { symbol_id: "itsdangerous.url_safe:<module>#0", distance: 2 },
 ];
-
-/** The workspace's Python (`uv sync`): run directly, so stopping it stops the engine itself. */
-const PYTHON = join(
-  ROOT,
-  ".venv",
-  ...(process.platform === "win32" ? ["Scripts", "python.exe"] : ["bin", "python"]),
-);
-
-/** Starts a `repro` command and resolves with the cockpit URL it prints. */
-function startRepro(args: string[], data: string): { child: ChildProcess; url: Promise<string> } {
-  const child = spawn(
-    PYTHON,
-    ["-m", "repro", "--data-dir", data, "--log-format", "text", ...args],
-    { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
-  );
-  let output = "";
-  const url = new Promise<string>((done, fail) => {
-    child.stderr?.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-      const match = /cockpit at (http:\/\/\S+)/.exec(output);
-      if (match?.[1] !== undefined) done(match[1]);
-    });
-    child.on("exit", (code) =>
-      fail(new Error(`repro exited (${code}) before serving:\n${output}`)),
-    );
-  });
-  return { child, url };
-}
-
-/**
- * Stops a `repro` command. POSIX: SIGINT, its Ctrl+C. Windows: the whole process tree, since a
- * virtual environment's python.exe is a launcher that runs the interpreter as a child process.
- */
-function stop(child: ChildProcess): Promise<void> {
-  return new Promise((done) => {
-    if (child.exitCode !== null || child.pid === undefined) return done();
-    child.on("exit", () => done());
-    if (process.platform === "win32") {
-      spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
-    } else {
-      child.kill("SIGINT");
-    }
-  });
-}
-
-async function summaryWhenFinished(page: Page): Promise<CockpitSummary> {
-  await page.waitForFunction(
-    () => {
-      const hook = (window as unknown as { __reproTest?: { summary(): CockpitSummary } })
-        .__reproTest;
-      const summary = hook?.summary();
-      return summary?.finished === true && summary.mode === "replay";
-    },
-    undefined,
-    { timeout: 60_000 },
-  );
-  return page.evaluate(() =>
-    (window as unknown as { __reproTest: { summary(): CockpitSummary } }).__reproTest.summary(),
-  );
-}
 
 test("repro run shows the real graph and blast radius live, and repro replay reproduces it", async ({
   page,
