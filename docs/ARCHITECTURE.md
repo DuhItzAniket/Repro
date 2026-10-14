@@ -542,7 +542,10 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   killed).
 - **Windows specifics:** `git -c core.longpaths=true` per command (the user's global config is
   never modified). Run roots are short (`%LOCALAPPDATA%\repro\r\<id8>`). Cleanup goes Job
-  Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. Opening the
+  Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. Snapshots are
+  written from the commit's tree object (`git ls-tree` and one `git cat-file --batch`), not
+  `git archive`, which applies the archived tree's `export-ignore` and `export-subst`; files are
+  the committed bytes, through extended-length paths on Windows (C05). Opening the
   database retries a transient "disk I/O error" for up to 5 s: Windows releases a killed
   process's file locks with a delay (C02). All paths use
   `pathlib`, and tests cover backslashes and long paths.

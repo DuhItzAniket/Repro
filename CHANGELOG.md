@@ -39,6 +39,11 @@ All notable changes to this project are documented here. The format follows
   writer never waits for clients. Local only: requests must name a local host (DNS rebinding),
   WebSocket origins must be allow-listed (cross-site WebSocket hijacking, THREAT_MODEL T16), and
   `repro serve` listens on loopback only. [C04]
+- The git layer: hardened git commands (long paths; the repository's hooks, fsmonitor and diff
+  drivers never run), ref resolution and merge bases, diffs with exact paths from `--raw -z`
+  and changed line ranges from `-U0`, `.git`-less snapshots written byte for byte from the tree
+  object (not `git archive`, which honours `export-ignore`), with unsafe entries skipped and
+  listed, and worktrees whose cleanup waits out Windows file locks. [C05]
 
 ## [0.2.0] - 2026-10-14
 

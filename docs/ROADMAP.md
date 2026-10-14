@@ -286,7 +286,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | C02 | Storage & evidence store | M | C01 | done |
 | C03 | Event bus & orchestrator | M | C02 | done |
 | C04 | API & WebSocket transport | M | C03 | done |
-| C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | planned |
+| C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | in progress |
 | C06 | Symbol table & changed-symbol mapping | M | C05 | planned |
 | C07 | Import graph & blast radius | M | C06 | planned |
 | C08 | Live UI wiring & end-to-end | M | B12, C04, C07 | planned |

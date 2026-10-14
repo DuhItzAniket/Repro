@@ -34,6 +34,14 @@ run's jobs as a DAG on daemon threads (at most `concurrency` at once), with per-
 cancellation; failures, timeouts and skipped jobs are recorded as `fail` events and missing
 items, and `run.finished` is always emitted.
 
+## Git layer
+
+`repro.gitops` reads an untrusted target repository: `Git` runs hardened commands (long paths,
+no hooks, no fsmonitor), `resolve` and `merge_base`; `diff` lists changed files with exact paths
+and their changed line ranges; `snapshot` writes a commit's tree, byte for byte, into a
+`.git`-less directory, skipping and listing entries that are unsafe on this machine;
+`add_worktree` and `remove_worktree` give host-side checkouts that are always cleaned up.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,
