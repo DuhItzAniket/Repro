@@ -44,6 +44,8 @@ of it. They extend Stage B before its gate closes.
   over the stage's lower right: View (Arc, Whole wheel, a zoom slider), a labelled thickness and
   brightness slider per part with its description, and Reset. Escape inside it closes it and
   returns focus to the button.
+- **Callouts** stay inside the stage (`calloutTransform`, a CSS clamp against the stage as a
+  size container): the first whole-wheel baseline showed a box cut off at the right edge.
 - **Persistence**: the look is kept per viewer in `localStorage` (`repro.look/1`), read through
   `clampLook`, removed at the default; missing or throwing storage falls back to the default.
   Test mode never reads it, so screenshots use the default unless a test sets a look.
@@ -95,11 +97,11 @@ of it. They extend Stage B before its gate closes.
 *Filled in at the end of the phase:*
 
 ## What shipped
-- See Scope. Web tests 243 → 264 (look 7, camera 4, settings 5, transport 2, governor 2, the
-  look leaving render models unchanged 1).
+- See Scope. Web tests 243 → 266 (look 7, camera 4, settings 5, transport 2, governor 2, the
+  look leaving render models unchanged 1, callout boxes 2).
 
 ## Evidence
-- Local: `pnpm lint`, `pnpm typecheck`, `pnpm test` (Vitest 264 web), `pnpm perf` (ratios p50
+- Local: `pnpm lint`, `pnpm typecheck`, `pnpm test` (Vitest 266 web), `pnpm perf` (ratios p50
   0.018, p95 0.21 against the baseline's 0.0496 and 0.2749), size 195.9 kB of 300 kB, stage
   allocation 3.4 kB per frame at the stress burst (budget 40 kB).
 - Bunches the cap admits (unit-test fixtures, 1440×900):

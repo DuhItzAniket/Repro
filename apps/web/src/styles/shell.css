@@ -599,6 +599,8 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* The stage's size, for keeping the boxes inside it (calloutTransform). */
+  container-type: size;
 }
 
 .callout {

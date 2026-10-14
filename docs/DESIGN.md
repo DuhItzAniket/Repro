@@ -255,7 +255,8 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 ### Tooltips / callouts
 - Small boxes with a 1px border (as at 12 s and 18 s in the video), label + one value,
   anchored beyond the outer rim on the right side, on their file's lane (±24°). Max 2 visible
-  at once.
+  at once. A box never crosses the stage's edges: near one it is pushed back inside (B15; in the
+  whole-wheel view the lanes sit near the right edge).
 
 ## Panels
 

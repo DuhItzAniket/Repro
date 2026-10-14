@@ -130,6 +130,7 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
     smaller disc, and card text is mipmapped.
   - The run's nodes are placed over the whole disc: angle by the simulation's order, distance
     from the centre by role.
+  - Callout boxes stay inside the stage; zoomed out they were cut off at its right edge.
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the
