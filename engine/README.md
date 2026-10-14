@@ -8,12 +8,21 @@ The import package is `repro` (src layout: `engine/src/repro/`). The console scr
 
 ```
 uv run repro --version
-uv run repro doctor          # Python, git, uv, Docker and the data paths (--json)
+uv run repro doctor          # Python, SQLite, git, uv, Docker and the data paths (--json)
 uv run pytest
 ```
 
 `run`, `replay`, `serve` and `export` are declared and exit with status 2, naming the phase that
 brings them (C03, C08, C04, F05).
+
+## Store
+
+`repro.store` keeps runs, events, evidence and artifacts in `<data_dir>/repro.db` (SQLite, WAL)
+and `<data_dir>/runs/<run_id>/`. `StoreWriter` is the only writer: it batches submitted events
+into transactions, gives each its run's next `seq`, and resolves callers' futures after the
+commit. `StoreReader` pages through a run's events read-only. `ArtifactStore` writes
+content-addressed files atomically. The schema itself enforces append-only events and evidence
+and gap-free `seq` (ARCHITECTURE §11).
 
 ## Settings
 

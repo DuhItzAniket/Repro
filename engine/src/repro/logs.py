@@ -23,9 +23,9 @@ import logging
 import re
 import sys
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from typing import IO, Any, Final
 
+from repro.clock import utc_timestamp
 from repro.config import LogFormat, LogLevel
 
 LOGGER_NAME: Final = "repro"
@@ -51,11 +51,6 @@ def redact(value: object) -> object:
     return value
 
 
-def _timestamp(created: float) -> str:
-    moment = datetime.fromtimestamp(created, tz=UTC)
-    return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond // 1000:03d}Z"
-
-
 def _fields(record: logging.LogRecord) -> dict[str, object]:
     fields = getattr(record, "fields", None)
     if not isinstance(fields, Mapping):
@@ -69,7 +64,7 @@ class JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry: dict[str, Any] = {
-            "ts": _timestamp(record.created),
+            "ts": utc_timestamp(record.created),
             "level": record.levelname.lower(),
             "logger": record.name,
             "msg": record.getMessage(),
@@ -92,7 +87,7 @@ class TextFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         fields = " ".join(f"{key}={value}" for key, value in _fields(record).items())
-        line = f"{_timestamp(record.created)} {record.levelname.lower():<7} {record.name}: "
+        line = f"{utc_timestamp(record.created)} {record.levelname.lower():<7} {record.name}: "
         line += record.getMessage() + (f" {fields}" if fields else "")
         if record.exc_info and record.exc_info[0] is not None:
             line += "\n" + self.formatException(record.exc_info)

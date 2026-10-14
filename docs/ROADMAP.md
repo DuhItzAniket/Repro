@@ -283,7 +283,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | C01 | Engine skeleton, configuration & CLI | S | A05 | done |
-| C02 | Storage & evidence store | M | C01 | planned |
+| C02 | Storage & evidence store | M | C01 | in progress |
 | C03 | Event bus & orchestrator | M | C02 | planned |
 | C04 | API & WebSocket transport | M | C03 | planned |
 | C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | planned |

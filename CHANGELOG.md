@@ -16,6 +16,14 @@ All notable changes to this project are documented here. The format follows
   `%LOCALAPPDATA%` on Windows); structured JSON logs on stderr with credentials redacted. [C01]
 - `repro run`, `replay`, `serve` and `export` are declared with their options and exit with
   status 2, naming the phase that brings them. [C01]
+- The store: SQLite (WAL, STRICT tables, numbered migrations) for the run registry, events,
+  evidence, artifacts and cards. The schema makes events and evidence append-only and `seq`
+  gap-free per run, and ties evidence to its `evidence.created` event. A single writer thread
+  batches events into `BEGIN IMMEDIATE` transactions, assigns `seq`, and publishes only after
+  the commit; a failed batch is retried group by group. Content-addressed artifacts are written
+  atomically and confined to their run's directory. ULIDs with the schema's prefixes; `repro
+  doctor` also checks SQLite (3.37+). 100k events round-trip in order, and a writer killed
+  mid-transaction or at random leaves a consistent database. [C02]
 
 ## [0.2.0] - 2026-10-14
 
