@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C03 |
-| **Branch / PR** | `phase/C04-api-websocket` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C04-api-websocket` · [#32](https://github.com/DuhItzAniket/Repro/pull/32) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 A client on the same machine can follow a run as it happens and replay it afterwards: a

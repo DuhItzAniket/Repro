@@ -285,7 +285,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | C01 | Engine skeleton, configuration & CLI | S | A05 | done |
 | C02 | Storage & evidence store | M | C01 | done |
 | C03 | Event bus & orchestrator | M | C02 | done |
-| C04 | API & WebSocket transport | M | C03 | in progress |
+| C04 | API & WebSocket transport | M | C03 | done |
 | C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | planned |
 | C06 | Symbol table & changed-symbol mapping | M | C05 | planned |
 | C07 | Import graph & blast radius | M | C06 | planned |
@@ -689,3 +689,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | C01 | 2026-10-14 | [#29](https://github.com/DuhItzAniket/Repro/pull/29) | `repro doctor` (Python, git, uv, Docker, data paths, Windows long paths), layered settings with source-named errors, platform data paths, JSON logs on stderr; the other commands declared |
 | C02 | 2026-10-14 | [#30](https://github.com/DuhItzAniket/Repro/pull/30) | SQLite store whose schema enforces append-only events and gap-free `seq`; a single batching writer that publishes only after commit; evidence tied to its event; atomic content-addressed artifacts; 100k-event round trip and kill-anytime crash tests |
 | C03 | 2026-10-14 | [#31](https://github.com/DuhItzAniket/Repro/pull/31) | Event bus (envelopes, credential scrubbing, per-kind validation, publish after commit) and orchestrator (job DAG, concurrency, timeouts, cancellation with tool-tree kill, failures as `fail` events and missing items, guaranteed `run.finished`); golden stub-pipeline log |
+| C04 | 2026-10-14 | [#32](https://github.com/DuhItzAniket/Repro/pull/32) | Read-only REST and a replay-then-live WebSocket (subscribe first, dedupe, `caught_up`, batched frames, resync on overflow, lossless `?from=`); local `Host` and allow-listed `Origin` (THREAT_MODEL T16); `repro serve` on loopback |
