@@ -211,6 +211,7 @@ def doctor(
         version=__version__,
         machine=Machine(),
         extra=extra,
+        sandbox=settings.sandbox,
     )
     typer.echo(report.to_json() if as_json else report.to_text())
     if not report.ok:

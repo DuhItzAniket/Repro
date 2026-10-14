@@ -17,15 +17,17 @@ class Limits:
     - ``processes``: on Windows, the processes alive at once; on Linux, the processes (threads,
       in fact) the command may add to its user's, since ``RLIMIT_NPROC`` counts all of them.
     - ``output_bytes``: how much of stdout and of stderr is kept, each.
+    - ``cpus``: CPUs a container may use (Docker only; the process sandbox does not limit CPU).
     """
 
     timeout_s: float = 600.0
     memory_bytes: int = 4 * GIB
     processes: int = 256
     output_bytes: int = 4 * MIB
+    cpus: float = 2.0
 
     def __post_init__(self) -> None:
-        if self.timeout_s <= 0 or self.memory_bytes <= 0 or self.processes < 1:
+        if self.timeout_s <= 0 or self.memory_bytes <= 0 or self.processes < 1 or self.cpus <= 0:
             raise ValueError("limits must be positive")
         if self.output_bytes < 0:
             raise ValueError("output_bytes must not be negative")
