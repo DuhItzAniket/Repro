@@ -27,11 +27,11 @@
 ## CI matrix
 | OS | Python | Node | Result | Run |
 |---|---|---|---|---|
-| ubuntu-latest (Docker: L3 suites required) | 3.13 | 24 | pending | the gate PR's CI run |
-| windows-latest | 3.13 | 24 | pending | the gate PR's CI run |
+| ubuntu-latest (Docker: L3 suites required) | 3.13 | 24 | pass | [CI run 38633911992](https://github.com/DuhItzAniket/Repro/actions/runs/38633911992) on [#44](https://github.com/DuhItzAniket/Repro/pull/44) |
+| windows-latest | 3.13 | 24 | pass | [CI run 38633911992](https://github.com/DuhItzAniket/Repro/actions/runs/38633911992) on [#44](https://github.com/DuhItzAniket/Repro/pull/44) |
 | ubuntu-latest, Gate D (Chromium from Playwright 1.64.0, containers) | 3.13 | 24 | pending | the gate PR's CI run |
-| ubuntu-latest, Gate C | 3.13 | 24 | pending | the gate PR's CI run |
-| ubuntu-latest + Playwright image (visual) | — | 24 | pending | the gate PR's CI run |
+| ubuntu-latest, Gate C (`--analyse-only`) | 3.13 | 24 | pass | [CI run 38633911992](https://github.com/DuhItzAniket/Repro/actions/runs/38633911992) on [#44](https://github.com/DuhItzAniket/Repro/pull/44) |
+| ubuntu-latest + Playwright image (visual) | — | 24 | pass | [CI run 38633911992](https://github.com/DuhItzAniket/Repro/actions/runs/38633911992) on [#44](https://github.com/DuhItzAniket/Repro/pull/44) |
 
 ## Metrics at gate (measured)
 | Metric | Value |
