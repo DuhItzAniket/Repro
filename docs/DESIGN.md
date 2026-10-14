@@ -112,36 +112,39 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - **Chord layout** (B14): modules sit on a circle under the ring's band (1.1 × the inner rim's
   radius), evenly spaced in the angular order a force-directed simulation gives them, so tightly
   connected modules are neighbours. Symbols and tests, the nodes a run touches, sit **in
-  front**: spread across the sector of the disc the stage shows (within 24° of 3 o'clock, at 0.6–
-  0.86 of the circle's radius), in the same order, like the nodes of a network. The simulation
+  front**: spread across the sector of the disc the stage shows (within 28° of 3 o'clock, at 0.5–
+  0.86 of the circle's radius), in the same order, like the nodes of a network. Where a node sits
+  is a rule the engine can change later; today it is the simulation's order. The simulation
   (d3-force) runs once per graph in a worker, seeded from node-ID hashes (no trigonometry), with
   layout-only containment links that tie symbols and tests to their module; the result is cached
   by graph hash.
-- Edges are **thin arcs**: quadratic curves bowed to one side by 18–42% of their length, with
+- Edges are **thin arcs**: quadratic curves bowed to one side by 25–60% of their length, with
   the side and amount taken from a hash of the endpoints. The circle's centre is off-screen to the
   left and its edge is under the band, so the stage shows long curves crossing the web, like the
   reference's hairball, not a ball of spokes. B03–B13 drew straight lines on a force-directed
-  disc, which read as a starburst. Only the pieces on the stage are written. Alpha: imports 0.24,
-  calls 0.30, covers 0.16.
+  disc, which read as a starburst. Only the pieces on the stage are written. Alpha: imports 0.17,
+  calls 0.22, covers 0.12, so the strands read over them.
 - Symbols and tests are small hollow circles (tests 3.2 px, symbols 2.2 px): the points strands
   fire from, like the reference's scattered circles. Nodes in the latest blast radius get a
   brighter ring.
-- **Strands** (bundles): when an event touches an edge path (a test reaching a function:
-  `trace.sample`, `diff.behaviour`), a bright sheaf of 6–9 curves fires from the test's node to
-  the ring. These are the reference's white strands (B14, as the owner described them: from the
-  nodes of a network to the wheel):
-  - the node lights up and the head **shoots** out to the ring in the first 30% of a 500 ms life
-    (ease-out), landing on a short bar at the inner rim;
-  - it aims at the function's ring card where the card stood when it fired, within 10° of the
-    node's own bearing: on the card when the card is in front of the node, else on the ring in
-    the card's direction. So strands stay short, like the reference's;
+- **Strands** (bundles): when a test reaches a function (`trace.sample`; `diff.behaviour` in
+  `--flag`), **one** strand fires from the test's node to the function's ring card. These are the
+  reference's strands, as the owner described them (B14):
+  - each node fires its own single strand; a burst fires from many nodes at once, and at most one
+    strand leaves a node at a time (the flash governor's aggregation);
+  - the strand is a **dim line** (alpha 0.32) revealed behind a **white bullet**, a bright 80 px
+    stretch that shoots from the node to the ring in the first 40% of a 1 s life (smoothstep).
+    The node lights up while the bullet is in flight, and a short bar flashes on the rim where
+    it hits;
+  - it aims at the function's card where the card stood when it fired, within 10° of the node's
+    bearing: on the card when the card is in front of the node, else on the ring in the card's
+    direction. Strands from tests of the same function therefore head the same way;
   - it stays **attached to its node**, while its landing end **follows that section of the
-    ring** as it turns (by at most the ring's drift over the strand's life);
-  - from 65% of its life on it fades.
+    ring** as it turns (by at most the ring's drift over the strand's life). From 60% of its
+    life on it fades.
 
-  The curves leave the node together, arrive along the ring's radius side by side and sweep a
-  little towards the ring's turning direction. Measured on the reference: a strand lives about
-  0.3–0.35 s, about 0.1 s of it shooting in.
+  It arrives at the rim along the ring's radius, sweeping a little towards the turning direction.
+  Measured on the reference: a strand's bright part travels to the ring in about 0.1 s.
 - Rendering: edges are instanced anti-aliased quads with recency alpha computed in the shader.
   Arcs and bundles are chains of segments that do not overlap at their joints. Blending is
   additive. There is no post-processing (ADR-0008).
@@ -263,8 +266,9 @@ surface — it stays plain and readable.
 
 - Every animated element maps to an event. Idle state (no run) may use slow ambient drift of
   the web only.
-- Durations: streak 600–1400 ms, strand 500 ms (B14: shoot, follow the ring, fade), panel row
-  insert 150 ms, ring snap 500 ms ease-out-cubic, one ring turn 24 s.
+- Durations: streak 600–1400 ms, strand 1 s (B14: a bullet's 0.4 s trip, then the attached
+  strand follows the ring and fades), panel row insert 150 ms, ring snap 500 ms ease-out-cubic,
+  one ring turn 24 s.
 - Replay supports speed ×0.5 / ×1 / ×4 / ×16 and scrubbing. Animation is a pure function of
   (events up to t, t, motion), where motion is the replay speed and reduced motion.
 - `prefers-reduced-motion`: no streaks or bundles, and state changes are instant. An in-app
@@ -282,7 +286,7 @@ surface — it stays plain and readable.
   - areas are upper bounds from each element's geometry;
   - over the cap, streaks and bundles are not drawn, and edges and markers appear without their
     flare;
-  - at most one bundle per graph edge rises per window (aggregation);
+  - at most one strand per node rises per window (aggregation; per graph edge before B14);
   - stream rays are not counted: they blend with MAX and fade over at least 40 s of wall-clock
     time, so no pixel can lose 10% relative luminance within a second (B14).
 

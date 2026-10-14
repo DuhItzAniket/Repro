@@ -46,9 +46,9 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
   - a chord layout from the force simulation's angular order (`force.ts`);
   - edges as arcs, only their pieces on the stage (`web/arcs.ts`);
   - the run's nodes (symbols and tests) in front, as small circles (`nodeLayer`);
-  - strands (bundles) that fire from their test's node, stay attached to it, and follow the ring
-    section they land on as it turns, then fade (500 ms), as the owner's second and third reviews
-    asked (below).
+  - strands (bundles): one dim line per firing node, along which a white bullet shoots to the
+    ring; it stays attached to the node and follows the ring section it lands on, then fades
+    (1 s), as the owner's second, third and fourth reviews asked (below).
 - Ring rotation: one turn per 24 s of wall-clock time at any replay speed (`RING_TURN_MS`), the
   reference's measured speed.
 - Streams: lanes ±24° with ±4.9° per event; rays from the outer rim, brightest there, growing
@@ -140,6 +140,26 @@ Changes:
   the demo it admits 24 of 190 strands at ×1, with 2–4 visible at once during the trace burst,
   against 8 when strands could aim across the whole visible arc.
 
+## Fourth owner review (same day)
+The owner pointed out that a bunch of strands came from a single node, which is wrong. There are
+many nodes scattered inside the circle, and from each, one single strand emerges and shoots
+towards the wheel. In the video these strands are really dim lines, with a bullet-like white
+light shooting along each from its origin node to the wheel, and the rest of the mesh is
+curvier. At 60 fps (5.85–6.1 s) the reference's bright part is a short stretch travelling along
+a curve to the rim in about 0.1 s.
+
+Changes:
+- one strand per event, a single line, not a sheaf of 6–9 curves (`drawStrand`);
+- it fires from the test's node (`strandOrigin`). Each test is its own node, so a burst fires
+  from many nodes, and the governor aggregates one strand per node per window;
+- the strand is dim (alpha 0.32) and revealed behind a white bullet (80 px, 2 px wide) that
+  travels from the node to the ring in the first 40% of a 1 s life (`bulletAt`, `TRAVEL`). The
+  node lights up while the bullet is in flight, and a bar flashes on the rim where it hits;
+- the front sector is wider (±28°, radii 0.5–0.86), so nodes scatter across the visible web;
+- the mesh's arcs bow by 25–60% of their length (was 18–42%) and are dimmer (imports alpha 0.17),
+  so the dim strands read over them;
+- the cap now admits 31 of 190 demo strands at ×1 (24 before).
+
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
       Measured at the same stage height:
@@ -164,9 +184,10 @@ Changes:
 - [x] AC4 (second and third reviews): strands fire from visible nodes, stay attached to them,
       and follow the ring section they land on, and the ring turns at the reference's speed.
       Unit-tested:
-  - a firing node's ring is drawn at its node at every age of the strand;
+  - a strand starts at its test's node at every age (attached), and the node's ring shows
+    while its bullet is in flight;
   - landing bars lie on the inner rim, within the landing arc or as far as they have followed;
-  - the aim, follow, head and fade laws; the reach bound over the whole landing arc;
+  - the aim, follow, bullet and fade laws; the reach bound over the whole landing arc;
   - the run's nodes are in the front sector, evenly spread, a file's members together;
   - the ring's turn per wall-clock second is the same at ×0.5–×16.
 

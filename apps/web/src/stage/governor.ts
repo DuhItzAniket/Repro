@@ -3,7 +3,7 @@
  * flashes: they brighten and then fade. The governor caps the bright area that may *rise* within
  * any 333 ms of wall-clock time at `FLASH_BUDGET`, half of WCAG's 87,296 CSS px² flashing area.
  * Over the cap:
- * - a bundle is dropped, and at most one bundle per graph edge rises per window (aggregation);
+ * - a strand (bundle) is dropped, and at most one strand per node rises per window (aggregation);
  * - a streak is not drawn (its intensity is reduced to zero);
  * - an edge or marker appears without its flare (a rise that does not fall is not a flash).
  *
@@ -33,6 +33,7 @@ import {
   FOLLOW,
   landingArc,
   MARKER_AREA,
+  strandOrigin,
   strandReach,
 } from "./web/layers";
 
@@ -74,7 +75,7 @@ export class FlashGovernor {
   private readonly areas: number[] = [];
   private head = 0;
   private sum = 0;
-  /** Graph edge (from × 2^20 + to) → time of its last admitted bundle. */
+  /** Strand origin node → time of its last admitted strand. */
   private readonly lastBundle = new Map<number, number>();
   private log: OnsetLog = { time: [], area: [], kind: [] };
   private speed = Number.NaN;
@@ -238,18 +239,20 @@ export class FlashGovernor {
         continue;
       }
       if (event.kind === "trace.sample" || event.kind === "diff.behaviour") {
-        const test = event.target?.test;
-        const from = test === undefined ? undefined : graph.byId.get(test);
-        const to = graph.nodeForSymbol(event.payload.symbol_id);
-        if (from !== undefined && to !== undefined && placed(from) && placed(to)) {
-          // One bundle per edge per window: a later one on the same edge is aggregated into it.
-          const key = from * 1_048_576 + to;
+        const node = strandOrigin(
+          graph,
+          event.target?.test,
+          graph.nodeForSymbol(event.payload.symbol_id),
+        );
+        if (node !== undefined && placed(node)) {
+          // One strand per node per window: a later one from the same node is aggregated into it.
+          const key = node;
           const last = this.lastBundle.get(key);
           const aggregated =
             Number.isFinite(this.budget) && last !== undefined && t - last < this.window;
           const p = positions as Float32Array;
-          const ox = p[from * 2] as number;
-          const oy = p[from * 2 + 1] as number;
+          const ox = p[node * 2] as number;
+          const oy = p[node * 2 + 1] as number;
           const [lo, hi] = aimRange(Math.atan2(oy, ox), arc);
           const reach = strandReach(
             ox * radius,

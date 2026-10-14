@@ -18,6 +18,7 @@ import {
   aimRange,
   BUNDLE_MS,
   BUNDLE_STEPS,
+  bulletAt,
   bundleLayer,
   EDGE_RECENCY,
   edgeLayer,
@@ -29,10 +30,10 @@ import {
   MAX_BUNDLES,
   markerLayer,
   nodeLayer,
-  SHOOT,
   strandFade,
-  strandHead,
+  strandOrigin,
   strandReach,
+  TRAVEL,
 } from "./layers";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -189,26 +190,36 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(peak).toBeLessThanOrEqual(MAX_BUNDLES * (12 * BUNDLE_STEPS + 11));
   });
 
-  it("fires each strand from its test's node, which lights up, and keeps it attached there", () => {
+  it("fires one strand from its test's node, which lights up, and keeps it attached there", () => {
     const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
     const first = model.kinds.last("trace.sample", model.store.length, 1)[0] as number;
     const t0 = model.store.time[first] as number;
     const a = layer.buffers.array("a");
-    for (const life of [0.1, 0.5, 0.9]) {
-      layer.update(frameAt(t0 + life * BUNDLE_MS));
-      const event = model.store.event(first);
-      if (event?.kind !== "trace.sample") throw new Error("no trace");
-      const [x, y] = at(model.graph.byId.get(event.target?.test ?? "") as number);
-      // The node's ring starts at (x + 4.5, y), whatever the strand's head is doing.
-      let found = false;
+    const event = model.store.event(first);
+    if (event?.kind !== "trace.sample") throw new Error("no trace");
+    const origin = strandOrigin(
+      model.graph,
+      event.target?.test,
+      model.graph.nodeForSymbol(event.payload.symbol_id),
+    );
+    expect(origin).toBe(model.graph.byId.get(event.target?.test ?? ""));
+    const [x, y] = at(origin as number);
+    const startsAt = (px: number, py: number) => {
       for (let i = 0; i < layer.buffers.count; i++) {
         if (
-          Math.abs((a[i * 2] as number) - (x + 4.5)) < 1e-3 &&
-          Math.abs((a[i * 2 + 1] as number) - y) < 1e-3
+          Math.abs((a[i * 2] as number) - px) < 1e-3 &&
+          Math.abs((a[i * 2 + 1] as number) - py) < 1e-3
         )
-          found = true;
+          return true;
       }
-      expect(found).toBe(true);
+      return false;
+    };
+    for (const life of [0.05, 0.2, 0.5, 0.9]) {
+      layer.update(frameAt(t0 + life * BUNDLE_MS));
+      // The dim strand starts at the node at every age: it stays attached.
+      expect(startsAt(x, y)).toBe(true);
+      // The node's ring (from (x + 4.5, y)) shows while the bullet is in flight.
+      expect(startsAt(x + 4.5, y)).toBe(life < TRAVEL);
     }
   });
 
@@ -222,7 +233,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
       const b = layer.buffers.array("b");
       const shape = layer.buffers.array("shape");
       for (let i = 0; i < layer.buffers.count; i++) {
-        if (shape[i * 2] !== 2) continue; // the bar a strand lands on
+        if (shape[i * 2] !== 2 || shape[i * 2 + 1] !== 1) continue; // the bar a bullet hits
         pins++;
         const mx = ((a[i * 2] as number) + (b[i * 2] as number)) / 2 - ring.cx;
         const my = ((a[i * 2 + 1] as number) + (b[i * 2 + 1] as number)) / 2 - ring.cy;
@@ -247,15 +258,16 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(FOLLOW).toBeCloseTo((Math.PI * 2 * BUNDLE_MS) / RING_TURN_MS, 12);
   });
 
-  it("shoots each strand out, then fades it while it stays attached (B14)", () => {
-    expect(strandHead(0)).toBe(0);
-    expect(strandHead(SHOOT)).toBe(1);
-    expect(strandHead(1)).toBe(1);
+  it("shoots a bullet from the node to the ring, then fades the strand while it stays attached (B14)", () => {
+    expect(bulletAt(0)).toBe(0);
+    expect(bulletAt(TRAVEL)).toBe(1);
+    expect(bulletAt(1)).toBe(1);
+    expect(TRAVEL).toBeLessThan(FADE_FROM); // the bullet arrives before the strand fades
     expect(strandFade(0)).toBe(1);
     expect(strandFade(FADE_FROM)).toBe(1);
     expect(strandFade(1)).toBe(0);
     for (let life = 0; life < 1; life += 0.01) {
-      expect(strandHead(life + 0.01)).toBeGreaterThanOrEqual(strandHead(life));
+      expect(bulletAt(life + 0.01)).toBeGreaterThanOrEqual(bulletAt(life));
       expect(strandFade(life + 0.01)).toBeLessThanOrEqual(strandFade(life));
     }
   });
@@ -285,10 +297,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "fe02cad4258592dc",
-        "25500": "50cb5dcddbbdd767",
-        "45000": "fe02cad4258592dc",
-        "8000": "6ceb93f5bf9c6e40",
+        "22000": "bf46b5dd42b5e174",
+        "25500": "db9642a6c5910c07",
+        "45000": "bf46b5dd42b5e174",
+        "8000": "85ed9af44d5371a2",
       }
     `);
   });

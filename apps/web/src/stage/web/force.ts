@@ -30,9 +30,9 @@ import { fnv, type LayoutInput } from "./layout-input";
 
 export const LAYOUT_TICKS = 300;
 /** Half the angle of the front sector where symbols and tests sit (radians). */
-export const FRONT_ANGLE = (24 * Math.PI) / 180;
+export const FRONT_ANGLE = (28 * Math.PI) / 180;
 /** Radii of the front sector, as shares of the modules' circle. */
-export const FRONT_RADII = [0.6, 0.86] as const;
+export const FRONT_RADII = [0.5, 0.86] as const;
 
 /** A deterministic point in the disc of radius `r` from an id (rejection sampling on its hash). */
 function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {

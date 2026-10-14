@@ -245,8 +245,8 @@ allocation and bundle-size gates are active in CI.
 - Deliverables: a layout that keeps the stage near the reference's shape (panels beside the
   stage on landscape screens); the ring geometry measured on the reference; an opaque drum of
   full-band code cards built from events; a chord layout with arc edges and the run's nodes in
-  front; strands that fire from those nodes, stay attached, and follow the ring section they hit
-  as it turns (at its measured speed); bright stream rays that are safe by construction
+  front; one dim strand per firing node, with a white bullet shooting to the ring, that stays
+  attached and follows the ring section it hit as it turns (at its measured speed); bright stream rays that are safe by construction
   (ADR-0011 note).
 - Accept: the side-by-side reads as the same visual family (the owner confirms). All tests and
   gates pass; every changed pin is explained; the flash bound holds at every speed.

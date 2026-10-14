@@ -51,7 +51,7 @@ describe("forceLayout (B05: identical across reloads; a chord layout since B14)"
   });
 
   it("pins the demo layout (same on every OS in CI)", () => {
-    expect(digest(positions)).toMatchInlineSnapshot(`"8a5470c2"`);
+    expect(digest(positions)).toMatchInlineSnapshot(`"f2df76af"`);
   });
 
   it("puts modules evenly on the circle and the run's nodes in the front sector", () => {

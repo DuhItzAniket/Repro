@@ -24,9 +24,9 @@ export function edgeHash(source: number, target: number): number {
   return h >>> 0;
 }
 
-/** The arc's bow: its middle moves sideways by 18–42% of its length, to a side from the hash. */
+/** The arc's bow: its middle moves sideways by 25–60% of its length, to a side from the hash. */
 export function arcBow(len: number, h: number): number {
-  return (0.18 + (((h >>> 8) % 1000) / 1000) * 0.24) * len * ((h & 1) === 1 ? 1 : -1);
+  return (0.25 + (((h >>> 8) % 1000) / 1000) * 0.35) * len * ((h & 1) === 1 ? 1 : -1);
 }
 
 /** Straight pieces per arc: about one per 20 px, 2–28, so long arcs stay smooth. */
