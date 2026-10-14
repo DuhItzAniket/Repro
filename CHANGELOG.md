@@ -37,6 +37,13 @@ All notable changes to this project are documented here. The format follows
   zone and locale are pinned, and a network guard fails non-loopback connections at once and
   records them. The plugin's suite passes on Python 3.12, 3.13, 3.14 and 3.15, and in a
   container. [D04]
+- Test selection: the plugin records the functions each test runs (`sys.monitoring`, once per
+  function and test), the engine turns them into symbols and selects the tests a change can
+  affect: those that ran a changed function on base, those importing a module-level change or
+  below a changed `conftest.py`, and the tests the change adds or edits, each with its reasons.
+  Changed symbols no selected test runs, on either side, become `no_covering_test` items. Base
+  maps are cached; the map is the same on the host and in a container. New fixtures `selection`
+  and `untested`. [D05]
 
 ### Fixed
 - Evidence could not be emitted through the event bus: it validated `evidence.created` events

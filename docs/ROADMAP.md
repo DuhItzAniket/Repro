@@ -342,7 +342,7 @@ The sandbox escape suite passes at the level the card claims.
 | D02 | Container backend (L3) | M | D01 | done |
 | D03 | Environment provisioning | L | D02 | done |
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | done |
-| D05 | Test selection via per-test function map | M | D04, C07 | planned |
+| D05 | Test selection via per-test function map | M | D04, C07 | in progress |
 | D06 | Two-sided execution, outcome & test-change diff, flake control | L | D05 | planned |
 | D07 | Performance pass | M | D06 | planned |
 

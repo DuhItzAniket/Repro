@@ -12,6 +12,10 @@ sandbox's own (fixed hash seed, no host secrets), ``REPRO_SEED`` for the plugin'
 random seeds, and ``REPRO_NET_GUARD=1`` so a test that needs the network fails at once, and the
 same way on every isolation level.
 
+With ``map_tests`` (D05) the plugin also records the functions each test runs, as *places*
+(file relative to the snapshot, qualified name, first line); ``collect_only`` lists the tests
+and where their functions are without running them.
+
 What the plugin wrote comes from inside the target's process, so it is read as untrusted: a
 record that is not well formed is counted and skipped, and a run with no session record (a
 crash, a kill, a timeout) is incomplete, never passing.
@@ -38,7 +42,13 @@ JUNIT: Final = "junit.xml"
 #: At most this much of a results or JUnit file is read (a hostile run could write without end).
 MAX_BYTES: Final = 64 * 1024 * 1024
 MAX_RECORDS: Final = 200_000
+#: At most this many places are read for one test's map.
+MAX_PLACES: Final = 50_000
 _TEXT: Final = 2000
+
+#: A function: its file relative to the snapshot (POSIX), its qualified name, its first line.
+Place = tuple[str, str, int]
+_PLACE_FIELDS: Final = 3
 
 
 def pytest_argv(
@@ -52,8 +62,16 @@ def pytest_argv(
     ]  # fmt: skip
 
 
-def plugin_env(out_dir: str, *, seed: int = 0, net_guard: bool = True) -> dict[str, str]:
-    """What the plugin and the determinism controls need, on top of the sandbox's environment."""
+def plugin_env(
+    out_dir: str,
+    *,
+    root: str | None = None,
+    seed: int = 0,
+    net_guard: bool = True,
+    map_tests: bool = False,
+) -> dict[str, str]:
+    """What the plugin and the determinism controls need, on top of the sandbox's environment;
+    ``root`` is the snapshot, which places are relative to."""
     env = {
         "REPRO_OUT": out_dir,
         "REPRO_SEED": str(seed),
@@ -64,6 +82,10 @@ def plugin_env(out_dir: str, *, seed: int = 0, net_guard: bool = True) -> dict[s
     }
     if net_guard:
         env["REPRO_NET_GUARD"] = "1"
+    if root is not None:
+        env["REPRO_ROOT"] = root
+    if map_tests:
+        env["REPRO_MAP"] = "1"
     return env
 
 
@@ -90,6 +112,13 @@ class PytestRun:
     session: dict[str, Any] | None
     malformed: int = 0
     notes: tuple[str, ...] = field(default=())
+    #: Each test collected, and where its function is (None: not a Python function, or outside
+    #: the snapshot).
+    collected: dict[str, Place | None] = field(default_factory=dict)
+    #: With the map on: the places each test ran, from its setup to its teardown.
+    maps: dict[str, frozenset[Place]] = field(default_factory=dict)
+    #: Why the map could not be made, if it could not.
+    map_unavailable: str | None = None
 
     @property
     def complete(self) -> bool:
@@ -113,6 +142,33 @@ def _test(record: dict[str, Any]) -> TestResult:
     )
 
 
+def _place(raw: object) -> Place:
+    if not isinstance(raw, list) or len(raw) != _PLACE_FIELDS:
+        raise ValueError(raw)
+    path, qualname, line = raw
+    if not isinstance(path, str) or not isinstance(qualname, str) or not isinstance(line, int):
+        raise ValueError(raw)
+    parts = path.split("/")
+    if not path or len(path) > _TEXT or path.startswith("/") or ".." in parts or ":" in path:
+        raise ValueError(path)  # relative to the snapshot, inside it
+    if not qualname or len(qualname) > _TEXT or line < 0:
+        raise ValueError(raw)
+    return path, qualname, line
+
+
+def _nodeid(record: dict[str, Any]) -> str:
+    nodeid = record["nodeid"]
+    if not isinstance(nodeid, str) or not nodeid:
+        raise ValueError(record)
+    return nodeid[:_TEXT]
+
+
+def _functions(raw: object) -> frozenset[Place]:
+    if not isinstance(raw, list) or len(raw) > MAX_PLACES:
+        raise ValueError("functions")
+    return frozenset(_place(item) for item in raw)
+
+
 def _session(record: dict[str, Any]) -> dict[str, Any]:
     exitstatus, collected = record["exitstatus"], record["collected"]
     if not isinstance(exitstatus, int) or not isinstance(collected, int):
@@ -133,6 +189,9 @@ def read_results(data: bytes | None) -> PytestRun:
     tests: dict[str, TestResult] = {}
     errors: list[CollectError] = []
     session: dict[str, Any] | None = None
+    collected: dict[str, Place | None] = {}
+    maps: dict[str, frozenset[Place]] = {}
+    unavailable: str | None = None
     malformed = 0
     notes: list[str] = []
     for count, line in enumerate(data.splitlines()):
@@ -150,13 +209,29 @@ def read_results(data: bytes | None) -> PytestRun:
                 errors.append(CollectError(nodeid[:_TEXT], message[:_TEXT]))
             elif kind == "session":
                 session = _session(record)
+            elif kind == "collected":
+                test = record["test"]
+                collected[_nodeid(record)] = _place(test) if test is not None else None
+            elif kind == "map":
+                maps[_nodeid(record)] = _functions(record["functions"])
+            elif kind == "map_unavailable":
+                unavailable = str(record["reason"])[:_TEXT]
             else:
                 raise ValueError(kind)
         except (ValueError, KeyError, TypeError):
             malformed += 1
     if session is None:
         notes.append("the run did not finish: no session record")
-    return PytestRun(tests, tuple(errors), session, malformed, tuple(notes))
+    return PytestRun(
+        tests,
+        tuple(errors),
+        session,
+        malformed,
+        tuple(notes),
+        collected=collected,
+        maps=maps,
+        map_unavailable=unavailable,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,17 +249,21 @@ def run_tests(
     *,
     tests: Sequence[str] = (),
     seed: int = 0,
+    map_tests: bool = False,
+    collect_only: bool = False,
     timeout_s: float | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> TestRun:
-    """Runs ``tests`` (node IDs; all if empty) with ``env``'s interpreter in ``sandbox``."""
+    """Runs ``tests`` (node IDs; all if empty) with ``env``'s interpreter in ``sandbox``; with
+    ``map_tests``, records the functions each runs; with ``collect_only``, only lists them."""
     name = f"pytest-{uuid.uuid4().hex[:12]}"
+    extra = ["--collect-only"] if collect_only else []
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
         execution = sandbox.run(
-            pytest_argv(env.python, out_dir=out, tests=tests),
-            env=plugin_env(out, seed=seed),
+            pytest_argv(env.python, out_dir=out, tests=tests, extra=extra),
+            env=plugin_env(out, root=WORK, seed=seed, map_tests=map_tests),
             timeout_s=timeout_s,
             stop=stop,
         )
@@ -193,9 +272,11 @@ def run_tests(
     else:
         directory = sandbox.work / name
         execution = sandbox.run(
-            pytest_argv(env.python, out_dir=directory.as_posix(), tests=tests),
+            pytest_argv(env.python, out_dir=directory.as_posix(), tests=tests, extra=extra),
             cwd=env.project.root,
-            env=plugin_env(str(directory), seed=seed),
+            env=plugin_env(
+                str(directory), root=str(env.project.root), seed=seed, map_tests=map_tests
+            ),
             timeout_s=timeout_s,
             stop=stop,
             writable=(directory,),

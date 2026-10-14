@@ -85,6 +85,13 @@ the environment's interpreter, under Repro's pytest plugin (`sandbox/_hook/repro
 Repro's own options, whatever the project configures. It returns the execution, the plugin's
 results read back as untrusted input (`complete` only with the session record) and the JUnit XML.
 
+## Test selection
+
+`run_tests(..., map_tests=True)` also records the functions each test runs (`sys.monitoring`);
+`repro.runner.selection` turns them into symbols (`test_map`), picks the tests a change can
+affect with their reasons (`select`), and lists the changed symbols no selected test runs
+(`uncovered`, `no_covering_test`). Base maps are cached (`MapCache`).
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,
