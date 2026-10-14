@@ -247,6 +247,29 @@ def check_containment(how: str | None) -> Check:
     return Check("containment", "ok", f"L2: {how}", detail=network)
 
 
+def check_isolation(docker: Check, contained: Check, sandbox: str) -> Check:
+    """The level runs reach with the ``sandbox`` setting on this machine (ADR-0004)."""
+    l3 = docker.status == "ok"  # a daemon with Linux containers
+    if sandbox == "docker" and not l3:
+        return Check(
+            "isolation",
+            "fail",
+            "sandbox = docker, but Docker with Linux containers is not available",
+            hint="Start Docker, or set sandbox to auto or process",
+            required=True,
+        )
+    if l3 and sandbox != "process":
+        return Check("isolation", "ok", "runs reach L3 (Docker): the network is enforced")
+    level = "L2" if contained.status == "ok" else "L1"
+    why = "sandbox = process" if sandbox == "process" else "no Docker with Linux containers"
+    return Check(
+        "isolation",
+        "warn",
+        f"runs reach {level} ({why}): the network is detected, not enforced",
+        hint="Docker with Linux containers gives L3" if not l3 else None,
+    )
+
+
 def check_data_dir(path: Path) -> Check:
     """Writable if it exists (one temporary file, removed), else creatable where it would go."""
     if path.exists():
@@ -399,17 +422,21 @@ def diagnose(
     version: str,
     machine: Machine | None = None,
     extra: Sequence[Check] = (),
+    sandbox: str = "auto",
 ) -> Report:
     """Runs every check. ``extra`` comes first (a configuration problem, for example)."""
     machine = Machine() if machine is None else machine
+    docker = check_docker(machine.probe, windows=machine.windows)
+    contained = check_containment(containment())
     checks: list[Check] = [
         *extra,
         check_python(machine.python, machine.implementation),
         check_sqlite(machine.sqlite),
         check_git(machine.probe),
         check_uv(machine.probe),
-        check_docker(machine.probe, windows=machine.windows),
-        check_containment(containment()),
+        docker,
+        contained,
+        check_isolation(docker, contained, sandbox),
         check_data_dir(data_dir),
         check_run_root(run_root, windows=machine.windows),
     ]

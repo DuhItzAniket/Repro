@@ -6,10 +6,12 @@ from repro.gitops.snapshot import (
     Skipped,
     Snapshot,
     SnapshotError,
+    TarredTree,
     path_problem,
     read_blobs,
     regular_files,
     snapshot,
+    tar_tree,
 )
 from repro.gitops.worktree import CleanupError, add_worktree, remove_worktree
 
@@ -22,6 +24,7 @@ __all__ = [
     "Skipped",
     "Snapshot",
     "SnapshotError",
+    "TarredTree",
     "add_worktree",
     "diff",
     "path_problem",
@@ -29,4 +32,5 @@ __all__ = [
     "regular_files",
     "remove_worktree",
     "snapshot",
+    "tar_tree",
 ]

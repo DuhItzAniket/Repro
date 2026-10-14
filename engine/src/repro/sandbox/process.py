@@ -78,6 +78,8 @@ class Execution:
     detections: Detections
     #: Windows only: the most memory the command's processes committed at once.
     peak_memory_bytes: int | None = None
+    #: Docker only: the kernel killed the command for exceeding its memory limit.
+    oom_killed: bool = False
 
 
 @dataclass
@@ -221,8 +223,8 @@ class ProcessSandbox:
             finally:
                 tree.close()  # Windows: closing the job kills whatever is left in it
         duration = time.monotonic() - started
-        stdout, cut_out = _head(out_path, self.limits.output_bytes)
-        stderr, cut_err = _head(err_path, self.limits.output_bytes)
+        stdout, cut_out = read_head(out_path, self.limits.output_bytes)
+        stderr, cut_err = read_head(err_path, self.limits.output_bytes)
         return Execution(
             argv=tuple(argv),
             outcome=outcome,
@@ -237,7 +239,8 @@ class ProcessSandbox:
         )
 
 
-def _head(path: Path, limit: int) -> tuple[bytes, bool]:
+def read_head(path: Path, limit: int) -> tuple[bytes, bool]:
+    """The first ``limit`` bytes of a file, and whether there were more."""
     with path.open("rb") as handle:
         data = handle.read(limit + 1)
     return data[:limit], len(data) > limit

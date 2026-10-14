@@ -20,6 +20,7 @@ from repro.doctor import (
     check_data_dir,
     check_docker,
     check_git,
+    check_isolation,
     check_long_paths,
     check_python,
     check_run_root,
@@ -253,8 +254,8 @@ def test_a_healthy_machine_is_ready(tmp_path: Path) -> None:
     )  # fmt: skip
     assert report.ok
     assert [check.name for check in report.checks] == [
-        "python", "sqlite", "git", "uv", "docker", "containment", "data dir", "run root",
-        "long paths",
+        "python", "sqlite", "git", "uv", "docker", "containment", "isolation", "data dir",
+        "run root", "long paths",
     ]  # fmt: skip
     assert report.to_text().splitlines()[-1] == "Ready: every required check passed."
     assert report.to_text().isascii()
@@ -273,7 +274,7 @@ def test_missing_optional_tools_warn_but_do_not_fail(tmp_path: Path) -> None:
         data_dir=tmp_path, run_root=tmp_path, version="0", machine=machine(answers, windows=False)
     )
     assert report.ok
-    assert report.to_text().splitlines()[-1] == "Ready: every required check passed (2 warnings)."
+    assert report.to_text().splitlines()[-1] == "Ready: every required check passed (3 warnings)."
 
 
 def test_a_missing_required_tool_makes_the_machine_not_ready(tmp_path: Path) -> None:
@@ -352,3 +353,28 @@ def test_doctor_runs_on_this_machine(tmp_path: Path) -> None:
 def test_sqlite_needs_strict_tables(version: tuple[int, ...], status: str) -> None:
     check = check_sqlite(version)
     assert (check.status, check.required) == (status, True)
+
+
+LINUX_CONTAINERS = Check("docker", "ok", "Docker 29 (linux/amd64)")
+NO_DOCKER = Check("docker", "warn", "not found on PATH")
+CONTAINED = Check("containment", "ok", "L2: Job Object")
+DETECTED = "the network is detected, not enforced"
+NOT_AVAILABLE = "Docker with Linux containers is not available"
+
+
+@pytest.mark.parametrize(
+    ("docker", "sandbox", "status", "summary"),
+    [
+        (LINUX_CONTAINERS, "auto", "ok", "runs reach L3 (Docker): the network is enforced"),
+        (LINUX_CONTAINERS, "docker", "ok", "runs reach L3 (Docker): the network is enforced"),
+        (LINUX_CONTAINERS, "process", "warn", f"runs reach L2 (sandbox = process): {DETECTED}"),
+        (NO_DOCKER, "auto", "warn", f"runs reach L2 (no Docker with Linux containers): {DETECTED}"),
+        (NO_DOCKER, "docker", "fail", f"sandbox = docker, but {NOT_AVAILABLE}"),
+    ],
+)  # fmt: skip
+def test_isolation_states_the_level_runs_reach(
+    docker: Check, sandbox: str, status: str, summary: str
+) -> None:
+    check = check_isolation(docker, CONTAINED, sandbox)
+    assert (check.status, check.summary) == (status, summary)
+    assert check.required == (status == "fail")

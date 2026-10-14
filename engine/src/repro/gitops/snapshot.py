@@ -32,8 +32,9 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import threading
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import IO, Final
@@ -223,8 +224,11 @@ def _copy(stream: IO[bytes], size: int, target: str, *, executable: bool) -> Non
         os.chmod(target, 0o755)  # noqa: PTH101, S103 - the committed mode, 100755
 
 
-def _plan(entries: list[_Entry], *, insensitive: bool) -> tuple[list[_Entry], list[Skipped]]:
-    """Which entries to write; the rest, with why they are skipped."""
+def _plan(
+    entries: list[_Entry], *, insensitive: bool, links: bool
+) -> tuple[list[_Entry], list[Skipped]]:
+    """Which entries to write; the rest, with why they are skipped. ``links``: whether
+    symbolic links can be created where the entries go."""
     to_write: list[_Entry] = []
     skipped: list[Skipped] = []
     files: dict[str, str] = {}  # (lower-cased if insensitive) path -> path
@@ -238,7 +242,7 @@ def _plan(entries: list[_Entry], *, insensitive: bool) -> tuple[list[_Entry], li
             problem = f"collides with {clash!r} on this case-insensitive filesystem"
         if problem is None and entry.kind == "commit":
             problem = "a submodule (its commit is not in this repository)"
-        if problem is None and entry.mode == "120000" and sys.platform == "win32":
+        if problem is None and entry.mode == "120000" and not links:
             problem = "a symbolic link (not created on Windows)"
         if problem is not None:
             skipped.append(Skipped(entry.path, entry.mode, problem))
@@ -247,6 +251,17 @@ def _plan(entries: list[_Entry], *, insensitive: bool) -> tuple[list[_Entry], li
         dirs.update(parents)
         to_write.append(entry)
     return to_write, skipped
+
+
+def _check_limits(sha: str, entries: list[_Entry], *, max_bytes: int, max_files: int) -> None:
+    """Size and file-count limits (THREAT_MODEL T4), checked before anything is written."""
+    blobs = [e for e in entries if e.kind == "blob"]
+    total = sum(e.size for e in blobs)
+    if total > max_bytes or len(blobs) > max_files:
+        raise SnapshotError(
+            f"{sha[:12]} has {len(blobs)} files and {total} bytes, over the limits "
+            f"({max_files} files, {max_bytes} bytes)"
+        )
 
 
 def snapshot(
@@ -265,15 +280,11 @@ def snapshot(
         entries = _list_tree(git, sha)
     except GitError as exc:
         raise SnapshotError(f"cannot list {sha}: {exc}") from None
-    blobs = [e for e in entries if e.kind == "blob"]
-    total = sum(e.size for e in blobs)
-    if total > max_bytes or len(blobs) > max_files:
-        raise SnapshotError(
-            f"{sha[:12]} has {len(blobs)} files and {total} bytes, over the limits "
-            f"({max_files} files, {max_bytes} bytes)"
-        )
+    _check_limits(sha, entries, max_bytes=max_bytes, max_files=max_files)
     os.makedirs(extended(dest), exist_ok=True)  # noqa: PTH103
-    to_write, skipped = _plan(entries, insensitive=case_insensitive(dest))
+    to_write, skipped = _plan(
+        entries, insensitive=case_insensitive(dest), links=sys.platform != "win32"
+    )
     root = dest.absolute()
     files = size = 0
     links: list[tuple[_Entry, str]] = []
@@ -303,12 +314,70 @@ def snapshot(
         target.symlink_to(link_target)
         files += 1
     left_out = {item.path for item in skipped}
+    digest = _tree_digest(entry for entry in to_write if entry.path not in left_out)
+    return Snapshot(root, sha, files, size, tuple(skipped), digest)
+
+
+def _tree_digest(entries: Iterable[_Entry]) -> str:
     digest = hashlib.sha256()
-    for entry in sorted(to_write, key=lambda e: e.path):
-        if entry.path not in left_out:
-            line = f"{entry.mode} {entry.sha}\t{entry.path}\n"
-            digest.update(line.encode("utf-8", "surrogateescape"))
-    return Snapshot(root, sha, files, size, tuple(skipped), digest.hexdigest())
+    for entry in sorted(entries, key=lambda e: e.path):
+        line = f"{entry.mode} {entry.sha}\t{entry.path}\n"
+        digest.update(line.encode("utf-8", "surrogateescape"))
+    return digest.hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class TarredTree:
+    commit: str
+    files: int
+    bytes: int
+    skipped: tuple[Skipped, ...]
+    tree_sha256: str
+
+
+def tar_tree(
+    git: Git,
+    commit: str,
+    out: IO[bytes],
+    *,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    max_files: int = DEFAULT_MAX_FILES,
+) -> TarredTree:
+    """Writes commit ``commit`` to ``out`` as a tar stream, for a Linux container (D02).
+
+    The entries are checked as for a snapshot, but for a case-sensitive filesystem that has
+    symbolic links: file modes and links are exactly git's, whatever the host. Every timestamp
+    is zero and no owner is named, so the same commit always gives the same stream.
+    """
+    sha = git.resolve(commit)
+    try:
+        entries = _list_tree(git, sha)
+    except GitError as exc:
+        raise SnapshotError(f"cannot list {sha}: {exc}") from None
+    _check_limits(sha, entries, max_bytes=max_bytes, max_files=max_files)
+    to_write, skipped = _plan(entries, insensitive=False, links=True)
+    files = size = 0
+    stream_blobs = _blobs(git, [entry.sha for entry in to_write])
+    try:
+        with tarfile.open(fileobj=out, mode="w|", format=tarfile.PAX_FORMAT) as tar:
+            for entry, (blob_sha, data, length) in zip(to_write, stream_blobs, strict=True):
+                if entry.sha != blob_sha:
+                    raise SnapshotError("git cat-file answered out of order")
+                info = tarfile.TarInfo(entry.path)
+                info.mtime = 0
+                if entry.mode == "120000":
+                    info.type = tarfile.SYMTYPE
+                    info.linkname = data.read(length).decode("utf-8", "surrogateescape")
+                    tar.addfile(info)
+                else:
+                    info.size = length
+                    info.mode = 0o755 if entry.mode == "100755" else 0o644
+                    tar.addfile(info, data)
+                    size += length
+                files += 1
+    finally:
+        stream_blobs.close()
+    return TarredTree(sha, files, size, tuple(skipped), _tree_digest(to_write))
 
 
 def remove_snapshot(root: Path) -> None:
