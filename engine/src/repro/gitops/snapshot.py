@@ -136,7 +136,8 @@ def _list_tree(git: Git, commit: str) -> list[_Entry]:
     return entries
 
 
-def _case_insensitive(directory: Path) -> bool:
+def case_insensitive(directory: Path) -> bool:
+    """Whether names differing only in case are one file in ``directory`` (NTFS, APFS)."""
     probe = directory / ".repro-case-Probe"
     probe.touch()
     try:
@@ -267,7 +268,7 @@ def snapshot(
             f"({max_files} files, {max_bytes} bytes)"
         )
     os.makedirs(extended(dest), exist_ok=True)  # noqa: PTH103
-    to_write, skipped = _plan(entries, insensitive=_case_insensitive(dest))
+    to_write, skipped = _plan(entries, insensitive=case_insensitive(dest))
     root = dest.absolute()
     files = size = 0
     links: list[tuple[_Entry, str]] = []

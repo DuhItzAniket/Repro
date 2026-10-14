@@ -7,6 +7,7 @@ license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.143.0",
+    "grimp>=3.17,<3.18",  # the grimp worker uses its package-finder setting, not public API
     "pydantic>=2.14.1",
     "repro-events",
     "typer>=0.27.3",

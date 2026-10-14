@@ -22,7 +22,14 @@ from dataclasses import dataclass
 from typing import Any, Final, Literal
 
 from repro.analysis.modules import module_names
-from repro.analysis.symbols import MODULE_QUALNAME, Definition, Symbol, SymbolTable, build_table
+from repro.analysis.symbols import (
+    MODULE_QUALNAME,
+    Definition,
+    Symbol,
+    SymbolKind,
+    SymbolTable,
+    build_table,
+)
 from repro.gitops import Git, diff, read_blobs, regular_files
 from repro.gitops.changes import FileChange
 
@@ -37,6 +44,7 @@ SIMILAR: Final = 0.8
 class SymbolChange:
     symbol_id: str
     change: ChangeKind
+    kind: SymbolKind
     file: str
     base_lines: tuple[int, int] | None
     head_lines: tuple[int, int] | None
@@ -76,8 +84,19 @@ class _Pairing:
     new: list[Symbol]  # only on head
 
 
-def _span(symbol: Symbol) -> tuple[int, int]:
-    return (symbol.start, symbol.end)
+def _span(symbol: Symbol | None) -> tuple[int, int] | None:
+    return (symbol.start, symbol.end) if symbol is not None else None
+
+
+def _change(
+    change: ChangeKind, file: str, *, old: Symbol | None = None, new: Symbol | None = None
+) -> SymbolChange:
+    """One change; ``previous_symbol_id`` is set when the identity changed."""
+    symbol = new if new is not None else old
+    if symbol is None:
+        raise ValueError("a change needs a symbol on at least one side")
+    previous = old.id if old is not None and new is not None and old.id != new.id else None
+    return SymbolChange(symbol.id, change, symbol.kind, file, _span(old), _span(new), previous)
 
 
 def _has_own_code(symbol: Symbol) -> bool:
@@ -206,14 +225,11 @@ class _Collector:
             if base.module != head.module:
                 self.renamed_file(pairing, new_file)
             else:
-                for old, new, same in pairing.pairs:
-                    if not same:
-                        previous = old.id if old.id != new.id else None
-                        self.changes.append(
-                            SymbolChange(
-                                new.id, "modified", new_file, _span(old), _span(new), previous
-                            )
-                        )
+                self.changes.extend(
+                    _change("modified", new_file, old=old, new=new)
+                    for old, new, same in pairing.pairs
+                    if not same
+                )
             gone, new_symbols = pairing.gone, pairing.new
         else:
             gone = list(base.symbols) if base is not None else []
@@ -225,9 +241,7 @@ class _Collector:
         """Every paired symbol of a renamed file moved with it, changed or not."""
         for old, new, _same in pairing.pairs:
             if _has_own_code(old) or _has_own_code(new):
-                self.changes.append(
-                    SymbolChange(new.id, "moved", new_file, _span(old), _span(new), old.id)
-                )
+                self.changes.append(_change("moved", new_file, old=old, new=new))
 
     def match(self) -> None:
         """Pairs symbols gone from base with new ones on head: renames and moves."""
@@ -245,17 +259,15 @@ class _Collector:
         for gi, ni in matched:
             (old, _), (new, new_path) = self.gone[gi], self.new[ni]
             kind: ChangeKind = "renamed" if old.module == new.module else "moved"
-            self.changes.append(
-                SymbolChange(new.id, kind, new_path, _span(old), _span(new), old.id)
-            )
+            self.changes.append(_change(kind, new_path, old=old, new=new))
         used_gone = {gi for gi, _ in matched}
         used_new = {ni for _, ni in matched}
         for ni, (new, path) in enumerate(self.new):
             if ni not in used_new:
-                self.changes.append(SymbolChange(new.id, "added", path, None, _span(new)))
+                self.changes.append(_change("added", path, new=new))
         for gi, (old, path) in enumerate(self.gone):
             if gi not in used_gone:
-                self.changes.append(SymbolChange(old.id, "removed", path, _span(old), None))
+                self.changes.append(_change("removed", path, old=old))
 
 
 def changed_symbols(
