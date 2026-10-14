@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D01 |
-| **Branch / PR** | `phase/D02-container-sandbox` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/D02-container-sandbox` · [#39](https://github.com/DuhItzAniket/Repro/pull/39) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 Target commands run in a hardened Linux container, where the network is off for real: the only
@@ -51,10 +51,10 @@ level at which Repro reports `network: enforced`. An escape suite proves the bou
   CLI tools.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): the escape suite (raw `_socket`, `ctypes`, subprocess network access,
+- [x] AC1 (roadmap): the escape suite (raw `_socket`, `ctypes`, subprocess network access,
       writes outside the work dir, host `.git` tampering) is blocked at L3.
-- [ ] AC2 (roadmap): the card reports `network: enforced` only here (`sandbox.ready`).
-- [ ] AC3 (roadmap): capability detection in `repro doctor`.
+- [x] AC2 (roadmap): the card reports `network: enforced` only here (`sandbox.ready`).
+- [x] AC3 (roadmap): capability detection in `repro doctor`.
 
 ## Test plan
 | Criterion | Check |
@@ -85,7 +85,7 @@ level at which Repro reports `network: enforced`. An escape suite proves the bou
 - Loading a small commit into a volume takes 0.94 s and a command 1.1 s on this machine (A08:
   0.3–0.9 s per container).
 - No volume or container is left after the suite.
-- CI run: linked in the PR (Ubuntu runs the suite; Windows runners have no Linux containers
+- CI run: linked in the PR (#39; Ubuntu runs the suite; Windows runners have no Linux containers
   and skip it).
 
 ## Deviations from spec
