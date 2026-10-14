@@ -282,20 +282,25 @@ def check_long_paths(enabled: bool | None) -> Check:
     )
 
 
-def windows_long_paths() -> bool | None:
-    """Reads ``LongPathsEnabled`` from the registry; ``None`` when it cannot."""
-    if sys.platform != "win32":
-        return None
-    import winreg  # noqa: PLC0415 - Windows only
+if sys.platform == "win32":
+    import winreg
 
-    try:
-        with winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem"
-        ) as key:
-            value: object = winreg.QueryValueEx(key, "LongPathsEnabled")[0]
-    except OSError:
+    def windows_long_paths() -> bool | None:
+        """Reads ``LongPathsEnabled`` from the registry; ``None`` when it cannot."""
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem"
+            ) as key:
+                value: object = winreg.QueryValueEx(key, "LongPathsEnabled")[0]
+        except OSError:
+            return None
+        return value == 1
+
+else:
+
+    def windows_long_paths() -> bool | None:
+        """Long paths are a Windows setting: there is nothing to read elsewhere."""
         return None
-    return value == 1
 
 
 @dataclass(frozen=True, slots=True)

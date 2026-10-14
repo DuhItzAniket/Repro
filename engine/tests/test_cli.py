@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import sys
 from importlib.metadata import version
@@ -66,7 +67,8 @@ def test_unfinished_commands_say_so_and_exit_2(tmp_path: Path, argv: list[str], 
 def test_run_requires_its_refs(tmp_path: Path) -> None:
     result = runner.invoke(app, ["run", "--repo", "."], env=clean_env(tmp_path))
     assert result.exit_code == 2
-    assert "--base" in result.output
+    # Rich colours the usage error when colour is forced (as on CI), splitting "--base".
+    assert "Missing option '--base'" in re.sub(r"\x1b\[[0-9;]*m", "", result.output)
 
 
 def test_a_configuration_error_stops_a_command_with_its_source(tmp_path: Path) -> None:
