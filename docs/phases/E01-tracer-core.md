@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D04, A08 |
-| **Branch / PR** | `phase/E01-tracer-core` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E01-tracer-core` · [#46](https://github.com/DuhItzAniket/Repro/pull/46) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Record what the functions a change touches receive and return, call by call and test by test,
@@ -117,7 +117,7 @@ medians, BCa 95 % intervals; `docs/perf/E01-tracer-bench.jsonl`:
   (42.0–45.3 against 43.8–44.9 ms on 3.13.13).
 - Digests are identical on 3.12.13, 3.13.13, 3.14.4 and 3.15.0, and under another hash seed.
 - coverage.py 7.16.2 held tool ID 1 and Repro ID 4 in the same run, both measuring.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#46).
 
 ## Deviations from spec
 - ARCHITECTURE §4.3 sketched keeping counts and rolling hashes after the budget; E01 stops
