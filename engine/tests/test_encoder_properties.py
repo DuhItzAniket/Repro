@@ -223,3 +223,50 @@ def test_builtin_subclasses_keep_their_value() -> None:
     marked = Point((1,))
     marked.note = "x"  # type: ignore[attr-defined]
     assert ENCODE.digest(marked) != ENCODE.digest(Point((1,)))
+
+
+def test_dictionaries_inside_objects_in_a_set_under_other_hash_seeds() -> None:
+    """A set iterates in a hash-seed order: the orders of the dictionaries inside its elements
+    must not follow it."""
+    module = str(HOOK_DIR / "repro_encode.py")
+    tests = str(Path(__file__).parent)
+    script = (
+        "import importlib.util, sys\n"
+        f"sys.path.insert(0, {tests!r})\n"
+        "import hostile\n"
+        f"spec = importlib.util.spec_from_file_location('e', {module!r})\n"
+        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+        "items = []\n"
+        "for i in range(8):\n"
+        "    p = hostile.Property(); p.kept = f'item{i}'; p.data = {f'k{i}': i, 'a': 0}\n"
+        "    items.append(p)\n"
+        "print(m.digests(frozenset(items)))\n"
+    )
+    found = set()
+    for seed in ("0", "1", "77"):
+        env = {"PYTHONHASHSEED": seed, **{k: os.environ[k] for k in KEEP if k in os.environ}}
+        done = subprocess.run(
+            [sys.executable, "-I", "-c", script],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        found.add(done.stdout.strip())
+    assert len(found) == 1
+
+
+def test_previews() -> None:
+    assert ENCODE.preview([1, "a", None, 2.5]) == "[1, 'a', None, 2.5]"
+    assert ENCODE.preview({"b": 1, "a": 2}) == "{'b': 1, 'a': 2}"
+    assert ENCODE.preview({"y", "x"}) == ENCODE.preview({"x", "y"})
+    assert ENCODE.preview(ValueError("bad", 3)) == "builtins.ValueError('bad', 3)"
+    assert ENCODE.preview(hostile.Slots()) == "hostile.Slots(a=1, b=[1, 2])"
+    assert ENCODE.preview(hostile.OwnDict()) == "<hostile.OwnDict>"
+    long = ENCODE.preview(list(range(1000)))
+    assert len(long) == ENCODE.PREVIEW_CHARACTERS
+    assert long.endswith("…")
+    hostile.CALLED.clear()
+    for name in sorted(hostile.CORPUS):
+        ENCODE.preview(hostile.CORPUS[name]())
+    assert hostile.CALLED == []

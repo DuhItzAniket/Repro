@@ -195,6 +195,14 @@ ordered and order-insensitive digests. Generators, files, sockets and locks are 
 exceptions are recorded as type plus args plus cause chain. Cycle, depth, node and time guards
 apply. A truncated or failed encoding is never treated as equal to anything.
 
+As built (E02, `sandbox/_hook/repro_encode.py`): an object's state is read through descriptors
+taken from `type`, `object` and `BaseException` themselves and applied to `type(value)`, so no
+metaclass, `__getattribute__`, `__class__` property or other dunder of the target runs; a class
+that puts its own descriptor in place of `__dict__` or a slot is encoded opaque instead. Builtin
+subclasses keep their builtin value (read through the base type's own methods and iterators,
+never rebuilt). Adapters cover only modules the target already imported. The second digest
+sorts every dictionary; the tracer records it only where it differs.
+
 **Stability.** Fields that differ between A and A′ (same code, different seed and order) are
 *unstable*. They are masked from the A-vs-H comparison and listed on the card. This is the
 Diffy noise-floor idea (research/01 §2.2) applied at the function level.

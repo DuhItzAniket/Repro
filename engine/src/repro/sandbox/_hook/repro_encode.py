@@ -26,8 +26,11 @@ directory replaced by ``<ROOT>``, ``<TMP>`` and ``<HOME>`` (and then ``\\`` made
 hexadecimal addresses (``0x`` and six or more hex digits) by ``<ADDR>``: base and head run from
 different directories, and default ``repr`` strings embed addresses.
 
-**Two digests.** A dictionary is written in insertion order; a second digest writes every
-dictionary sorted by its keys' encodings, so a difference in order alone can be told apart.
+**Two digests, one walk.** Every dictionary is written with its entries sorted by their
+encodings, and its insertion order is kept apart, as the positions its entries came in. The
+order-insensitive digest hashes the sorted bytes; the digest hashes them with the orders: two
+values that differ only in the order of some dictionary have the same first and different
+second digests, so a difference in order alone can be told apart.
 
 **Guards.** Deeper than ``MAX_DEPTH``, past ``MAX_NODES`` values or ``MAX_SECONDS``, or back at a
 container or object already on the path (a cycle), the walk writes a tag and the encoding is
@@ -99,13 +102,15 @@ class Normaliser:
                 for form in (path, path.replace("\\", "/"), path.replace("/", "\\")):
                     pairs.add((form.rstrip("/\\"), token))
         self.pairs = sorted(pairs, key=lambda pair: (-len(pair[0]), pair))
+        self.shortest = min((len(path) for path, _ in self.pairs), default=0)
 
     def text(self, value: str) -> str:
         replaced = False
-        for path, token in self.pairs:
-            if path and path in value:
-                value = value.replace(path, token)
-                replaced = True
+        if self.pairs and len(value) >= self.shortest:
+            for path, token in self.pairs:
+                if path and path in value:
+                    value = value.replace(path, token)
+                    replaced = True
         if replaced:
             value = value.replace("\\", "/")
         if "0x" in value or "0X" in value:
@@ -168,13 +173,12 @@ def _build_adapters() -> dict[type, Callable[[Any], str]]:
 
 
 class _Walk:
-    __slots__ = ("adapters", "complete", "deadline", "has_dict", "nodes", "path", "sort_dicts")
+    __slots__ = ("adapters", "complete", "deadline", "nodes", "orders", "path")
 
-    def __init__(self, sort_dicts: bool) -> None:
+    def __init__(self) -> None:
         self.nodes = 0
         self.complete = True
-        self.sort_dicts = sort_dicts
-        self.has_dict = False
+        self.orders = bytearray()  # each dictionary's insertion order, as sorted positions
         self.path: set[int] = set()
         self.deadline = time.perf_counter() + MAX_SECONDS
         self.adapters = _adapters()
@@ -267,24 +271,35 @@ class _Walk:
                     self.value(item, depth + 1, out)
                 out += b"]"
             elif kind is dict:
-                self.has_dict = True
                 pairs = []
                 for key, item in dict.items(value):
                     pair = bytearray()
                     self.value(key, depth + 1, pair)
                     self.value(item, depth + 1, pair)
                     pairs.append(bytes(pair))
-                if self.sort_dicts:
-                    pairs.sort()
-                out += b"M" + str(len(pairs)).encode() + b"{" + b"".join(pairs) + b"}"
+                ranked = sorted(range(len(pairs)), key=pairs.__getitem__)
+                if ranked != list(range(len(pairs))):  # not already in sorted order
+                    self.orders += b"(" + ",".join(map(str, ranked)).encode() + b")"
+                else:
+                    self.orders += b"."
+                out += b"M" + str(len(pairs)).encode() + b"{"
+                out += b"".join(pairs[i] for i in ranked) + b"}"
             else:
+                # Elements in the order of their encodings, and the orders of any dictionaries
+                # inside them with them: a set's iteration order depends on the hash seed.
+                start = len(self.orders)
                 parts = []
                 for item in _ITERATE[kind](value):
                     part = bytearray()
+                    before = len(self.orders)
                     self.value(item, depth + 1, part)
-                    parts.append(bytes(part))
+                    parts.append((bytes(part), bytes(self.orders[before:])))
+                    del self.orders[before:]
                 parts.sort()
-                out += _SETS[kind] + str(len(parts)).encode() + b"(" + b"".join(parts) + b")"
+                del self.orders[start:]
+                self.orders += b"".join(orders for _, orders in parts)
+                out += _SETS[kind] + str(len(parts)).encode() + b"("
+                out += b"".join(part for part, _ in parts) + b")"
         finally:
             self.path.discard(id(value))
 
@@ -429,19 +444,23 @@ def _normaliser() -> Normaliser:
     return _DEFAULT[0]
 
 
-def encode(value: Any, *, sort_dicts: bool = False) -> tuple[bytes, bool]:
-    """The canonical bytes of ``value``, and whether the walk was complete."""
-    return _run(_Walk(sort_dicts), value)
-
-
-def _run(walk: _Walk, value: Any) -> tuple[bytes, bool]:
+def _run(value: Any) -> tuple[bytes, bytes, bool]:
+    """The canonical bytes (dictionaries sorted), the dictionaries' orders, completeness."""
+    walk = _Walk()
     out = bytearray()
     try:
         walk.value(value, 0, out)
     except Exception:  # noqa: BLE001 - e.g. a container changed size while walked: incomplete
         out += b"X"
         walk.complete = False
-    return bytes(out), walk.complete
+    return bytes(out), bytes(walk.orders), walk.complete
+
+
+def encode(value: Any) -> tuple[bytes, bool]:
+    """The canonical bytes of ``value`` (with its dictionaries' orders, when it holds any), and
+    whether the walk was complete."""
+    data, orders, complete = _run(value)
+    return (data + b"#" + orders if orders else data), complete
 
 
 def digest(value: Any) -> tuple[str, bool]:
@@ -451,12 +470,157 @@ def digest(value: Any) -> tuple[str, bool]:
 
 
 def digests(value: Any) -> tuple[str, str, bool]:
-    """The ordered digest, the digest with every dictionary sorted (the same when ``value``
-    holds no dictionary), and whether the walk was complete."""
-    walk = _Walk(False)
-    data, complete = _run(walk, value)
-    ordered = blake2b(data, digest_size=16).hexdigest()
-    if not walk.has_dict:
-        return ordered, ordered, complete
-    sorted_data, _ = encode(value, sort_dicts=True)
-    return ordered, blake2b(sorted_data, digest_size=16).hexdigest(), complete
+    """The digest, the order-insensitive digest (the same when ``value`` holds no dictionary),
+    and whether the walk was complete; one walk."""
+    data, orders, complete = _run(value)
+    unordered = blake2b(data, digest_size=16).hexdigest()
+    if not orders:
+        return unordered, unordered, complete
+    return blake2b(data + b"#" + orders, digest_size=16).hexdigest(), unordered, complete
+
+
+# -- previews ------------------------------------------------------------------------------------
+
+#: A preview's length at most (the event schema's ``Preview``).
+PREVIEW_CHARACTERS = 512
+#: Integers this long or longer are shown by size (their decimal form would fill a preview).
+_PREVIEW_INT_BITS = 512
+_ELLIPSIS = "…"
+
+
+class _Full(Exception):  # noqa: N818 - control flow: the preview is long enough
+    pass
+
+
+class _Preview:
+    """A short, readable rendering of a value under the encoder's rules: builtins through their
+    own C ``repr``, sets in their canonical order, objects as ``Type(field=value)`` from their
+    state, opaque things by name. Never a call into the target's code."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        self.parts: list[str] = []
+        self.size = 0
+        self.nodes = 0
+        self.path: set[int] = set()
+        self.adapters = _adapters()
+
+    def put(self, text: str) -> None:
+        self.parts.append(text)
+        self.size += len(text)
+        if self.size > self.limit:
+            raise _Full
+
+    def value(self, value: Any, depth: int) -> None:  # noqa: PLR0912 - a branch per type
+        self.nodes += 1
+        if self.nodes > MAX_NODES or depth > MAX_DEPTH:
+            self.put(_ELLIPSIS)
+            return
+        kind = type(value)
+        if value is None or kind is bool or kind is float or kind is complex:
+            self.put(repr(value))  # exact builtins: their own C repr
+        elif kind is int:
+            bits = value.bit_length()
+            self.put(int.__repr__(value) if bits < _PREVIEW_INT_BITS else f"<int {bits} bits>")
+        elif kind is str:
+            self.put(str.__repr__(_normaliser().text(value)))
+        elif kind is bytes or kind is bytearray:
+            self.put(kind.__repr__(value))
+        elif kind in _SEQUENCES or kind is dict or kind in _SETS:
+            self.container(value, kind, depth)
+        elif kind in _OPAQUE:
+            self.put(f"<{_OPAQUE[kind].decode()} {_Walk.callable_name(value, kind).decode()}>")
+        elif issubclass(kind, type):
+            self.put(f"<class {type_name(value)}>")
+        elif issubclass(kind, BaseException):
+            self.put(f"{type_name(kind)}(")
+            try:
+                args = _EXCEPTION_ARGS.__get__(value)
+            except Exception:  # noqa: BLE001
+                args = ()
+            self.items(args if type(args) is tuple else (), depth)
+            self.put(")")
+        elif kind in self.adapters:
+            try:
+                text = str(self.adapters[kind](value))
+            except Exception:  # noqa: BLE001
+                text = "?"
+            self.put(f"{type_name(kind)}({text})")
+        elif _is_enum(kind):
+            name = dict(_state(value, kind) or ()).get("_name_")
+            self.put(f"{type_name(kind)}.{name if type(name) is str else '?'}")
+        else:
+            self.instance(value, kind, depth)
+
+    def items(self, values: Any, depth: int) -> None:
+        for index, item in enumerate(values):
+            if index:
+                self.put(", ")
+            self.value(item, depth + 1)
+
+    def container(self, value: Any, kind: type, depth: int) -> None:
+        if id(value) in self.path:
+            self.put("<cycle>")
+            return
+        self.path.add(id(value))
+        try:
+            if kind is list or kind is tuple:
+                self.put("[" if kind is list else "(")
+                self.items(_ITERATE[kind](value), depth)
+                self.put("]" if kind is list else ")")
+            elif kind is dict:
+                self.put("{")
+                for index, (key, item) in enumerate(dict.items(value)):
+                    if index:
+                        self.put(", ")
+                    self.value(key, depth + 1)
+                    self.put(": ")
+                    self.value(item, depth + 1)
+                self.put("}")
+            else:
+                members = sorted(_ITERATE[kind](value), key=lambda item: encode(item)[0])
+                self.put("frozenset({" if kind is frozenset else "{")
+                self.items(members, depth)
+                self.put("})" if kind is frozenset else "}")
+        finally:
+            self.path.discard(id(value))
+
+    def instance(self, value: Any, kind: type, depth: int) -> None:
+        base = _builtin_base(kind)
+        state = _state(value, kind)
+        if state is None and base is None:
+            self.put(f"<{type_name(kind)}>")
+            return
+        if id(value) in self.path:
+            self.put("<cycle>")
+            return
+        self.path.add(id(value))
+        try:
+            self.put(f"{type_name(kind)}(")
+            first = True
+            if base is not None:
+                if base in _AS_BUILTIN:
+                    self.value(_AS_BUILTIN[base](value), depth + 1)
+                else:
+                    self.container(value, base, depth + 1)
+                first = False
+            for field, item in state or ():
+                self.put(("" if first else ", ") + f"{field}=")
+                self.value(item, depth + 1)
+                first = False
+            self.put(")")
+        finally:
+            self.path.discard(id(value))
+
+
+def preview(value: Any, limit: int = PREVIEW_CHARACTERS) -> str:
+    """At most ``limit`` characters showing ``value`` (ending in an ellipsis when cut)."""
+    walk = _Preview(limit - 1)
+    try:
+        walk.value(value, 0)
+    except _Full:
+        pass
+    except Exception:  # noqa: BLE001
+        walk.parts.append(_ELLIPSIS)
+    text = "".join(walk.parts)
+    return text if len(text) <= limit else text[: limit - 1] + _ELLIPSIS
