@@ -122,14 +122,15 @@ def side_resolvers(git: Git, base: str, head: str) -> tuple[Resolver, Resolver]:
 class TestMap:
     """One side's tests: each test's own symbol, and the symbols each mapped test ran."""
 
-    tests: Mapping[str, str | None]  # node ID -> the test function's symbol (None: unresolved)
+    #: node ID -> the test function's symbol (None: unresolved), in collection order
+    tests: Mapping[str, str | None]
     ran: Mapping[str, frozenset[str]]  # node ID -> symbols run, for the tests that were mapped
     unresolved: int = 0  # places that named no symbol
 
     def payload(self) -> dict[str, Any]:
         return {
             "format": MAP_FORMAT,
-            "tests": dict(sorted(self.tests.items())),
+            "tests": dict(self.tests),  # in collection order
             "ran": {test: sorted(symbols) for test, symbols in sorted(self.ran.items())},
             "unresolved": self.unresolved,
         }

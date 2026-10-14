@@ -92,6 +92,14 @@ results read back as untrusted input (`complete` only with the session record) a
 affect with their reasons (`select`), and lists the changed symbols no selected test runs
 (`uncovered`, `no_covering_test`). Base maps are cached (`MapCache`).
 
+## Two-sided execution
+
+`repro.runner.twosided.reproduce` runs A (base), A2 (base, reverse order, another hash seed) and
+H (head) on the selected tests, reruns flips, runs edited tests' base versions on head, and
+classifies each test (`outcomes`) and each change to the tests (`testdiff`). `repro run` does
+all of it in its run and diff stages (`repro.run_stage`); `--analyse-only` stops after the build
+stage.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,

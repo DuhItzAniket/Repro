@@ -302,7 +302,7 @@ def _report(result: "RunResult") -> None:
 
 class _Run:
     """One run of ``repro run``: started in the background or run to its end, then reported, and
-    its scratch directory removed as soon as it is over."""
+    what it left (its scratch directory, its containers' volumes) removed as soon as it is over."""
 
     def __init__(
         self,
@@ -311,13 +311,13 @@ class _Run:
         jobs: "Sequence[Job]",
         *,
         run_id: str,
-        work: Path,
+        cleanup: "Callable[[], None]",
     ) -> None:
         self.orchestrator = orchestrator
         self.change = change
         self.jobs = jobs
         self.run_id = run_id
-        self.work = work
+        self.cleanup = cleanup
         self.handle: RunHandle | None = None
         self.reporter: threading.Thread | None = None
 
@@ -327,14 +327,12 @@ class _Run:
         return result
 
     def start(self) -> None:
-        from repro.pipeline import remove_work  # noqa: PLC0415
-
         handle = self.orchestrator.start(self.change.spec(), self.jobs, run_id=self.run_id)
         self.handle = handle
 
         def finished() -> None:
             _report(handle.wait())
-            remove_work(self.work)  # now, not at Ctrl+C: the cockpit needs only the store
+            self.cleanup()  # now, not at Ctrl+C: the cockpit needs only the store
 
         self.reporter = threading.Thread(target=finished, name="repro-run-report", daemon=True)
         self.reporter.start()
@@ -381,8 +379,15 @@ def run(
     port: PortOption = DEFAULT_PORT,
     open_browser: OpenOption = False,
     allow_origin: AllowOriginOption = None,
+    analyse_only: Annotated[
+        bool,
+        typer.Option(
+            "--analyse-only", help="Only analyse the change: run none of the target's code."
+        ),
+    ] = False,
 ) -> None:
-    """Reproduce a change: analyse base and head, and record what each side does.
+    """Reproduce a change: analyse base and head, run the tests the change can affect on both
+    sides, and record what differs.
 
     With --serve (the default) the cockpit shows the run live, and keeps serving after it ends
     until Ctrl+C. With --no-serve the command waits for the run and exits: status 0 if it
@@ -392,7 +397,7 @@ def run(
     from repro.bus import EventBus  # noqa: PLC0415
     from repro.ids import new_run_id  # noqa: PLC0415
     from repro.orchestrator import Orchestrator  # noqa: PLC0415
-    from repro.pipeline import build_jobs, remove_work  # noqa: PLC0415
+    from repro.pipeline import pipeline_jobs, remove_work  # noqa: PLC0415
     from repro.store import StoreWriter  # noqa: PLC0415
 
     git, change = _resolve(repo, base, head)
@@ -402,7 +407,22 @@ def run(
     work = settings.paths.scratch(run_id)
     writer = StoreWriter(settings.paths.database).start()
     orchestrator = Orchestrator(EventBus(writer), concurrency=settings.concurrency)
-    job_run = _Run(orchestrator, change, build_jobs(git, change, work), run_id=run_id, work=work)
+    jobs, state = pipeline_jobs(
+        git,
+        change,
+        work,
+        backend=settings.sandbox,
+        cache=settings.paths.data_dir,
+        analyse_only=analyse_only,
+    )
+    cleaned = threading.Lock()
+
+    def cleanup() -> None:
+        with cleaned:
+            state.close()
+            remove_work(work)
+
+    job_run = _Run(orchestrator, change, jobs, run_id=run_id, cleanup=cleanup)
     try:
         if sock is None:
             if job_run.run_to_end().outcome != "completed":
@@ -420,7 +440,7 @@ def run(
     finally:
         job_run.stop()
         writer.close()
-        remove_work(work)
+        cleanup()
 
 
 @app.command()

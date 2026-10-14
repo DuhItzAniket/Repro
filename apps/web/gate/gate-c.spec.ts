@@ -121,9 +121,10 @@ test("repro run shows the real graph and blast radius live, and repro replay rep
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   try {
-    // Live: the run streams into the cockpit from the process that runs it.
+    // Live: the run streams into the cockpit from the process that runs it. Gate C is the build
+    // stage, so --analyse-only: none of the target's code runs (the run stage is Gate D's).
     const live = startRepro(
-      ["run", "--repo", REPO, "--base", BASE, "--head", HEAD, "--port", "8781"],
+      ["run", "--repo", REPO, "--base", BASE, "--head", HEAD, "--analyse-only", "--port", "8781"],
       data,
     );
     started.push(live.child);

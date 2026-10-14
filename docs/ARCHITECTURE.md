@@ -154,6 +154,14 @@ Two further checks come from the literature (research/02 §1.9, §5.5):
 - **DeFlaker check.** A test that newly fails without executing any changed code (per the
   selection map) is marked *likely flaky* before any rerun is spent on it.
 
+As built (D06, `runner/outcomes.py`, `runner/testdiff.py`, `runner/twosided.py`, `run_stage.py`):
+A, A2 (A′: reverse order, `PYTHONHASHSEED=1`) and H; a test passes when `passed`, `xfailed` or
+`xpassed` (a skip does not pass); flips are rerun k = 3 times on both sides and DeFlaker's label
+stays on the evidence rather than replacing the reruns; the test diff adds `assertion_weakened`
+(an exact check made looser) and `raises_widened`. The pipeline's run stage provisions both
+sides, runs them and emits `test.selected`, `test.started` / `test.finished`, `test_outcome` /
+`test_change` evidence with `diff.outcome` / `diff.tests`, and the missing items.
+
 ### 4.3 Behaviour tracing (`plugin/tracer`, `plugin/encoder`) — see ADR-0005
 - `sys.monitoring` tool, claimed in order **4, 3, 2, 5**. IDs 0 (debugger) and 1 (coverage) are
   avoided. If no ID is free, the result is an explicit `trace_unavailable` missing item.

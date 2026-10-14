@@ -13,3 +13,11 @@ evidence = [
   "test_outcome:F2P:tests/test_dates.py::test_parse_date_naive_input_is_utc",
 ]
 missing = []
+
+[selection]
+uncovered = []
+
+[selection.selected]
+# Both tests ran parse_date; the fix also changed the module's imports, which they import.
+"tests/test_dates.py::test_parse_date_naive_input_is_utc" = ["blast_radius", "module_import"]
+"tests/test_dates.py::test_parse_date_with_timezone" = ["blast_radius", "module_import"]

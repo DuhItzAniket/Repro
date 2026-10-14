@@ -10,6 +10,9 @@ every run. The Docker cases need Docker with Linux containers (required on CI's 
 
 import os
 import shutil
+import subprocess
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -22,6 +25,7 @@ from repro.provision import (
     ProvisionError,
     environment_missing,
     inspect_project,
+    spec_for,
 )
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_available
 from repro.sandbox.image import sandbox_image
@@ -136,3 +140,32 @@ def test_each_kind_provisions_in_a_container(
     EnvProvisionedPayload.model_validate(env.payload())
     assert run.returncode == 0, run.stdout.decode() + run.stderr.decode()
     assert b"2 passed" in run.stdout
+
+
+def build_twice_at_once(build: Callable[[], tuple[object, bool]]) -> list[tuple[object, bool]]:
+    with ThreadPoolExecutor(2) as pool:
+        return list(pool.map(lambda _: build(), range(2)))
+
+
+def test_two_sides_building_one_environment_at_once(tmp_path: Path) -> None:
+    """Both sides of a run need the same dependencies at the same moment: one builds them, the
+    other waits and uses that build (two container builds once collided on Linux CI)."""
+    provisioner = HostProvisioner(tmp_path / "envs", exclude_newer=CUT_OFF)
+    project = inspect_project(snapshot_of("requirements", tmp_path))
+    spec = spec_for(project, platform="test", exclude_newer=CUT_OFF)
+    results = build_twice_at_once(lambda: provisioner.dependencies(spec))
+    assert results[0][0] == results[1][0]
+    assert sorted(hit for _, hit in results) == [False, True]
+
+
+@docker
+def test_two_container_builds_of_one_environment_at_once(image: str, tmp_path: Path) -> None:
+    provisioner = DockerProvisioner(image, exclude_newer="2025-01-02T00:00:00Z")
+    project = inspect_project(snapshot_of("requirements", tmp_path))
+    spec = spec_for(project, platform=f"linux, {image}", exclude_newer="2025-01-02T00:00:00Z")
+    results = build_twice_at_once(lambda: provisioner.dependencies(spec))
+    try:
+        assert results[0][0] == results[1][0]
+        assert sorted(hit for _, hit in results) == [False, True]
+    finally:  # not left as a cache: the next run of this test must build again
+        subprocess.run(["docker", "volume", "rm", "-f", str(results[0][0])], check=False)

@@ -20,6 +20,8 @@ Stage = Literal["read", "build", "run", "diff", "check", "review", "card"]
 STAGES: Final[tuple[Stage, ...]] = ("read", "build", "run", "diff", "check", "review", "card")
 #: How a finished job ended.
 JobStatus = Literal["ok", "failed", "timeout", "skipped", "cancelled"]
+#: A ``log.line``'s level (the event schema's enum).
+LogLevel = Literal["debug", "info", "warning", "error"]
 
 POLL_S: Final = 0.05
 
@@ -116,7 +118,7 @@ class JobContext:
                 agent=agent,
             )
 
-    def log(self, message: str, *, level: str = "info", status: str = "progress") -> None:
+    def log(self, message: str, *, level: LogLevel = "info", status: str = "progress") -> None:
         """A line for the investigation feed."""
         payload = {"level": level, "verb": self.job.stage, "message": message[:2000]}
         self.emit("log.line", status=status, payload=payload)

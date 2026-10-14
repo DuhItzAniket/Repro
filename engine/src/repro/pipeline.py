@@ -1,9 +1,10 @@
 """A run's pipeline: the jobs ``repro run`` hands the orchestrator (C08).
 
-Stage C's pipeline is the build stage: both sides' snapshots (``snapshot.ready``) and the static
-analysis of the change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``).
-Stage D adds the run stage on top of the snapshots. What the analysis could not read becomes a
-``missing.recorded`` item, never a silent gap.
+The build stage: both sides' snapshots (``snapshot.ready``) and the static analysis of the
+change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``). Then, unless the
+run only analyses, the run and diff stages (``repro.run_stage``, D06): each side's sandbox and
+environment, the selected tests on both sides, and the evidence of what differs. What could not
+be read or run becomes a ``missing.recorded`` item, never a silent gap.
 """
 
 from collections.abc import Sequence
@@ -15,6 +16,7 @@ from repro.analysis import StaticAnalysis, analyse, graph_payloads
 from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
 from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
+from repro.run_stage import Backend, RunState, run_jobs
 
 #: A run's log lists at most this many skipped entries or problems one by one.
 LIST_AT_MOST: Final = 20
@@ -59,7 +61,7 @@ def _snapshot_job(git: Git, side: str, sha: str, work: Path) -> Job:
             ctx.log(
                 f"snapshot {side}: {len(result.skipped)} entries not written ({listed}"
                 + (f"; and {more} more)" if more > 0 else ")"),
-                level="warn",
+                level="warning",
                 status="warn",
             )
 
@@ -123,12 +125,14 @@ def emit_analysis(ctx: JobContext, analysis: StaticAnalysis) -> None:
             ctx.emit("missing.recorded", status="warn", payload=_missing(reason, detail, file))
 
 
-def _analysis_job(git: Git, change: Change, work: Path) -> Job:
+def _analysis_job(git: Git, change: Change, work: Path, state: RunState | None) -> Job:
     def run(ctx: JobContext) -> None:
         ctx.log("static analysis: modules, symbols, imports")
         analysis = analyse(git, change.base.sha, change.head.sha, work / "analysis")
         ctx.check()
         emit_analysis(ctx, analysis)
+        if state is not None:
+            state.analysis = analysis
 
     return Job(
         "static-analysis",
@@ -141,13 +145,27 @@ def _analysis_job(git: Git, change: Change, work: Path) -> Job:
     )
 
 
-def build_jobs(git: Git, change: Change, work: Path) -> Sequence[Job]:
+def build_jobs(
+    git: Git, change: Change, work: Path, state: RunState | None = None
+) -> Sequence[Job]:
     """The build stage: both snapshots and the static analysis, independent of each other."""
     return [
         _snapshot_job(git, "base", change.base.sha, work),
         _snapshot_job(git, "head", change.head.sha, work),
-        _analysis_job(git, change, work),
+        _analysis_job(git, change, work, state),
     ]
+
+
+def pipeline_jobs(
+    git: Git, change: Change, work: Path, *, backend: Backend, cache: Path, analyse_only: bool
+) -> tuple[Sequence[Job], RunState]:
+    """Every job of a run, and the state they share (close it when the run is over)."""
+    state = RunState()
+    jobs = list(build_jobs(git, change, work, state))
+    if not analyse_only:
+        base, head = change.base.sha, change.head.sha
+        jobs += run_jobs(git, base, head, work, state, backend=backend, cache=cache)
+    return jobs, state
 
 
 def remove_work(work: Path) -> None:

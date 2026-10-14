@@ -343,7 +343,7 @@ The sandbox escape suite passes at the level the card claims.
 | D03 | Environment provisioning | L | D02 | done |
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | done |
 | D05 | Test selection via per-test function map | M | D04, C07 | done |
-| D06 | Two-sided execution, outcome & test-change diff, flake control | L | D05 | planned |
+| D06 | Two-sided execution, outcome & test-change diff, flake control | L | D05 | done |
 | D07 | Performance pass | M | D06 | planned |
 
 **D01** Process runner, minimal environment, Windows Job Objects / POSIX process groups and
@@ -701,3 +701,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | D03 | 2026-10-14 | [#40](https://github.com/DuhItzAniket/Repro/pull/40) | Provisioning: project kind and requirements read from files (index only); dependencies from wheels in a cached environment no target code has touched, copied per side; the project built offline in the sandbox; five fixture kinds on the host and in containers; uv cannot use a read-only cache (ADR-0004 note) |
 | D04 | 2026-10-15 | [#41](https://github.com/DuhItzAniket/Repro/pull/41) | Repro's pytest plugin and command: per-test outcomes to a results file read as untrusted input, per-test random seeds, a loopback-only network guard recorded by the audit hook, pinned TZ and locale, collection errors no longer hide other tests; passes on Python 3.12–3.15 and in a container, under pytest 9.1.1 and 8.3.3 |
 | D05 | 2026-10-15 | [#42](https://github.com/DuhItzAniket/Repro/pull/42) | Test selection: per-test function map from `sys.monitoring` (places relative to the snapshot, resolved to C06 symbols); tests selected by what ran on base, module-level changes over both import graphs, and added or edited tests, each with reasons; changed symbols no selected test runs become `no_covering_test`; base maps cached; same map on host and in a container; fixtures `selection` and `untested` |
+| D06 | 2026-10-15 | [#43](https://github.com/DuhItzAniket/Repro/pull/43) | Two-sided execution in `repro run`: sandboxes and environments per side, A / A2 (reverse order, other hash seed) / H on the selected tests, k = 3 reruns of flips, edited tests' base versions on head; outcome classes and test-change evidence (removed tests, new skips and xfails, weaker assertions, widened raises); flaky tests and unfinished runs as missing items; an unbuildable environment is unverifiable, not a failed run; fixtures `flaky` and `test-tamper` |

@@ -1,7 +1,7 @@
 """Fixture repository specs. Expected outcomes live next to them as ``<name>.toml``.
 
-``honest-fix`` (A07), ``selection`` and ``untested`` (D05). The other fixtures in TEST_STRATEGY
-§3 are added by the phases that need them.
+``honest-fix`` (A07), ``selection`` and ``untested`` (D05), ``flaky`` and ``test-tamper``
+(D06). The other fixtures in TEST_STRATEGY §3 are added by the phases that need them.
 """
 
 from fixtures.repo_builder import RepoSpec
@@ -234,4 +234,116 @@ def rounding(amount):
     },
 )
 
-ALL_SPECS = {spec.name: spec for spec in (HONEST_FIX, SELECTION, UNTESTED)}
+_COUNTER = """\"\"\"A counter that remembers what it saw.\"\"\"
+
+SEEN = []
+
+
+def record(value):
+    SEEN.append(value)
+    return len(SEEN)
+
+
+def double(value):
+    return value * 2
+"""
+
+_TEST_COUNTER = """from counter.core import double, record
+
+
+def test_record_first():
+    assert record("a") >= 1
+
+
+def test_record_second():
+    # Passes only after test_record_first: its outcome depends on the order tests run in.
+    assert record("b") == 2
+
+
+def test_double():
+    assert double(2) == 4
+"""
+
+FLAKY = RepoSpec(
+    name="flaky",
+    description="A test whose outcome depends on test order, beside a change it covers.",
+    base={
+        "pyproject.toml": '[project]\nname = "counter-fixture"\nversion = "0.1.0"\n',
+        "counter/__init__.py": "",
+        "counter/core.py": _COUNTER,
+        "tests/test_counter.py": _TEST_COUNTER,
+    },
+    heads={
+        "change/strip-values": {
+            "counter/core.py": _COUNTER.replace(
+                "    SEEN.append(value)\n", "    SEEN.append(value.strip())\n"
+            )
+        }
+    },
+    pr_description={
+        "change/strip-values": (
+            "Strip recorded values\n\nrecord() stores values without surrounding whitespace."
+        )
+    },
+)
+
+_OPS = """\"\"\"Arithmetic helpers.\"\"\"
+
+
+def divide(a, b):
+    return a / b
+
+
+def percent(part, whole):
+    return round(100 * part / whole, 1)
+"""
+
+_TEST_OPS = """import pytest
+
+from calc.ops import divide, percent
+
+
+def test_divide():
+    assert divide(6, 3) == 2
+    assert divide(1, 4) == 0.25
+
+
+def test_divide_by_zero():
+    with pytest.raises(ZeroDivisionError):
+        divide(1, 0)
+
+
+def test_percent():
+    assert percent(1, 4) == 25.0
+"""
+
+TEST_TAMPER = RepoSpec(
+    name="test-tamper",
+    description="A change that breaks two tests, then deletes one's assertion and skips the other.",
+    base={
+        "pyproject.toml": '[project]\nname = "calc-fixture"\nversion = "0.1.0"\n',
+        "calc/__init__.py": "",
+        "calc/ops.py": _OPS,
+        "tests/test_ops.py": _TEST_OPS,
+    },
+    heads={
+        "perf/integer-division": {
+            "calc/ops.py": _OPS.replace("return a / b", "return a // b").replace(
+                "return round(100 * part / whole, 1)",
+                "return round(100 * divide(part, whole), 1)",
+            ),
+            "tests/test_ops.py": _TEST_OPS.replace("    assert divide(1, 4) == 0.25\n", "").replace(
+                "def test_percent():",
+                '@pytest.mark.skip(reason="flaky on CI")\ndef test_percent():',
+            ),
+        }
+    },
+    pr_description={
+        "perf/integer-division": (
+            "Faster division\n\ndivide() uses integer division, which is faster. "
+            "No behaviour change."
+        )
+    },
+)
+
+ALL_SPECS = {spec.name: spec for spec in (HONEST_FIX, SELECTION, UNTESTED, FLAKY, TEST_TAMPER)}
