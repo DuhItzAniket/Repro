@@ -277,7 +277,8 @@ review)
 **Goal:** a real engine that persists and streams events, analyses a real repo statically, and
 drives the cockpit live.
 
-**Gate C:** `repro run --repo <small OSS lib> --base A --head B` shows that repo's real import
+**Gate C (passed 2026-10-14, v0.3.0, record: [`phases/C-gate.md`](phases/C-gate.md)):**
+`repro run --repo <small OSS lib> --base A --head B` shows that repo's real import
 graph and blast radius in the cockpit live, and `repro replay` reproduces the same UI state.
 
 | ID | Phase | Size | Depends | Status |
@@ -694,3 +695,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | C06 | 2026-10-14 | [#34](https://github.com/DuhItzAniket/Repro/pull/34) | Module names from packages, `ast` symbol tables with stable IDs, and changed symbols by own code (comments and reformatting are not changes); repeated names aligned, renames and moves by AST similarity, unreadable files reported, never guessed |
 | C07 | 2026-10-14 | [#35](https://github.com/DuhItzAniket/Repro/pull/35) | Import graphs (grimp for packages in an isolated process that never resolves target names through `sys.path`, THREAT_MODEL T19; `ast` for tests and scripts outside packages) and the blast radius over both sides' imports, with distance; hand-checked on this repository's own history |
 | C08 | 2026-10-14 | [#36](https://github.com/DuhItzAniket/Repro/pull/36) | `repro run` streams a change's build stage (snapshots, static analysis) into the cockpit live; `repro replay` and `repro serve` serve the built cockpit; the cockpit's event-stream client recovers gaps and resyncs from the engine's store; Gate C's Playwright test on pallets/itsdangerous in CI and on Windows (Edge) |
+| Gate C | 2026-10-14 | PR pending | Stage C complete; release v0.3.0 ([gate record](phases/C-gate.md)); Gate C's end-to-end test passes in CI (Linux) and on Windows (Edge) |

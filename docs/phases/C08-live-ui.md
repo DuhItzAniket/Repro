@@ -97,7 +97,7 @@ the two end in the same state. This is Gate C.
   printed was refused (the socket was bound but not yet listening), and on Windows stopping
   `.venv\Scripts\python.exe` left the engine running (a virtual environment's `python.exe` is a
   launcher; the spec ends the process tree).
-- Bundle: 197.5 kB gzip (budget 300 kB). CI run: linked in the PR (#36).
+- Bundle: 197.5 kB gzip (budget 300 kB). CI: [CI run 38604672519](https://github.com/DuhItzAniket/Repro/actions/runs/38604672519) on [#36](https://github.com/DuhItzAniket/Repro/pull/36), all jobs green; the Gate C job's spec passed in 6.7 s.
 
 ## Deviations from spec
 None.
