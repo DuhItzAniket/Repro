@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | B — Cockpit on fixtures |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | B14 |
 | **Branch / PR** | `phase/B15-stage-settings` · [#27](https://github.com/DuhItzAniket/Repro/pull/27) |
-| **Started / finished** | 2026-10-14 / — |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 A viewer can tune the stage's look (the thickness and brightness of each kind of line) and see
@@ -81,7 +81,8 @@ of it. They extend Stage B before its gate closes.
       on sections all round the wheel.
 - [x] AC5: the controls are keyboard-operable and labelled (axe: no serious or critical
       violations with the menu open).
-- [ ] AC6: all tests and gates pass, in CI too; visual baselines regenerated and checked by eye.
+- [x] AC6: all tests and gates pass, in CI too; visual baselines regenerated and checked by eye.
+      The owner approved the look on 2026-10-14.
 
 ## Test plan
 | Criterion | Check |
@@ -113,7 +114,8 @@ of it. They extend Stage B before its gate closes.
   | Whole wheel | 71 of 399 | 15 of 399 | 35 of 259 | 9 of 259 |
 
 - Nodes on the stage in the demo: 6 of 47 in the arc view, 47 of 47 in the whole wheel.
-- CI run and visual baselines: pending.
+- Visual baselines from CI run 38536427818, checked by eye (8 screenshots, 2 new). The final
+  CI run on the merged branch is recorded in the gate record (`phases/B-gate.md`).
 
 ## Deviations from spec
 - The roadmap's "every slider changes only the look" holds for which events draw at a given
@@ -123,8 +125,8 @@ of it. They extend Stage B before its gate closes.
 
 ## Known gaps
 - In the arc view, few of the run's nodes are on the stage now (6 of 47 in the demo), and at
-  ×16 on the stress run no bunch fits the flash cap there. Owner decision: keep whole-disc
-  placement, or bias placement towards the default view.
+  ×16 on the stress run no bunch fits the flash cap there. The owner kept whole-disc placement
+  (2026-10-14) and will revisit the look if needed later.
 
 ## Dependencies added
 None.

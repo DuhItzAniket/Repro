@@ -149,7 +149,7 @@ allocation and bundle-size gates are active in CI.
 | B12 | UI quality gate | M | B11 | done |
 | B13 | Visual parity with the reference (added before Gate B) | S | B12 | done |
 | B14 | Reference parity II: the stage composition (added at the owner's Gate B review) | M | B13 | done |
-| B15 | Stage settings and the whole wheel (added at the owner's seventh B14 review) | M | B14 | in progress |
+| B15 | Stage settings and the whole wheel (added at the owner's seventh B14 review) | M | B14 | done |
 
 **B01 · Deterministic fixture generator & reference log**
 - Deliverables: a seeded generator (TS or Python) that produces a realistic run (1 PR, 4 claims,
@@ -684,3 +684,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B13 | 2026-10-14 | [#24](https://github.com/DuhItzAniket/Repro/pull/24) | Visual parity found missing at the gate check: landscape ring geometry, 64 legible cards, lanes in the visible arc, shader-faded stream residue |
 | Gate B | 2026-10-14 | [#25](https://github.com/DuhItzAniket/Repro/pull/25) | Stage B complete; release v0.2.0 ([gate record](phases/B-gate.md)); mid-laptop 60 fps check owed by the owner. Re-opened the same day at the owner's review (B14) |
 | B14 | 2026-10-14 | [#26](https://github.com/DuhItzAniket/Repro/pull/26) | Reference parity II: panels beside a near-square stage, measured ring geometry, a drum of event-built code cards, a chord-layout web of arcs, bunches of strands landing on sections, lines outside that bounce from the hit section |
+| B15 | 2026-10-14 | [#27](https://github.com/DuhItzAniket/Repro/pull/27) | Stage settings (thickness and brightness per part, kept per viewer, inside the flash bound), a zoom from the arc to the whole wheel, the run's nodes over the whole disc, callouts kept inside the stage |
