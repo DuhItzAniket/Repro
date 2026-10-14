@@ -38,7 +38,7 @@ functions ≥ 90% for `src/model/**`).
 | ubuntu-latest | 3.13 (`.python-version`) | 24 (`.node-version`) | pass | [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
 | windows-latest | 3.13 | 24 | pass | [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
 | ubuntu-latest + Playwright image (pinned by digest) | — | 24 | pass | `visual` job, [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
-| All of the above, after B14 | 3.13 | 24 | see the B14 PR | B14's PR checks, with the visual baselines regenerated in CI |
+| All of the above, after B14 | 3.13 | 24 | pending | [#26 checks](https://github.com/DuhItzAniket/Repro/pull/26/checks), with the visual baselines regenerated in CI |
 
 ## Metrics at gate (measured)
 | Metric | Value |

@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | done |
 | **Depends on** | B13 |
-| **Branch / PR** | `phase/B14-reference-parity` · (this PR) |
+| **Branch / PR** | `phase/B14-reference-parity` · [#26](https://github.com/DuhItzAniket/Repro/pull/26) |
 | **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
