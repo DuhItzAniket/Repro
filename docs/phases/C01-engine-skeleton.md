@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | A05 |
-| **Branch / PR** | `phase/C01-engine-skeleton` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C01-engine-skeleton` · [#29](https://github.com/DuhItzAniket/Repro/pull/29) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 The engine has its command surface, settings, structured logs and Windows-safe data paths, and
