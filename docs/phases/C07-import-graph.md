@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C06 |
-| **Branch / PR** | `phase/C07-import-graph` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C07-import-graph` · [#35](https://github.com/DuhItzAniket/Repro/pull/35) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 For a change, Repro knows each side's module import graph and the change's blast radius: the
@@ -58,11 +58,11 @@ become events: `graph.node`, `graph.edge` and `blast.computed`.
   changed is not also listed as affected.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): on fixture repositories and one pinned real repository, the blast radius
+- [x] AC1 (roadmap): on fixture repositories and one pinned real repository, the blast radius
       matches hand-checked expectations.
-- [ ] AC2: imports resolve inside and outside packages (absolute, relative, star, inside
+- [x] AC2: imports resolve inside and outside packages (absolute, relative, star, inside
       functions, `TYPE_CHECKING`), and no target code runs, whatever the names.
-- [ ] AC3: `graph.node`, `graph.edge` and `blast.computed` payloads are schema-valid.
+- [x] AC3: `graph.node`, `graph.edge` and `blast.computed` payloads are schema-valid.
 
 ## Test plan
 | Criterion | Check |
@@ -95,7 +95,7 @@ become events: `graph.node`, `graph.edge` and `blast.computed`.
   a test file that does not parse is reported; `con/` and `pkg/aux.py` are reported, not
   written; on NTFS `pkg/Mod.py` and `pkg/mod.py` collide and one is reported; a 1 ms timeout is
   reported and the `ast`-read modules keep their edges.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#35).
 
 ## Deviations from spec
 - ADR-0006 names grimp for the import graph; grimp only loads packages, so modules outside
