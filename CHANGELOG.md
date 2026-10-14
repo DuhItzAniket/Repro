@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- The event stream could crash the engine (a segmentation fault, seen once on the Ubuntu runner):
+  a client leaving mid-replay cancelled the handler while a SQLite read still ran on a worker
+  thread, and the cleanup closed the same connection from another thread. Each stream's reader
+  now lives on one thread of its own, so the close queues behind any read in flight. [C05]
+
 ### Added
 - `repro doctor`: checks Python (3.12+), git (2.40+), uv (the 0.13 baseline), Docker (daemon,
   Linux containers, kernel), the data directory and, on Windows, the run root's length and

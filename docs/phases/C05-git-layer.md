@@ -89,7 +89,11 @@ snapshot that is byte-for-byte the commit, on Windows as on Linux.
   `Git` run none of them.
 - Diffs keep exact paths with spaces, quotes, a tab, a newline, a backslash, glob characters,
   a leading dash and non-ASCII text.
-- CI run: linked in the PR.
+- CI run: linked in the PR. Its first Ubuntu run crashed with a segmentation fault in C04's
+  event stream (a SQLite connection closed by one thread while another read from it, after a
+  client left mid-replay). Fixed here: each stream's reader lives on a single thread, so its
+  close is queued behind any read in flight. Strict mypy for Linux also flagged a Windows-only
+  branch; both platforms are now checked locally (`mypy --platform linux`).
 
 ## Deviations from spec
 - Snapshots are written from the tree object rather than with `git archive` (see Design notes):
