@@ -119,7 +119,10 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   layout-only containment links that tie symbols and tests to their module; the result is cached
   by graph hash.
 - Edges are **thin arcs**: quadratic curves bowed to one side by 25–60% of their length, with
-  the side and amount taken from a hash of the endpoints. The circle's centre is off-screen to the
+  the side and amount taken from a hash of the endpoints. Every arc stays **inside the web's
+  circle** (its control point is kept within it, so the curve is too), whose edge is under the
+  ring's band: no edge bows out past the wheel. Before this rule, 82 of the demo's 1,500 arcs
+  showed beyond the ring's outer rim. The circle's centre is off-screen to the
   left and its edge is under the band, so the stage shows long curves crossing the web, like the
   reference's hairball, not a ball of spokes. B03–B13 drew straight lines on a force-directed
   disc, which read as a starburst. Only the pieces on the stage are written. Alpha: imports 0.17,
@@ -127,24 +130,27 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - Symbols and tests are small hollow circles (tests 3.2 px, symbols 2.2 px): the points strands
   fire from, like the reference's scattered circles. Nodes in the latest blast radius get a
   brighter ring.
-- **Strands** (bundles): when a test reaches a function (`trace.sample`; `diff.behaviour` in
-  `--flag`), **one** strand fires from the test's node to the function's ring card. These are the
-  reference's strands, as the owner described them (B14):
-  - each node fires its own single strand; a burst fires from many nodes at once, and at most one
-    strand leaves a node at a time (the flash governor's aggregation);
-  - the strand is a **dim line** (alpha 0.32) revealed behind a **white bullet**, a bright 80 px
-    stretch that shoots from the node to the ring in the first 40% of a 1 s life (smoothstep).
-    The node lights up while the bullet is in flight, and a short bar flashes on the rim where
-    it hits;
-  - it aims at the function's card where the card stood when it fired, within 10° of the node's
-    bearing: on the card when the card is in front of the node, else on the ring in the card's
-    direction. Strands from tests of the same function therefore head the same way;
-  - it stays **attached to its node**, while its landing end **follows that section of the
-    ring** as it turns (by at most the ring's drift over the strand's life). From 60% of its
-    life on it fades.
+- **Bunches of strands** (bundles): when a test reaches a function (`trace.sample`;
+  `diff.behaviour` in `--flag`), a **bunch** fires at the function's ring card, as the owner
+  described the reference's (B14):
+  - its strands come from **the nodes that reach the function**: its tests (by `covers` edges and
+    trace samples) and its callers (by `calls` edges), the test that fired first; at most 12.
+    Membership uses only the log up to the firing event (`ReachIndex`);
+  - **one strand per node**, each from its own point; they converge side by side on one bar at
+    one section of the wheel, ordered by their nodes' bearings so they do not cross there;
+  - each strand is a **dim line** (alpha 0.32) revealed behind a **white bullet**, a bright 80 px
+    stretch that shoots from its node to the ring in the first 40% of a 1 s life (smoothstep;
+    each strand starts up to 6% later). Its node lights up while the bullet is in flight, and
+    the bar flashes when they land;
+  - the bunch aims at the card where it stood when the bunch fired, within 10° of the first
+    node's bearing; it stays **attached to its nodes** while its landing end **follows that
+    section of the ring** as it turns (by at most the ring's drift over the life), then fades from
+    60% of its life on;
+  - at most one bunch per function rises per 333 ms window (the flash governor's aggregation).
 
-  It arrives at the rim along the ring's radius, sweeping a little towards the turning direction.
-  Measured on the reference: a strand's bright part travels to the ring in about 0.1 s.
+  Each strand arrives at the rim along the ring's radius, sweeping a little towards the turning
+  direction; node, control point and landing point are inside the inner rim, so the strand is
+  too. Measured on the reference: a strand's bright part travels to the ring in about 0.1 s.
 - Rendering: edges are instanced anti-aliased quads with recency alpha computed in the shader.
   Arcs and bundles are chains of segments that do not overlap at their joints. Blending is
   additive. There is no post-processing (ADR-0008).
@@ -266,8 +272,8 @@ surface — it stays plain and readable.
 
 - Every animated element maps to an event. Idle state (no run) may use slow ambient drift of
   the web only.
-- Durations: streak 600–1400 ms, strand 1 s (B14: a bullet's 0.4 s trip, then the attached
-  strand follows the ring and fades), panel row insert 150 ms, ring snap 500 ms ease-out-cubic,
+- Durations: streak 600–1400 ms, strand bunch 1 s (B14: the bullets' 0.4 s trip, then the
+  attached strands follow the ring and fade), panel row insert 150 ms, ring snap 500 ms ease-out-cubic,
   one ring turn 24 s.
 - Replay supports speed ×0.5 / ×1 / ×4 / ×16 and scrubbing. Animation is a pure function of
   (events up to t, t, motion), where motion is the replay speed and reduced motion.
@@ -286,7 +292,8 @@ surface — it stays plain and readable.
   - areas are upper bounds from each element's geometry;
   - over the cap, streaks and bundles are not drawn, and edges and markers appear without their
     flare;
-  - at most one strand per node rises per window (aggregation; per graph edge before B14);
+  - at most one bunch of strands per function rises per window (aggregation; per graph edge
+    before B14);
   - stream rays are not counted: they blend with MAX and fade over at least 40 s of wall-clock
     time, so no pixel can lose 10% relative luminance within a second (B14).
 
@@ -314,7 +321,7 @@ surface — it stays plain and readable.
 
 - 60 fps on a mid laptop with 10k edges and 2k live streaks. Use instanced geometry and one draw
   call per layer (about 6 stage draw calls). No per-frame object allocations in the stage
-  layers (B12 measured about 25 kB a frame at the stress burst and B14 19 kB, all of it V8
+  layers (B12 measured about 25 kB a frame at the stress burst and B14 24 kB, all of it V8
   boxing doubles at calls it does not inline, short-lived). The heap stays flat across frames (B12 gate). Panels
   redraw only on new events, batched per animation frame.
 - Initial load under 300 KB of JS, gzipped (fonts excluded). The measured baseline is about

@@ -106,11 +106,12 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
   - Web: a chord layout, with modules on a circle under the band in the force simulation's order
     and edges as arcs, so the stage shows the reference's hairball of long curves. The run's
     nodes, symbols and tests, sit in front as small circles.
-  - Strands (bundles): each test that reaches a function fires one dim strand from its own node,
-    along which a white bullet shoots to the function's card on the ring. The strand stays
-    attached to the node and follows that section of the ring as it turns, then fades after 1 s.
-    The ring turns once per 24 s of wall-clock time, the reference's measured speed. The mesh's
-    arcs are curvier and dimmer.
+  - Strands (bundles): when a function runs, a bunch fires at its ring card. It holds one dim
+    strand from each node that reaches the function (its tests and callers, from the log so far),
+    with a white bullet shooting along each to the ring. The strands converge side by side on one
+    section, stay attached to their nodes, follow that section as the ring turns, and fade after
+    1 s. The ring turns once per 24 s of wall-clock time, the reference's measured speed. The
+    mesh's arcs are curvier and dimmer, and none leaves the wheel.
   - Streams: rays from the outer rim, brightest at the rim, drawn out behind their streak.
 
 ### Fixed

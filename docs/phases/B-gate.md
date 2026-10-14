@@ -46,10 +46,10 @@ functions ≥ 90% for `src/model/**`).
 | Tests | pytest 497; Vitest 319 after B14 (`@repro/events` 47, `@repro/synth` 34, `@repro/web` 238; in CI on Node 24 one web test is skipped, see gaps); 6 visual screenshots; the perf gate |
 | Web code | after B14, 10,403 lines of TypeScript outside tests and 4,421 in tests, counting every `.ts`/`.tsx` file under `apps/web/src` (the same count at the first gate gives 9,624 and 4,033; the 8,885 first recorded used a narrower set) |
 | Model coverage (`src/model/**`) | lines 99.15%, statements 96.96%, functions 98.43%, branches 84% |
-| JavaScript, gzip (all shipped JS, workers included) | 192.87 kB of the 300 kB budget (188.96 kB before B14) |
+| JavaScript, gzip (all shipped JS, workers included) | 193.98 kB of the 300 kB budget (188.96 kB before B14) |
 | Frame time, demo ×1, whole app | p50 16.7 / p95 17.0 / p99 33.3 ms at 1920×1080, DPR 1.75, integrated GPU |
 | Frame time, stress stage at full load | p95 16.9–17.0 ms at DPR 1 and 2, stage CPU p95 1.2–1.7 ms (`docs/perf/B10-motion-bench.json`) |
-| Heap | flat over 1,000 frames of the stress burst (−96 kB after B14); stage allocation 19.1 kB per frame after B14, 24.7 kB before (local, V8 counter; budget 40 kB) |
+| Heap | flat over 1,000 frames of the stress burst (−84 kB after B14); stage allocation 24.1 kB per frame after B14, 24.7 kB before (local, V8 counter; budget 40 kB) |
 | Flash safety | worst 333 ms window ≤ 43,648 CSS px² (half the WCAG area) at ×0.5–×16 on both fixtures; stream rays are flash-safe by construction (MAX blending, a 40 s wall-clock fade floor; ADR-0011 B14 note) |
 | Accessibility | axe-core 4.14.0: 0 violations in jsdom (CI) and in Chromium including contrast |
 | Decisions | 15 ADRs (0001–0015), all accepted |

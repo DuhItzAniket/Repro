@@ -4,7 +4,7 @@ import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
 import { NORMAL_MOTION } from "../../motion/motion";
 import { computeLayout } from "../../shell/layout";
-import { webRadius } from "../geometry";
+import { outerRadius, webRadius } from "../geometry";
 import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
@@ -30,12 +30,16 @@ import {
   MAX_BUNDLES,
   markerLayer,
   nodeLayer,
+  pinLength,
+  placedBunch,
+  sortByBearing,
   strandFade,
   strandOrigin,
   strandReach,
   TRAVEL,
 } from "./layers";
 import { computeInline, LayoutService } from "./layout-service";
+import { MAX_BUNCH } from "./reach";
 
 const model = new CockpitModel();
 model.ingest(runEvents());
@@ -87,7 +91,7 @@ describe("edge layer", () => {
     for (let e = 0; e < graph.edgeCount; e++) {
       const s = graph.edgeSource[e] as number;
       const t = graph.edgeTarget[e] as number;
-      const pieces = arcPieces(...at(s), ...at(t), edgeHash(s, t), stage.w, stage.h);
+      const pieces = arcPieces(...at(s), ...at(t), edgeHash(s, t), ring, stage.w, stage.h);
       if (pieces === 0) offStage++;
       const time = Math.fround(model.store.time[graph.edgeEvent[e] as number] as number);
       for (let k = 0; k < pieces; k++) expect(appear[i++]).toBe(time);
@@ -96,6 +100,23 @@ describe("edge layer", () => {
     // Most of the web lies off the stage (the ring's centre is left of it), but not all of it.
     expect(offStage).toBeGreaterThan(0);
     expect(offStage).toBeLessThan(graph.edgeCount);
+  });
+
+  it("keeps every arc inside the web's circle, so none leaves the wheel (B14)", () => {
+    const layer = edgeLayer(model, layout, unlimited(layout));
+    layer.update(frameAt(0));
+    const a = layer.buffers.array("a");
+    const b = layer.buffers.array("b");
+    const limit = webRadius(ring) + 1e-3;
+    for (let i = 0; i < layer.buffers.count; i++) {
+      for (const [x, y] of [
+        [a[i * 2] as number, a[i * 2 + 1] as number],
+        [b[i * 2] as number, b[i * 2 + 1] as number],
+      ] as const) {
+        expect(Math.hypot(x - ring.cx, y - ring.cy)).toBeLessThanOrEqual(limit);
+      }
+    }
+    expect(webRadius(ring)).toBeLessThan(outerRadius(ring)); // under the band
   });
 
   it("does not rewrite (or re-upload) between graph events: playback is the shader's job", () => {
@@ -190,7 +211,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(peak).toBeLessThanOrEqual(MAX_BUNDLES * (12 * BUNDLE_STEPS + 11));
   });
 
-  it("fires one strand from its test's node, which lights up, and keeps it attached there", () => {
+  it("fires a bunch's first strand from the test's node, which lights up, and keeps it attached", () => {
     const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
     const first = model.kinds.last("trace.sample", model.store.length, 1)[0] as number;
     const t0 = model.store.time[first] as number;
@@ -221,6 +242,81 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
       // The node's ring (from (x + 4.5, y)) shows while the bullet is in flight.
       expect(startsAt(x + 4.5, y)).toBe(life < TRAVEL);
     }
+  });
+
+  it("fires a bunch from the nodes that reach the function, converging on one section (B14)", () => {
+    const governor = unlimited(layout);
+    const layer = bundleLayer(model, layout, governor, ringModel());
+    const { store, graph } = model;
+    const parseDate = graph.byId.get("timekeeper.parse:parse_date#0") as number;
+    // The last trace of parse_date: by then many nodes reach it.
+    let i = store.length - 1;
+    for (; i >= 0; i--) {
+      const event = store.event(i);
+      if (
+        event?.kind === "trace.sample" &&
+        graph.nodeForSymbol(event.payload.symbol_id) === parseDate
+      )
+        break;
+    }
+    const event = store.event(i);
+    if (event?.kind !== "trace.sample") throw new Error("no trace of parse_date");
+    governor.prepare(frameAt(0)); // indexes the log, as the first frame does
+    const members = new Int32Array(MAX_BUNCH);
+    const first = strandOrigin(graph, event.target?.test, parseDate);
+    const n = placedBunch(
+      governor.reach,
+      parseDate,
+      i,
+      first,
+      members,
+      layout.positions as Float32Array,
+    );
+    expect(n).toBeGreaterThan(5);
+    const t0 = store.time[i] as number;
+    // In flight: every node of the bunch lights up, each the start of its own strand.
+    layer.update(frameAt(t0 + 0.05 * BUNDLE_MS));
+    const a = layer.buffers.array("a");
+    const startsAt = (px: number, py: number) => {
+      for (let k = 0; k < layer.buffers.count; k++) {
+        if (
+          Math.abs((a[k * 2] as number) - px) < 1e-3 &&
+          Math.abs((a[k * 2 + 1] as number) - py) < 1e-3
+        )
+          return true;
+      }
+      return false;
+    };
+    const origins = new Set<string>();
+    for (let k = 0; k < n; k++) {
+      const [x, y] = at(members[k] as number);
+      expect(startsAt(x, y)).toBe(true);
+      expect(startsAt(x + 4.5, y)).toBe(true);
+      origins.add(`${x},${y}`);
+    }
+    expect(origins.size).toBe(n); // one strand per node, each from its own point
+    // Landed: one bar, as long as the bunch is wide, where they all converge.
+    layer.update(frameAt(t0 + 0.5 * BUNDLE_MS));
+    const b = layer.buffers.array("b");
+    const shape = layer.buffers.array("shape");
+    const bars: number[] = [];
+    for (let k = 0; k < layer.buffers.count; k++) {
+      if (shape[k * 2] !== 2 || shape[k * 2 + 1] !== 1) continue;
+      bars.push(
+        Math.hypot(
+          (b[k * 2] as number) - (a[k * 2] as number),
+          (b[k * 2 + 1] as number) - (a[k * 2 + 1] as number),
+        ),
+      );
+    }
+    expect(bars.some((length) => Math.abs(length - pinLength(n)) < 1e-3)).toBe(true);
+  });
+
+  it("orders a bunch by its nodes' bearings, so its strands do not cross where they land", () => {
+    const positions = new Float32Array([0.5, 0.3, 0.5, -0.3, 0.5, 0]);
+    const members = Int32Array.from([0, 1, 2]);
+    sortByBearing(members, 3, positions, new Float64Array(3));
+    expect(Array.from(members)).toEqual([1, 2, 0]);
   });
 
   it("lands each strand on the inner rim, in the landing arc or as far as it has followed the ring", () => {
@@ -297,10 +393,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "bf46b5dd42b5e174",
-        "25500": "db9642a6c5910c07",
-        "45000": "bf46b5dd42b5e174",
-        "8000": "85ed9af44d5371a2",
+        "22000": "f76a0359fbf04b4f",
+        "25500": "e93e946781ba9527",
+        "45000": "f76a0359fbf04b4f",
+        "8000": "8afc4528e6d75bdf",
       }
     `);
   });

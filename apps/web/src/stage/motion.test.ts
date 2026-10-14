@@ -186,7 +186,7 @@ describe("layers follow the governor and wall-clock time", () => {
     for (let e = 0; e < model.graph.edgeCount; e++) {
       const s = model.graph.edgeSource[e] as number;
       const t = model.graph.edgeTarget[e] as number;
-      const pieces = arcPieces(x(s), y(s), x(t), y(t), edgeHash(s, t), stage.w, stage.h);
+      const pieces = arcPieces(x(s), y(s), x(t), y(t), edgeHash(s, t), ring, stage.w, stage.h);
       if (pieces > 0) shown++;
       if (pieces > 0 && governor.edgeFlare(e)) on++;
       for (let k = 0; k < pieces; k++) expect(flares[i++]).toBe(governor.edgeFlare(e) ? 1 : 0);

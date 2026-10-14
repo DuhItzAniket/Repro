@@ -46,9 +46,11 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
   - a chord layout from the force simulation's angular order (`force.ts`);
   - edges as arcs, only their pieces on the stage (`web/arcs.ts`);
   - the run's nodes (symbols and tests) in front, as small circles (`nodeLayer`);
-  - strands (bundles): one dim line per firing node, along which a white bullet shoots to the
-    ring; it stays attached to the node and follows the ring section it lands on, then fades
-    (1 s), as the owner's second, third and fourth reviews asked (below).
+  - bunches of strands (bundles): one dim line from each node that reaches the function, each
+    with a white bullet, converging on one ring section; they stay attached to their nodes and
+    follow that section as it turns, then fade (1 s), as the owner's second to fifth reviews
+    asked (below). Membership comes from `ReachIndex` (`web/reach.ts`);
+  - arcs kept inside the web's circle (`web/arcs.ts`).
 - Ring rotation: one turn per 24 s of wall-clock time at any replay speed (`RING_TURN_MS`), the
   reference's measured speed.
 - Streams: lanes ±24° with ±4.9° per event; rays from the outer rim, brightest there, growing
@@ -160,6 +162,25 @@ Changes:
   so the dim strands read over them;
 - the cap now admits 31 of 190 demo strands at ×1 (24 before).
 
+## Fifth owner review (same day)
+"Almost there": a single strand went from one node to one section. It should be a bunch, with
+strands from several nodes shooting together towards one section of the wheel. And some strands
+were going outside the wheel.
+
+Changes:
+- a bunch fires per event at the function's ring card. One strand comes from each node that
+  reaches the function: its tests (by `covers` edges and trace samples) and its callers (by
+  `calls` edges). The membership is real data from the log up to that event (`ReachIndex`, keyed
+  by store index, so it is prefix-pure). `parse_date` has 7 tests and 8 callers, capped at 12;
+- the strands converge side by side on one bar, ordered by their nodes' bearings so they do not
+  cross (`sortByBearing`), each starting up to 6% of the life later (`memberLife`);
+- the governor bounds a bunch by the sum of its strands' longest lengths plus its bar, and
+  aggregates one bunch per function per window. The demo admits 12 bunches at ×1;
+- "going outside the wheel": with the strongest bows, 82 of the 1,500 mesh arcs bowed out past
+  the ring's outer rim into the streams. Each arc's control point is now kept inside the web's
+  circle, so the curve is too; the farthest point of any arc is now 1.1 r, under the band
+  (outer rim 1.215 r).
+
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
       Measured at the same stage height:
@@ -172,11 +193,13 @@ Changes:
 
       Comparison images stay local, because the reference is third-party media.
 - [x] AC2: all tests and gates pass, with every changed pin explained:
-  - `@repro/web` 243 tests (11 new for the rays, strands and front nodes);
-  - bundle 192.87 kB of 300 kB;
-  - frame-cost ratios p50 0.0296 and p95 0.2474, against the baseline's 0.0496 and 0.2749;
-  - heap flat (−96 kB over 1,000 frames);
-  - stage allocation 19.1 kB per frame, within the 40 kB budget.
+  - `@repro/web` 249 tests (17 new for the rays, strands, bunches, reach and front nodes);
+  - bundle 193.98 kB of 300 kB;
+  - frame-cost ratios p50 0.028–0.033 and p95 0.245–0.272 over three runs, against the
+    baseline's 0.0496 and 0.2749 (one earlier run on a busy host read 0.376 and failed; the gate
+    allows 30%);
+  - heap flat (−84 kB over 1,000 frames);
+  - stage allocation 24.1 kB per frame with the bunches (19.1 kB before them), within the 40 kB budget.
 
   The visual baselines are regenerated in CI and checked by eye.
 - [x] AC3: flash safety holds. The governor's worst-window test passes at every speed, and the
@@ -186,6 +209,11 @@ Changes:
       Unit-tested:
   - a strand starts at its test's node at every age (attached), and the node's ring shows
     while its bullet is in flight;
+  - a bunch fires one strand from each of its nodes, each from its own point, and lands on one
+    bar as long as the bunch is wide; its nodes are ordered by bearing;
+  - the reach index collects tests and callers, never the function itself, and a bunch uses only
+    nodes that had joined by its event (agrees with an index built from the log prefix);
+  - every mesh arc stays inside the web's circle;
   - landing bars lie on the inner rim, within the landing arc or as far as they have followed;
   - the aim, follow, bullet and fade laws; the reach bound over the whole landing arc;
   - the run's nodes are in the front sector, evenly spread, a file's members together;

@@ -172,7 +172,12 @@ entry. If something turns out wrong, add a correcting entry.
   section it hit. Under a flash cap, how much each strand draws and how far it may aim decide how
   many can be shown. Aiming within 10° of the node's bearing let the cap admit 24 of 190 demo
   strands at ×1, against 8 when they could aim across the visible arc. A single line with a short
-  bullet, instead of a sheaf of curves, brought it to 31.
+  bullet, instead of a sheaf of curves, brought it to 31. The owner's last correction made each
+  event fire a bunch, one strand from every node that reaches the function (tests and callers,
+  from the log so far). The bunch is honest data, and the cap then admits 12 bunches at ×1.
+- A containment rule fixed what read as strands leaving the wheel. 82 of 1,500 mesh arcs bowed
+  past the ring's outer rim; keeping each arc's control point inside the web's circle bounds the
+  whole curve there, because a quadratic Bézier lies in the triangle of its points.
 - After B14 the demo replays at ×1 with the whole cockpit at 60 fps on an integrated GPU
   (production build, 1440×900, DPR 1.75): p50 16.7 ms, p95 17.0 ms over 3,081 frames, with 1.14%
   over 25 ms.

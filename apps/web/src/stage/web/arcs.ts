@@ -4,10 +4,16 @@
  * Bézier from its source to its target, bowed to one side by a share of its length that comes
  * from a hash of its endpoints, so the same edge always bends the same way.
  *
+ * Every arc stays inside the web's circle (B14): its control point is kept within the circle,
+ * and a quadratic Bézier lies within the triangle of its endpoints and control point, so no edge
+ * bows out past the ring into the streams. The circle's edge is under the ring's band.
+ *
  * Most of the web lies off-screen (the ring's centre is left of the stage), so arcs are written
  * only as the sub-segments that touch the stage. The flash governor sizes an edge's flare from
  * the same sub-segments (`arcArea`), so it counts exactly what is drawn.
  */
+import type { Ring } from "../../shell/layout";
+import { webRadius } from "../geometry";
 import type { SegmentWriter } from "../segments";
 
 /** Margin around the stage, px, within which sub-segments are still written. */
@@ -46,14 +52,35 @@ function onStage(ax: number, ay: number, bx: number, by: number, w: number, h: n
 
 /** The arc's control point (a scratch pair, so callers do not allocate). */
 const control = new Float64Array(2);
-function controlPoint(px: number, py: number, qx: number, qy: number, bow: number): number {
+
+/**
+ * Sets `control` to the arc's control point, bowed by `arcBow` and pulled back inside the web's
+ * circle if the bow would take it out; returns the arc's chord length.
+ */
+function controlPoint(
+  px: number,
+  py: number,
+  qx: number,
+  qy: number,
+  h: number,
+  ring: Ring,
+): number {
   const dx = qx - px;
   const dy = qy - py;
   const len = Math.sqrt(dx * dx + dy * dy);
   const nx = len > 0 ? -dy / len : 0;
   const ny = len > 0 ? dx / len : 0;
-  control[0] = (px + qx) / 2 + nx * bow;
-  control[1] = (py + qy) / 2 + ny * bow;
+  const bow = arcBow(len, h);
+  let kx = (px + qx) / 2 + nx * bow - ring.cx;
+  let ky = (py + qy) / 2 + ny * bow - ring.cy;
+  const limit = webRadius(ring);
+  const d = Math.sqrt(kx * kx + ky * ky);
+  if (d > limit) {
+    kx *= limit / d;
+    ky *= limit / d;
+  }
+  control[0] = ring.cx + kx;
+  control[1] = ring.cy + ky;
   return len;
 }
 
@@ -68,6 +95,7 @@ export function writeArc(
   qx: number,
   qy: number,
   h: number,
+  ring: Ring,
   stageW: number,
   stageH: number,
   width: number,
@@ -75,9 +103,8 @@ export function writeArc(
   appear: number,
   flare: number,
 ): number {
-  const len = controlPoint(px, py, qx, qy, 0);
+  const len = controlPoint(px, py, qx, qy, h, ring);
   if (len < 0.5) return 0;
-  controlPoint(px, py, qx, qy, arcBow(len, h));
   const kx = control[0] as number;
   const ky = control[1] as number;
   const steps = arcSteps(len);
@@ -106,12 +133,12 @@ export function arcPieces(
   qx: number,
   qy: number,
   h: number,
+  ring: Ring,
   stageW: number,
   stageH: number,
 ): number {
-  const len = controlPoint(px, py, qx, qy, 0);
+  const len = controlPoint(px, py, qx, qy, h, ring);
   if (len < 0.5) return 0;
-  controlPoint(px, py, qx, qy, arcBow(len, h));
   const kx = control[0] as number;
   const ky = control[1] as number;
   const steps = arcSteps(len);
@@ -140,13 +167,13 @@ export function arcArea(
   qx: number,
   qy: number,
   h: number,
+  ring: Ring,
   stageW: number,
   stageH: number,
   width: number,
 ): number {
-  const len = controlPoint(px, py, qx, qy, 0);
+  const len = controlPoint(px, py, qx, qy, h, ring);
   if (len < 0.5) return 0;
-  controlPoint(px, py, qx, qy, arcBow(len, h));
   const kx = control[0] as number;
   const ky = control[1] as number;
   const steps = arcSteps(len);

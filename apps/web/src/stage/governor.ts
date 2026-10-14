@@ -3,7 +3,8 @@
  * flashes: they brighten and then fade. The governor caps the bright area that may *rise* within
  * any 333 ms of wall-clock time at `FLASH_BUDGET`, half of WCAG's 87,296 CSS px² flashing area.
  * Over the cap:
- * - a strand (bundle) is dropped, and at most one strand per node rises per window (aggregation);
+ * - a bunch of strands is dropped, and at most one bunch per function rises per window
+ *   (aggregation);
  * - a streak is not drawn (its intensity is reduced to zero);
  * - an edge or marker appears without its flare (a rise that does not fall is not a flash).
  *
@@ -12,14 +13,13 @@
  * upper bounds from each element's own geometry (`streakArea`, `bundleArea`, `arcArea`), and
  * the budget applies to the whole stage, not per 10° field, so the estimate errs on the safe side.
  * An edge counts only its pieces on the stage (most of the web is off-screen since B14), and a
- * strand (bundle) its longest possible length, from its node to the far end of the arc it can
+ * bunch each strand's longest possible length, from its node to the far end of the arc it can
  * land on.
  *
  * Decisions are made greedily in log order and depend only on the events up to each onset, the
  * replay speed and the stage geometry. They are therefore a pure function of (events, speed,
  * geometry): the same when playing or scrubbing, and extended, never revised, as events arrive.
  */
-import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../model/cockpit";
 import { webRadius } from "./geometry";
 import type { StageFrame } from "./layer";
@@ -28,14 +28,18 @@ import { streams } from "./streams/style";
 import { arcArea, edgeHash } from "./web/arcs";
 import {
   aimRange,
-  bundleArea,
   EDGE_STYLE,
   FOLLOW,
   landingArc,
   MARKER_AREA,
+  pinArea,
+  pinLength,
+  placedBunch,
+  strandArea,
   strandOrigin,
   strandReach,
 } from "./web/layers";
+import { MAX_BUNCH, ReachIndex } from "./web/reach";
 
 /** What the governor needs from the web layout (a `LayoutService`, or a stub in tests). */
 export interface PlacedNodes {
@@ -75,7 +79,7 @@ export class FlashGovernor {
   private readonly areas: number[] = [];
   private head = 0;
   private sum = 0;
-  /** Strand origin node → time of its last admitted strand. */
+  /** Function node → time of its last admitted bunch. */
   private readonly lastBundle = new Map<number, number>();
   private log: OnsetLog = { time: [], area: [], kind: [] };
   private speed = Number.NaN;
@@ -83,6 +87,10 @@ export class FlashGovernor {
   private width = Number.NaN;
   private height = Number.NaN;
   private layoutVersion = -1;
+
+  /** Which nodes reach each function: a bunch's strands (shared with the bundle layer). */
+  readonly reach: ReachIndex;
+  private readonly members = new Int32Array(MAX_BUNCH);
 
   constructor(
     private readonly model: CockpitModel,
@@ -92,7 +100,9 @@ export class FlashGovernor {
      * aggregation): the stress bench and the capacity tests measure the layers at full load.
      */
     private readonly budget = FLASH_BUDGET,
-  ) {}
+  ) {
+    this.reach = new ReachIndex(model);
+  }
 
   /** Brings decisions up to date for this frame. Cheap (and allocation-free) when unchanged. */
   prepare(frame: StageFrame): void {
@@ -181,6 +191,7 @@ export class FlashGovernor {
 
   private extend(): void {
     const { store, graph } = this.model;
+    this.reach.sync();
     const positions = this.layout.positions;
     const radius = webRadius(this.ring);
     const { cx, cy } = this.ring;
@@ -202,6 +213,7 @@ export class FlashGovernor {
         cx + (p[b * 2] as number) * radius,
         cy + (p[b * 2 + 1] as number) * radius,
         edgeHash(a, b),
+        this.ring,
         this.width,
         this.height,
         width,
@@ -239,31 +251,38 @@ export class FlashGovernor {
         continue;
       }
       if (event.kind === "trace.sample" || event.kind === "diff.behaviour") {
-        const node = strandOrigin(
-          graph,
-          event.target?.test,
-          graph.nodeForSymbol(event.payload.symbol_id),
-        );
-        if (node !== undefined && placed(node)) {
-          // One strand per node per window: a later one from the same node is aggregated into it.
-          const key = node;
-          const last = this.lastBundle.get(key);
+        const target = graph.nodeForSymbol(event.payload.symbol_id);
+        const first = strandOrigin(graph, event.target?.test, target);
+        const members = this.members;
+        const n =
+          target === undefined || positions === null
+            ? 0
+            : placedBunch(this.reach, target, i, first, members, positions);
+        if (target !== undefined && n > 0) {
+          // One bunch per function per window: a later one at the same function is aggregated.
+          const last = this.lastBundle.get(target);
           const aggregated =
             Number.isFinite(this.budget) && last !== undefined && t - last < this.window;
+          // Its strands land within AIM of the first node's bearing, spread along the bar, and
+          // follow the ring by at most FOLLOW either way.
           const p = positions as Float32Array;
-          const ox = p[node * 2] as number;
-          const oy = p[node * 2 + 1] as number;
-          const [lo, hi] = aimRange(Math.atan2(oy, ox), arc);
-          const reach = strandReach(
-            ox * radius,
-            oy * radius,
-            this.ring.r - 3,
-            lo - FOLLOW,
-            hi + FOLLOW,
+          const lead = members[0] as number;
+          const [lo, hi] = aimRange(
+            Math.atan2(p[lead * 2 + 1] as number, p[lead * 2] as number),
+            arc,
           );
-          if (!aggregated && this.admit(t, bundleArea(reach, hash32(event.id)), "bundle")) {
+          const rim = this.ring.r - 3;
+          const spread = pinLength(n) / 2 / rim + FOLLOW;
+          let area = pinArea(n);
+          for (let k = 0; k < n; k++) {
+            const node = members[k] as number;
+            const ox = (p[node * 2] as number) * radius;
+            const oy = (p[node * 2 + 1] as number) * radius;
+            area += strandArea(strandReach(ox, oy, rim, lo - spread, hi + spread));
+          }
+          if (!aggregated && this.admit(t, area, "bundle")) {
             this.bundleOk[i] = 1;
-            this.lastBundle.set(key, t);
+            this.lastBundle.set(target, t);
           }
         }
       }

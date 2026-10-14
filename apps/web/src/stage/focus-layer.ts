@@ -209,6 +209,7 @@ export function focusLayers(
         cx + (positions[b * 2] as number) * radius,
         cy + (positions[b * 2 + 1] as number) * radius,
         edgeHash(a, b),
+        frame.ring,
         frame.width,
         frame.height,
         1.2,
