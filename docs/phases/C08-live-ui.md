@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | B12, C04, C07 |
-| **Branch / PR** | `phase/C08-live-ui` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C08-live-ui` · [#36](https://github.com/DuhItzAniket/Repro/pull/36) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 `repro run --repo <repository> --base A --head B` reproduces a change's build stage and shows
@@ -54,9 +54,9 @@ the two end in the same state. This is Gate C.
   path, a newline) in path order: it names exactly what the snapshot holds.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): the Gate C scenario passes in CI (Linux) and manually on Windows.
-- [ ] AC2: the client recovers from gaps, resyncs and lost connections, and reports refusals.
-- [ ] AC3: `repro run`, `replay` and `serve` behave as documented, including their failures.
+- [x] AC1 (roadmap): the Gate C scenario passes in CI (Linux) and manually on Windows.
+- [x] AC2: the client recovers from gaps, resyncs and lost connections, and reports refusals.
+- [x] AC3: `repro run`, `replay` and `serve` behave as documented, including their failures.
 
 ## Test plan
 | Criterion | Check |
@@ -97,7 +97,7 @@ the two end in the same state. This is Gate C.
   printed was refused (the socket was bound but not yet listening), and on Windows stopping
   `.venv\Scripts\python.exe` left the engine running (a virtual environment's `python.exe` is a
   launcher; the spec ends the process tree).
-- Bundle: 197.5 kB gzip (budget 300 kB). CI run: linked in the PR.
+- Bundle: 197.5 kB gzip (budget 300 kB). CI run: linked in the PR (#36).
 
 ## Deviations from spec
 None.

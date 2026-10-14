@@ -289,7 +289,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | done |
 | C06 | Symbol table & changed-symbol mapping | M | C05 | done |
 | C07 | Import graph & blast radius | M | C06 | done |
-| C08 | Live UI wiring & end-to-end | M | B12, C04, C07 | in progress |
+| C08 | Live UI wiring & end-to-end | M | B12, C04, C07 | done |
 
 **C01** Typer CLI (`run`, `replay`, `serve`, `doctor`, `export`), settings (env plus
 `~/.repro/config.toml`), structured logging, Windows-safe data paths. *Accept:* `repro doctor`
@@ -693,3 +693,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | C05 | 2026-10-14 | [#33](https://github.com/DuhItzAniket/Repro/pull/33) | Hardened git (no repo hooks or fsmonitor), refs and merge bases, exact-path diffs with line ranges, byte-for-byte snapshots from tree objects (not `git archive`) with unsafe entries skipped, worktrees cleaned up past Windows locks |
 | C06 | 2026-10-14 | [#34](https://github.com/DuhItzAniket/Repro/pull/34) | Module names from packages, `ast` symbol tables with stable IDs, and changed symbols by own code (comments and reformatting are not changes); repeated names aligned, renames and moves by AST similarity, unreadable files reported, never guessed |
 | C07 | 2026-10-14 | [#35](https://github.com/DuhItzAniket/Repro/pull/35) | Import graphs (grimp for packages in an isolated process that never resolves target names through `sys.path`, THREAT_MODEL T19; `ast` for tests and scripts outside packages) and the blast radius over both sides' imports, with distance; hand-checked on this repository's own history |
+| C08 | 2026-10-14 | [#36](https://github.com/DuhItzAniket/Repro/pull/36) | `repro run` streams a change's build stage (snapshots, static analysis) into the cockpit live; `repro replay` and `repro serve` serve the built cockpit; the cockpit's event-stream client recovers gaps and resyncs from the engine's store; Gate C's Playwright test on pallets/itsdangerous in CI and on Windows (Edge) |
