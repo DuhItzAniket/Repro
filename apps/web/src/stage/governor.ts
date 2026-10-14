@@ -19,12 +19,14 @@
  * land on.
  *
  * Decisions are made greedily in log order and depend only on the events up to each onset, the
- * replay speed and the stage geometry. They are therefore a pure function of (events, speed,
- * geometry): the same when playing or scrubbing, and extended, never revised, as events arrive.
+ * replay speed, the stage geometry (and with it the view, B15) and the viewer's widths for the
+ * counted parts. They are therefore a pure function of (events, speed, geometry, widths): the same
+ * when playing or scrubbing, and extended, never revised, as events arrive.
  */
 import type { CockpitModel } from "../model/cockpit";
 import { webRadius } from "./geometry";
 import type { StageFrame } from "./layer";
+import { DEFAULT_LOOK } from "./look";
 import type { RingModel } from "./ring/layers";
 import { rotationAt } from "./ring/layers";
 import { cardCentre } from "./ring/sections";
@@ -90,6 +92,9 @@ export class FlashGovernor {
   private width = Number.NaN;
   private height = Number.NaN;
   private layoutVersion = -1;
+  /** The viewer's width multiples for the parts the governor counts (B15). */
+  private bulletWidth = 1;
+  private meshWidth = 1;
 
   /** Which nodes reach each function: a bunch's strands (shared with the bundle layer). */
   readonly reach: ReachIndex;
@@ -118,8 +123,11 @@ export class FlashGovernor {
   prepare(frame: StageFrame): void {
     const { ring } = frame;
     const { speed } = frame.motion;
+    const { bullets, mesh } = (frame.look ?? DEFAULT_LOOK).parts;
     if (
       speed !== this.speed ||
+      bullets.width !== this.bulletWidth ||
+      mesh.width !== this.meshWidth ||
       ring.cx !== this.ring.cx ||
       ring.cy !== this.ring.cy ||
       ring.r !== this.ring.r ||
@@ -128,6 +136,8 @@ export class FlashGovernor {
       this.layout.version !== this.layoutVersion
     ) {
       this.speed = speed;
+      this.bulletWidth = bullets.width;
+      this.meshWidth = mesh.width;
       this.ring = { cx: ring.cx, cy: ring.cy, r: ring.r };
       this.width = frame.width;
       this.height = frame.height;
@@ -232,7 +242,7 @@ export class FlashGovernor {
           const s = graph.edgeSource[e] as number;
           const target = graph.edgeTarget[e] as number;
           if (placed(s) && placed(target)) {
-            const area = arcOf(s, target, EDGE_STYLE[graph.edgeTypeName(e)].width);
+            const area = arcOf(s, target, EDGE_STYLE[graph.edgeTypeName(e)].width * this.meshWidth);
             // An edge entirely off the stage draws nothing and cannot flash.
             if (area === 0 || this.admit(t, area, "edge")) this.edgeOk[e] = 1;
           }
@@ -281,12 +291,15 @@ export class FlashGovernor {
       // Its strands land around that point, spread along the bar, and follow the ring by at most
       // FOLLOW either way.
       const spread = pinLength(count) / 2 / rim + FOLLOW;
-      let area = pinArea(count);
+      let area = pinArea(count, this.bulletWidth);
       for (let k = 0; k < count; k++) {
         const node = members[k] as number;
         const ox = (positions[node * 2] as number) * radius;
         const oy = (positions[node * 2 + 1] as number) * radius;
-        area += strandArea(strandReach(ox, oy, rim, fired - spread, fired + spread));
+        area += strandArea(
+          strandReach(ox, oy, rim, fired - spread, fired + spread),
+          this.bulletWidth,
+        );
       }
       if (this.admit(t, area, "bundle")) {
         this.bundleOk[i] = 1;

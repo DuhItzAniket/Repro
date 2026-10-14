@@ -497,6 +497,11 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
   reduced motion. Visual durations are wall-clock, so the stage is a pure function of (events,
   t, motion). A `FlashGovernor` decides, in log order, which bunches of strands are drawn and
   which edges and markers flare, keeping the bright area that rises in any 333 ms under its cap.
+- **View and look (B15).** The stage's ring geometry comes from the layout and the viewer's zoom
+  (`viewRing`), so every layer, the governor and the hit tests follow the view. The viewer's look
+  (`Look`: per-part width and brightness multiples) reaches layers through `StageFrame.look`;
+  layers do not read it, the host applies it as shader uniforms, and the governor reads the
+  widths it counts. It is kept per viewer in `localStorage`, always read through `clampLook`.
 - **Shell:** Preact 11 + signals for header, controls, drawer and the accessible parallel DOM.
 - **Determinism:** no `Date.now()` or `Math.random()` in projections. Per-event visual jitter
   comes from `hash32(event.id)`. Layout initial positions are seeded from node-ID hashes (no

@@ -149,7 +149,7 @@ allocation and bundle-size gates are active in CI.
 | B12 | UI quality gate | M | B11 | done |
 | B13 | Visual parity with the reference (added before Gate B) | S | B12 | done |
 | B14 | Reference parity II: the stage composition (added at the owner's Gate B review) | M | B13 | done |
-| B15 | Stage settings and the whole wheel (added at the owner's seventh B14 review) | M | B14 | planned |
+| B15 | Stage settings and the whole wheel (added at the owner's seventh B14 review) | M | B14 | in progress |
 
 **B01 · Deterministic fixture generator & reference log**
 - Deliverables: a seeded generator (TS or Python) that produces a realistic run (1 PR, 4 claims,

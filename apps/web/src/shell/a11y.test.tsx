@@ -14,6 +14,7 @@ import { indexPanel } from "../panels/check-index";
 import { dispatchPanel } from "../panels/dispatch";
 import type { PanelTarget } from "../panels/panel";
 import { routesPanel } from "../panels/routes";
+import { DEFAULT_LOOK } from "../stage/look";
 import { App, type FocusUi } from "./app";
 import { computeLayout } from "./layout";
 import { createTransportState } from "./transport";
@@ -63,6 +64,7 @@ beforeEach(() => {
         view={view}
         transport={{ state: createTransportState(), clock, reduced: signal(false) }}
         focus={ui}
+        settings={{ open: signal(true), look: signal(DEFAULT_LOOK) }}
       />,
       root,
     ),

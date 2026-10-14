@@ -6,7 +6,8 @@ import { CockpitModel } from "../model/cockpit";
 import { parseJsonl } from "../model/jsonl";
 import { runEvents } from "../model/test-support";
 import { type Motion, NORMAL_MOTION } from "../motion/motion";
-import { computeLayout } from "../shell/layout";
+import { computeLayout, type Ring } from "../shell/layout";
+import { viewRing } from "./camera";
 import { webRadius } from "./geometry";
 import {
   FLASH_BUDGET,
@@ -17,12 +18,13 @@ import {
 } from "./governor";
 import { hashRenderModels } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
+import { clampLook, DEFAULT_LOOK, LOOK_SPECS, type Look } from "./look";
 import { AtlasService } from "./ring/atlas-service";
 import { RingModel, ringLayers, rotationAt } from "./ring/layers";
 import { easeOutCubic, RING_DRIFT, SNAP_MS } from "./ring/rotation";
 import { streams } from "./streams/style";
 import { arcPieces, edgeHash } from "./web/arcs";
-import { BUNDLE_MS, bundleLayer, edgeLayer, webLayers } from "./web/layers";
+import { BUNDLE_MS, bundleLayer, edgeLayer, pinArea, strandArea, webLayers } from "./web/layers";
 import { computeInline, LayoutService } from "./web/layout-service";
 
 const { stage, ring } = computeLayout(1440, 900);
@@ -41,14 +43,22 @@ beforeAll(async () => {
   await Promise.all([demo.layout.request(), stress.layout.request()]);
 }, 60_000);
 
-const frameOf = (model: CockpitModel, t: number, motion: Motion = NORMAL_MOTION): StageFrame => ({
+const frameOf = (
+  model: CockpitModel,
+  t: number,
+  motion: Motion = NORMAL_MOTION,
+  view: { ring?: Ring; look?: Look } = {},
+): StageFrame => ({
   t,
   cursor: model.store.cursorAt(t),
   width: stage.w,
   height: stage.h,
-  ring,
+  ring: view.ring ?? ring,
   motion,
+  ...(view.look === undefined ? {} : { look: view.look }),
 });
+/** The whole wheel (B15's view at zoom 1) on the same stage. */
+const whole = viewRing(ring, stage.w, stage.h, 1);
 const at = (speed: number): Motion => ({ speed, reduced: false });
 const ringOf = (model: CockpitModel) =>
   new RingModel(model, new AtlasService(() => Promise.resolve(null)));
@@ -67,11 +77,15 @@ function worstWindow(log: OnsetLog, window: number): number {
 }
 
 /** A governor with the ring, so it decides bunches as the app does. */
-function governed(run: { model: CockpitModel; layout: LayoutService }, speed: number) {
+function governed(
+  run: { model: CockpitModel; layout: LayoutService },
+  speed: number,
+  view: { ring?: Ring; look?: Look } = {},
+) {
   const wheel = ringOf(run.model);
   wheel.sync();
   const governor = new FlashGovernor(run.model, run.layout, FLASH_BUDGET, wheel);
-  governor.prepare(frameOf(run.model, 0, at(speed)));
+  governor.prepare(frameOf(run.model, 0, at(speed), view));
   return governor;
 }
 
@@ -91,7 +105,9 @@ describe("flash governor (ADR-0011, WCAG 2.3.1)", () => {
   });
 
   it("holds the ×16 stress burst under the threshold by dropping what does not fit", () => {
-    const governor = governed(stress, 16);
+    // In the whole-wheel view (B15), where strands are short enough for some bunches to fit; in
+    // the arc view they come from all over the disc and none fits at ×16 (the bound still holds).
+    const governor = governed(stress, 16, { ring: whole });
     const { store } = stress.model;
     let streaming = 0;
     let drawn = 0;
@@ -106,6 +122,38 @@ describe("flash governor (ADR-0011, WCAG 2.3.1)", () => {
     const worst = worstWindow(governor.onsets, FLASH_WINDOW_MS * 16);
     expect(worst).toBeLessThanOrEqual(FLASH_BUDGET);
     expect(worst / WCAG_FLASH_AREA).toBeLessThan(0.5 + 1e-9);
+  });
+
+  it("holds the cap in every view and at every width the viewer can choose (B15)", () => {
+    const widest = clampLook({
+      parts: {
+        bullets: { width: LOOK_SPECS.bullets.width.max },
+        mesh: { width: LOOK_SPECS.mesh.width.max },
+      },
+    });
+    for (const run of [demo, stress])
+      for (const view of [ring, viewRing(ring, stage.w, stage.h, 0.5), whole])
+        for (const look of [DEFAULT_LOOK, widest])
+          for (const speed of [1, 16]) {
+            const { onsets } = governed(run, speed, { ring: view, look });
+            expect(worstWindow(onsets, FLASH_WINDOW_MS * speed)).toBeLessThanOrEqual(FLASH_BUDGET);
+          }
+  });
+
+  it("counts wider bullets and arcs as more area, and re-decides when the widths change (B15)", () => {
+    // The bounds grow with the width.
+    expect(strandArea(300, 2)).toBeGreaterThan(strandArea(300));
+    expect(pinArea(8, 2)).toBeGreaterThan(pinArea(8));
+    // Re-preparing with another width re-decides from the start.
+    const governor = governed(demo, 1, { ring: whole });
+    const before = governor.version;
+    governor.prepare(
+      frameOf(demo.model, 0, at(1), {
+        ring: whole,
+        look: clampLook({ parts: { bullets: { width: 2 } } }),
+      }),
+    );
+    expect(governor.version).toBeGreaterThan(before);
   });
 
   it("decides the same however the log arrives (pure in the events, speed and geometry)", () => {

@@ -15,6 +15,7 @@ import {
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   LinearFilter,
+  LinearMipmapLinearFilter,
   MaxEquation,
   Mesh,
   NormalBlending,
@@ -31,6 +32,7 @@ import { AdaptiveDpr } from "./dpr";
 import { ringBand } from "./geometry";
 import type { InstanceBuffers } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
+import { DEFAULT_LOOK, type Look } from "./look";
 import type { CardLayer } from "./ring/layers";
 import { NO_RECENCY } from "./segments";
 import cardFrag from "./shaders/card.frag.glsl?raw";
@@ -109,6 +111,7 @@ export class StageHost {
   private readonly input: MutableFrame;
   private dpr: number;
   private lastStart = Number.NaN;
+  private meshDim = 1;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -140,7 +143,17 @@ export class StageHost {
       ring: { cx: 0, cy: 0, r: 1 },
       motion: NORMAL_MOTION,
       focus: NO_FOCUS,
+      look: DEFAULT_LOOK,
     };
+  }
+
+  /**
+   * Sets the viewer's look (B15), applied from the next frame, and how much the view dims the
+   * mesh (`meshDensity`).
+   */
+  setLook(look: Look, meshDim = 1): void {
+    this.input.look = look;
+    this.meshDim = meshDim;
   }
 
   add(layer: StageLayer): void {
@@ -178,6 +191,8 @@ export class StageHost {
         uFlareMs: { value: recency.flareMs },
         uCenter: { value: this.center },
         uSpin: { value: [1, 0] },
+        uWidth: { value: 1 },
+        uAlpha: { value: 1 },
       },
       // Additive, or MAX for layers whose overlaps must not add up (premultiplied in the shader).
       blending: max ? CustomBlending : AdditiveBlending,
@@ -269,6 +284,7 @@ export class StageHost {
       const { layer } = binding;
       layer.update(this.input);
       this.flare(binding, motion);
+      this.style(binding);
       if (binding.generation !== layer.buffers.generation) this.attach(binding);
       if (binding.version !== layer.buffers.version) {
         upload(binding.mesh.geometry, layer.buffers);
@@ -304,6 +320,22 @@ export class StageHost {
     uniforms.uFlareMs.value = recency.flareMs * motion.speed;
   }
 
+  /**
+   * Applies the viewer's look to a layer's widths and alphas (B15). A MAX-blended layer is never
+   * brightened: its alphas stay at most what it wrote, the flash-safe ceiling (ADR-0011 B14 note).
+   */
+  private style(binding: Binding): void {
+    const { part, blend } = binding.layer;
+    if (part === undefined) return;
+    const uniforms = binding.mesh.material.uniforms;
+    const look = (this.input.look ?? DEFAULT_LOOK).parts[part];
+    if (uniforms.uWidth !== undefined) uniforms.uWidth.value = look.width;
+    const dim = part === "mesh" ? this.meshDim : 1;
+    if (uniforms.uAlpha !== undefined)
+      uniforms.uAlpha.value =
+        blend === "max" ? Math.min(1, look.brightness) : look.brightness * dim;
+  }
+
   /** Sets a turning layer's rotation uniform (cards: an angle; segments: its cos and sin). */
   private spin(binding: Binding, rotation: number): void {
     const uniforms = binding.mesh.material.uniforms;
@@ -323,8 +355,10 @@ export class StageHost {
     binding.atlasVersion = version;
     const texture = new Texture(bitmap);
     texture.flipY = false; // ImageBitmaps cannot be flipped on upload; the atlas uses v = 0 at the top
-    texture.generateMipmaps = false;
-    texture.minFilter = LinearFilter;
+    // Mipmapped: zoomed out (B15) the cards are drawn smaller than the atlas, and without mipmaps
+    // their text would shimmer as the ring turns.
+    texture.generateMipmaps = true;
+    texture.minFilter = LinearMipmapLinearFilter;
     texture.magFilter = LinearFilter;
     texture.needsUpdate = true;
     binding.texture?.dispose();

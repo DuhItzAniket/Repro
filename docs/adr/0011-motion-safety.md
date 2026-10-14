@@ -79,3 +79,19 @@ Flagged for the owner at the re-opened Stage B gate; no change of scope.
   nodes, then the attached strands follow the ring and fade while the lines outside bounce. The
   ring's drift is wall-clock too, one turn per 24 s at any replay speed, so ×16 does not spin it
   sixteen times as fast.
+
+## Implementation notes (B15)
+Flagged for the owner with B15; no change of scope.
+- **Viewer settings stay inside the bound.** Viewers can set each part's thickness and
+  brightness (DESIGN.md "View and look"). The settings change only how the shader draws, never
+  which events draw, with two consequences for flash safety:
+  - the MAX-blended, uncounted parts (strands, lines outside) can only be dimmed: their
+    brightness range ends at ×1, the 0.32 ceiling, `clampLook` enforces it on every input
+    including stored values, and the host never raises a MAX layer's alpha;
+  - the counted parts (bullets with their node rings and bars, mesh flares) may be brighter or
+    wider. The governor counts area whatever the intensity, and counts it at the chosen width;
+    when a width changes it re-decides from the start, as it does for speed and geometry.
+  A unit test checks the worst window in every view at the widest widths, on both fixtures.
+- **Views.** The whole-wheel view is a different ring geometry, so the governor decides for the
+  view the viewer sees. Strands there are shorter, and the cap admits more bunches (demo ×1: 71
+  in the whole wheel, 13 in the arc).

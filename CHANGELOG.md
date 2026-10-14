@@ -120,6 +120,16 @@ Stage B — Cockpit on fixtures. Gate record: `docs/phases/B-gate.md`.
     out from the outer rim at their places on that section, then rebound into the rim and vanish
     (a bounce, 0.6 s), turning with the wheel. Nothing leaves the wheel without a hit; the
     per-event streaks (B07) and the long-lived rays (B13's residue) are removed.
+- Stage settings and the whole wheel, at the owner's seventh B14 review. [B15]
+  - A Settings menu (in the transport) with a thickness and a brightness slider for strands,
+    bullets, mesh, nodes and lines outside, and a reset; kept per viewer in the browser. The
+    strands' and lines' brightness can only go down from their flash-safe ceiling; the flash
+    governor counts bullets and mesh flares at the chosen width.
+  - A view from the reference's arc out to the whole wheel (Arc, Whole wheel, a zoom slider).
+    Every layer, the governor, hit tests and callouts follow it; the mesh dims as it crowds a
+    smaller disc, and card text is mipmapped.
+  - The run's nodes are placed over the whole disc: angle by the simulation's order, distance
+    from the centre by role.
 
 ### Fixed
 - The feed and execution panels could keep showing a stale drawing between version steps (the

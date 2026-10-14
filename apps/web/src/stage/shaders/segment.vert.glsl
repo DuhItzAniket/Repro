@@ -17,6 +17,8 @@ uniform float uFlare; // recency: extra alpha multiple right after appearing
 uniform float uFlareMs; // recency decay time constant, presentation ms (wall-clock × speed)
 uniform vec2 uCenter; // rotation centre, stage px (the ring's centre)
 uniform vec2 uSpin; // cos and sin of the layer's rotation (1, 0 for layers that do not turn)
+uniform float uWidth; // the viewer's width multiple for this layer (B15), 1 by default
+uniform float uAlpha; // the viewer's alpha multiple for this layer (B15), 1 by default
 
 out vec4 vColor;
 out float vAcross; // signed distance from the centre line, CSS px
@@ -38,7 +40,7 @@ void main() {
   // One device pixel of margin across the segment for anti-aliasing. None along it: arcs are
   // chains of segments, and overlapping ends would add up into bright dots at every joint (B14).
   float margin = 1.0 / uDpr;
-  float halfWidth = 0.5 * shape.x;
+  float halfWidth = 0.5 * shape.x * uWidth;
   float along = corner.x * len;
   float across = corner.y * (halfWidth + margin);
   vec2 p = pa + dir * along + normal * across;
@@ -49,7 +51,7 @@ void main() {
 
   vAcross = across;
   vHalfWidth = halfWidth;
-  vColor = vec4(color.rgb, min(1.0, color.a * recency) * mix(shape.y, 1.0, corner.x));
+  vColor = vec4(color.rgb, min(1.0, color.a * recency * uAlpha) * mix(shape.y, 1.0, corner.x));
 
   // Segments that are not visible yet collapse to a point and cost no fill.
   vec2 clip = p / uViewport * 2.0 - 1.0;

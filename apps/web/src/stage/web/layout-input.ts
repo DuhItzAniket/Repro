@@ -49,7 +49,7 @@ export function layoutInput(graph: GraphIndex): LayoutInput {
 /** Cache key: changes whenever a node or link is added, removed or reordered. */
 export function layoutHash(input: LayoutInput): string {
   let a = 0x811c9dc5;
-  let b = fnv(0x811c9dc5, "repro-layout/4"); // 4: the run's nodes placed across the visible web (B14)
+  let b = fnv(0x811c9dc5, "repro-layout/5"); // 5: the run's nodes placed over the whole disc (B15)
   for (const id of input.ids) {
     a = fnv(a, id);
     b = fnv(b, `${id.length}`);
