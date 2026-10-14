@@ -58,6 +58,13 @@ All notable changes to this project are documented here. The format follows
   repeated names are aligned by code, renames and moves matched by AST similarity, and a file
   whose package changed above it moves with it. Files that do not parse, are too complex to
   parse or have no importable module name are reported, never guessed. [C06]
+- Import graphs and blast radius: each side's module import graph, from grimp for packages and
+  from `ast` for test files and scripts outside packages, and the blast radius of a change: the
+  modules importing its symbols' modules, directly or not, with their distance, over both sides'
+  imports. grimp runs in a process of its own and never resolves a target name through
+  `sys.path`, so no target code runs whatever the package names (THREAT_MODEL T19). Unparsable
+  files, unsafe paths and a slow grimp are reported. `graph.node`, `graph.edge` and
+  `blast.computed` payloads. New dependency: grimp 3.17 (BSD-2-Clause). [C07]
 
 ## [0.2.0] - 2026-10-14
 

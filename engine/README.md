@@ -49,7 +49,10 @@ and their changed line ranges; `snapshot` writes a commit's tree, byte for byte,
 functions, methods and classes with stable IDs (`pkg.mod:Class.method#0`, `<module>` for the
 module's own code); `changed_symbols_between(git, base, head)` gives each symbol the change
 touched (`modified`, `renamed`, `moved`, `added`, `removed`), as `symbol.changed` payloads, and
-lists the files it could not read.
+lists the files it could not read. `import_graph` builds one side's module import graph (grimp
+for packages, in a process of its own; `ast` for tests and scripts outside packages), and
+`analyse(git, base, head, workdir)` returns the changed symbols, both graphs and the blast
+radius, with `graph_payloads` and `blast.payload()` giving their events.
 
 ## API
 

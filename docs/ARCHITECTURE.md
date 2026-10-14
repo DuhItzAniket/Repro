@@ -359,14 +359,18 @@ Rules:
   outside definitions to the symbol `<module>`. Repeated names are aligned by own code. Rename
   and move matching across sides uses AST similarity when qualnames differ. Files that cannot
   be parsed are reported, never guessed (C06).
-- **Import graph:** `grimp` (BSD-2, Rust core, handles lazy imports). It is module-level only.
+- **Import graph:** `grimp` (BSD-2, Rust core, handles lazy imports) for the regular packages,
+  run as `python -I -S` in its own process and handed each package's directory, so no target
+  name is resolved through `sys.path` (THREAT_MODEL T19). Modules outside packages (tests,
+  scripts) are read with `ast` and resolved against the same names. It is module-level only.
   Symbol-level reverse edges come from the dynamic per-test map, with optional static call edges
-  later.
+  later (C07).
 - **Public API:** `griffe` with `allow_inspection=False`, so target modules are never imported
   on the host. "Public" follows griffe's conventions, and false positives are possible and
   documented.
 - **Blast radius:** changed symbols ∪ their reverse dependents (dynamic map ∪ grimp
-  downstream modules), with distance kept for UI weighting.
+  downstream modules), with distance kept for UI weighting. Statically, it walks the imports of
+  both sides from the changed symbols' modules; an affected module is its `<module>` symbol.
 
 ## 10. Agents — see ADR-0007
 

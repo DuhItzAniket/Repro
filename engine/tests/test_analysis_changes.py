@@ -307,6 +307,7 @@ def test_line_spans_on_each_side(tmp_path: Path) -> None:
     )
     (change,) = changed_symbols_between(Git(repo.path), base, head).changes
     assert change.symbol_id == "pkg.a:parse#0"
+    assert change.kind == "function"
     assert change.base_lines == (7, 9)
     assert change.head_lines == (9, 11)  # shifted by the two new lines above it
     assert change.payload()["base_lines"] == [7, 9]
