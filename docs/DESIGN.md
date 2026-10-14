@@ -136,13 +136,14 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
 - Symbols and tests are small hollow circles (tests 3.2 px, symbols 2.2 px): the points strands
   fire from, like the reference's scattered circles. Nodes in the latest blast radius get a
   brighter ring.
-- **Bunches of strands** (bundles): when a test reaches a function (`trace.sample`;
-  `diff.behaviour` in `--flag`), a **bunch** fires at the function's ring card, as the owner
-  described the reference's (B14):
-  - its strands come from **the nodes that reach the function**: its tests (by `covers` edges and
-    trace samples) and its callers (by `calls` edges). The test that fired comes first, then the
-    reachers nearest the function's section, at most 8. Membership uses only the log up to the
-    firing event (`ReachIndex`);
+- **Bunches of strands** (bundles): every streaming event that names a function, a test or a
+  file fires a **bunch** at that file's ring card, as the owner described the reference's (B14):
+  - its strands come from **the nodes connected to what the event is about**. For a function
+    (`trace.sample`, `diff.behaviour` and other events whose target names a symbol): its tests (by
+    `covers` edges and trace samples) and its callers (by `calls` edges), the test that ran first.
+    For a test: the test, then the functions it reaches. For a file: its own functions, classes
+    and tests. After the node that fired come the nodes nearest the landing point, at most 8.
+    Membership uses only the log up to the firing event (`ReachIndex`);
   - **one strand per node**, each from its own point; they converge side by side on one bar at
     one section of the wheel, ordered by their nodes' bearings so they do not cross there;
   - each strand is a **dim line** (alpha 0.32, MAX-blended, so it never brightens a pixel enough
@@ -150,13 +151,14 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
     stretch that shoots from its node to the ring in the first 40% of a 1 s life (smoothstep;
     each strand starts up to 6% later). Its node lights up while the bullet is in flight, and
     the bar flashes when they land;
-  - the bunch fires at **the function's section of the wheel** (its file's ring card), where the
-    section stood at that moment, and only if it was on screen then; the rays and streaks outside
-    the wheel leave from the same section (below). It stays **attached to its nodes** while its
+  - the bunch fires at **its section of the wheel** (its file's ring card), where the section
+    stood at that moment, and only if its landing point was on the stage then (24 px inside its
+    edges); the lines outside the wheel answer from the same section (below). It stays
+    **attached to its nodes** while its
     landing end **follows that section** as the ring turns (by at most the ring's drift over the
     life), then fades from 60% of its life on. While the user pins a file (the ring is held
     still), no bunches fire;
-  - at most one bunch per function rises per 333 ms window (the flash governor's aggregation).
+  - at most one bunch per section rises per 333 ms window (the flash governor's aggregation).
 
   Each strand arrives at the rim along the ring's radius, sweeping a little towards the turning
   direction; node, control point and landing point are inside the inner rim, so the strand is
@@ -194,34 +196,37 @@ Dark only for now (the look depends on it). Define tokens on `:root` anyway.
   `diff.behaviour/tests/perf/api`, `verdict.issued` or `missing.recorded`. A file the user
   focuses is pinned at 3 o'clock without drift.
 
-### Event streams (right)
+### Lines outside the wheel (right)
 - **Sections** (B14): every event belongs to the section of the wheel of its file's ring card
-  (a trace: its function's file), the section its bunch of strands hits from inside. The lines
-  outside the wheel, streaks and rays, **emerge from that section and turn with the wheel**, so
-  they stay with it until they vanish, like the reference's field, which moves with its wheel
-  (measured: the field just outside the rim moves at the ring's angular speed, frame by frame).
-  An event whose file has no card has no section and draws no line outside the wheel.
-- Each event emits a streak from the ring's outer rim outward along a radial line at its
-  section, with a motion-blurred tail. Length ∝ duration/importance; alpha decays.
+  (a trace: its function's file), the section its bunch of strands hits from inside. An event
+  whose file has no card has no section and draws nothing outside the wheel.
+- **They answer a hit** (B14, seventh owner review): nothing leaves the wheel on its own. When a
+  bunch's bullets land, its section's most recent events (up to 24, newest first, none after the
+  bunch's event) shoot out as straight lines from the outer rim, each at its own place on the
+  section: a hash of the event, across 80% of the card's span, so one file's activity forms a
+  band. A section that is not hit stays quiet.
+- **Bounce**: each line shoots out to its length (ease-out, the first 35% of its bounce), then
+  rebounds into the rim, shortening until it is gone (ease-in, the remaining 65%). The bounces
+  take the 0.6 s after the bullets land and start up to 20% of it apart, so a spray is not a
+  block. Verified frame by frame on the app's own capture at 23.8–24.4 s of the demo run.
+- **Length**: 0.45–1.0 of 0.42 × the ring radius beyond the outer rim (163–362 px at
+  1440×900), further for findings and slow tests, with a per-event spread so a spray ends
+  raggedly.
+- **They turn with the wheel**: a section's lines follow it by as much as the bunch's landing
+  end does, like the reference's field, which moves with its wheel (measured: the field just
+  outside the rim moves at the ring's angular speed, frame by frame).
+- 1.6 px, brightest at the rim (0.32) and 60% of that at the tip, MAX-blended, so they are never
+  flashes (ADR-0011, B14 note).
 - Tint: white = engine, `--violet` = agent, `--flag-deep`/`--flag` = fail/diff, `--ok` = pass.
-  Priority (B07): fail, then diff, then a passing test, then agent, then engine.
-- Dense bursts are the point: a test batch should look like the reference's fan of streaks.
-- Within its section an event's lines take a place from a hash of the event, across 80% of the
-  card's span, so one file's activity forms a band on its section. (B07–B14 used fixed lanes
-  hashed from the file, unrelated to the ring.) Graph, stage, run and feed events do not stream;
-  at most 2,048 streaks are live (the newest).
-- **Rays** (B13's residue, restyled in B14): every streaming event also leaves a ray at its
-  section, from the outer rim outward (0.55–1.3 of the room to the stage's right edge at 3
-  o'clock, further for findings and slow tests), turning with the wheel. It draws itself out over 900 ms of wall-clock time, behind its streak.
-  It is brightest at the rim (0.42–0.92 by importance, 1.6 px), falls to 45% at its outer end,
-  and fades over 90 s of run time. Busy files build dense bands, like the reference's
-  long-exposure field. Rays are not flashes, by construction (ADR-0011, B14 note):
-  - they blend with MAX, so overlaps never add up;
-  - their fade never takes less than 40 s of wall-clock time.
+  Priority (B07): fail, then diff, then a passing test, then agent, then engine. Graph, stage,
+  run and feed events do not stream.
+- B07–B14's per-event streaks, which fired whether or not a strand hit, and B13–B14's long-lived
+  rays were removed in the seventh review.
 
 ### Tooltips / callouts
 - Small boxes with a 1px border (as at 12 s and 18 s in the video), label + one value,
-  anchored to a streak or node. Max 2 visible at once.
+  anchored beyond the outer rim on the right side, on their file's lane (±24°). Max 2 visible
+  at once.
 
 ## Panels
 
@@ -287,12 +292,13 @@ surface — it stays plain and readable.
 
 - Every animated element maps to an event. Idle state (no run) may use slow ambient drift of
   the web only.
-- Durations: streak 600–1400 ms, strand bunch 1 s (B14: the bullets' 0.4 s trip, then the
-  attached strands follow the ring and fade), panel row insert 150 ms, ring snap 500 ms ease-out-cubic,
-  one ring turn 24 s.
+- Durations: strand bunch 1 s (B14: the bullets' 0.4 s trip, then the attached strands follow
+  the ring and fade while the section's lines outside bounce), panel row insert 150 ms, ring
+  snap 500 ms ease-out-cubic, one ring turn 24 s.
 - Replay supports speed ×0.5 / ×1 / ×4 / ×16 and scrubbing. Animation is a pure function of
   (events up to t, t, motion), where motion is the replay speed and reduced motion.
-- `prefers-reduced-motion`: no streaks or bundles, and state changes are instant. An in-app
+- `prefers-reduced-motion`: no strands or lines outside the wheel, and state changes are
+  instant. An in-app
   toggle mirrors this setting. Instant here also means: no recency flares, no ring drift, snaps
   in one step, whole feed rows and typed lines, a steady workspace cursor, and running tests
   held still.
@@ -305,12 +311,12 @@ surface — it stays plain and readable.
   bright area that can rise within any 333 ms of wall-clock time (WCAG 2.3.1):
   - the cap is 43,648 CSS px², half of WCAG's 87,296 CSS px² flashing area;
   - areas are upper bounds from each element's geometry;
-  - over the cap, streaks and bundles are not drawn, and edges and markers appear without their
-    flare;
-  - at most one bunch of strands per function rises per window (aggregation; per graph edge
-    before B14);
-  - stream rays are not counted: they blend with MAX and fade over at least 40 s of wall-clock
-    time, so no pixel can lose 10% relative luminance within a second (B14).
+  - over the cap, bunches are not drawn, and edges and markers appear without their flare;
+  - at most one bunch of strands per section rises per window (aggregation; per function, and
+    per graph edge before B14);
+  - the dim strands and the lines outside the wheel are not counted: they blend with MAX at no
+    more than 0.32 (relative luminance 0.084 over the #080808 background's 0.0024), less than
+    WCAG's 10% change, so they cannot flash (B14).
 
 ## Accessibility
 

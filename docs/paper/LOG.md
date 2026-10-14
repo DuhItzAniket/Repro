@@ -180,6 +180,13 @@ entry. If something turns out wrong, add a correcting entry.
   Tying each event's lines to its file's section, where its strands hit, makes the outside and
   the inside one picture. Data shapes density: the demo touches few files, so its field is
   sparser than the reference's.
+- The owner's seventh review made the outside a response to the inside: lines leave a section
+  only when a bunch hits it, and bounce (out to their length, then back into the rim). This
+  removed both B07's per-event streaks and B13–B14's long-lived rays. With every event that
+  names a function, test or file able to fire a bunch, and all dim lines MAX-blended at 0.32
+  (below the 10% luminance change that makes a flash), the cap admits 20 of 120 possible bunches
+  on the demo at ×1. Causality on screen is now one chain, nodes → strands → section → lines,
+  where before the lines outside fired whether or not anything hit.
 - A containment rule fixed what read as strands leaving the wheel. 82 of 1,500 mesh arcs bowed
   past the ring's outer rim; keeping each arc's control point inside the web's circle bounds the
   whole curve there, because a quadratic Bézier lies in the triangle of its points.

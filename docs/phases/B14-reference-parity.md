@@ -211,6 +211,33 @@ Changes:
 - while the user pins a file the ring is held still, so no bunches fire (the governor's decisions
   assume the ring's own motion).
 
+## Seventh owner review (same day)
+The lines outside the wheel should only trigger when the strands inside hit, and after reaching
+their length they should rebound backward, shortening and disappearing, like a bounce. The same
+review asked for a settings menu with sliders for the look, nodes spread further, and a way to
+see the rest of the wheel; those are scoped as B15, a phase of their own (ROADMAP).
+
+Changes:
+- the per-event streaks (B07) and the long-lived rays (B13's residue) are removed, with their
+  layers, tests and shader paths (`fadeMs`, `growMs`);
+- **a hit triggers the lines**: when a bunch's bullets land, its section's most recent events (up
+  to 24, newest first, none after the bunch's event; `ReachIndex.recentEvents`) shoot out from the
+  outer rim, each at its own place on the section, and **bounce**: out to their length over the
+  first 35% of the 0.6 s after landing (ease-out), then back into the rim until gone (ease-in),
+  staggered by up to 20%. They follow the ring as the landing end does;
+- **any event that names a function, a test or a file fires a bunch** at its section
+  (`strandHit`), so every section that answers has been hit. A function's bunch comes from its
+  tests and callers, a test's from the test and the functions it reaches, a file's from its own
+  nodes; the nearest to the landing point are kept, the node that fired first;
+- a bunch fires only if its landing point is on the stage (24 px inside its edges), replacing
+  the fixed landing arc, and the governor aggregates one bunch per section per window;
+- the lines outside are MAX-blended at no more than the strands' 0.32, so neither is a flash;
+  the governor counts only bullets, node rings and bars.
+
+On the demo at ×1, 120 of the 540 streaming events can fire a bunch and the cap admits 20; at ×4
+and ×16, 8 and 5 (ADR-0011 B14 note). Checked frame by frame on the app's own capture at
+23.8–24.4 s: the section's lines shoot out after the bar lands and rebound into the rim.
+
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
       Measured at the same stage height:
@@ -223,19 +250,20 @@ Changes:
 
       Comparison images stay local, because the reference is third-party media.
 - [x] AC2: all tests and gates pass, with every changed pin explained:
-  - `@repro/web` 252 tests (20 new for the rays, strands, bunches, reach, sections and node
-    placement);
+  - `@repro/web` 243 tests after the seventh review (the streak and residue suites removed with
+    their layers; new tests for the hits, the bounce, the lines' section and their flash bound);
   - bundle 194.8 kB of 300 kB;
   - frame-cost ratios p50 0.028–0.030 and p95 0.234–0.248 over three runs, against the
     baseline's 0.0496 and 0.2749 (one run on a busy host earlier in the phase read 0.376 and
     failed; the gate allows 30%);
-  - heap flat (−109 kB over 1,000 frames);
-  - stage allocation 12.8 kB per frame (fewer streaks now that only events with a section
-    stream), within the 40 kB budget.
+  - heap flat over 1,000 frames;
+  - stage allocation 11.7 kB per frame after the seventh review (12.8 kB after the sixth), within
+    the 40 kB budget.
 
   The visual baselines are regenerated in CI and checked by eye.
 - [x] AC3: flash safety holds. The governor's worst-window test passes at every speed, and the
-      rays' bound is unit-tested.
+      bound on the dim strands and the lines outside (MAX, at most 0.32) is unit-tested on every
+      segment the layer writes.
 - [x] AC4 (second and third reviews): strands fire from visible nodes, stay attached to them,
       and follow the ring section they land on, and the ring turns at the reference's speed.
       Unit-tested:
@@ -248,10 +276,14 @@ Changes:
   - every mesh arc stays inside the web's circle;
   - the run's nodes fill every quarter of the visible region's height and depth, inside it, with
     tests deeper in than symbols;
-  - streaks and rays leave from their event's section and turn with the ring; a bunch fires only
-    when its section is on screen, and the governor agrees with the layer on which;
-  - landing bars lie on the inner rim, within the landing arc or as far as they have followed;
-  - the aim, follow, bullet and fade laws; the reach bound over the whole landing arc;
+  - lines outside appear only after a bunch's strands land, only within the hit section as it
+    has turned, and have rebounded into the rim by the end of the bunch; the bounce law rises to
+    its length and falls back to nothing;
+  - every streaming event's hit names its file's section, a function, a test or the file; a bunch
+    fires only when its landing point is on the stage and it has nodes, and the governor agrees
+    with the layer on which;
+  - landing bars lie on the inner rim, on the stage or as far as they have followed;
+  - the follow, bullet and fade laws; the reach bound over a landing arc;
   - the ring's turn per wall-clock second is the same at ×0.5–×16.
 
 ## Evidence
@@ -260,13 +292,13 @@ Changes:
   - 3,081 frames, p50 16.7 ms, p95 17.0 ms, p99 33.1 ms, 1.14% over 25 ms;
   - stage CPU p95 0.7 ms;
   - 11,789 instances in 7 draw calls (edge pieces 6,466, ticks 4,292).
-- Tests: web 238; render-model pins for ring, streaks, web, layout and the stage golden updated;
-  the proxy pins unchanged.
+- Tests: web 243 after the seventh review; render-model pins for the ring, web, layout and the
+  stage golden updated; the proxy pins unchanged.
 
 ## Deviations from spec
 - DESIGN.md's layout (panels beside the stage on landscape screens), dependency web (chord layout,
-  arcs), ring (drum, card layout) and streams (rays) sections are rewritten, each with its
-  reason. ADR-0011 gains B14 implementation notes. The d3-force simulation stays, now as the
+  arcs), ring (drum, card layout) and event streams (now "Lines outside the wheel") sections are
+  rewritten, each with its reason. ADR-0011 gains B14 implementation notes. The d3-force simulation stays, now as the
   source of the order around the circle.
 
 ## Known gaps

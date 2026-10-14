@@ -1,16 +1,29 @@
 /**
  * Callouts (DESIGN.md "Tooltips / callouts"): small bordered boxes with a label and one value,
- * anchored to the stream of a notable event, at most two at once, each shown for 2.5 s. Pure
- * selection: the callouts at `t` depend only on the events before `t`.
+ * anchored beyond the ring on a notable event's lane, at most two at once, each shown for
+ * 2.5 s. Pure selection: the callouts at `t` depend only on the events before `t`.
  */
 
 import type { ReproEvent } from "@repro/events";
+import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../../model/cockpit";
 import { type Motion, NORMAL_MOTION } from "../../motion/motion";
 import type { Ring } from "../../shell/layout";
 import { outerRadius } from "../geometry";
-import { laneAngle } from "./layers";
+import { targetFile } from "../ring/content";
 import { type TintName, tintOf } from "./style";
+
+/** Callouts sit on fixed lanes across ±24° of the ring's right side, one lane per file. */
+export const LANE_SPREAD = (24 * Math.PI) / 180;
+const UNIT = 4294967296;
+
+/** Lane angle for an event: its file's lane plus a small per-event jitter. */
+export function laneAngle(event: ReproEvent): number {
+  const file = targetFile(event.target);
+  const lane = hash32(file ?? event.kind) / UNIT; // 0–1
+  const jitter = (hash32(event.id) / UNIT - 0.5) * 0.17;
+  return (lane * 2 - 1) * LANE_SPREAD + jitter;
+}
 
 export const CALLOUT_MS = 2500;
 export const MAX_CALLOUTS = 2;

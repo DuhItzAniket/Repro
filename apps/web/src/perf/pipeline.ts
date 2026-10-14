@@ -25,8 +25,6 @@ import type { StageFrame, StageLayer } from "../stage/layer";
 import { AtlasService } from "../stage/ring/atlas-service";
 import { ringLayers } from "../stage/ring/layers";
 import { CalloutTracker } from "../stage/streams/callouts";
-import { streakLayer } from "../stage/streams/layers";
-import { residueLayer } from "../stage/streams/residue";
 import { webLayers } from "../stage/web/layers";
 import { computeInline, LayoutService } from "../stage/web/layout-service";
 
@@ -81,8 +79,6 @@ export async function pipeline(events: readonly unknown[]): Promise<Pipeline> {
     ...webLayers(model, layout, governor, ring.ring),
     focus.web,
     ...ring.layers,
-    residueLayer(model, ring.ring),
-    streakLayer(model, governor, ring.ring),
     focus.ring,
   ];
   const panels: Panel<never>[] = [

@@ -32,7 +32,7 @@ import { ringBand } from "./geometry";
 import type { InstanceBuffers } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
 import type { CardLayer } from "./ring/layers";
-import { fadeAt, NO_RECENCY } from "./segments";
+import { NO_RECENCY } from "./segments";
 import cardFrag from "./shaders/card.frag.glsl?raw";
 import cardVert from "./shaders/card.vert.glsl?raw";
 import segmentFrag from "./shaders/segment.frag.glsl?raw";
@@ -147,7 +147,7 @@ export class StageHost {
     const material = isCardLayer(layer) ? this.cardMaterial() : this.segmentMaterial(layer);
     const mesh = new Mesh(geometryFor(layer.buffers), material);
     mesh.frustumCulled = false;
-    // Layers draw in the order they were added: the web, then the ring over it, then streaks.
+    // Layers draw in the order they were added: the web and its strands, then the ring over it.
     mesh.renderOrder = this.bindings.length;
     const binding: Binding = {
       layer,
@@ -176,8 +176,6 @@ export class StageHost {
         uTime: this.time,
         uFlare: { value: recency.flare },
         uFlareMs: { value: recency.flareMs },
-        uFadeMs: { value: fadeAt(recency, 1) },
-        uGrowMs: { value: recency.growMs ?? 0 },
         uCenter: { value: this.center },
         uSpin: { value: [1, 0] },
       },
@@ -294,8 +292,8 @@ export class StageHost {
   }
 
   /**
-   * Recency flares and growth in wall-clock time (ADR-0011): their durations scale with the
-   * replay speed, and reduced motion turns flares off and shows segments whole at once.
+   * Recency flares in wall-clock time (ADR-0011): the decay constant scales with the replay
+   * speed, and reduced motion turns flares off.
    */
   private flare(binding: Binding, motion: Motion): void {
     const recency = binding.layer.recency;
@@ -304,9 +302,6 @@ export class StageHost {
       return;
     uniforms.uFlare.value = motion.reduced ? 0 : recency.flare;
     uniforms.uFlareMs.value = recency.flareMs * motion.speed;
-    if (uniforms.uFadeMs !== undefined) uniforms.uFadeMs.value = fadeAt(recency, motion.speed);
-    if (uniforms.uGrowMs !== undefined)
-      uniforms.uGrowMs.value = motion.reduced ? 0 : (recency.growMs ?? 0) * motion.speed;
   }
 
   /** Sets a turning layer's rotation uniform (cards: an angle; segments: its cos and sin). */

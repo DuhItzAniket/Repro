@@ -1,8 +1,8 @@
 /**
  * Sections of the wheel (B14): every event belongs to the section of its file's ring card. A
- * bunch of strands hits its function's section from inside, and the event's lines outside the
- * wheel (streaks and rays) emerge from that same section and turn with it, like the reference's.
- * An event whose file has no card has no section, and draws no line outside the wheel.
+ * bunch of strands hits its section from inside, and the section answers with lines outside the
+ * wheel, from that same section, turning with it, like the reference's. An event whose file has
+ * no card has no section, and draws nothing outside the wheel.
  *
  * Angles here are ring-local (before the ring's rotation), so a layer that draws in this frame
  * turns with the ring through its `rotation`, and a section stays the same section.
@@ -16,10 +16,18 @@ const UNIT = 4294967296;
 /** Share of a card's span a section's lines spread across (centred). */
 const SPAN = 0.8;
 
-/** The file an event is about: a function's own file for traces, else its target's file. */
+/** The symbol an event is about: a trace's function, else its target's symbol. */
+export function eventSymbol(event: ReproEvent): string | undefined {
+  if (event.kind === "trace.sample" || event.kind === "diff.behaviour")
+    return event.payload.symbol_id;
+  return event.target?.symbol ?? undefined;
+}
+
+/** The file an event is about: its symbol's own file, else its target's file. */
 export function eventFile(model: CockpitModel, event: ReproEvent): string | undefined {
-  if (event.kind === "trace.sample" || event.kind === "diff.behaviour") {
-    const node = model.graph.nodeForSymbol(event.payload.symbol_id);
+  const symbol = eventSymbol(event);
+  if (symbol !== undefined) {
+    const node = model.graph.nodeForSymbol(symbol);
     if (node !== undefined) return model.graph.files[node];
   }
   return targetFile(event.target);

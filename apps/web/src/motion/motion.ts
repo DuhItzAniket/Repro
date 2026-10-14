@@ -4,8 +4,8 @@
  * stays a pure function of (events, t, motion).
  *
  * - `speed`: run-time ms per wall-clock ms (the replay speed; 1 when following live).
- * - `reduced`: `prefers-reduced-motion` or the in-app toggle. No streaks or bundles, no flares,
- *   no drift, and every state change is instant.
+ * - `reduced`: `prefers-reduced-motion` or the in-app toggle. No strands or lines outside the
+ *   wheel, no flares, no drift, and every state change is instant.
  */
 
 export interface Motion {

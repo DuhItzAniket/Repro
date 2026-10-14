@@ -33,8 +33,6 @@ import { type HudSnapshot, pollHud } from "./stage/hud";
 import { AtlasService, defaultAtlasBuild } from "./stage/ring/atlas-service";
 import { ringLayers } from "./stage/ring/layers";
 import { type Callout, CalloutTracker } from "./stage/streams/callouts";
-import { streakLayer } from "./stage/streams/layers";
-import { residueLayer } from "./stage/streams/residue";
 import { webLayers } from "./stage/web/layers";
 import { computeInline, LayoutService, workerCompute } from "./stage/web/layout-service";
 import { installTestHook } from "./test-hook";
@@ -140,8 +138,6 @@ function mountStage(): StageHost | null {
     for (const layer of webLayers(model, webLayout, governor, ringModel)) stage.add(layer);
     stage.add(focusHighlight.web); // under the band, like the web
     for (const layer of ringStageLayers) stage.add(layer);
-    stage.add(residueLayer(model, ringModel));
-    stage.add(streakLayer(model, governor, ringModel));
     stage.add(focusHighlight.ring);
     stage.resize(layout.value.stage.w, layout.value.stage.h, layout.value.ring);
     if (hud !== undefined) pollHud(stage, hud);
@@ -267,9 +263,9 @@ loop.listen((t, cursor) => {
   labelAt = now;
   const edges = model.kinds.count("graph.edge", cursor);
   const files = ringModel.content.cards.filter((card) => card.appear <= t).length;
-  const streaks = host?.info.instances.streaks ?? 0;
+  const rays = host?.info.instances.rays ?? 0;
   const focused = drawer.value === null ? "" : `, focused on ${drawer.value.title}`;
-  const next = `Stage at ${formatTime(t)}: ${edges} dependency edges, ${files} files on the ring, ${streaks} events streaming${focused}.`;
+  const next = `Stage at ${formatTime(t)}: ${edges} dependency edges, ${files} files on the ring, ${rays} lines out from the ring${focused}.`;
   if (next !== stageLabel.value) stageLabel.value = next;
 });
 const calloutTracker = new CalloutTracker();

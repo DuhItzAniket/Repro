@@ -53,17 +53,14 @@ owner at the Stage B gate.
 
 ## Implementation notes (B14)
 Flagged for the owner at the re-opened Stage B gate; no change of scope.
-- **Stream rays are not flashes.** B13's residue was capped at 9% luminance so that it could not
-  flash. B14 drops the cap so the rays can be as bright as the reference's, and makes them safe
-  by construction instead:
-  - they blend with MAX, so a pixel is as bright as its brightest ray (at most 0.92, encoded),
-    however many overlap;
-  - a ray fades over 90 s of run time, but never faster than over 40 s of wall-clock time, so a
-    pixel loses at most 0.023 a second. A 10% fall in relative luminance needs a fall of at least
-    0.05 (from 0.92, more from anything dimmer): over 2 s. No pixel can complete a rise and a fall
-    within one second.
-
-  A unit test checks both against the sRGB luminance curve at every replay speed.
+- **Lines outside the wheel are not flashes.** From the owner's seventh review the per-event
+  streaks and the long-lived rays are gone: lines leave the wheel only when a bunch of strands
+  hits a section, and bounce out and back within 0.6 s. They are safe by construction, like the
+  dim strands: they blend with MAX at no more than 0.32 encoded, so a pixel under any number of
+  them rises at most to relative luminance 0.084 from the background's 0.0024, under the 10%
+  change that makes a flash. A unit test checks the bound on every segment the layer writes and
+  against the sRGB luminance curve. (B14's earlier rays were bright, up to 0.92, and made safe by
+  a fade of at least 40 s instead; that note no longer applies.)
 - **Areas.** An edge's flare counts only its arc pieces on the stage, since most of the web is
   off-screen from B14. A bunch of strands counts every strand's bullet over the curve's control
   polygon, each for its longest possible length (from its node to its section, spread along the
@@ -71,10 +68,14 @@ Flagged for the owner at the re-opened Stage B gate; no change of scope.
   counted: they are MAX-blended at 0.32 encoded, so a pixel under one rises at most to relative
   luminance 0.084 from the background's 0.0024, under the 10% that makes a flash. A bunch fires
   only when its section is on screen, as the layer draws it. Aggregation is one bunch per
-  function per window. The worst-window test (×0.5–×16, both fixtures) still holds. On the demo
-  the cap admits 6 bunches at ×1, 5 at ×4 and 2 at ×16, of 75–127 that could fire.
-- **Rays turn with the wheel** (B14). Their luminance changes as they pass a pixel are the
-  wheel's motion, like the cards' own; reduced motion stops the drift, and with it the rays.
+  section of the wheel per window. The worst-window test (×0.5–×16, both fixtures) still holds.
+  With every streaming event that names a function, test or file able to fire a bunch (seventh
+  review), the cap admits on the demo 17 bunches at ×0.5, 20 at ×1, 8 at ×4 and 5 at ×16, of
+  67–133 that could fire; on the stress run 7, 8, 6 and 2, of 51–71 (measured on the unit-test
+  fixtures at 1440×900).
+- **Lines turn with the wheel** (B14). A bunch's landing end and its section's lines outside
+  follow the ring as it turns; reduced motion draws neither.
 - **Wall-clock motion.** Bunches live 1 s of wall-clock time: the bullets' 0.4 s trip from their
-  nodes, then the attached strands follow the ring and fade. The ring's drift is wall-clock too, one turn per 24 s at any replay
-  speed, so ×16 does not spin it sixteen times as fast.
+  nodes, then the attached strands follow the ring and fade while the lines outside bounce. The
+  ring's drift is wall-clock too, one turn per 24 s at any replay speed, so ×16 does not spin it
+  sixteen times as fast.

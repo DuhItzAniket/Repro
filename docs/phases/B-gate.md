@@ -43,14 +43,14 @@ functions ≥ 90% for `src/model/**`).
 ## Metrics at gate (measured)
 | Metric | Value |
 |---|---|
-| Tests | pytest 497; Vitest 319 after B14 (`@repro/events` 47, `@repro/synth` 34, `@repro/web` 238; in CI on Node 24 one web test is skipped, see gaps); 6 visual screenshots; the perf gate |
-| Web code | after B14, 10,403 lines of TypeScript outside tests and 4,421 in tests, counting every `.ts`/`.tsx` file under `apps/web/src` (the same count at the first gate gives 9,624 and 4,033; the 8,885 first recorded used a narrower set) |
+| Tests | pytest 497; Vitest 324 after B14 (`@repro/events` 47, `@repro/synth` 34, `@repro/web` 243; in CI on Node 24 one web test is skipped, see gaps); 6 visual screenshots; the perf gate |
+| Web code | after B14, 10,846 lines of TypeScript outside tests and 4,643 in tests, counting every `.ts`/`.tsx` file under `apps/web/src` (the same count at the first gate gives 9,624 and 4,033; the 8,885 first recorded used a narrower set) |
 | Model coverage (`src/model/**`) | lines 99.15%, statements 96.96%, functions 98.43%, branches 84% |
 | JavaScript, gzip (all shipped JS, workers included) | 194.8 kB of the 300 kB budget (188.96 kB before B14) |
 | Frame time, demo ×1, whole app | p50 16.7 / p95 17.0 / p99 33.3 ms at 1920×1080, DPR 1.75, integrated GPU |
 | Frame time, stress stage at full load | p95 16.9–17.0 ms at DPR 1 and 2, stage CPU p95 1.2–1.7 ms (`docs/perf/B10-motion-bench.json`) |
-| Heap | flat over 1,000 frames of the stress burst (−109 kB after B14); stage allocation 12.8 kB per frame after B14, 24.7 kB before (local, V8 counter; budget 40 kB) |
-| Flash safety | worst 333 ms window ≤ 43,648 CSS px² (half the WCAG area) at ×0.5–×16 on both fixtures; stream rays are flash-safe by construction (MAX blending, a 40 s wall-clock fade floor; ADR-0011 B14 note) |
+| Heap | flat over 1,000 frames of the stress burst; stage allocation 11.7 kB per frame after B14, 24.7 kB before (local, V8 counter; budget 40 kB) |
+| Flash safety | worst 333 ms window ≤ 43,648 CSS px² (half the WCAG area) at ×0.5–×16 on both fixtures; the dim strands and the lines outside the wheel are flash-safe by construction (MAX blending at no more than 0.32; ADR-0011 B14 note) |
 | Accessibility | axe-core 4.14.0: 0 violations in jsdom (CI) and in Chromium including contrast |
 | Decisions | 15 ADRs (0001–0015), all accepted |
 
@@ -97,10 +97,14 @@ functions ≥ 90% for `src/model/**`).
 - Confirm the visual-family judgement from the new local side-by-side (B14). `v0.2.0` waits for it.
 - The landscape layout (B14): the panels sit beside the stage in 4 rows × 2, so the stage keeps
   the reference's near-square shape. Portrait screens keep the reference's own arrangement.
-- ADR-0011's B14 notes: stream rays are made flash-safe by MAX blending and a 40 s wall-clock
-  fade floor instead of B13's 9% cap.
+- ADR-0011's B14 notes: the dim strands and the lines outside the wheel are flash-safe by MAX
+  blending at no more than 0.32, so the governor counts only bullets, node rings and bars, and
+  aggregates one bunch per section of the wheel per window.
+- B15 (the owner's seventh review): a settings menu with sliders for the stage's look, nodes
+  spread over the whole disc, and a view of the rest of the wheel. It extends Stage B before the
+  gate closes.
 - ADR-0015 (the check model) was decided under delegation. ADR-0011's implementation notes:
-  - over the cap, streaks are dropped rather than dimmed;
+  - over the cap, bunches are dropped rather than dimmed (B10: streaks, removed in B14);
   - bundles aggregate at every speed.
 - `--text-dim` is `#868686` instead of the reference's `#6e6e6e` (WCAG 1.4.3).
 - Branch protection: make `visual` and `gates` required checks. Until then auto-merge can land a

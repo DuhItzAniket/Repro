@@ -1,7 +1,7 @@
 /**
  * The stage's line primitive (ADR-0008): one instanced, anti-aliased quad per segment, drawn
- * in a single call per layer with additive blending. Edges, streaks, ticks, markers and bundles
- * are all segments; only what each layer writes differs.
+ * in a single call per layer, blended additively or with MAX. Edges, ticks, markers, strands and
+ * the lines outside the wheel are all segments; only what each layer writes differs.
  *
  * Each segment also carries the presentation time at which it **appears**. The shader hides it
  * before that time and brightens it briefly afterwards (recency). So a static layer, such as
@@ -32,31 +32,9 @@ export interface Recency {
   readonly flare: number;
   /** Decay time constant of the flare, wall-clock ms. */
   readonly flareMs: number;
-  /**
-   * If set, segments fade linearly to nothing over this much run time after appearing (B13's
-   * stream residue). Run time, not wall-clock: a fading trace does not move.
-   */
-  readonly fadeMs?: number;
-  /**
-   * The fade never runs faster than this much wall-clock time: at speed s the host fades over
-   * max(fadeMs, fadeWallMs × s) of run time (`fadeAt`), so a fall stays slow at ×16 too.
-   */
-  readonly fadeWallMs?: number;
-  /**
-   * If set, segments grow from their start to their end over this much wall-clock time after
-   * appearing (B14's stream rays draw themselves outward). The host scales it by the replay
-   * speed; under reduced motion segments appear whole.
-   */
-  readonly growMs?: number;
 }
 
 export const NO_RECENCY: Recency = { flare: 0, flareMs: 1 };
-
-/** The run time a layer's segments fade over at replay speed `speed` (0 = no fade). */
-export function fadeAt(recency: Recency, speed: number): number {
-  if (recency.fadeMs === undefined) return 0;
-  return Math.max(recency.fadeMs, (recency.fadeWallMs ?? 0) * speed);
-}
 
 /**
  * The alpha multiplier the segment shader applies at presentation time `t` (mirrors
@@ -66,16 +44,7 @@ export function fadeAt(recency: Recency, speed: number): number {
 export function recencyFactor(appear: number, t: number, recency: Recency, flare = 1): number {
   const dt = t - appear;
   if (dt < 0) return 0;
-  const fade = recency.fadeMs === undefined ? 1 : Math.max(0, 1 - dt / recency.fadeMs);
-  return (1 + recency.flare * flare * Math.exp(-dt / recency.flareMs)) * fade;
-}
-
-/**
- * How much of a segment is drawn at presentation time `t`, 0–1 from its start (mirrors
- * `segment.vert.glsl`). `growMs` is in presentation time, as the shader receives it.
- */
-export function growFactor(appear: number, t: number, growMs: number): number {
-  return growMs > 0 ? Math.min(1, Math.max(0, (t - appear) / growMs)) : 1;
+  return 1 + recency.flare * flare * Math.exp(-dt / recency.flareMs);
 }
 
 /** The alpha a segment is drawn with at `t` (before anti-aliasing and tails). */

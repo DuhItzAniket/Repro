@@ -11,30 +11,38 @@ import type { StageFrame, StageLayer } from "../layer";
 import { AtlasService } from "../ring/atlas-service";
 import { RingModel, rotationAt } from "../ring/layers";
 import { RING_TURN_MS } from "../ring/rotation";
-import { cardCentre } from "../ring/sections";
+import { cardCentre, eventFile } from "../ring/sections";
 import { segmentAlpha } from "../segments";
+import { streams } from "../streams/style";
 import { arcPieces, edgeHash } from "./arcs";
 import {
   BUNDLE_MS,
   BUNDLE_STEPS,
   bulletAt,
   bundleLayer,
+  DIM_MAX,
   EDGE_RECENCY,
   edgeLayer,
   FADE_FROM,
   FOLLOW,
+  HIT_FILE,
+  HIT_FUNCTION,
+  HIT_TEST,
   landingAngle,
-  landingArc,
+  landsOnStage,
   MARKER_SIDES,
   MAX_BUNDLES,
   markerLayer,
+  newHit,
   nodeLayer,
-  onScreen,
   pinLength,
   placedBunch,
+  RAY_COUNT,
+  RAY_OUT,
+  rayExtent,
   sortByBearing,
   strandFade,
-  strandOrigin,
+  strandHit,
   strandReach,
   TRAVEL,
 } from "./layers";
@@ -179,16 +187,20 @@ function startsIn(layer: StageLayer, x: number, y: number): boolean {
   return false;
 }
 
-/** Whether the trace at store index `i` fired while its function's section was on screen. */
-function traceOnScreen(rings: RingModel, i: number): boolean {
+/** The screen angle of the section the event at store index `i` hits, where it stood then. */
+function firedAt(rings: RingModel, i: number): number | undefined {
   const event = model.store.event(i);
-  if (event?.kind !== "trace.sample") return false;
-  const target = model.graph.nodeForSymbol(event.payload.symbol_id);
-  const card =
-    target === undefined ? undefined : rings.cardOf.get(model.graph.files[target] as string);
-  if (card === undefined) return false;
-  const then = rotationAt(rings, model.store.time[i] as number, NORMAL_MOTION);
-  return onScreen(cardCentre(rings, card) + then, landingArc(ring, stage.h));
+  const hit = newHit();
+  if (event === null || !strandHit(model, event, hit)) return undefined;
+  const card = rings.cardOf.get(hit.file);
+  if (card === undefined) return undefined;
+  return cardCentre(rings, card) + rotationAt(rings, model.store.time[i] as number, NORMAL_MOTION);
+}
+
+/** Whether the event at store index `i` hit its section while the section was on screen. */
+function traceOnScreen(rings: RingModel, i: number): boolean {
+  const fired = firedAt(rings, i);
+  return fired !== undefined && landsOnStage(fired, ring, stage.w, stage.h);
 }
 
 /** The last trace whose function matches and whose section was on screen when it fired. */
@@ -245,7 +257,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
       const [start, end] = model.window.active(t, BUNDLE_MS);
       const triggers = Array.from({ length: end - start }, (_, i) =>
         model.store.event(start + i),
-      ).filter((e) => e?.kind === "trace.sample" || e?.kind === "diff.behaviour").length;
+      ).filter((e) => e !== null && streams(e)).length;
       if (triggers === 0) expect(layer.buffers.count).toBe(0);
     }
     expect(peak).toBeGreaterThan(0);
@@ -258,11 +270,9 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     const t0 = model.store.time[first] as number;
     const event = model.store.event(first);
     if (event?.kind !== "trace.sample") throw new Error("no trace");
-    const origin = strandOrigin(
-      model.graph,
-      event.target?.test,
-      model.graph.nodeForSymbol(event.payload.symbol_id),
-    );
+    const hit = newHit();
+    expect(strandHit(model, event, hit)).toBe(true);
+    const origin = hit.first;
     expect(origin).toBe(model.graph.byId.get(event.target?.test ?? ""));
     const [x, y] = at(origin as number);
     for (const life of [0.05, 0.2, 0.5, 0.9]) {
@@ -284,16 +294,16 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     if (event?.kind !== "trace.sample") throw new Error("no trace of parse_date");
     governor.prepare(frameAt(0)); // indexes the log, as the first frame does
     const members = new Int32Array(MAX_BUNCH);
-    const first = strandOrigin(graph, event.target?.test, parseDate);
-    const card = rings.cardOf.get(graph.files[parseDate] as string) as number;
-    const fired =
-      cardCentre(rings, card) + rotationAt(rings, store.time[i] as number, NORMAL_MOTION);
+    const hit = newHit();
+    strandHit(model, event, hit);
+    expect(hit.role).toBe(HIT_FUNCTION);
+    expect(hit.target).toBe(parseDate);
+    const fired = firedAt(rings, i) as number;
     const unit = (ring.r - 3) / webRadius(ring);
     const n = placedBunch(
       governor.reach,
-      parseDate,
+      hit,
       i,
-      first,
       members,
       layout.positions as Float32Array,
       Math.cos(fired) * unit,
@@ -336,9 +346,8 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(Array.from(members)).toEqual([1, 2, 0]);
   });
 
-  it("lands each strand on the inner rim, in the landing arc or as far as it has followed the ring", () => {
+  it("lands each strand on the inner rim, on the stage or as far as it has followed the ring", () => {
     const { layer } = strands();
-    const arc = landingArc(ring, stage.h);
     let pins = 0;
     for (let t = 20_000; t <= 28_000; t += 100) {
       layer.update(frameAt(t));
@@ -351,7 +360,12 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
         const mx = ((a[i * 2] as number) + (b[i * 2] as number)) / 2 - ring.cx;
         const my = ((a[i * 2 + 1] as number) + (b[i * 2 + 1] as number)) / 2 - ring.cy;
         expect(Math.sqrt(mx * mx + my * my)).toBeCloseTo(ring.r - 3, 0);
-        expect(Math.abs(Math.atan2(my, mx))).toBeLessThanOrEqual(arc + FOLLOW + 1e-6);
+        // Where it fired was on the stage; it has followed the ring by at most FOLLOW since.
+        const angle = Math.atan2(my, mx);
+        let fired = false;
+        for (let d = -FOLLOW; d <= FOLLOW + 1e-9; d += FOLLOW / 64)
+          fired ||= landsOnStage(angle + d, ring, stage.w, stage.h);
+        expect(fired).toBe(true);
       }
     }
     expect(pins).toBeGreaterThan(0);
@@ -363,28 +377,173 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     expect(landingAngle(0.1 + Math.PI * 2, 0)).toBeCloseTo(0.1, 12);
     expect(landingAngle(0.1, 10)).toBeCloseTo(0.1 + FOLLOW, 12); // a snap is not followed
     expect(FOLLOW).toBeCloseTo((Math.PI * 2 * BUNDLE_MS) / RING_TURN_MS, 12);
-    expect(onScreen(0.2, 0.3)).toBe(true);
-    expect(onScreen(0.4, 0.3)).toBe(false);
-    expect(onScreen(0.2 + Math.PI * 2, 0.3)).toBe(true);
+    // The ring's centre is left of the stage: its right side is on screen, its left side is not.
+    expect(landsOnStage(0, ring, stage.w, stage.h)).toBe(true);
+    expect(landsOnStage(Math.PI, ring, stage.w, stage.h)).toBe(false);
+    expect(landsOnStage(Math.PI * 2, ring, stage.w, stage.h)).toBe(true);
   });
 
-  it("fires a bunch only when its function's section is on screen, and the governor agrees", () => {
+  it("fires a bunch only when its section is on screen and it has nodes, and the governor agrees", () => {
     const rings = ringModel();
     rings.sync();
     const governor = new FlashGovernor(model, layout, Number.POSITIVE_INFINITY, rings);
     governor.prepare(frameAt(0));
+    const positions = layout.positions as Float32Array;
+    const members = new Int32Array(MAX_BUNCH);
+    const hit = newHit();
+    const unit = (ring.r - 3) / webRadius(ring);
     let on = 0;
     let off = 0;
     for (let i = 0; i < model.store.length; i++) {
       const event = model.store.event(i);
-      if (event?.kind !== "trace.sample") continue;
-      const visible = traceOnScreen(rings, i);
-      expect(governor.bundle(i)).toBe(visible);
-      if (visible) on++;
+      if (event === null || !streams(event)) continue;
+      const fired = firedAt(rings, i);
+      let fires = fired !== undefined && landsOnStage(fired, ring, stage.w, stage.h);
+      if (fires && fired !== undefined) {
+        strandHit(model, event, hit);
+        const n = placedBunch(
+          governor.reach,
+          hit,
+          i,
+          members,
+          positions,
+          Math.cos(fired) * unit,
+          Math.sin(fired) * unit,
+        );
+        fires = n > 0;
+      }
+      expect(governor.bundle(i)).toBe(fires);
+      if (fires) on++;
       else off++;
     }
     expect(on).toBeGreaterThan(0);
     expect(off).toBeGreaterThan(0);
+  });
+
+  it("knows what each event's strands are about: a function, a test or a file (B14)", () => {
+    const hit = newHit();
+    const roles = new Set<number>();
+    for (let i = 0; i < model.store.length; i++) {
+      const event = model.store.event(i);
+      if (event === null || !streams(event) || !strandHit(model, event, hit)) continue;
+      roles.add(hit.role);
+      // Its section is the file the event is about, as the outside lines take it.
+      expect(hit.file).toBe(eventFile(model, event));
+      if (hit.role === HIT_FUNCTION || hit.role === HIT_TEST) {
+        expect(model.graph.files[hit.target]).toBe(hit.file);
+      } else {
+        expect(hit.target).toBe(-1);
+        expect(hit.first).toBe(-1);
+      }
+      if (hit.role === HIT_TEST) expect(hit.first).toBe(hit.target);
+    }
+    expect(roles.has(HIT_FUNCTION)).toBe(true);
+    expect(roles.has(HIT_FILE) || roles.has(HIT_TEST)).toBe(true);
+  });
+
+  it("bounces each outside line: out to its length, then back into the rim (B14)", () => {
+    expect(rayExtent(0)).toBe(0);
+    expect(rayExtent(RAY_OUT)).toBeCloseTo(1, 12);
+    expect(rayExtent(1)).toBe(0);
+    expect(rayExtent(-0.1)).toBe(0);
+    expect(rayExtent(1.1)).toBe(0);
+    for (let u = 0; u < 1; u += 0.01) {
+      const next = Math.min(1, u + 0.01);
+      if (next <= RAY_OUT) expect(rayExtent(next)).toBeGreaterThanOrEqual(rayExtent(u));
+      else if (u >= RAY_OUT) expect(rayExtent(next)).toBeLessThanOrEqual(rayExtent(u));
+      expect(rayExtent(u)).toBeLessThanOrEqual(1);
+    }
+    // The rebound is slower than the shot: the line shoots out, then falls back.
+    expect(1 - RAY_OUT).toBeGreaterThan(RAY_OUT);
+  });
+
+  it("shoots the outside lines only from the hit section, after the strands land, and ends with the bunch", () => {
+    const { rings, governor, layer } = strands();
+    governor.prepare(frameAt(0));
+    const { store } = model;
+    // A bunch with no other bunch within a life of it, so the lines on screen are its own.
+    let lone = -1;
+    for (let i = store.length - 1; i >= 0 && lone < 0; i--) {
+      if (!governor.bundle(i)) continue;
+      const t = store.time[i] as number;
+      let alone = true;
+      for (let j = store.firstAtOrAfter(t - BUNDLE_MS); j < store.length; j++) {
+        if ((store.time[j] as number) > t + BUNDLE_MS) break;
+        if (j !== i && governor.bundle(j)) alone = false;
+      }
+      if (alone) lone = i;
+    }
+    expect(lone).toBeGreaterThanOrEqual(0);
+    const t0 = store.time[lone] as number;
+    const event = store.event(lone);
+    const hit = newHit();
+    if (event === null || !strandHit(model, event, hit)) throw new Error("no hit");
+    const card = rings.cardOf.get(hit.file) as number;
+    const then = rotationAt(rings, t0, NORMAL_MOTION);
+    // In flight: no lines outside yet.
+    layer.update(frameAt(t0 + 0.2 * BUNDLE_MS));
+    expect(layer.rays.buffers.count).toBe(0);
+    // Landed: lines leave the outer rim, within the hit section as it has turned since.
+    let peak = 0;
+    for (const life of [0.5, 0.6, 0.7, 0.8, 0.9]) {
+      const t = t0 + life * BUNDLE_MS;
+      layer.update(frameAt(t));
+      const turned = landingAngle(0, rotationAt(rings, t, NORMAL_MOTION) - then);
+      const a = layer.rays.buffers.array("a");
+      const count = layer.rays.buffers.count;
+      expect(count).toBeLessThanOrEqual(RAY_COUNT);
+      peak = Math.max(peak, count);
+      const lo = (rings.angles.start[card] as number) + then + turned;
+      const hi = (rings.angles.end[card] as number) + then + turned;
+      for (let k = 0; k < count; k++) {
+        const dx = (a[k * 2] as number) - ring.cx;
+        const dy = (a[k * 2 + 1] as number) - ring.cy;
+        expect(Math.hypot(dx, dy)).toBeCloseTo(outerRadius(ring) + 2, 1);
+        let angle = Math.atan2(dy, dx);
+        while (angle < lo - Math.PI) angle += Math.PI * 2;
+        while (angle > lo + Math.PI) angle -= Math.PI * 2;
+        expect(angle).toBeGreaterThanOrEqual(lo - 1e-4);
+        expect(angle).toBeLessThanOrEqual(hi + 1e-4);
+      }
+    }
+    expect(peak).toBeGreaterThan(0);
+    // At the end of the bunch's life every line has rebounded into the rim.
+    layer.update(frameAt(t0 + BUNDLE_MS - 1));
+    const a = layer.rays.buffers.array("a");
+    const b = layer.rays.buffers.array("b");
+    for (let k = 0; k < layer.rays.buffers.count; k++) {
+      const length = Math.hypot(
+        (b[k * 2] as number) - (a[k * 2] as number),
+        (b[k * 2 + 1] as number) - (a[k * 2 + 1] as number),
+      );
+      expect(length).toBeLessThan(8);
+    }
+  });
+
+  it("keeps the dim strands and the outside lines below a flash: MAX-blended at DIM_MAX (B14)", () => {
+    const { layer } = strands();
+    expect(layer.lines.blend).toBe("max");
+    expect(layer.rays.blend).toBe("max");
+    // sRGB to relative luminance: DIM_MAX over the #080808 background rises by less than 10%.
+    const luminance = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    expect(luminance(DIM_MAX) - luminance(8 / 255)).toBeLessThan(0.1);
+    let seen = 0;
+    for (let t = 20_000; t <= 32_000; t += 100) {
+      layer.update(frameAt(t));
+      for (const part of [layer.lines, layer.rays]) {
+        const color = part.buffers.array("color");
+        const shape = part.buffers.array("shape");
+        for (let k = 0; k < part.buffers.count; k++) {
+          seen++;
+          const alpha = color[k * 4 + 3] as number;
+          const tail = shape[k * 2 + 1] as number;
+          // The brighter end of each segment, colour channels at most 1.
+          expect(alpha * Math.max(1, tail)).toBeLessThanOrEqual(DIM_MAX + 1e-6);
+          for (let c = 0; c < 3; c++) expect(color[k * 4 + c] as number).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 
   it("shoots a bullet from the node to the ring, then fades the strand while it stays attached (B14)", () => {
@@ -426,8 +585,8 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "5ca302ce277a3a93",
-        "25500": "5876ec01a63f4ab3",
+        "22000": "44dcdd6d69ce3293",
+        "25500": "6a5390581a6da54b",
         "45000": "5ca302ce277a3a93",
         "8000": "c624d9b3831afa94",
       }

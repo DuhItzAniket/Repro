@@ -1,16 +1,18 @@
 /**
- * The flash governor (ADR-0011; WCAG 2.2 SC 2.3.1). Streaks, bundles and recency flares are
- * flashes: they brighten and then fade. The governor caps the bright area that may *rise* within
- * any 333 ms of wall-clock time at `FLASH_BUDGET`, half of WCAG's 87,296 CSS px² flashing area.
- * Over the cap:
- * - a bunch of strands is dropped, and at most one bunch per function rises per window
+ * The flash governor (ADR-0011; WCAG 2.2 SC 2.3.1). Bunches of strands (their bullets, node
+ * rings and bars) and recency flares are flashes: they brighten and then fade. The governor caps
+ * the bright area that may *rise* within any 333 ms of wall-clock time at `FLASH_BUDGET`, half of
+ * WCAG's 87,296 CSS px² flashing area. Over the cap:
+ * - a bunch is dropped, and at most one bunch per section of the wheel rises per window
  *   (aggregation);
- * - a streak is not drawn (its intensity is reduced to zero);
  * - an edge or marker appears without its flare (a rise that does not fall is not a flash).
+ *
+ * The dim strand lines and the lines outside the wheel are not counted: they are MAX-blended at
+ * no more than `DIM_MAX`, which cannot raise a pixel's relative luminance by 10%.
  *
  * Why this bounds flashing: if at most B px² can rise in any 333 ms, at most 3B can rise in any
  * second, so the area that flashes more than three times a second is at most 3B/4 < B. Areas are
- * upper bounds from each element's own geometry (`streakArea`, `bundleArea`, `arcArea`), and
+ * upper bounds from each element's own geometry (`strandArea`, `pinArea`, `arcArea`), and
  * the budget applies to the whole stage, not per 10° field, so the estimate errs on the safe side.
  * An edge counts only its pieces on the stage (most of the web is off-screen since B14), and a
  * bunch each strand's longest possible length, from its node to the far end of the arc it can
@@ -26,20 +28,19 @@ import type { StageFrame } from "./layer";
 import type { RingModel } from "./ring/layers";
 import { rotationAt } from "./ring/layers";
 import { cardCentre } from "./ring/sections";
-import { streakArea } from "./streams/layers";
 import { streams } from "./streams/style";
 import { arcArea, edgeHash } from "./web/arcs";
 import {
   EDGE_STYLE,
   FOLLOW,
-  landingArc,
+  landsOnStage,
   MARKER_AREA,
-  onScreen,
+  newHit,
   pinArea,
   pinLength,
   placedBunch,
   strandArea,
-  strandOrigin,
+  strandHit,
   strandReach,
 } from "./web/layers";
 import { MAX_BUNCH, ReachIndex } from "./web/reach";
@@ -58,7 +59,7 @@ export const FLASH_BUDGET = WCAG_FLASH_AREA / 2;
 /** The window, in wall-clock ms: a third of a second, for at most three flashes a second. */
 export const FLASH_WINDOW_MS = 333;
 
-export type OnsetKind = "streak" | "bundle" | "edge" | "marker";
+export type OnsetKind = "bundle" | "edge" | "marker";
 
 /** Admitted onsets, in log order (for tests and diagnostics). */
 export interface OnsetLog {
@@ -70,7 +71,6 @@ export interface OnsetLog {
 export class FlashGovernor {
   /** Bumped whenever decisions change, so static layers know to rewrite. */
   version = 0;
-  private streakOk = new Uint8Array(0);
   private bundleOk = new Uint8Array(0);
   private markerOk = new Uint8Array(0);
   private edgeOk = new Uint8Array(0);
@@ -82,7 +82,7 @@ export class FlashGovernor {
   private readonly areas: number[] = [];
   private head = 0;
   private sum = 0;
-  /** Function node → time of its last admitted bunch. */
+  /** Section (ring card) → time of its last admitted bunch. */
   private readonly lastBundle = new Map<number, number>();
   private log: OnsetLog = { time: [], area: [], kind: [] };
   private speed = Number.NaN;
@@ -94,6 +94,7 @@ export class FlashGovernor {
   /** Which nodes reach each function: a bunch's strands (shared with the bundle layer). */
   readonly reach: ReachIndex;
   private readonly members = new Int32Array(MAX_BUNCH);
+  private readonly hit = newHit();
 
   constructor(
     private readonly model: CockpitModel,
@@ -136,11 +137,6 @@ export class FlashGovernor {
     if (this.processed < this.model.store.length) this.extend();
   }
 
-  /** Whether the streak of the event at store index `i` is drawn. */
-  streak(i: number): boolean {
-    return this.streakOk[i] === 1;
-  }
-
   /** Whether the bundle of the event at store index `i` is drawn. */
   bundle(i: number): boolean {
     return this.bundleOk[i] === 1;
@@ -171,7 +167,6 @@ export class FlashGovernor {
     this.sum = 0;
     this.lastBundle.clear();
     this.log = { time: [], area: [], kind: [] };
-    this.streakOk = new Uint8Array(0);
     this.bundleOk = new Uint8Array(0);
     this.markerOk = new Uint8Array(0);
     this.edgeOk = new Uint8Array(0);
@@ -205,11 +200,7 @@ export class FlashGovernor {
     const positions = this.layout.positions;
     const radius = webRadius(this.ring);
     const { cx, cy } = this.ring;
-    // Strands land within AIM of their node's bearing on the landing arc, and follow the ring
-    // by at most FOLLOW either way.
-    const arc = landingArc(this.ring, this.height);
     const n = store.length;
-    this.streakOk = grow(this.streakOk, n);
     this.bundleOk = grow(this.bundleOk, n);
     this.markerOk = grow(this.markerOk, n);
     this.edgeOk = grow(this.edgeOk, graph.edgeCount);
@@ -260,63 +251,47 @@ export class FlashGovernor {
         if (this.admit(t, markers * MARKER_AREA, "marker")) this.markerOk[i] = 1;
         continue;
       }
-      if (event.kind === "trace.sample" || event.kind === "diff.behaviour") {
-        const target = graph.nodeForSymbol(event.payload.symbol_id);
-        // Where it lands: its function's section where it stood then, as the bundle layer draws
-        // it; it fires only if that section was on screen.
-        let fired = 0;
-        let visible = false;
-        if (target !== undefined && this.wheel !== undefined) {
-          const card = this.wheel.cardOf.get(graph.files[target] as string);
-          if (card === undefined) visible = false;
-          else {
-            const motion = { speed: this.speed, reduced: false };
-            fired = cardCentre(this.wheel, card) + rotationAt(this.wheel, t, motion);
-            visible = onScreen(fired, arc);
-          }
-        }
-        const first = strandOrigin(graph, event.target?.test, target);
-        const members = this.members;
-        const unit = (this.ring.r - 3) / radius; // the landing point in unit coordinates
-        const n =
-          target === undefined || positions === null || !visible
-            ? 0
-            : placedBunch(
-                this.reach,
-                target,
-                i,
-                first,
-                members,
-                positions,
-                Math.cos(fired) * unit,
-                Math.sin(fired) * unit,
-              );
-        if (target !== undefined && n > 0) {
-          // One bunch per function per window: a later one at the same function is aggregated.
-          const last = this.lastBundle.get(target);
-          const aggregated =
-            Number.isFinite(this.budget) && last !== undefined && t - last < this.window;
-          // Its strands land around that point, spread along the bar, and follow the ring by at
-          // most FOLLOW either way.
-          const p = positions as Float32Array;
-          const rim = this.ring.r - 3;
-          const spread = pinLength(n) / 2 / rim + FOLLOW;
-          const lo = fired;
-          const hi = fired;
-          let area = pinArea(n);
-          for (let k = 0; k < n; k++) {
-            const node = members[k] as number;
-            const ox = (p[node * 2] as number) * radius;
-            const oy = (p[node * 2 + 1] as number) * radius;
-            area += strandArea(strandReach(ox, oy, rim, lo - spread, hi + spread));
-          }
-          if (!aggregated && this.admit(t, area, "bundle")) {
-            this.bundleOk[i] = 1;
-            this.lastBundle.set(target, t);
-          }
-        }
+      if (!streams(event) || this.wheel === undefined || positions === null) continue;
+      const wheel = this.wheel;
+      const hit = this.hit;
+      if (!strandHit(this.model, event, hit)) continue;
+      // It fires at its section of the wheel (its file's card) where the section stood then, as
+      // the bundle layer draws it, and only if that was on the stage.
+      const card = wheel.cardOf.get(hit.file);
+      if (card === undefined) continue;
+      const fired =
+        cardCentre(wheel, card) + rotationAt(wheel, t, { speed: this.speed, reduced: false });
+      if (!landsOnStage(fired, this.ring, this.width, this.height)) continue;
+      const rim = this.ring.r - 3;
+      const unit = rim / radius; // the landing point in unit coordinates
+      const members = this.members;
+      const count = placedBunch(
+        this.reach,
+        hit,
+        i,
+        members,
+        positions,
+        Math.cos(fired) * unit,
+        Math.sin(fired) * unit,
+      );
+      if (count === 0) continue;
+      // One bunch per section per window: a later one at the same section is aggregated.
+      const last = this.lastBundle.get(card);
+      if (Number.isFinite(this.budget) && last !== undefined && t - last < this.window) continue;
+      // Its strands land around that point, spread along the bar, and follow the ring by at most
+      // FOLLOW either way.
+      const spread = pinLength(count) / 2 / rim + FOLLOW;
+      let area = pinArea(count);
+      for (let k = 0; k < count; k++) {
+        const node = members[k] as number;
+        const ox = (positions[node * 2] as number) * radius;
+        const oy = (positions[node * 2 + 1] as number) * radius;
+        area += strandArea(strandReach(ox, oy, rim, fired - spread, fired + spread));
       }
-      if (streams(event) && this.admit(t, streakArea(event), "streak")) this.streakOk[i] = 1;
+      if (this.admit(t, area, "bundle")) {
+        this.bundleOk[i] = 1;
+        this.lastBundle.set(card, t);
+      }
     }
     this.processed = n;
     this.version++;
