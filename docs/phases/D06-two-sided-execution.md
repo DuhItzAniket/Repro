@@ -96,6 +96,11 @@ and, explicitly, what could not be checked (flaky tests, unfinished runs, uncove
   `reproduce`, and `honest-fix` and `test-tamper` through `repro run` (process sandbox), with
   `test-tamper` also in containers (L3, network enforced). pytest 1019 → 1063 (1061 pass and 2
   skip).
+- CI on Ubuntu found two faults Windows had hidden, both fixed in the PR: the base and head
+  sandbox jobs run in parallel and built the same cached dependencies' volume at once (each
+  build now has a volume of its own, and one run's sides wait for a single build); and the
+  snapshot-warning regression test used a symlink, which Linux snapshots keep (it now uses a
+  submodule, skipped everywhere).
 - CI run: linked in the PR (#43).
 
 ## Deviations from spec

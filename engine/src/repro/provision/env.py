@@ -27,6 +27,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -133,6 +134,17 @@ def pyvenv_home(pyvenv_cfg: str) -> str:
     raise ProvisionError("the environment's pyvenv.cfg names no base interpreter")
 
 
+_BUILDING: dict[str, threading.Lock] = {}
+_BUILDING_GUARD = threading.Lock()
+
+
+def _building(key: str) -> threading.Lock:
+    """One lock per dependencies' environment: two sides of one run that need the same one wait
+    for a single build instead of both building it."""
+    with _BUILDING_GUARD:
+        return _BUILDING.setdefault(key, threading.Lock())
+
+
 def _tail(text: bytes, lines: int = 6) -> str:
     kept = text.decode("utf-8", "replace").strip().splitlines()[-lines:]
     return " | ".join(line.strip() for line in kept) or "no output"
@@ -193,6 +205,10 @@ class HostProvisioner:
 
     def dependencies(self, spec: EnvSpec) -> tuple[Path, bool]:
         """The dependencies' environment for ``spec``, built if needed; whether it was cached."""
+        with _building(spec.key):
+            return self._dependencies(spec)
+
+    def _dependencies(self, spec: EnvSpec) -> tuple[Path, bool]:
         final = self.cache / "envs" / spec.key[:32]
         if (final / _DONE).is_file():
             return final, True
@@ -313,12 +329,25 @@ class DockerProvisioner:
         )  # fmt: skip
 
     def dependencies(self, spec: EnvSpec) -> tuple[str, bool]:
-        """The volume holding the dependencies' environment for ``spec``; whether it was cached."""
-        volume = f"repro-env-{spec.key[:24]}"
-        done = self._in(volume, f"test -f {ENV_MOUNT}/{_DONE} && echo yes", check=False)
-        if done.strip() == b"yes":
-            return volume, True
-        self._docker("volume", "rm", "-f", volume, check=False)
+        """The volume holding the dependencies' environment for ``spec``; whether it was cached.
+
+        Each build has a volume of its own (``repro-env-<key>-<unique>``), and any finished one is
+        used: two builds at once, in one run or two, never write into the same volume.
+        """
+        with _building(spec.key):
+            prefix = f"repro-env-{spec.key[:24]}"
+            listed = self._docker(
+                "volume", "ls", "-q", "--filter", f"name={prefix}", what="listing volumes"
+            )  # fmt: skip
+            for volume in sorted(listed.decode().split()):
+                if not volume.startswith(prefix):
+                    continue
+                done = self._in(volume, f"test -f {ENV_MOUNT}/{_DONE} && echo yes", check=False)
+                if done.strip() == b"yes":
+                    return volume, True
+            return self._build_dependencies(spec, f"{prefix}-{uuid.uuid4().hex[:8]}"), False
+
+    def _build_dependencies(self, spec: EnvSpec, volume: str) -> str:
         self._docker("volume", "create", volume)
         self._in(volume, f"chown 1000:1000 {ENV_MOUNT}", root=True)
         self._in(volume, f"cat > {ENV_MOUNT}/requirements.txt", stdin=spec.text().encode())
@@ -336,7 +365,7 @@ class DockerProvisioner:
         except ProvisionError:
             self._docker("volume", "rm", "-f", volume, check=False)
             raise
-        return volume, False
+        return volume
 
     def provision(self, side: str, project: Project, sandbox: DockerSandbox) -> Environment:
         started = time.monotonic()

@@ -55,6 +55,8 @@ All notable changes to this project are documented here. The format follows
   fail. `--analyse-only` keeps the build stage alone. New fixtures `flaky` and `test-tamper`. [D06]
 
 ### Fixed
+- Two builds of the same cached dependencies' environment in containers at once (both sides
+  of a run, or two runs) wrote into one volume and failed; each build now has its own. [D06]
 - A snapshot that left entries out (a symlink, a submodule) failed its job: the warning
   it logged had a level the event schema does not allow. Log levels are now checked by type. [D06]
 - Evidence could not be emitted through the event bus: it validated `evidence.created` events

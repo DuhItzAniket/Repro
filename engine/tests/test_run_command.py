@@ -279,9 +279,9 @@ def test_serve_serves_the_built_cockpit_beside_the_api(
 
 
 def test_entries_a_snapshot_leaves_out_are_a_warning(tmp_path: Path) -> None:
-    """A symlink is not written to a snapshot; the run says so, as a schema-valid warning."""
+    """A submodule is not written to a snapshot; the run says so, as a schema-valid warning."""
     repo = Repo(tmp_path / "target")
-    base = repo.commit({**BASE, "link": ("pkg/core.py", "120000")})
+    base = repo.commit({**BASE, "vendored": ("a" * 40, "160000")})
     head = repo.commit(HEAD)
     env = clean_env(tmp_path, REPRO_RUN_ROOT=str(tmp_path / "scratch"))
     argv = ["run", "--repo", str(repo.path), "--base", base, "--head", head, "--no-serve"]
