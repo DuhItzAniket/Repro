@@ -165,6 +165,24 @@ class DockerSandbox:
             raise SandboxError(f"{name!r} is not a plain name")
         relative = f".repro/{name}"
         target = self.container_path(relative)
+        script = (
+            f"set -e; mkdir -p {target}; cd {WORK}; "
+            f"tar --exclude=./.repro -cf - . | tar -x -C {target}; "
+            f"tar -x -C {target} --no-same-owner"
+        )
+        self._untar(script, files, "the overlay")
+        return relative
+
+    def write_files(self, directory: str, files: Mapping[str, bytes]) -> None:
+        """Writes ``files`` (POSIX paths relative to ``directory``, itself relative to the
+        snapshot) into the volume, owned by the unprivileged user."""
+        target = self.container_path(directory)
+        inside = {f"{directory}/{path}": data for path, data in files.items()}
+        self._untar(
+            f"set -e; mkdir -p {target}; tar -x -C {WORK} --no-same-owner", inside, directory
+        )
+
+    def _untar(self, script: str, files: Mapping[str, bytes], what: str) -> None:
         archive = io.BytesIO()
         with tarfile.open(fileobj=archive, mode="w") as tar:
             for path, data in sorted(files.items()):
@@ -172,11 +190,6 @@ class DockerSandbox:
                 info = tarfile.TarInfo(inside[len(WORK) + 1 :])
                 info.size, info.mode = len(data), 0o644
                 tar.addfile(info, io.BytesIO(data))
-        script = (
-            f"set -e; mkdir -p {target}; cd {WORK}; "
-            f"tar --exclude=./.repro -cf - . | tar -x -C {target}; "
-            f"tar -x -C {target} --no-same-owner"
-        )
         command = [
             self.docker, "run", "--rm", "-i", "--network", "none",
             "-v", f"{self.volume}:{WORK}", "--user", USER,
@@ -194,8 +207,7 @@ class DockerSandbox:
             raise SandboxError(f"docker run: {exc}") from None
         if done.returncode != 0:
             problem = done.stderr.decode("utf-8", "replace").strip().splitlines()
-            raise SandboxError(f"writing the overlay failed: {problem[-1] if problem else '?'}")
-        return relative
+            raise SandboxError(f"writing {what} failed: {problem[-1] if problem else '?'}")
 
     def adopt_volume(self, volume: str, path: str) -> None:
         """Mounts ``volume`` at ``path`` in every later command, and removes it on ``close``."""
