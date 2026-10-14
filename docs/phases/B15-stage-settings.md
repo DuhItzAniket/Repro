@@ -5,7 +5,7 @@
 | **Stage** | B — Cockpit on fixtures |
 | **Status** | in progress |
 | **Depends on** | B14 |
-| **Branch / PR** | `phase/B15-stage-settings` · PR pending |
+| **Branch / PR** | `phase/B15-stage-settings` · [#27](https://github.com/DuhItzAniket/Repro/pull/27) |
 | **Started / finished** | 2026-10-14 / — |
 
 ## Objective
