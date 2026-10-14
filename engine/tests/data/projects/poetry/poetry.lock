@@ -1,0 +1,42 @@
+# A fixture in poetry.lock's format: Repro reads each package's name, version, markers
+# and source.
+[[package]]
+name = "colorama"
+version = "0.4.6"
+optional = false
+python-versions = ">=3.8"
+markers = 'sys_platform == "win32"'
+files = []
+
+[[package]]
+name = "iniconfig"
+version = "2.0.0"
+optional = false
+python-versions = ">=3.8"
+files = []
+
+[[package]]
+name = "packaging"
+version = "24.2"
+optional = false
+python-versions = ">=3.8"
+files = []
+
+[[package]]
+name = "pluggy"
+version = "1.5.0"
+optional = false
+python-versions = ">=3.8"
+files = []
+
+[[package]]
+name = "pytest"
+version = "8.3.3"
+optional = false
+python-versions = ">=3.8"
+files = []
+
+[metadata]
+lock-version = "2.0"
+python-versions = ">=3.12"
+content-hash = "fixture"

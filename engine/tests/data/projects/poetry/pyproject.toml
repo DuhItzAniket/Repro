@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "calc"
+version = "0.1.0"
+description = "A fixture"
+authors = ["Repro fixtures"]
+packages = [{ include = "calc" }]
+
+[tool.poetry.dependencies]
+python = ">=3.12"
+iniconfig = "2.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.3.3"
+
+[build-system]
+requires = ["poetry-core==1.9.1"]
+build-backend = "poetry.core.masonry.api"
