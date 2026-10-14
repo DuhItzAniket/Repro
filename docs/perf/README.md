@@ -11,6 +11,7 @@ hardware and raw numbers; summaries live in the phase records.
 | [`B07-streams-bench.json`](B07-streams-bench.json) | B07 | The complete stage, every layer real, 2,048 live streaks at peak |
 | [`apps/web/perf/frame-cost-baseline.json`](../../apps/web/perf/frame-cost-baseline.json) | B12 | The CPU frame-cost gate's baseline, recorded in CI (see `apps/web/perf/README.md`) |
 | [`B10-motion-bench.json`](B10-motion-bench.json) | B10 | The same load after B10 (flare attribute, flash governor with its cap lifted): no change |
+| [`E01-tracer-bench.jsonl`](E01-tracer-bench.jsonl) | E01 | The tracer's overhead on its benchmark suite, per Python and test, one JSON line each; appended to by `uv run python scripts/bench_tracer.py --out docs/perf/E01-tracer-bench.jsonl` |
 
 ## Reproducing the stage benchmark
 

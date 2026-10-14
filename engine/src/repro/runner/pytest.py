@@ -14,7 +14,8 @@ same way on every isolation level.
 
 With ``map_tests`` (D05) the plugin also records the functions each test runs, as *places*
 (file relative to the snapshot, qualified name, first line); ``collect_only`` lists the tests
-and where their functions are without running them.
+and where their functions are without running them. With ``trace`` (E01) it records every call
+of the target functions named (``TraceTarget``): argument and result digests, per test.
 
 What the plugin wrote comes from inside the target's process, so it is read as untrusted: a
 record that is not well formed is counted and skipped, and a run with no session record (a
@@ -48,6 +49,14 @@ _TEXT: Final = 2000
 
 #: A function: its file relative to the snapshot (POSIX), its qualified name, its first line.
 Place = tuple[str, str, int]
+#: A function to trace: file, qualified name, and the first and last lines of its symbol.
+TraceTarget = tuple[str, str, int, int]
+TRACE_TARGETS: Final = "trace-targets.json"
+#: At most this many functions are traced in one run.
+MAX_TARGETS: Final = 2000
+_DIGEST: Final = 32  # BLAKE2b-128, hexadecimal
+_OUTCOMES: Final = frozenset({"return", "raise", "suspended", "unfinished"})
+_PHASES: Final = frozenset({"setup", "call", "teardown"})
 _PLACE_FIELDS: Final = 3
 
 
@@ -121,6 +130,9 @@ class PytestRun:
     maps: dict[str, frozenset[Place]] = field(default_factory=dict)
     #: Why the map could not be made, if it could not.
     map_unavailable: str | None = None
+    #: With tracing: every recorded call, and the (test, target) pairs whose budget ran out.
+    calls: tuple["TraceCall", ...] = ()
+    truncated: tuple[tuple[str, TraceTarget], ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -168,6 +180,67 @@ def _nodeid(record: dict[str, Any]) -> str:
     return nodeid[:_TEXT]
 
 
+@dataclass(frozen=True, slots=True)
+class TraceCall:
+    """One call of a traced function, as the tracer recorded it (digests, never values)."""
+
+    test: str
+    phase: str
+    target: TraceTarget
+    index: int  # its order among the target's calls in the test, from 0
+    args: str
+    args_complete: bool
+    #: "return", "raise", "suspended" (a generator that did not run to its end) or
+    #: "unfinished" (in flight when its target's budget ran out)
+    outcome: str
+    result: str  # the value's digest; for "raise", the exception's arguments'
+    result_complete: bool
+    type: str  # the value's (or the exception's) type, module.qualname
+    yields: tuple[str, ...]
+    yields_complete: bool
+
+
+def _target(raw: object) -> TraceTarget:
+    if not isinstance(raw, list) or len(raw) != len(("path", "name", "start", "end")):
+        raise ValueError(raw)
+    path, qualname, line = _place(raw[:3])
+    end = raw[3]
+    if not isinstance(end, int) or end < line:
+        raise ValueError(raw)
+    return path, qualname, line, end
+
+
+def _hex(raw: object, *, empty: bool = False) -> str:
+    if not isinstance(raw, str) or not (
+        (len(raw) == _DIGEST and all(c in "0123456789abcdef" for c in raw)) or (empty and raw == "")
+    ):
+        raise ValueError(raw)
+    return raw
+
+
+def _call(record: dict[str, Any]) -> TraceCall:
+    outcome, phase, index = record["outcome"], record["phase"], record["index"]
+    yields = record["yields"]
+    if outcome not in _OUTCOMES or phase not in _PHASES or not isinstance(index, int) or index < 0:
+        raise ValueError(record)
+    if not isinstance(yields, list) or len(yields) > MAX_PLACES:
+        raise ValueError(record)
+    return TraceCall(
+        test=_nodeid(record),
+        phase=phase,
+        target=_target(record["target"]),
+        index=index,
+        args=_hex(record["args"]),
+        args_complete=record["args_complete"] is True,
+        outcome=outcome,
+        result=_hex(record["result"], empty=outcome in ("suspended", "unfinished")),
+        result_complete=record["result_complete"] is True,
+        type=str(record["type"])[:_TEXT],
+        yields=tuple(_hex(item) for item in yields),
+        yields_complete=record["yields_complete"] is True,
+    )
+
+
 def _functions(raw: object) -> frozenset[Place]:
     if not isinstance(raw, list) or len(raw) > MAX_PLACES:
         raise ValueError("functions")
@@ -187,16 +260,67 @@ def _session(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+class _Reading:
+    """What a results file holds so far, one record kind at a time."""
+
+    def __init__(self) -> None:
+        self.tests: dict[str, TestResult] = {}
+        self.errors: list[CollectError] = []
+        self.session: dict[str, Any] | None = None
+        self.collected: dict[str, Place | None] = {}
+        self.maps: dict[str, frozenset[Place]] = {}
+        self.unavailable: str | None = None
+        self.calls: list[TraceCall] = []
+        self.truncated: list[tuple[str, TraceTarget]] = []
+
+    def test(self, record: dict[str, Any]) -> None:
+        result = _test(record)
+        self.tests[result.nodeid] = result
+
+    def collect_error(self, record: dict[str, Any]) -> None:
+        nodeid, message = str(record["nodeid"]), str(record["message"])
+        self.errors.append(CollectError(nodeid[:_TEXT], message[:_TEXT]))
+
+    def session_record(self, record: dict[str, Any]) -> None:
+        self.session = _session(record)
+
+    def collected_record(self, record: dict[str, Any]) -> None:
+        test = record["test"]
+        self.collected[_nodeid(record)] = _place(test) if test is not None else None
+
+    def map_record(self, record: dict[str, Any]) -> None:
+        self.maps[_nodeid(record)] = _functions(record["functions"])
+
+    def map_unavailable(self, record: dict[str, Any]) -> None:
+        self.unavailable = str(record["reason"])[:_TEXT]
+
+    def call(self, record: dict[str, Any]) -> None:
+        self.calls.append(_call(record))
+
+    def truncated_record(self, record: dict[str, Any]) -> None:
+        self.truncated.append((_nodeid(record), _target(record["target"])))
+
+    def add(self, record: dict[str, Any]) -> None:
+        reader = {
+            "test": self.test,
+            "collect_error": self.collect_error,
+            "session": self.session_record,
+            "collected": self.collected_record,
+            "map": self.map_record,
+            "map_unavailable": self.map_unavailable,
+            "call": self.call,
+            "truncated": self.truncated_record,
+        }.get(record["kind"])
+        if reader is None:
+            raise ValueError(record["kind"])
+        reader(record)
+
+
 def read_results(data: bytes | None) -> PytestRun:
     """What the plugin wrote to ``results.jsonl`` (None: it wrote nothing at all)."""
     if data is None:
         return PytestRun({}, (), None, notes=("the plugin wrote no results",))
-    tests: dict[str, TestResult] = {}
-    errors: list[CollectError] = []
-    session: dict[str, Any] | None = None
-    collected: dict[str, Place | None] = {}
-    maps: dict[str, frozenset[Place]] = {}
-    unavailable: str | None = None
+    reading = _Reading()
     malformed = 0
     notes: list[str] = []
     for count, line in enumerate(data.splitlines()):
@@ -204,38 +328,22 @@ def read_results(data: bytes | None) -> PytestRun:
             notes.append(f"more than {MAX_RECORDS} records: the rest were not read")
             break
         try:
-            record = json.loads(line)
-            kind = record["kind"]
-            if kind == "test":
-                result = _test(record)
-                tests[result.nodeid] = result
-            elif kind == "collect_error":
-                nodeid, message = str(record["nodeid"]), str(record["message"])
-                errors.append(CollectError(nodeid[:_TEXT], message[:_TEXT]))
-            elif kind == "session":
-                session = _session(record)
-            elif kind == "collected":
-                test = record["test"]
-                collected[_nodeid(record)] = _place(test) if test is not None else None
-            elif kind == "map":
-                maps[_nodeid(record)] = _functions(record["functions"])
-            elif kind == "map_unavailable":
-                unavailable = str(record["reason"])[:_TEXT]
-            else:
-                raise ValueError(kind)
-        except (ValueError, KeyError, TypeError):
+            reading.add(json.loads(line))
+        except (ValueError, KeyError, TypeError, AttributeError):
             malformed += 1
-    if session is None:
+    if reading.session is None:
         notes.append("the run did not finish: no session record")
     return PytestRun(
-        tests,
-        tuple(errors),
-        session,
+        reading.tests,
+        tuple(reading.errors),
+        reading.session,
         malformed,
         tuple(notes),
-        collected=collected,
-        maps=maps,
-        map_unavailable=unavailable,
+        collected=reading.collected,
+        maps=reading.maps,
+        map_unavailable=reading.unavailable,
+        calls=tuple(reading.calls),
+        truncated=tuple(reading.truncated),
     )
 
 
@@ -258,6 +366,7 @@ def run_tests(
     map_tests: bool = False,
     collect_only: bool = False,
     directory: str | None = None,
+    trace: Sequence[TraceTarget] = (),
     timeout_s: float | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> TestRun:
@@ -267,6 +376,9 @@ def run_tests(
     (relative to the snapshot, POSIX) runs from there instead of the snapshot's root."""
     name = f"pytest-{uuid.uuid4().hex[:12]}"
     extra = ["--collect-only"] if collect_only else []
+    if len(trace) > MAX_TARGETS:
+        raise ValueError(f"{len(trace)} functions to trace: at most {MAX_TARGETS}")
+    targets = json.dumps([list(target) for target in trace]).encode() if trace else None
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
@@ -274,6 +386,9 @@ def run_tests(
         variables = plugin_env(out, root=root, seed=seed, map_tests=map_tests)
         if hash_seed is not None:
             variables["PYTHONHASHSEED"] = str(hash_seed)
+        if targets is not None:
+            sandbox.write_files(relative, {TRACE_TARGETS: targets})
+            variables["REPRO_TRACE_TARGETS"] = f"{out}/{TRACE_TARGETS}"
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=out, tests=tests, extra=extra),
             cwd=directory or ".",
@@ -289,6 +404,10 @@ def run_tests(
         variables = plugin_env(str(output), root=str(here), seed=seed, map_tests=map_tests)
         if hash_seed is not None:
             variables["PYTHONHASHSEED"] = str(hash_seed)
+        if targets is not None:
+            output.mkdir(parents=True)
+            (output / TRACE_TARGETS).write_bytes(targets)
+            variables["REPRO_TRACE_TARGETS"] = str(output / TRACE_TARGETS)
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=output.as_posix(), tests=tests, extra=extra),
             cwd=here,

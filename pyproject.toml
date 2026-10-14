@@ -89,3 +89,9 @@ files = ["conftest.py", "engine/src", "engine/tests", "bench/src", "packages/eve
 mypy_path = "scripts,engine/tests"
 # Fixture projects (D03) are target code for the sandbox, not Repro's own.
 exclude = ["^engine/tests/data/"]
+
+# The sandbox hook's modules import each other by top-level name, as they are loaded inside the
+# sandbox (the hook directory first on PYTHONPATH); each is still checked as a file of engine/src.
+[[tool.mypy.overrides]]
+module = ["repro_encode", "repro_trace"]
+ignore_missing_imports = true

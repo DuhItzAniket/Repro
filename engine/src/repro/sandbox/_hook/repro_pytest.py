@@ -17,7 +17,12 @@ standard library, installed packages) has no place and is not recorded.
 The map (D05) uses ``sys.monitoring``: PY_START is recorded once per function and test, then
 disabled at that place until the next test restarts events, so a function already seen costs
 nothing more in that test. Repro takes tool ID 4, 3, 2 or 5, whichever is free first, and leaves
-0 (debuggers) and 1 (coverage) to their owners; with none free the map is reported unavailable.
+0 (debuggers) and 1 (coverage) to their owners; with none free the map (and the trace) is
+reported unavailable.
+
+With ``REPRO_TRACE_TARGETS`` (E01, a JSON file of targets), the same tool traces the change's
+target functions call by call (``repro_trace``, beside this file): ``{"kind": "call", ...}``
+per call and ``{"kind": "truncated", ...}`` when a target's budget for a test is spent.
 
 Determinism: before each test, ``random`` is seeded from ``REPRO_SEED`` and the test's node ID,
 so a test's random draws do not depend on which tests ran before it. With ``REPRO_NET_GUARD=1``
@@ -49,7 +54,7 @@ _SEED = int(os.environ.get("REPRO_SEED", "0") or 0)
 _LONGREPR = 2000
 #: sys.monitoring tool IDs tried in turn: 0 (debuggers) and 1 (coverage) are left alone.
 _TOOL_IDS = (4, 3, 2, 5)
-_STATE: dict[str, Any] = {"file": None, "tests": {}, "places": None, "collector": None}
+_STATE: dict[str, Any] = {"file": None, "tests": {}, "places": None, "monitor": None}
 
 Place = tuple[str, str, int]
 
@@ -143,48 +148,101 @@ class _Places:
         return place
 
 
-class _Collector:
-    """The places each test runs: PY_START once per function and test, then DISABLE."""
+class _Monitor:
+    """Repro's ``sys.monitoring`` tool: the places each test runs (the map: PY_START once per
+    function and test, then DISABLE), and, with a tracer, every call of the target functions."""
 
-    def __init__(self, places: _Places, tool: int) -> None:
+    def __init__(self, places: _Places, tool: int, mapping: bool, tracer: Any) -> None:
         self.places = places
         self.tool = tool
+        self.mapping = mapping
+        self.tracer = tracer
         self.current: set[Place] | None = None
+        self.local: set[int] = set()  # targets whose local events are set
+        self.events = sys.monitoring.events
 
     def started(self, code: Any, _offset: int) -> Any:
+        place = self.places.of(code)
+        if place is None:
+            return sys.monitoring.DISABLE
         current = self.current
-        if current is not None:
-            place = self.places.of(code)
-            if place is not None:
-                current.add(place)
+        if current is not None and self.mapping:
+            current.add(place)
+        tracer = self.tracer
+        if tracer is not None:
+            target = tracer.target(code, place)
+            if target is not None:
+                if id(code) not in self.local:
+                    self.local.add(id(code))
+                    local = self.events.PY_RETURN | self.events.PY_YIELD
+                    sys.monitoring.set_local_events(self.tool, code, local)
+                if tracer.start(target, code, sys._getframe(1)):
+                    return None
         return sys.monitoring.DISABLE
 
-    def begin(self) -> None:
-        self.current = set()
+    def returned(self, code: Any, _offset: int, value: Any) -> Any:
+        if self.tracer.returned(sys._getframe(1), value) or not self.tracer.idle(code):
+            return None
+        return self._retire(code)
+
+    def yielded(self, code: Any, _offset: int, value: Any) -> Any:
+        if self.tracer.yielded(sys._getframe(1), value) or not self.tracer.idle(code):
+            return None
+        return self._retire(code)
+
+    def _retire(self, code: Any) -> Any:
+        """A target past its budget with nothing in flight: its local events are removed (not
+        only disabled where they fired) until the next test sets them again."""
+        sys.monitoring.set_local_events(self.tool, code, 0)
+        self.local.discard(id(code))
+        return sys.monitoring.DISABLE
+
+    def unwound(self, code: Any, _offset: int, exc: BaseException) -> Any:
+        if id(code) in self.local:
+            self.tracer.unwound(sys._getframe(1), exc)
+            return None
+        # Global before 3.15, where DISABLE here is an error; per code object from 3.15 on.
+        return sys.monitoring.DISABLE if sys.version_info >= (3, 15) else None
+
+    def begin(self, test: str) -> None:
+        self.current = set() if self.mapping else None
         sys.monitoring.restart_events()
+        if self.tracer is not None:
+            self.tracer.begin(test)
 
     def end(self) -> list[list[Any]]:
+        if self.tracer is not None:
+            self.tracer.end()
         found, self.current = self.current or set(), None
         return [list(place) for place in sorted(found)]
 
     def stop(self) -> None:
         monitoring = sys.monitoring
         monitoring.set_events(self.tool, 0)
-        monitoring.register_callback(self.tool, monitoring.events.PY_START, None)
+        for event in (self.events.PY_START, self.events.PY_RETURN, self.events.PY_YIELD,
+                      self.events.PY_UNWIND):  # fmt: skip
+            monitoring.register_callback(self.tool, event, None)
         monitoring.free_tool_id(self.tool)
 
 
-def _start_collector(places: _Places) -> _Collector | None:
+def _start_monitor(places: _Places, *, mapping: bool, tracer: Any) -> _Monitor | None:
     monitoring = sys.monitoring
+    events = monitoring.events
     for tool in _TOOL_IDS:
         try:
             monitoring.use_tool_id(tool, "repro")
         except ValueError:
             continue
-        collector = _Collector(places, tool)
-        monitoring.register_callback(tool, monitoring.events.PY_START, collector.started)
-        monitoring.set_events(tool, monitoring.events.PY_START)
-        return collector
+        monitor = _Monitor(places, tool, mapping, tracer)
+        monitoring.register_callback(tool, events.PY_START, monitor.started)
+        wanted = events.PY_START
+        if tracer is not None:
+            monitoring.register_callback(tool, events.PY_RETURN, monitor.returned)
+            monitoring.register_callback(tool, events.PY_YIELD, monitor.yielded)
+            monitoring.register_callback(tool, events.PY_UNWIND, monitor.unwound)
+            wanted |= events.PY_UNWIND
+        monitoring.set_events(tool, wanted)
+        return monitor
     return None
 
 
@@ -196,18 +254,26 @@ def pytest_configure() -> None:
         _guard_network()
     places = _Places(os.environ.get("REPRO_ROOT") or os.getcwd())
     _STATE["places"] = places
-    if os.environ.get("REPRO_MAP") == "1":
-        collector = _start_collector(places)
-        _STATE["collector"] = collector
-        if collector is None:
+    mapping = os.environ.get("REPRO_MAP") == "1"
+    targets = os.environ.get("REPRO_TRACE_TARGETS")
+    tracer = None
+    if targets:
+        import repro_trace  # noqa: PLC0415 - only when tracing
+
+        listed = Path(targets).read_text(encoding="utf-8")
+        tracer = repro_trace.Tracer(repro_trace.parse_targets(listed), _write)
+    if mapping or tracer is not None:
+        monitor = _start_monitor(places, mapping=mapping, tracer=tracer)
+        _STATE["monitor"] = monitor
+        if monitor is None:
             _write({"kind": "map_unavailable", "reason": "no sys.monitoring tool ID is free"})
 
 
 def pytest_unconfigure() -> None:
-    collector = _STATE["collector"]
-    if collector is not None:
-        collector.stop()
-        _STATE["collector"] = None
+    monitor = _STATE["monitor"]
+    if monitor is not None:
+        monitor.stop()
+        _STATE["monitor"] = None
 
 
 def _test_place(item: Any) -> Place | None:
@@ -230,22 +296,41 @@ def pytest_collection_finish(session: Any) -> None:
 
 @pytest.hookimpl(hookwrapper=True, tryfirst=True)
 def pytest_runtest_protocol(item: Any) -> Any:
-    """With the map on: the places a test runs, from its setup to its teardown."""
-    collector: _Collector | None = _STATE["collector"]
-    if collector is None:
+    """With the map on: the places a test runs, from its setup to its teardown; with the
+    tracer, the calls of its targets."""
+    monitor: _Monitor | None = _STATE["monitor"]
+    if monitor is None:
         yield
         return
-    collector.begin()
+    monitor.begin(item.nodeid)
     try:
         yield
     finally:
-        functions = collector.end()
-        _write({"kind": "map", "nodeid": item.nodeid, "functions": functions})
+        functions = monitor.end()
+        if monitor.mapping:
+            _write({"kind": "map", "nodeid": item.nodeid, "functions": functions})
+
+
+def _phase(name: str) -> None:
+    monitor: _Monitor | None = _STATE["monitor"]
+    if monitor is not None and monitor.tracer is not None:
+        monitor.tracer.phase = name
 
 
 @pytest.hookimpl(tryfirst=True)  # before the fixtures, so their draws are seeded too
 def pytest_runtest_setup(item: Any) -> None:
     random.seed(_seed_for(item.nodeid))
+    _phase("setup")
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_call() -> None:
+    _phase("call")
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_teardown() -> None:
+    _phase("teardown")
 
 
 def _outcome(report: Any) -> str:
