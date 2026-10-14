@@ -55,7 +55,7 @@ TRACE_TARGETS: Final = "trace-targets.json"
 #: At most this many functions are traced in one run.
 MAX_TARGETS: Final = 2000
 _DIGEST: Final = 32  # BLAKE2b-128, hexadecimal
-_OUTCOMES: Final = frozenset({"return", "raise", "closed", "suspended", "unfinished"})
+_OUTCOMES: Final = frozenset({"return", "raise", "suspended", "unfinished"})
 _PHASES: Final = frozenset({"setup", "call", "teardown"})
 _PLACE_FIELDS: Final = 3
 
@@ -190,8 +190,8 @@ class TraceCall:
     index: int  # its order among the target's calls in the test, from 0
     args: str
     args_complete: bool
-    #: "return", "raise", "closed" (a generator closed early), "suspended" (still suspended
-    #: when its test ended) or "unfinished" (in flight when its target's budget ran out)
+    #: "return", "raise", "suspended" (a generator that did not run to its end) or
+    #: "unfinished" (in flight when its target's budget ran out)
     outcome: str
     result: str  # the value's digest; for "raise", the exception's arguments'
     result_complete: bool
@@ -233,7 +233,7 @@ def _call(record: dict[str, Any]) -> TraceCall:
         args=_hex(record["args"]),
         args_complete=record["args_complete"] is True,
         outcome=outcome,
-        result=_hex(record["result"], empty=outcome in ("closed", "suspended", "unfinished")),
+        result=_hex(record["result"], empty=outcome in ("suspended", "unfinished")),
         result_complete=record["result_complete"] is True,
         type=str(record["type"])[:_TEXT],
         yields=tuple(_hex(item) for item in yields),

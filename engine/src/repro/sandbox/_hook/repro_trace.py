@@ -12,8 +12,10 @@ and name match and its first line falls in the span.
   callback) before its body runs;
 - at PY_RETURN, the value returned; at PY_UNWIND, the exception's type and arguments;
 - at PY_YIELD, each value a generator or coroutine yields (at most ``MAX_YIELDS`` of them);
-- a generator closed before it finished (``GeneratorExit``, often when it is collected) is
-  ``closed``; a call still suspended when its test ends is ``suspended``.
+- a generator or coroutine that did not run to its end is ``suspended``: whether it was
+  closed during its test (``GeneratorExit``, often when it is collected) or was still suspended
+  when the test ended depends on the garbage collector's timing, which is no behaviour of
+  the code (Python 3.12 on Linux collected later than elsewhere, E01's CI found).
 
 Calls in flight are keyed by their frame's identity; code objects are held, so identities are
 not reused. Each call is attributed to the test and the phase (setup, call, teardown) running
@@ -153,8 +155,8 @@ class Tracer:
         call = self._finish(frame)
         if call is None:
             return
-        if type(exc) is GeneratorExit:  # an unfinished generator closed (or collected)
-            self._emit(call, "closed", "", False, "")
+        if type(exc) is GeneratorExit:  # closed before it finished: when is the GC's
+            self._emit(call, "suspended", "", False, "")
             return
         kind = type_name(type(exc))
         result, complete = digest(getattr(exc, "args", ()))

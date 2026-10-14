@@ -182,7 +182,7 @@ sides, runs them and emits `test.selected`, `test.started` / `test.finished`, `t
 
 As built (E01, `sandbox/_hook/repro_trace.py`): the plugin's one tool serves the map and the
 tracer; targets are named by file, qualified name and line span; outcomes are `return`,
-`raise`, `closed` (a generator closed early), `suspended` and `unfinished`. When a target's
+`raise`, `suspended` (a generator that did not run to its end) and `unfinished`. When a target's
 budget runs out, its recorded calls still in flight end as `unfinished` and its return and yield
 events are disabled too: keeping them for a recursion's outer frames cost 27x in the E01
 benchmark.
