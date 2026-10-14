@@ -173,15 +173,25 @@ def _build_adapters() -> dict[type, Callable[[Any], str]]:
 
 
 class _Walk:
-    __slots__ = ("adapters", "complete", "deadline", "nodes", "orders", "path")
+    __slots__ = (
+        "adapters", "complete", "deadline", "nodes", "normalise", "orders", "path", "shortest",
+    )  # fmt: skip
 
     def __init__(self) -> None:
         self.nodes = 0
         self.complete = True
         self.orders = bytearray()  # each dictionary's insertion order, as sorted positions
+        normaliser = _normaliser()
+        self.normalise = normaliser.text
+        # Strings shorter than every directory replaced cannot hold one.
+        self.shortest = normaliser.shortest if normaliser.pairs else 1 << 62
         self.path: set[int] = set()
         self.deadline = time.perf_counter() + MAX_SECONDS
+        self.adapters: dict[type, Callable[[Any], str]] | None = None  # when first needed
+
+    def load_adapters(self) -> dict[type, Callable[[Any], str]]:
         self.adapters = _adapters()
+        return self.adapters
 
     def stop(self, out: bytearray, tag: bytes = b"X") -> None:
         out += tag
@@ -205,10 +215,12 @@ class _Walk:
         elif kind is float:
             out += b"D" + value.hex().encode() + b";"
         elif kind is str:
-            data = _normaliser().text(value).encode("utf-8", "surrogatepass")
-            out += b"S" + str(len(data)).encode() + b":" + data
+            if len(value) >= self.shortest or "0x" in value or "0X" in value:
+                value = self.normalise(value)  # it may hold a directory or an address
+            data = value.encode("utf-8", "surrogatepass")
+            out += b"S%d:" % len(data) + data
         elif kind is bytes or kind is bytearray:
-            out += (b"B" if kind is bytes else b"A") + str(len(value)).encode() + b":" + value
+            out += (b"B%d:" if kind is bytes else b"A%d:") % len(value) + value
         elif kind is complex:
             out += b"C" + value.real.hex().encode() + b"," + value.imag.hex().encode() + b";"
         elif kind in _SEQUENCES or kind is dict or kind in _SETS:
@@ -219,7 +231,7 @@ class _Walk:
             out += b"K" + type_name(value).encode("utf-8", "surrogatepass") + b";"
         elif issubclass(kind, BaseException):
             self.exception(value, kind, depth, out)
-        elif kind in self.adapters:
+        elif kind in (self.adapters or self.load_adapters()):
             self.adapted(value, kind, out)
         elif (base := _builtin_base(kind)) is not None:
             self.subclassed(value, kind, base, depth, out)
@@ -239,7 +251,7 @@ class _Walk:
 
     def adapted(self, value: Any, kind: type, out: bytearray) -> None:
         try:
-            text = self.adapters[kind](value)
+            text = (self.adapters or self.load_adapters())[kind](value)
         except Exception:  # noqa: BLE001
             self.stop(out)
             return
@@ -255,53 +267,55 @@ class _Walk:
                 return b"?"
         return type_name(kind).encode()
 
-    def container(self, value: Any, kind: type, depth: int, out: bytearray) -> None:
-        """A list, tuple, dict, set or frozenset, or (with ``kind`` its builtin base) a
-        subclass of one: read through ``kind``'s own iterators, which walk the underlying
-        storage without calling a subclass's overrides, and never rebuilt (rebuilding a set or
-        a dict would hash its elements)."""
-        if id(value) in self.path:
-            self.stop(out, b"Y")  # a cycle: the container is already being written
-            return
-        self.path.add(id(value))
-        try:
-            if kind in _SEQUENCES:
-                out += _SEQUENCES[kind] + str(_LENGTH[kind](value)).encode() + b"["
-                for item in _ITERATE[kind](value):
-                    self.value(item, depth + 1, out)
-                out += b"]"
-            elif kind is dict:
-                pairs = []
-                for key, item in dict.items(value):
-                    pair = bytearray()
-                    self.value(key, depth + 1, pair)
-                    self.value(item, depth + 1, pair)
-                    pairs.append(bytes(pair))
-                ranked = sorted(range(len(pairs)), key=pairs.__getitem__)
-                if ranked != list(range(len(pairs))):  # not already in sorted order
-                    self.orders += b"(" + ",".join(map(str, ranked)).encode() + b")"
-                else:
-                    self.orders += b"."
-                out += b"M" + str(len(pairs)).encode() + b"{"
-                out += b"".join(pairs[i] for i in ranked) + b"}"
+    def container(
+        self, value: Any, kind: type, depth: int, out: bytearray, *, subclass: bool = False
+    ) -> None:
+        """A list, tuple, dict, set or frozenset, never rebuilt (rebuilding a set or a dict would
+        hash its elements again). An exact one is read through its own protocol, which for an
+        exact builtin is the interpreter's; a subclass's (``subclass``, ``kind`` its builtin
+        base) through ``kind``'s own iterators, which walk the underlying storage without
+        calling the subclass's overrides. A container that holds itself is stopped by the depth
+        guard."""
+        if kind is list or kind is tuple:
+            tag = b"L%d[" if kind is list else b"U%d["
+            if subclass:
+                out += tag % _LENGTH[kind](value)
+                items: Iterator[Any] = _ITERATE[kind](value)
             else:
-                # Elements in the order of their encodings, and the orders of any dictionaries
-                # inside them with them: a set's iteration order depends on the hash seed.
-                start = len(self.orders)
-                parts = []
-                for item in _ITERATE[kind](value):
-                    part = bytearray()
-                    before = len(self.orders)
-                    self.value(item, depth + 1, part)
-                    parts.append((bytes(part), bytes(self.orders[before:])))
-                    del self.orders[before:]
-                parts.sort()
-                del self.orders[start:]
-                self.orders += b"".join(orders for _, orders in parts)
-                out += _SETS[kind] + str(len(parts)).encode() + b"("
-                out += b"".join(part for part, _ in parts) + b")"
-        finally:
-            self.path.discard(id(value))
+                out += tag % len(value)
+                items = iter(value)
+            for item in items:
+                self.value(item, depth + 1, out)
+            out += b"]"
+        elif kind is dict:
+            pairs = []
+            for key, item in dict.items(value):
+                pair = bytearray()
+                self.value(key, depth + 1, pair)
+                self.value(item, depth + 1, pair)
+                pairs.append(bytes(pair))
+            ordered = sorted(pairs)
+            if ordered == pairs:
+                self.orders += b"."
+            else:  # its insertion order, as the sorted positions its entries came in
+                ranked = sorted(range(len(pairs)), key=pairs.__getitem__)
+                self.orders += b"(" + ",".join(map(str, ranked)).encode() + b")"
+            out += b"M%d{" % len(pairs) + b"".join(ordered) + b"}"
+        else:
+            # Elements in the order of their encodings, and the orders of any dictionaries
+            # inside them with them: a set's iteration order depends on the hash seed.
+            start = len(self.orders)
+            parts = []
+            for item in _ITERATE[kind](value) if subclass else value:
+                part = bytearray()
+                before = len(self.orders)
+                self.value(item, depth + 1, part)
+                parts.append((bytes(part), bytes(self.orders[before:])))
+                del self.orders[before:]
+            parts.sort()
+            del self.orders[start:]
+            self.orders += b"".join(orders for _, orders in parts)
+            out += _SETS[kind] + b"%d(" % len(parts) + b"".join(part for part, _ in parts) + b")"
 
     def exception(self, value: BaseException, kind: type, depth: int, out: bytearray) -> None:
         out += b"R" + type_name(kind).encode("utf-8", "surrogatepass") + b"("
@@ -328,7 +342,7 @@ class _Walk:
         through the base type's own methods, then its own state."""
         out += b"W" + type_name(kind).encode("utf-8", "surrogatepass") + b"("
         if base in _SEQUENCES or base is dict or base in _SETS:
-            self.container(value, base, depth + 1, out)
+            self.container(value, base, depth + 1, out, subclass=True)
         else:
             try:
                 plain = _AS_BUILTIN[base](value)
@@ -473,10 +487,12 @@ def digests(value: Any) -> tuple[str, str, bool]:
     """The digest, the order-insensitive digest (the same when ``value`` holds no dictionary),
     and whether the walk was complete; one walk."""
     data, orders, complete = _run(value)
-    unordered = blake2b(data, digest_size=16).hexdigest()
+    hashed = blake2b(data, digest_size=16)
+    unordered = hashed.hexdigest()
     if not orders:
         return unordered, unordered, complete
-    return blake2b(data + b"#" + orders, digest_size=16).hexdigest(), unordered, complete
+    hashed.update(b"#" + orders)
+    return hashed.hexdigest(), unordered, complete
 
 
 # -- previews ------------------------------------------------------------------------------------

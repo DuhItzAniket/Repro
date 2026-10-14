@@ -39,6 +39,13 @@ BUDGET = 200
 MAX_YIELDS = 32
 Target = tuple[str, str, int, int]
 _VARARGS = 0x04  # inspect.CO_VARARGS, without importing inspect
+
+
+class _Unset:
+    """Stands for a parameter with no value in the frame."""
+
+
+_UNSET = _Unset()
 _VARKEYWORDS = 0x08  # inspect.CO_VARKEYWORDS
 
 
@@ -120,7 +127,9 @@ class Tracer:
         self.counts[key] = index + 1
         call = _Call(target, test, self.phase, index, id(code))
         local = frame.f_locals
-        arguments = [(name, local[name]) for name in _names(code) if name in local]
+        # The parameters' values in their order (their names are the function's, the same in
+        # every call); one deleted before PY_START (it cannot be) would show as the marker.
+        arguments = tuple(local.get(name, _UNSET) for name in _names(code))
         call.args, call.args_any_order, call.args_complete = digests(arguments)
         self.inflight[id(frame)] = call
         self.open[id(code)] = self.open.get(id(code), 0) + 1

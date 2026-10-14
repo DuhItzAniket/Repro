@@ -145,10 +145,12 @@ def test_guards_terminate(depth: int, width: int) -> None:
 
 
 def test_cycles_are_incomplete() -> None:
+    """An object back on its own path is tagged; a container holding itself is stopped by the
+    depth guard. Either way the encoding is incomplete."""
     for value in (hostile.cyclic(), hostile.cyclic_object()):
-        data, complete = ENCODE.encode(value)
+        _, complete = ENCODE.encode(value)
         assert complete is False
-        assert b"Y" in data
+    assert b"Y" in ENCODE.encode(hostile.cyclic_object())[0]
 
 
 @settings(max_examples=200, deadline=None)
