@@ -1,8 +1,8 @@
 """Fixture repository specs. Expected outcomes live next to them as ``<name>.toml``.
 
 ``honest-fix`` (A07), ``selection`` and ``untested`` (D05), ``flaky`` and ``test-tamper``
-(D06), ``perf-regress`` (D07). The other fixtures in TEST_STRATEGY §3 are added by the phases
-that need them.
+(D06), ``perf-regress`` (D07), ``breaks-one`` (Gate D). The other fixtures in TEST_STRATEGY §3
+are added by the phases that need them.
 """
 
 from fixtures.repo_builder import RepoSpec
@@ -403,6 +403,35 @@ PERF_REGRESS = RepoSpec(
     },
 )
 
+BREAKS_ONE = RepoSpec(
+    name="breaks-one",
+    description="A change that breaks exactly one test, and touches nothing else.",
+    base=_SHOP,
+    heads={
+        "change/discount-percent": {
+            "shop/prices.py": _PRICES.replace(
+                "return round(amount * (1 - percent / 100), 2)",
+                "return round(amount * percent / 100, 2)",
+            )
+        }
+    },
+    pr_description={
+        "change/discount-percent": (
+            "Simplify discount()\n\ndiscount() computes the discounted price more directly. "
+            "No behaviour change."
+        )
+    },
+)
+
 ALL_SPECS = {
-    spec.name: spec for spec in (HONEST_FIX, SELECTION, UNTESTED, FLAKY, TEST_TAMPER, PERF_REGRESS)
+    spec.name: spec
+    for spec in (
+        HONEST_FIX,
+        SELECTION,
+        UNTESTED,
+        FLAKY,
+        TEST_TAMPER,
+        PERF_REGRESS,
+        BREAKS_ONE,
+    )
 }

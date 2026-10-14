@@ -10,13 +10,20 @@
  * The stage also runs at a fixed device-pixel ratio in this mode (no adaptive DPR), so
  * screenshots do not depend on how fast the machine renders.
  *
- * `summary()` (C08) describes what the cockpit holds, for the Gate C test: a live run and its
- * replay must hold the same events in the same order, and so show the same state.
+ * `summary()` (C08) describes what the cockpit holds, for the gate tests: a live run and its
+ * replay must hold the same events in the same order, and so show the same state (Gate C), and
+ * Execution, Change routes and the index must show a run's outcomes (Gate D). The panel parts
+ * come from the panels' own views at the end of the data, so they are what is drawn.
  */
 import type { Signal } from "@preact/signals";
 import type { Focus } from "./focus/focus";
+import type { RowStatus } from "./model/check-index";
 import type { ClockMode, PresentationClock } from "./model/clock";
 import { type CockpitModel, type HeaderCounters, headerCounters } from "./model/cockpit";
+import type { CheckResult } from "./model/projections/checks";
+import { indexPanel } from "./panels/check-index";
+import { kindOf } from "./panels/execution";
+import { routesPanel } from "./panels/routes";
 import type { StageHost } from "./stage/host";
 import { clampLook, DEFAULT_LOOK, type Look } from "./stage/look";
 import type { RingModel } from "./stage/ring/layers";
@@ -29,6 +36,29 @@ export interface RenderOptions {
   readonly look?: unknown;
   /** Whether the stage settings menu is open (B15). */
   readonly settings?: boolean;
+}
+
+/** One Execution lane's settled runs: how many, and the tests drawn as failed. */
+export interface LaneSummary {
+  readonly runs: number;
+  readonly failed: readonly string[];
+}
+
+export interface PanelsSummary {
+  /** Execution (panel 2): per side, as the lanes draw it (`base_repeat` is A′). */
+  readonly execution: Readonly<Record<"base" | "base_repeat" | "head", LaneSummary>>;
+  /** Change routes (panel 5): one row per changed symbol. */
+  readonly routes: readonly {
+    readonly symbol: string;
+    readonly tests: number;
+    readonly step: number;
+    readonly checks: Readonly<Record<CheckResult, number>>;
+  }[];
+  /** The change×check index (panel 8): each check's result, and each row's status. */
+  readonly index: {
+    readonly results: readonly CheckResult[];
+    readonly rows: readonly { readonly id: string; readonly status: RowStatus }[];
+  };
 }
 
 export interface CockpitSummary {
@@ -47,6 +77,7 @@ export interface CockpitSummary {
   readonly mode: ClockMode;
   /** Presentation time of the last event (ms). */
   readonly end: number;
+  readonly panels: PanelsSummary;
 }
 
 export interface TestHook {
@@ -63,6 +94,42 @@ function fnv1a(text: string, hash: number): number {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h;
+}
+
+function panelsSummary(model: CockpitModel): PanelsSummary {
+  const end = model.store.endTime;
+  const cursor = model.store.length;
+  const lanes = {
+    base: new Set<string>(),
+    base_repeat: new Set<string>(),
+    head: new Set<string>(),
+  };
+  const runs = { base: 0, base_repeat: 0, head: 0 };
+  for (const run of model.tests.runs) {
+    const kind = kindOf(run, cursor);
+    if (kind === "running") continue;
+    runs[run.side]++;
+    if (kind === "failed") lanes[run.side].add(run.test);
+  }
+  const lane = (side: keyof typeof runs): LaneSummary => ({
+    runs: runs[side],
+    failed: [...lanes[side]].sort(),
+  });
+  const routes = routesPanel(model).view(end, cursor);
+  const index = indexPanel(model).view(end, cursor);
+  return {
+    execution: { base: lane("base"), base_repeat: lane("base_repeat"), head: lane("head") },
+    routes: routes.rows.map((row) => ({
+      symbol: row.symbolId,
+      tests: row.tests,
+      step: row.step,
+      checks: row.checks,
+    })),
+    index: {
+      results: index.results,
+      rows: index.rows.map((row) => ({ id: row.id, status: row.status })),
+    },
+  };
 }
 
 export function summarise(model: CockpitModel, mode: ClockMode): CockpitSummary {
@@ -91,6 +158,7 @@ export function summarise(model: CockpitModel, mode: ClockMode): CockpitSummary 
     finished: (kinds["run.finished"] ?? 0) > 0,
     mode,
     end: store.endTime,
+    panels: panelsSummary(model),
   };
 }
 

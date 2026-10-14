@@ -27,7 +27,7 @@ from repro_events import models
 
 FIXTURES = Path(__file__).parent / "fixtures"
 RUN_ID = new_run_id()
-FIXTURE_NAMES = ["honest-fix", "selection", "untested", "flaky", "test-tamper"]
+FIXTURE_NAMES = ["honest-fix", "selection", "untested", "flaky", "test-tamper", "breaks-one"]
 
 
 @pytest.fixture(scope="module")

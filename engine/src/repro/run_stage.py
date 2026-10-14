@@ -145,8 +145,10 @@ class _TestEvents:
 
     def observe(self, record: RunRecord) -> None:
         results = record.run.results
+        listed = record.label == "head tests"  # collected only, not run
+        count = len(results.collected) if listed else len(results.tests)
         self.ctx.log(
-            f"{record.side} {record.label}: {len(results.tests)} tests reported"
+            f"{record.side} {record.label}: {count} tests {'collected' if listed else 'reported'}"
             + ("" if results.complete else " (the run did not finish)")
         )
         if record.label in _NOT_ATTEMPTS:

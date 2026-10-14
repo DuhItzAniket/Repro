@@ -332,7 +332,7 @@ and manually on Windows.
 **Goal:** run the right tests on both sides, honestly isolated, and turn outcomes, test edits
 and timings into evidence.
 
-**Gate D:** a branch that breaks one test shows exactly that test flipping (P2F) in Execution,
+**Gate D (passed 2026-10-15, v0.4.0, record: [`phases/D-gate.md`](phases/D-gate.md)):** a branch that breaks one test shows exactly that test flipping (P2F) in Execution,
 Change routes and the index. A branch that deletes or weakens a test is flagged as test tampering.
 The sandbox escape suite passes at the level the card claims.
 
