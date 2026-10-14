@@ -84,6 +84,9 @@ repro/
 Dependency rule: `plugin/` is **stdlib-only**. It runs inside arbitrary target environments
 with Python 3.12–3.15, so it cannot import engine code or third-party packages. It talks to the
 engine through files written to an output directory that the engine mounts or collects.
+As built (D04): the plugin is `sandbox/_hook/repro_pytest.py`, beside the audit hook, in the
+directory both sandboxes put first on `PYTHONPATH`; besides the standard library it imports only
+pytest, which is always there.
 
 ## 4. Run pipeline
 
@@ -110,7 +113,9 @@ Determinism controls applied to every sandboxed run: fixed `PYTHONHASHSEED` (A a
 the same seed; A′ uses a different one), `-p no:randomly` (or a fixed `--randomly-seed`),
 no xdist (Repro shards deterministically itself if needed), `-o addopts=` override with
 Repro's own flags, `PYTHONUTF8=1`, pinned `TZ`/locale, and a minimal environment with no host
-secrets.
+secrets. As built (D04, `repro.runner`): `-p no:randomly -p no:xdist -p no:cacheprovider
+--continue-on-collection-errors`, `TZ=UTC`, `LC_ALL=C.UTF-8`, `random` seeded per test from the
+run's seed and the node ID, and the plugin's net guard (loopback only) on every level.
 
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector

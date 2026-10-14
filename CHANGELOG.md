@@ -29,6 +29,14 @@ All notable changes to this project are documented here. The format follows
   in containers, and their tests pass in the result. A failed install is an `environment_failed`
   item with uv's reason. Repro's sandbox image adds `less`, `git`, `procps` and `tzdata`, with
   uv 0.13.0. [D03]
+- Repro's pytest plugin and test command: each test's outcome (`passed`, `failed`, `error`,
+  `skipped`, `xfailed`, `xpassed`), the phase where it did not pass and why, written to a results
+  file as the run goes and read back as untrusted input; a run that dies or times out is
+  incomplete, never passing. The project's `addopts`, random order and xdist are overridden, a
+  module that fails to import no longer hides the other tests, `random` is seeded per test, time
+  zone and locale are pinned, and a network guard fails non-loopback connections at once and
+  records them. The plugin's suite passes on Python 3.12, 3.13, 3.14 and 3.15, and in a
+  container. [D04]
 
 ### Fixed
 - Evidence could not be emitted through the event bus: it validated `evidence.created` events

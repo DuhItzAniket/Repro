@@ -140,9 +140,14 @@ class ProcessSandbox:
         }
 
     def environment(
-        self, cwd: Path, run_dir: Path, extra: Mapping[str, str] | None = None
+        self,
+        cwd: Path,
+        run_dir: Path,
+        extra: Mapping[str, str] | None = None,
+        writable: Sequence[Path] = (),
     ) -> dict[str, str]:
-        """The command's environment: minimal, and Repro's hook first on ``PYTHONPATH``."""
+        """The command's environment: minimal, and Repro's hook first on ``PYTHONPATH``.
+        Writes in ``cwd``, the run's directory and ``writable`` are expected, not detections."""
         home, tmp = run_dir / "home", run_dir / "tmp"
         for directory in (home, tmp):
             directory.mkdir(parents=True, exist_ok=True)
@@ -167,7 +172,7 @@ class ProcessSandbox:
         env.update(extra)
         env["PYTHONPATH"] = os.pathsep.join(python_path)  # the hook first, always
         env[AUDIT_LOG_ENV] = str(run_dir / "audit.jsonl")
-        env[AUDIT_ROOTS_ENV] = os.pathsep.join([str(cwd), str(run_dir)])
+        env[AUDIT_ROOTS_ENV] = os.pathsep.join([str(cwd), str(run_dir), *map(str, writable)])
         return env
 
     def run(
@@ -178,15 +183,17 @@ class ProcessSandbox:
         env: Mapping[str, str] | None = None,
         timeout_s: float | None = None,
         stop: Callable[[], bool] | None = None,
+        writable: Sequence[Path] = (),
     ) -> Execution:
-        """Runs ``argv`` to its end, its timeout, or until ``stop()`` says so."""
+        """Runs ``argv`` to its end, its timeout, or until ``stop()`` says so; ``writable``
+        names directories, besides ``cwd``, the command is meant to write in."""
         if not argv:
             raise SandboxError("no command")
         with self._lock:
             self._runs += 1
             run_dir = self.work / f"run-{self._runs}"
         run_dir.mkdir(parents=True, exist_ok=False)
-        environment = self.environment(cwd, run_dir, env)
+        environment = self.environment(cwd, run_dir, env, writable)
         executable = shutil.which(argv[0], path=environment.get("PATH"))
         if executable is None:
             if not Path(argv[0]).is_file():

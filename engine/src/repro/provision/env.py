@@ -109,9 +109,11 @@ class Environment:
         }
 
 
-def spec_for(project: Project, *, platform: str, exclude_newer: str | None) -> EnvSpec:
+def spec_for(
+    project: Project, *, platform: str, exclude_newer: str | None, python: str = PYTHON
+) -> EnvSpec:
     return EnvSpec(
-        python=PYTHON,
+        python=python,
         platform=platform,
         requirements=(*project.requirements, *project.build_requires),
         exclude_newer=exclude_newer,
@@ -155,7 +157,8 @@ def _project_install(python: str) -> list[str]:
 
 
 class HostProvisioner:
-    """Environments on the host, for the process sandbox (L2)."""
+    """Environments on the host, for the process sandbox (L2), with uv's Python ``python``
+    (3.13 unless asked: the plugin's own tests use 3.12 to 3.15)."""
 
     def __init__(
         self,
@@ -164,8 +167,10 @@ class HostProvisioner:
         uv: str = "uv",
         index: str = PYPI,
         exclude_newer: str | None = None,
+        python: str = PYTHON,
     ) -> None:
         self.cache = cache
+        self.python = python
         self.uv = uv
         self.index = index
         self.exclude_newer = exclude_newer
@@ -212,7 +217,9 @@ class HostProvisioner:
 
     def provision(self, side: str, project: Project, sandbox: ProcessSandbox) -> Environment:
         started = time.monotonic()
-        spec = spec_for(project, platform=_host_platform(), exclude_newer=self.exclude_newer)
+        spec = spec_for(
+            project, platform=_host_platform(), exclude_newer=self.exclude_newer, python=self.python
+        )
         cached, hit = self.dependencies(spec)
         env_dir = sandbox.work / "env"
         shutil.copytree(cached / "venv", env_dir, symlinks=True)
