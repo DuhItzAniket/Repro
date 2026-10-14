@@ -528,7 +528,12 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
 - **Logging:** structured JSON logs for engine internals. User-visible activity is `log.line`
   events. Secrets are never logged.
 - **Errors:** every stage failure becomes events (`status: fail`) plus missing items. A run
-  always ends with `run.finished` and, where possible, a card.
+  always ends with `run.finished` and, where possible, a card. In the orchestrator (C03) a failed
+  or timed-out job emits a `log.line` with status `fail` and a `missing.recorded` item (a timeout's
+  reason is `timeout`); a job whose dependency did not succeed is skipped and records its missing
+  item; `run.finished` is emitted in a `finally`. Jobs run on daemon threads; timeouts and
+  cancellation are cooperative inside Python and forceful for subprocesses (the process tree is
+  killed).
 - **Windows specifics:** `git -c core.longpaths=true` per command (the user's global config is
   never modified). Run roots are short (`%LOCALAPPDATA%\repro\r\<id8>`). Cleanup goes Job
   Object kill, then `rmtree(onexc=…)` with retry, then `git worktree prune`. Opening the
