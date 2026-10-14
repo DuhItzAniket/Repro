@@ -53,8 +53,19 @@ All notable changes to this project are documented here. The format follows
   failing on head) as evidence too. Flaky tests, unfinished runs and collection errors are
   missing items; an environment that cannot be built makes the change unverifiable, not the run
   fail. `--analyse-only` keeps the build stage alone. New fixtures `flaky` and `test-tamper`. [D06]
+- The performance pass: the tests that pass on both sides are timed untraced, base and head
+  interleaved (ABBA), ten runs a side; each gets the ratio of medians with a BCa bootstrap 95 %
+  interval, and is a regression or an improvement only if the interval excludes 1, the change
+  clears the noise floor (10 %, or the A/A spread measured in the same runs if larger) and a
+  Mann-Whitney test stays significant across tests (Benjamini-Hochberg). Tests too fast to time
+  are listed as not assessable. New fixture `perf-regress`. [D07]
 
 ### Fixed
+- The repeat base run (A2) reported its tests on the `base` side; it now uses the schema's
+  `base_repeat`, so the cockpit's Execution panel shows it apart from base. [D07]
+- The run stage's check events now carry the statuses ADR-0015 defines: a P2F and every
+  test-tampering finding are `fail`, not `warn`, so the index flags them without waiting for
+  review. [D07]
 - Two builds of the same cached dependencies' environment in containers at once (both sides
   of a run, or two runs) wrote into one volume and failed; each build now has its own. [D06]
 - A snapshot that left entries out (a symlink, a submodule) failed its job: the warning

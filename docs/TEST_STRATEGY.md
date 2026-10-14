@@ -68,7 +68,7 @@ OS**. A test pins them.
 Each fixture's expected outcome lives next to the specs as `<name>.toml` (stdlib `tomllib`).
 From Stage D on, integration tests assert it end to end. Fixtures are added by the phase that
 first needs them; `honest-fix` exists since A07, `selection` and `untested` since D05,
-`flaky` and `test-tamper` since D06.
+`flaky` and `test-tamper` since D06, `perf-regress` since D07.
 
 ### Golden files and property tests
 

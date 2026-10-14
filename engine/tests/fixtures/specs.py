@@ -1,7 +1,8 @@
 """Fixture repository specs. Expected outcomes live next to them as ``<name>.toml``.
 
 ``honest-fix`` (A07), ``selection`` and ``untested`` (D05), ``flaky`` and ``test-tamper``
-(D06). The other fixtures in TEST_STRATEGY §3 are added by the phases that need them.
+(D06), ``perf-regress`` (D07). The other fixtures in TEST_STRATEGY §3 are added by the phases
+that need them.
 """
 
 from fixtures.repo_builder import RepoSpec
@@ -346,4 +347,62 @@ TEST_TAMPER = RepoSpec(
     },
 )
 
-ALL_SPECS = {spec.name: spec for spec in (HONEST_FIX, SELECTION, UNTESTED, FLAKY, TEST_TAMPER)}
+_TAGS = """\"\"\"Tags.\"\"\"
+
+
+def unique_tags(tags):
+    return sorted(set(tags))
+"""
+
+_TAGS_QUADRATIC = """\"\"\"Tags.\"\"\"
+
+
+def unique_tags(tags):
+    seen = []
+    for tag in tags:
+        if tag not in seen:
+            seen.append(tag)
+    return sorted(seen)
+"""
+
+_TEST_TAGS = """from tags.core import unique_tags
+
+TAGS = [f"tag{i % 50}" for i in range(50_000)]
+VALUES = [(i * 7919) % 100_003 for i in range(200_000)]
+
+
+def test_unique_tags():
+    for _ in range(20):
+        assert len(unique_tags(TAGS)) == 50
+
+
+def test_report_is_sorted():
+    assert sorted(VALUES)[0] == 0
+    assert unique_tags(["b", "a", "b"]) == ["a", "b"]
+
+
+def test_unique_tags_small():
+    assert unique_tags(["b", "a"]) == ["a", "b"]
+"""
+
+PERF_REGRESS = RepoSpec(
+    name="perf-regress",
+    description="A quadratic loop in a hot path, and a test whose time it does not change.",
+    base={
+        "pyproject.toml": '[project]\nname = "tags-fixture"\nversion = "0.1.0"\n',
+        "tags/__init__.py": "",
+        "tags/core.py": _TAGS,
+        "tests/test_tags.py": _TEST_TAGS,
+    },
+    heads={"refactor/no-set": {"tags/core.py": _TAGS_QUADRATIC}},
+    pr_description={
+        "refactor/no-set": (
+            "Keep tags in first-seen order before sorting\n\n"
+            "unique_tags() no longer builds a set. No behaviour change."
+        )
+    },
+)
+
+ALL_SPECS = {
+    spec.name: spec for spec in (HONEST_FIX, SELECTION, UNTESTED, FLAKY, TEST_TAMPER, PERF_REGRESS)
+}

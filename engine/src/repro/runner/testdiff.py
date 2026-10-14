@@ -67,6 +67,12 @@ class TestChange:
     change: TestChangeKind
     detail: str
 
+    @property
+    def status(self) -> str:
+        """The ``diff.tests`` envelope status (ADR-0015 §2): ``warn`` for a test that only
+        changed, ``fail`` for every finding that is a problem on its own."""
+        return "warn" if self.change == "test_modified" else "fail"
+
     def evidence(self, run_id: str) -> dict[str, Any]:
         """The ``test_change`` evidence record (``evidence.created``; the writer adds ``seq``)."""
         target: dict[str, str] = {"file": self.file}

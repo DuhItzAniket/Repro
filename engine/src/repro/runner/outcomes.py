@@ -65,6 +65,17 @@ class OutcomeDiff:
     def flip(self) -> bool:
         return self.outcome_class in ("F2P", "P2F")
 
+    @property
+    def status(self) -> str:
+        """The ``diff.outcome`` envelope status (ADR-0015 §2): ``ok`` for P2P, F2P and a new
+        test passing on head; ``fail`` for P2F and a new test failing on head; ``warn`` for
+        F2F, removed, modified and flaky."""
+        if self.outcome_class in ("P2P", "F2P"):
+            return "ok"
+        if self.outcome_class == "new":
+            return "ok" if passes(self.head) else "fail"
+        return "fail" if self.outcome_class == "P2F" else "warn"
+
     def summary(self) -> str:
         base = self.base or "absent"
         head = self.head or "absent"

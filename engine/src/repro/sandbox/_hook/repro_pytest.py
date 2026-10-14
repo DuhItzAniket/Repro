@@ -270,7 +270,7 @@ def pytest_runtest_logreport(report: Any) -> None:
     entry = tests.setdefault(
         report.nodeid,
         {"kind": "test", "nodeid": report.nodeid, "outcome": None, "duration_s": 0.0,
-         "phase": None, "message": None},
+         "call_s": None, "phase": None, "message": None},
     )  # fmt: skip
     entry["duration_s"] += float(getattr(report, "duration", 0.0))
     outcome = _outcome(report)
@@ -278,6 +278,7 @@ def pytest_runtest_logreport(report: Any) -> None:
         entry.update(outcome=outcome, phase="setup", message=_message(report))
     elif report.when == "call":
         entry["outcome"] = outcome
+        entry["call_s"] = round(float(getattr(report, "duration", 0.0)), 9)  # D07: timing
         if outcome != "passed":
             entry.update(phase="call", message=_message(report))
     elif report.when == "teardown":

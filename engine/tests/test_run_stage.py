@@ -71,23 +71,43 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             found.append(f"test_outcome:{data['class']}:{target['test']}")
         elif item["type"] == "test_change":
             found.append(f"test_change:{data['change']}:{target.get('test') or target['file']}")
+        elif item["type"] == "perf_diff":
+            found.append(f"perf_diff:{data['verdict']}:{target['test']}")
     assert sorted(found) == sorted(expected["expected"]["evidence"]), log
-    cited = [
-        e["payload"]["evidence_id"] for e in events if e["kind"] in ("diff.outcome", "diff.tests")
-    ]
-    assert sorted(cited) == sorted(
-        i for i, item in evidence.items() if item["type"] in ("test_outcome", "test_change")
-    )
+    diffs = ("diff.outcome", "diff.tests", "diff.perf")
+    cited = [e["payload"]["evidence_id"] for e in events if e["kind"] in diffs]
+    compared = ("test_outcome", "test_change", "perf_diff")
+    assert sorted(cited) == sorted(i for i, item in evidence.items() if item["type"] in compared)
+    for event in events:  # ADR-0015 §2: what each check's status means without claims
+        payload = event["payload"]
+        if event["kind"] == "diff.outcome":
+            kind = payload["class"]
+            passing = payload["head_outcome"] in ("passed", "xfailed", "xpassed")
+            expected_status = (
+                "ok"
+                if kind in ("P2P", "F2P") or (kind == "new" and passing)
+                else "fail"
+                if kind in {"P2F", "new"}
+                else "warn"
+            )
+        elif event["kind"] == "diff.tests":
+            expected_status = "warn" if payload["change"] == "test_modified" else "fail"
+        elif event["kind"] == "diff.perf":
+            expected_status = "ok" if payload["verdict"] in ("improvement", "no_change") else "warn"
+        else:
+            continue
+        assert event["status"] == expected_status, (event["kind"], payload)
     missing = []
     for event in events:
         if event["kind"] == "missing.recorded":
             item = event["payload"]["missing"]
-            target = item["targets"][0] if item["targets"] else {}
-            missing.append(f"{item['reason']}:{target.get('symbol') or target.get('test') or ''}")
+            for target in item["targets"] or [{}]:
+                name = target.get("symbol") or target.get("test") or ""
+                missing.append(f"{item['reason']}:{name}")
     assert sorted(missing) == sorted(expected["expected"]["missing"]), log
 
 
-@pytest.mark.parametrize("name", ["honest-fix", "test-tamper"])
+@pytest.mark.parametrize("name", ["honest-fix", "test-tamper", "perf-regress"])
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     events = run_fixture(name, tmp_path, "process")
     check_against_expectation(name, events)
@@ -97,6 +117,9 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
     assert {r["backend"] for r in ready} == {"process"}
     assert {r["network"] for r in ready} == {"detected-only"}
+    if name == "perf-regress":  # ABBA: ten timing runs on each side, three tests timed
+        samples = Counter(e["payload"]["side"] for e in events if e["kind"] == "perf.sample")
+        assert samples == {"base": 30, "head": 30}
     stages = [e["stage"] for e in events if e["kind"] == "stage.started"]
     assert stages == ["build", "run", "diff"]  # claims (read) arrive in Stage G
     assert events[-1]["kind"] == "run.finished"
@@ -116,14 +139,15 @@ def test_test_events_count_attempts(tmp_path: Path) -> None:
         if e["kind"] == "test.finished"
     ]
     test = "tests/test_dates.py::test_parse_date_with_timezone"
-    # A, A2, then three reruns on base; H, then three reruns on head.
+    # Base: A, then three reruns; A2 is the repeat base run, a side of its own (base_repeat).
     assert [f[2:] for f in finished if f[0] == test and f[1] == "base"] == [
         (1, "failed"),
         (2, "failed"),
         (3, "failed"),
         (4, "failed"),
-        (5, "failed"),
     ]
+    assert [f[2:] for f in finished if f[0] == test and f[1] == "base_repeat"] == [(1, "failed")]
+    # Head: H, then three reruns.
     assert [f[2:] for f in finished if f[0] == test and f[1] == "head"] == [
         (1, "passed"),
         (2, "passed"),
