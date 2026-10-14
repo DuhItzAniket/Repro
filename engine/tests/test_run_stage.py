@@ -139,14 +139,15 @@ def test_test_events_count_attempts(tmp_path: Path) -> None:
         if e["kind"] == "test.finished"
     ]
     test = "tests/test_dates.py::test_parse_date_with_timezone"
-    # A, A2, then three reruns on base; H, then three reruns on head.
+    # Base: A, then three reruns; A2 is the repeat base run, a side of its own (base_repeat).
     assert [f[2:] for f in finished if f[0] == test and f[1] == "base"] == [
         (1, "failed"),
         (2, "failed"),
         (3, "failed"),
         (4, "failed"),
-        (5, "failed"),
     ]
+    assert [f[2:] for f in finished if f[0] == test and f[1] == "base_repeat"] == [(1, "failed")]
+    # Head: H, then three reruns.
     assert [f[2:] for f in finished if f[0] == test and f[1] == "head"] == [
         (1, "passed"),
         (2, "passed"),

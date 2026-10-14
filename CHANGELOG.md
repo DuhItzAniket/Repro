@@ -61,6 +61,8 @@ All notable changes to this project are documented here. The format follows
   are listed as not assessable. New fixture `perf-regress`. [D07]
 
 ### Fixed
+- The repeat base run (A2) reported its tests on the `base` side; it now uses the schema's
+  `base_repeat`, so the cockpit's Execution panel shows it apart from base. [D07]
 - The run stage's check events now carry the statuses ADR-0015 defines: a P2F and every
   test-tampering finding are `fail`, not `warn`, so the index flags them without waiting for
   review. [D07]

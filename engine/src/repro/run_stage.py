@@ -151,15 +151,18 @@ class _TestEvents:
         )
         if record.label in _NOT_ATTEMPTS:
             return
+        # The repeat base run (A2: the docs' A-prime) has a side of its own: the cockpit draws it
+        # dimmer in the BASE lane, with its own counts.
+        side = "base_repeat" if record.label == "A2" else record.side
         for test in record.tests:
             found = results.tests.get(test)
             if found is None:
                 continue
-            key = (record.side, test)
+            key = (side, test)
             self.attempts[key] += 1
             attempt = self.attempts[key]
             target = {"test": test}
-            payload = {"side": record.side, "attempt": attempt}
+            payload = {"side": side, "attempt": attempt}
             self.ctx.emit("test.started", status="progress", payload=payload, target=target)
             finished = {
                 **payload,
