@@ -69,6 +69,15 @@ a process group with resource limits on POSIX; the network is detected, not enfo
 `DockerSandbox(work, git, commit, limits=…)` runs at L3: the commit in a volume of its own, each
 command in a hardened container with no network; `read_file` reads a result back.
 
+## Provisioning
+
+`repro.provision.inspect_project(snapshot)` reads a project's kind (uv, poetry, pdm,
+requirements, setuptools) and its requirements from its files. `HostProvisioner` (the process
+sandbox) and `DockerProvisioner` (containers, in `repro.sandbox.image`'s image) build the
+dependencies' environment from wheels, cache it, copy it for the side and install the project
+offline in the sandbox; `Environment.payload()` is `env.provisioned`, and a failure is a
+`ProvisionError` whose reason `environment_missing` turns into an `environment_failed` item.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,

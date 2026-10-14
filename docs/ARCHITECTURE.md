@@ -342,11 +342,13 @@ Rules:
   in-process socket patches are trivially bypassed (research/03 §6.1).
 - Network can be reported as *enforced* only at L3 or above. Otherwise the card says
   `network: detected-only`.
-- The provision pass is the only pass with egress, limited to the package index. Alternatively,
-  wheels are prefetched on the host and installed with `UV_OFFLINE=1`. Sdist builds run inside
-  the sandbox.
-- Sandboxed uv uses `--link-mode copy` with a read-only cache, so target code cannot poison the
-  shared cache through hardlinks (research/03 §7).
+- The provision pass is the only pass with egress, limited to the package index. As built
+  (D03): the dependencies are installed from wheels only (`--no-build`) into an environment that
+  holds nothing of the project, cached by the digest of what it holds and copied for each side;
+  then the project is built offline in the sandbox. Requirements naming anything but the index
+  are refused beforehand.
+- uv uses `--link-mode copy`. uv cannot use a read-only cache (D03 measured it), so no cache is
+  shared with target code: each side's uv cache is its own and thrown away (research/03 §7).
 - Target code never runs in a linked worktree on the host. A linked worktree shares the host
   repo's `.git` config and hooks.
 - **L0–L2 as built (D01, `repro.sandbox`):** a minimal environment with a fresh home and

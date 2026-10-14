@@ -21,6 +21,14 @@ All notable changes to this project are documented here. The format follows
   `ctypes`, a subprocess reaching out, writes outside the work directory, the host's `.git`) is
   blocked, and `sandbox.ready` reports the network `enforced`. `repro doctor` reports the level
   runs reach. [D02]
+- Environment provisioning: the project's kind (uv, poetry, pdm, requirements, setuptools) and
+  requirements are read from its files, refusing anything but the package index. The
+  dependencies are installed from wheels only, before any target code runs, into an environment
+  cached by its digest and shared by both sides and later runs; the project is then built
+  offline in the sandbox. Five fixture projects provision on Windows and Linux, on the host and
+  in containers, and their tests pass in the result. A failed install is an `environment_failed`
+  item with uv's reason. Repro's sandbox image adds `less`, `git`, `procps` and `tzdata`, with
+  uv 0.13.0. [D03]
 
 ### Fixed
 - Evidence could not be emitted through the event bus: it validated `evidence.created` events

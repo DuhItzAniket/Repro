@@ -48,6 +48,14 @@ Other findings:
 - Container start-up and volume copies add latency. Phase D02 measures this and caches
   environment images keyed by lockfile digest.
 
+## Implementation note (D03, 2026-10-14)
+Point 4's "read-only cache" cannot be built with uv: uv opens files in its cache for writing
+whenever it initialises one, so a cache mounted read-only fails ("Failed to initialize cache",
+`EROFS`, measured with uv 0.13.0). The decision's intent, that target code can never poison what
+later runs reuse, is kept another way: the shared, cached thing is a dependencies-only
+environment built from wheels with `--no-build` before any target code runs, and each side gets
+a copy of it plus a throwaway uv cache of its own (`phases/D03-provisioning.md`).
+
 ## Measured (A08, 2026-10-13)
 `spikes/A08/RESULTS.md` §2–3. Docker Desktop 29.8.2 (WSL2) on Windows 11 Home:
 - **Network:** `--network none` blocks network for real (`ENETUNREACH`, and DNS fails).
