@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D06 |
-| **Branch / PR** | `phase/D07-performance-pass` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/D07-performance-pass` · [#44](https://github.com/DuhItzAniket/Repro/pull/44) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Say whether a change made the code it tests slower or faster, with a confidence interval and
@@ -77,7 +77,8 @@ the noise this machine produces, and say explicitly when a test is too fast to t
 - The run stage's check events now carry exactly ADR-0015's statuses (`P2F` and test-tampering
   findings `fail`; `F2F`, removed, modified, flaky and `test_modified` `warn`; a perf
   regression `warn`), asserted end to end against the ADR's table.
-- Tests: `test_perf.py` (8), `perf-regress` end to end. pytest 1063 → 1073 (1071 pass and 2
+- Tests: `test_perf.py` (8), `perf-regress` end to end, two concurrent-build tests. pytest
+  1063 → 1075 (1073 pass and 2
   skip on Windows with Docker Desktop).
 
 ## Evidence
@@ -85,7 +86,7 @@ the noise this machine produces, and say explicitly when a test is too fast to t
   9 ms a call on base, about 190 ms on head, measured here with `timeit`), `test_report_is_sorted`
   no change, `test_unique_tags_small` not assessable; the A/A run (20 runs a side) gives no
   change for both timed tests.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#44).
 
 ## Deviations from spec
 - The A/A calibration comes from the ABBA runs themselves, not from a separate base-against-base

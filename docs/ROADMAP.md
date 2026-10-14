@@ -344,7 +344,7 @@ The sandbox escape suite passes at the level the card claims.
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | done |
 | D05 | Test selection via per-test function map | M | D04, C07 | done |
 | D06 | Two-sided execution, outcome & test-change diff, flake control | L | D05 | done |
-| D07 | Performance pass | M | D06 | in progress |
+| D07 | Performance pass | M | D06 | done |
 
 **D01** Process runner, minimal environment, Windows Job Objects / POSIX process groups and
 rlimits, timeouts, kill and cleanup, `sandbox.ready` with isolation level. Audit-hook
@@ -702,3 +702,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | D04 | 2026-10-15 | [#41](https://github.com/DuhItzAniket/Repro/pull/41) | Repro's pytest plugin and command: per-test outcomes to a results file read as untrusted input, per-test random seeds, a loopback-only network guard recorded by the audit hook, pinned TZ and locale, collection errors no longer hide other tests; passes on Python 3.12–3.15 and in a container, under pytest 9.1.1 and 8.3.3 |
 | D05 | 2026-10-15 | [#42](https://github.com/DuhItzAniket/Repro/pull/42) | Test selection: per-test function map from `sys.monitoring` (places relative to the snapshot, resolved to C06 symbols); tests selected by what ran on base, module-level changes over both import graphs, and added or edited tests, each with reasons; changed symbols no selected test runs become `no_covering_test`; base maps cached; same map on host and in a container; fixtures `selection` and `untested` |
 | D06 | 2026-10-15 | [#43](https://github.com/DuhItzAniket/Repro/pull/43) | Two-sided execution in `repro run`: sandboxes and environments per side, A / A2 (reverse order, other hash seed) / H on the selected tests, k = 3 reruns of flips, edited tests' base versions on head; outcome classes and test-change evidence (removed tests, new skips and xfails, weaker assertions, widened raises); flaky tests and unfinished runs as missing items; an unbuildable environment is unverifiable, not a failed run; fixtures `flaky` and `test-tamper` |
+| D07 | 2026-10-15 | [#44](https://github.com/DuhItzAniket/Repro/pull/44) | Performance pass: the tests passing on both sides timed untraced in ABBA blocks (10 runs a side, call phase); ratio of medians with a BCa 95 % interval, Mann-Whitney with Benjamini-Hochberg, noise floor max(10 %, A/A spread from base's own samples), 5 ms timing floor and `perf_not_assessable`; fixture `perf-regress`; statistics checked against SciPy and statsmodels |
