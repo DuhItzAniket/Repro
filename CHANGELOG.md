@@ -24,6 +24,14 @@ All notable changes to this project are documented here. The format follows
   atomically and confined to their run's directory. ULIDs with the schema's prefixes; `repro
   doctor` also checks SQLite (3.37+). 100k events round-trip in order, and a writer killed
   mid-transaction or at random leaves a consistent database. [C02]
+- The event bus: builds envelopes (ULID, time, `v`, the kind's `pv`, producer), scrubs GitHub
+  tokens, AWS access key IDs, PEM private keys and `Bearer` credentials, validates each event
+  against its kind's generated model, and publishes to subscribers only after the commit. [C03]
+- The orchestrator: a run's jobs as a DAG on daemon threads with a concurrency limit, per-job
+  timeouts and cancellation (subprocess trees are killed). Failed, timed-out and skipped jobs
+  become `fail` events and missing items; `stage.started`/`stage.finished` frame each stage; and
+  `run.finished` (outcome, duration, counts) is always emitted, followed by the run registry and
+  a WAL checkpoint. A golden log pins a stub pipeline. [C03]
 
 ## [0.2.0] - 2026-10-14
 

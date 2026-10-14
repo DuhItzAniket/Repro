@@ -24,6 +24,15 @@ commit. `StoreReader` pages through a run's events read-only. `ArtifactStore` wr
 content-addressed files atomically. The schema itself enforces append-only events and evidence
 and gap-free `seq` (ARCHITECTURE §11).
 
+## Bus and orchestrator
+
+`repro.bus.EventBus` is the one way events enter the store: it builds the envelope, removes
+recognised credentials, validates the event against its kind's generated model, and submits it
+to the writer; subscribers get events only after they are committed. `repro.orchestrator` runs a
+run's jobs as a DAG on daemon threads (at most `concurrency` at once), with per-job timeouts and
+cancellation; failures, timeouts and skipped jobs are recorded as `fail` events and missing
+items, and `run.finished` is always emitted.
+
 ## Settings
 
 Each setting comes from, in order: a command-line flag, a `REPRO_*` environment variable, the
