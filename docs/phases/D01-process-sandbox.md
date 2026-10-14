@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C03, A08 |
-| **Branch / PR** | `phase/D01-process-sandbox` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/D01-process-sandbox` · [#38](https://github.com/DuhItzAniket/Repro/pull/38) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 Target commands run in a sandbox that states the isolation it actually achieves: their own
@@ -63,9 +63,9 @@ attempts become evidence.
   It now validates with a placeholder, as it already did for the event's own `seq`.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): fork-bomb, memory-hog and timeout fixtures are contained.
-- [ ] AC2 (roadmap): detected network and subprocess attempts become evidence.
-- [ ] AC3: the sandbox states the level it achieved: `sandbox.ready` is never above it.
+- [x] AC1 (roadmap): fork-bomb, memory-hog and timeout fixtures are contained.
+- [x] AC2 (roadmap): detected network and subprocess attempts become evidence.
+- [x] AC3: the sandbox states the level it achieved: `sandbox.ready` is never above it.
 
 ## Test plan
 | Criterion | Check |
@@ -99,7 +99,7 @@ attempts become evidence.
   0.47 s in the sandbox on Windows, and all three attempts are reported; a write inside its own
   directory is not.
 - `repro doctor` on Windows: `containment  L2: Job Object`.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#38).
 
 ## Deviations from spec
 - The roadmap names "audit-hook detection"; subprocess and file-write attempts needed evidence
