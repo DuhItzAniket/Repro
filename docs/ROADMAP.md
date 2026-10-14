@@ -124,10 +124,10 @@ ADRs or phase records.
 **Goal:** the complete visual product, driven only by a recorded event log, built to the
 DESIGN.md spec and performance budget.
 
-**Gate B (first passed 2026-10-14. Re-opened the same day: the owner's review against a sharper
-copy of the reference found that the stage still did not match it, and B14 was added. v0.2.0 is
-tagged once the owner confirms the new side-by-side. Record: [`phases/B-gate.md`](phases/B-gate.md);
-the mid-laptop 60 fps check is still owed by the owner):** side by side with the reference frame
+**Gate B (passed 2026-10-14. Re-opened the same day: the owner's review against a sharper copy
+of the reference found that the stage still did not match it, and B14 and B15 were added; the
+owner approved the look the same day and v0.2.0 was tagged. Record:
+[`phases/B-gate.md`](phases/B-gate.md); the mid-laptop 60 fps check is still owed by the owner):** side by side with the reference frame
 at 6 s, it reads as the same visual family.
 The reference log replays at ×1 at 60 fps on a mid laptop (measured, with the method recorded).
 Scrubbing and all speeds work. All panels are driven only by events. Visual-regression,
