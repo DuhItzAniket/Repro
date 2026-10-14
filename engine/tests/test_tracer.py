@@ -26,7 +26,7 @@ from repro.sandbox.detect import HOOK_DIR
 
 SUITE = Path(__file__).parent / "data" / "trace_suite"
 PYTHONS = ("3.12", "3.13", "3.14", "3.15")
-TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size")
+TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size", "ordered")
 
 
 def hook_module(name: str) -> ModuleType:
@@ -103,7 +103,7 @@ def test_each_kind_of_call(side: Side) -> None:
     assert (raised.outcome, raised.type, raised.result) == (
         "raise",
         "builtins.ValueError",
-        digest(("bad", 3)),
+        digest(ValueError("bad", 3)),  # its type, arguments and (empty) cause chain
     )
     (generated,) = calls(results, "test_generator", "gen")
     assert generated.outcome == "return"
@@ -120,6 +120,12 @@ def test_each_kind_of_call(side: Side) -> None:
     assert keywords.args == digest(starred)
     (method,) = calls(results, "test_method", "Box.size")
     assert (method.outcome, method.result, method.args_complete) == ("return", digest(3), True)
+    (keyed,) = calls(results, "test_dict_order", "ordered")
+    returned = {"bb": 2, "a": 1}
+    assert keyed.result == digest(returned)
+    assert keyed.result_any_order == ENCODE.digests(returned)[1]  # with its keys sorted
+    assert keyed.result_any_order != keyed.result
+    assert keyed.args_any_order is None  # no dictionary among its arguments
     (fixture,) = calls(results, "test_setup_phase", "add")
     assert fixture.phase == "setup"
     assert {c.phase for c in calls(results, "test_add", "add")} == {"call"}

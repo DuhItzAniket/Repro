@@ -38,6 +38,14 @@ def targets_for(symbols: Iterable[str], resolver: Resolver) -> list[TraceTarget]
     return found
 
 
+def same(left: tuple[str, bool], right: tuple[str, bool]) -> bool | None:
+    """Whether two encodings (digest, complete) are of the same value; None when either is
+    incomplete: a truncated or failed encoding is never taken as equal to anything (E02)."""
+    if not left[1] or not right[1]:
+        return None
+    return left[0] == right[0]
+
+
 def calls_by_target(run: PytestRun) -> dict[tuple[str, TraceTarget], list[TraceCall]]:
     """Each (test, target)'s calls, in the order they started."""
     grouped: dict[tuple[str, TraceTarget], list[TraceCall]] = {}

@@ -1,6 +1,6 @@
 import pytest
 
-from calc import Box, add, fails, gen, many, recurse, threaded, with_kw
+from calc import Box, add, fails, gen, many, ordered, recurse, threaded, with_kw
 
 
 @pytest.fixture
@@ -49,3 +49,7 @@ def test_method():
 
 def test_setup_phase(three):
     assert three == 3
+
+
+def test_dict_order():
+    assert ordered(["bb", "a"]) == {"a": 1, "bb": 2}

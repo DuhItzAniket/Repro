@@ -64,8 +64,9 @@ def call_times(run: TestRun) -> dict[str, float]:
 
 
 def commit() -> str:
+    """The commit measured, ``-dirty`` when the working tree has changes (they were measured)."""
     done = subprocess.run(
-        ["git", "-c", "core.longpaths=true", "rev-parse", "--short", "HEAD"],  # noqa: S607
+        ["git", "-c", "core.longpaths=true", "describe", "--always", "--dirty", "--abbrev=7"],  # noqa: S607
         cwd=ROOT,
         capture_output=True,
         text=True,

@@ -44,3 +44,7 @@ class Box:
 
     def size(self):
         return len(self.value)
+
+
+def ordered(keys):
+    return {key: len(key) for key in keys}

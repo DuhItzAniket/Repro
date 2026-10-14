@@ -33,7 +33,7 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-from repro_encode import digest, type_name
+from repro_encode import digest, digests, type_name
 
 BUDGET = 200
 MAX_YIELDS = 32
@@ -50,7 +50,10 @@ def _names(code: Any) -> tuple[str, ...]:
 
 
 class _Call:
-    __slots__ = ("args", "args_complete", "code", "index", "phase", "target", "test", "yields")
+    __slots__ = (
+        "args", "args_any_order", "args_complete", "code", "index", "phase", "target", "test",
+        "yields",
+    )  # fmt: skip
 
     def __init__(self, target: Target, test: str, phase: str, index: int, code: int) -> None:
         self.code = code
@@ -59,6 +62,7 @@ class _Call:
         self.phase = phase
         self.index = index
         self.args = ""
+        self.args_any_order = ""
         self.args_complete = True
         self.yields: list[str] = []
 
@@ -117,7 +121,7 @@ class Tracer:
         call = _Call(target, test, self.phase, index, id(code))
         local = frame.f_locals
         arguments = [(name, local[name]) for name in _names(code) if name in local]
-        call.args, call.args_complete = digest(arguments)
+        call.args, call.args_any_order, call.args_complete = digests(arguments)
         self.inflight[id(frame)] = call
         self.open[id(code)] = self.open.get(id(code), 0) + 1
         return True
@@ -137,8 +141,8 @@ class Tracer:
         call = self._finish(frame)
         if call is None:
             return False
-        result, complete = digest(value)
-        self._emit(call, "return", result, complete, type_name(type(value)))
+        result, any_order, complete = digests(value)
+        self._emit(call, "return", result, complete, type_name(type(value)), any_order=any_order)
         return True
 
     def yielded(self, frame: Any, value: Any) -> bool:
@@ -156,9 +160,9 @@ class Tracer:
         if type(exc) is GeneratorExit:  # an unfinished generator closed (or collected)
             self._emit(call, "closed", "", False, "")
             return
-        kind = type_name(type(exc))
-        result, complete = digest(getattr(exc, "args", ()))
-        self._emit(call, "raise", result, complete, kind)
+        # The exception itself: its type, its arguments, its cause chain (repro_encode).
+        result, complete = digest(exc)
+        self._emit(call, "raise", result, complete, type_name(type(exc)))
 
     # -- tests -----------------------------------------------------------------------------------
 
@@ -183,24 +187,38 @@ class Tracer:
                 self._emit(call, "suspended", "", False, "")
         self.test = None
 
-    def _emit(self, call: _Call, outcome: str, result: str, complete: bool, kind: str) -> None:
-        self.write(
-            {
-                "kind": "call",
-                "nodeid": call.test,
-                "phase": call.phase,
-                "target": list(call.target),
-                "index": call.index,
-                "args": call.args,
-                "args_complete": call.args_complete,
-                "outcome": outcome,
-                "result": result,
-                "result_complete": complete,
-                "type": kind,
-                "yields": call.yields,
-                "yields_complete": len(call.yields) < MAX_YIELDS,
-            }
-        )
+    def _emit(
+        self,
+        call: _Call,
+        outcome: str,
+        result: str,
+        complete: bool,
+        kind: str,
+        *,
+        any_order: str = "",
+    ) -> None:
+        record = {
+            "kind": "call",
+            "nodeid": call.test,
+            "phase": call.phase,
+            "target": list(call.target),
+            "index": call.index,
+            "args": call.args,
+            "args_complete": call.args_complete,
+            "outcome": outcome,
+            "result": result,
+            "result_complete": complete,
+            "type": kind,
+            "yields": call.yields,
+            "yields_complete": len(call.yields) < MAX_YIELDS,
+        }
+        # Digests with every dictionary sorted, only where they differ: a difference in
+        # dictionary order alone is told apart from a difference in content (E04).
+        if call.args_any_order and call.args_any_order != call.args:
+            record["args_any_order"] = call.args_any_order
+        if any_order and any_order != result:
+            record["result_any_order"] = any_order
+        self.write(record)
 
 
 def parse_targets(raw: str) -> list[Target]:
