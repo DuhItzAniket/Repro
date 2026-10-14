@@ -12,7 +12,10 @@ evidence = [
   "test_outcome:P2P:tests/test_counter.py::test_record_first",
   "test_outcome:flaky:tests/test_counter.py::test_record_second",
 ]
-missing = ["unstable_observation:tests/test_counter.py::test_record_second"]
+missing = [
+  "perf_not_assessable:tests/test_counter.py::test_record_first",
+  "unstable_observation:tests/test_counter.py::test_record_second",
+]
 
 [selection]
 uncovered = []

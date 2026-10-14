@@ -96,6 +96,8 @@ class TestResult:
     duration_s: float
     phase: str | None  # where it did not pass: setup, call or teardown
     message: str | None
+    #: The call phase alone (the test's body, not its fixtures): what timing compares (D07).
+    call_s: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,13 +134,16 @@ def _test(record: dict[str, Any]) -> TestResult:
     nodeid, outcome = record["nodeid"], record["outcome"]
     if not isinstance(nodeid, str) or not nodeid or outcome not in OUTCOMES:
         raise ValueError(record)
-    phase, message = record.get("phase"), record.get("message")
+    phase, message, call = record.get("phase"), record.get("message"), record.get("call_s")
+    if call is not None and (not isinstance(call, (int, float)) or call < 0):
+        raise ValueError(record)
     return TestResult(
         nodeid=nodeid[:_TEXT],
         outcome=outcome,
         duration_s=float(record.get("duration_s", 0.0)),
         phase=phase if phase in ("setup", "call", "teardown") else None,
         message=str(message)[:_TEXT] if message is not None else None,
+        call_s=float(call) if call is not None else None,
     )
 
 

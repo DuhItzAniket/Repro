@@ -20,7 +20,13 @@ evidence = [
   "test_outcome:modified:tests/test_cart.py::test_names",
   "test_outcome:new:tests/test_prices.py::test_discount_is_clamped",
 ]
-missing = []
+# The tests that pass on both sides run in microseconds: too fast to time (D07).
+missing = [
+  "perf_not_assessable:tests/test_cart.py::test_total",
+  "perf_not_assessable:tests/test_prices.py::test_discount",
+  "perf_not_assessable:tests/test_prices.py::test_gross",
+  "perf_not_assessable:tests/test_prices.py::test_net",
+]
 
 [selection]
 # Every changed function is run by a selected test; nothing is uncovered.

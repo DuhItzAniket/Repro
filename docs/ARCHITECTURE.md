@@ -218,7 +218,7 @@ evidence derived from existing tests. The card always shows which kind supports 
 | Behaviour | observations joined on `(test, function, args_hash)` | `behaviour_diff`: different result, new or changed exception, input mutation, order-only. Each item has a minimal reproducer (test node ID plus encoded args preview) |
 | API | griffe `find_breaking_changes(base, head)` plus Repro's annotation-string comparison of return and attribute types (griffe does not check these yet) | `api_diff` |
 | Dependencies | lockfiles (uv.lock, poetry.lock, pdm.lock, requirements) **and** installed sets (`uv pip list --format json`) on both sides | `dep_diff`, `lock_drift` |
-| Perf | untraced interleaved runs with an A/A noise floor | `perf_diff` with ratio of medians, BCa bootstrap 95 % CI and noise floor. Tests below the timing floor are `perf_not_assessable` |
+| Perf | untraced interleaved runs with an A/A noise floor | `perf_diff` with ratio of medians, BCa bootstrap 95 % CI and noise floor. Tests below the timing floor are `perf_not_assessable`. As built (D07, `runner/perf.py`): the `P2P` tests, ABBA until 10 runs a side, call-phase times; a regression needs the CI above 1, the ratio past max(10 %, the A/A spread of base's own ABBA samples), and Mann-Whitney significant after Benjamini-Hochberg; 5 ms timing floor |
 
 ### 4.6 Card status rules (`policy/status`) — deterministic, no LLM
 ```

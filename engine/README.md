@@ -100,6 +100,13 @@ classifies each test (`outcomes`) and each change to the tests (`testdiff`). `re
 all of it in its run and diff stages (`repro.run_stage`); `--analyse-only` stops after the build
 stage.
 
+## Performance
+
+`repro.runner.perf.time_tests` times the tests that pass on both sides, untraced, base and head
+interleaved (ABBA); `assess` compares each: ratio of medians, BCa bootstrap interval,
+Mann-Whitney with Benjamini-Hochberg, a noise floor from the A/A spread, and a timing floor
+under which a test is not assessable. `repro run` does it in its `perf` and `perf-diff` jobs.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,

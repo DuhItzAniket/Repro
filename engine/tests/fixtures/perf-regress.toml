@@ -1,0 +1,26 @@
+# Expected Repro outcome for the perf-regress fixture (D07 asserts the evidence).
+[fixture]
+name = "perf-regress"
+head = "refactor/no-set"
+
+[expected]
+status = "FLAGGED"
+claims = ["unique_tags() no longer builds a set", "No behaviour change"]
+# Every test still passes; unique_tags() on 50,000 tags is many times slower, the sort that
+# dominates test_report_is_sorted is not, and test_unique_tags_small is too fast to time.
+evidence = [
+  "perf_diff:no_change:tests/test_tags.py::test_report_is_sorted",
+  "perf_diff:regression:tests/test_tags.py::test_unique_tags",
+  "test_outcome:P2P:tests/test_tags.py::test_report_is_sorted",
+  "test_outcome:P2P:tests/test_tags.py::test_unique_tags",
+  "test_outcome:P2P:tests/test_tags.py::test_unique_tags_small",
+]
+missing = ["perf_not_assessable:tests/test_tags.py::test_unique_tags_small"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_tags.py::test_report_is_sorted" = ["blast_radius"]
+"tests/test_tags.py::test_unique_tags" = ["blast_radius"]
+"tests/test_tags.py::test_unique_tags_small" = ["blast_radius"]

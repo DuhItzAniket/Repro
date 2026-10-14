@@ -344,7 +344,7 @@ The sandbox escape suite passes at the level the card claims.
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | done |
 | D05 | Test selection via per-test function map | M | D04, C07 | done |
 | D06 | Two-sided execution, outcome & test-change diff, flake control | L | D05 | done |
-| D07 | Performance pass | M | D06 | planned |
+| D07 | Performance pass | M | D06 | in progress |
 
 **D01** Process runner, minimal environment, Windows Job Objects / POSIX process groups and
 rlimits, timeouts, kill and cleanup, `sandbox.ready` with isolation level. Audit-hook

@@ -75,9 +75,15 @@ def missing_of(result: twosided.TwoSided) -> list[str]:
     for item in items:
         models.MissingRecordedPayload.model_validate(item)
         missing = item["missing"]
-        target = missing["targets"][0] if missing["targets"] else {}
-        found.append(f"{missing['reason']}:{target.get('symbol') or target.get('test') or ''}")
+        for target in missing["targets"] or [{}]:
+            name = target.get("symbol") or target.get("test") or ""
+            found.append(f"{missing['reason']}:{name}")
     return sorted(found)
+
+
+def without_timing(items: list[str]) -> list[str]:
+    """An expectation without what the performance pass adds (``reproduce`` does not time)."""
+    return sorted(i for i in items if not i.startswith(("perf_diff:", "perf_not_assessable:")))
 
 
 @pytest.mark.parametrize("name", FIXTURE_NAMES)
@@ -92,8 +98,8 @@ def test_each_fixture_gives_exactly_its_evidence(
     assert {s.test: list(s.reasons) for s in result.selected} == expected["selection"].get(
         "selected", {}
     ), runs
-    assert evidence_of(result) == sorted(expected["expected"]["evidence"]), runs
-    assert missing_of(result) == sorted(expected["expected"]["missing"]), runs
+    assert evidence_of(result) == without_timing(expected["expected"]["evidence"]), runs
+    assert missing_of(result) == without_timing(expected["expected"]["missing"]), runs
     for diff in result.outcomes:
         record = diff.evidence(RUN_ID)
         record["seq"] = 1

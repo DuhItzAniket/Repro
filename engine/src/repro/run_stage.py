@@ -10,6 +10,9 @@ execution, and its evidence as events.
 - ``outcomes`` (diff): ``evidence.created`` with ``diff.outcome`` per classified test and
   ``diff.tests`` per test change; what the sandbox detected; ``missing.recorded`` for each
   uncovered symbol, flaky test, unfinished run and collection error.
+- ``perf`` (run, D07): the tests that pass on both sides, timed untraced in ABBA blocks;
+  ``perf.sample`` per test and run. ``perf-diff`` (diff): ``perf_diff`` evidence with
+  ``diff.perf`` per timed test, and a ``perf_not_assessable`` item for those too fast to time.
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -19,7 +22,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 from repro.analysis import StaticAnalysis
 from repro.gitops import Git
@@ -34,6 +37,7 @@ from repro.provision import (
 )
 from repro.runner import selection
 from repro.runner.outcomes import unstable_observation
+from repro.runner.perf import Samples, TimingRun, assess, not_assessable, time_tests
 from repro.runner.selection import MapCache, Selected, map_key, no_covering_test
 from repro.runner.sides import Side
 from repro.runner.twosided import RunRecord, TwoSided, reproduce
@@ -57,6 +61,8 @@ class RunState:
     sides: dict[str, Side] = field(default_factory=dict)
     result: TwoSided | None = None
     platform: dict[str, str] = field(default_factory=dict)
+    timings: list[Samples] | None = None
+    timing_runs: list[TimingRun] = field(default_factory=list)
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 
@@ -218,10 +224,9 @@ def _outcomes_job(state: RunState) -> Job:
         for diff in result.outcomes:
             record = diff.evidence(ctx.run_id)
             ctx.emit("evidence.created", status="ok", payload={"evidence": record})
-            status = "ok" if diff.stable and diff.outcome_class != "P2F" else "warn"
             ctx.emit(
                 "diff.outcome",
-                status=status,
+                status=diff.status,  # ADR-0015 §2
                 payload=diff.payload(record["id"]),
                 target={"test": diff.test},
             )
@@ -229,9 +234,8 @@ def _outcomes_job(state: RunState) -> Job:
             record = change.evidence(ctx.run_id)
             ctx.emit("evidence.created", status="ok", payload={"evidence": record})
             target = {"file": change.file, **({"test": change.test} if change.test else {})}
-            ctx.emit(
-                "diff.tests", status="warn", payload=change.payload(record["id"]), target=target
-            )
+            payload = change.payload(record["id"])
+            ctx.emit("diff.tests", status=change.status, payload=payload, target=target)
         for side in ("base", "head"):
             fallback = {"file": "."}
             for record in detection_evidence(
@@ -258,6 +262,94 @@ def _outcomes_job(state: RunState) -> Job:
     )
 
 
+def _perf_job(state: RunState) -> Job:
+    def run(ctx: JobContext) -> None:
+        result = state.result
+        if result is None or "base" not in state.sides or "head" not in state.sides:
+            ctx.log("no timing: the tests did not run", level="warning", status="warn")
+            return
+        stable = [d.test for d in result.outcomes if d.outcome_class == "P2P"]
+        if not stable:
+            ctx.log("no timing: no selected test passes on both sides")
+            state.timings = []
+            return
+        ctx.log(f"timing {len(stable)} tests, untraced, base and head interleaved (ABBA)")
+
+        def observe(timing: TimingRun) -> None:
+            for test in stable:
+                found = timing.record.results.tests.get(test)
+                if found is None or found.call_s is None:
+                    continue
+                payload = {
+                    "side": timing.side,
+                    "repetition": timing.repetition,
+                    "duration_ms": found.call_s * 1000,
+                }
+                ctx.emit("perf.sample", status="progress", payload=payload, target={"test": test})
+
+        state.timings, state.timing_runs = time_tests(
+            state.sides["base"],
+            state.sides["head"],
+            stable,
+            observe=observe,
+            stop=lambda: ctx.cancelled,
+        )
+
+    return Job(
+        "perf",
+        "run",
+        run,
+        OnFailure(reason="perf_not_assessable", detail="the timing runs did not complete"),
+        needs=("tests",),
+        timeout_s=TESTS_TIMEOUT_S,
+    )
+
+
+def _perf_diff_job(state: RunState) -> Job:
+    def run(ctx: JobContext) -> None:
+        if state.timings is None:
+            ctx.log("no performance comparison: nothing was timed")
+            return
+        for timing in state.timing_runs:
+            if not timing.record.results.complete:
+                detail = (
+                    f"{timing.side}: timing run {timing.repetition} did not finish; "
+                    "its samples are missing"
+                )
+                payload: dict[str, Any] = {
+                    "missing": {
+                        "reason": "perf_not_assessable",
+                        "targets": [],
+                        "detail": detail,
+                        "resolution": None,
+                    }
+                }
+                ctx.emit("missing.recorded", status="warn", payload=payload)
+        compared, too_fast = assess(state.timings)
+        for diff in compared:
+            record = diff.evidence(ctx.run_id)
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            status = "warn" if diff.verdict == "regression" else "ok"
+            ctx.emit(
+                "diff.perf",
+                status=status,
+                payload=diff.payload(record["id"]),
+                target={"test": diff.test},
+            )
+        if too_fast:
+            ctx.emit("missing.recorded", status="warn", payload=not_assessable(too_fast))
+        verdicts = ", ".join(f"{d.test}: {d.verdict}" for d in compared[:10]) or "none timed"
+        ctx.log(f"performance: {verdicts}; {len(too_fast)} too fast to time")
+
+    return Job(
+        "perf-diff",
+        "diff",
+        run,
+        OnFailure(reason="perf_not_assessable", detail="the timings could not be compared"),
+        needs=("perf",),
+    )
+
+
 def run_jobs(
     git: Git,
     base: str,
@@ -274,4 +366,6 @@ def run_jobs(
         _sandbox_job(git, "head", head, work, state, backend=backend, cache=cache),
         _tests_job(git, base, head, state, cache=cache),
         _outcomes_job(state),
+        _perf_job(state),
+        _perf_diff_job(state),
     ]
