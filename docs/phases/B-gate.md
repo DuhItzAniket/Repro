@@ -38,7 +38,7 @@ functions ≥ 90% for `src/model/**`).
 | ubuntu-latest | 3.13 (`.python-version`) | 24 (`.node-version`) | pass | [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
 | windows-latest | 3.13 | 24 | pass | [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
 | ubuntu-latest + Playwright image (pinned by digest) | — | 24 | pass | `visual` job, [#25 checks](https://github.com/DuhItzAniket/Repro/pull/25/checks) |
-| All of the above, after B14 | 3.13 | 24 | pass | [CI run 38525044683](https://github.com/DuhItzAniket/Repro/actions/runs/38525044683): baselines from run 38523388567, checked by eye; the visual self-test rejected its injected shift |
+| All of the above, after B14 | 3.13 | 24 | pass | [CI run 38532608296](https://github.com/DuhItzAniket/Repro/actions/runs/38532608296), after the seventh review: baselines from run 38532085767, checked by eye; the visual self-test rejected its injected shift (first green after B14: [run 38525044683](https://github.com/DuhItzAniket/Repro/actions/runs/38525044683)) |
 
 ## Metrics at gate (measured)
 | Metric | Value |

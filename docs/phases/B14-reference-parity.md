@@ -260,7 +260,8 @@ and ×16, 8 and 5 (ADR-0011 B14 note). Checked frame by frame on the app's own c
   - stage allocation 11.7 kB per frame after the seventh review (12.8 kB after the sixth), within
     the 40 kB budget.
 
-  The visual baselines are regenerated in CI and checked by eye.
+  The visual baselines are regenerated in CI and checked by eye (after the seventh review: run
+  38532085767; all gates green on [run 38532608296](https://github.com/DuhItzAniket/Repro/actions/runs/38532608296)).
 - [x] AC3: flash safety holds. The governor's worst-window test passes at every speed, and the
       bound on the dim strands and the lines outside (MAX, at most 0.32) is unit-tested on every
       segment the layer writes.
