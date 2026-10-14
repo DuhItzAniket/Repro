@@ -1,15 +1,17 @@
 """Snapshots: the commit byte for byte, nothing outside the directory, on every OS (C05)."""
 
 import hashlib
+import io
 import os
 import stat
 import sys
+import tarfile
 from pathlib import Path
 
 import pytest
 
 from gitrepo import Repo
-from repro.gitops import Git, SnapshotError, path_problem, regular_files, snapshot
+from repro.gitops import Git, SnapshotError, path_problem, regular_files, snapshot, tar_tree
 from repro.gitops.snapshot import extended, remove_snapshot
 
 POSIX = sys.platform != "win32"
@@ -203,3 +205,31 @@ def test_the_tree_digest_names_exactly_what_was_written(repo: Repo, tmp_path: Pa
     assert snapshot(Git(repo.path), sha, tmp_path / "s2").tree_sha256 == first.tree_sha256
     with_skipped = repo.commit({"con": "a Windows device name: skipped on every OS"})
     assert snapshot(Git(repo.path), with_skipped, tmp_path / "s3").tree_sha256 == first.tree_sha256
+
+
+def test_tar_tree_is_the_commit_exactly_and_the_same_every_time(repo: Repo) -> None:
+    sha = repo.commit(
+        {
+            "a/run.py": ("print('x')", "100755"),
+            "b.txt": "b",
+            "link": ("b.txt", "120000"),  # kept on any host: the tar is for a Linux container
+            "con": "a Windows device name",  # unsafe: skipped and listed
+            "vendor": ("0123456789abcdef0123456789abcdef01234567", "160000"),  # a submodule
+        }
+    )
+    first, second = io.BytesIO(), io.BytesIO()
+    tarred = tar_tree(Git(repo.path), sha, first)
+    tar_tree(Git(repo.path), sha, second)
+    assert first.getvalue() == second.getvalue()  # deterministic: no times, no owners
+    with tarfile.open(fileobj=io.BytesIO(first.getvalue())) as tar:
+        members = {member.name: member for member in tar.getmembers()}
+        assert set(members) == {"a/run.py", "b.txt", "link"}
+        assert (members["a/run.py"].mode, members["b.txt"].mode) == (0o755, 0o644)
+        assert members["link"].issym()
+        assert members["link"].linkname == "b.txt"
+        assert all(member.mtime == 0 for member in members.values())
+        handle = tar.extractfile(members["a/run.py"])
+        assert handle is not None
+        assert handle.read() == b"print('x')"
+    assert (tarred.commit, tarred.files, tarred.bytes) == (sha, 3, len("print('x')") + 1)
+    assert {item.path for item in tarred.skipped} == {"con", "vendor"}

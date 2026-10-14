@@ -65,7 +65,9 @@ radius, with `graph_payloads` and `blast.payload()` giving their events.
 output, whether processes were left running, and the network, subprocess and file-write
 attempts the audit hook detected). `detection_evidence` turns detections into evidence records;
 `ready_payload(side)` is the `sandbox.ready` payload. Containment is a Job Object on Windows and
-a process group with resource limits on POSIX; the network is detected, not enforced (L3, D02).
+a process group with resource limits on POSIX; the network is detected, not enforced.
+`DockerSandbox(work, git, commit, limits=…)` runs at L3: the commit in a volume of its own, each
+command in a hardened container with no network; `read_file` reads a result back.
 
 ## API
 

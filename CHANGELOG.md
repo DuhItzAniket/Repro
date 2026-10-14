@@ -14,6 +14,13 @@ All notable changes to this project are documented here. The format follows
   behind are killed and reported. Network, subprocess and file-write attempts become evidence
   (`subprocess_attempt` and `file_attempt` are new evidence types). `sandbox.ready` states the
   level reached, with the network detected only. `repro doctor` reports containment. [D01]
+- The container sandbox (L3): the commit is streamed from its tree object into a Docker volume
+  of its own, and each command runs in a fresh container with no network, a read-only root, an
+  `exec` tmpfs at `/tmp`, no capabilities, no new privileges, uid 1000, and process, memory and
+  CPU limits; only Repro's audit hook is mounted, read-only. The escape suite (raw `_socket`,
+  `ctypes`, a subprocess reaching out, writes outside the work directory, the host's `.git`) is
+  blocked, and `sandbox.ready` reports the network `enforced`. `repro doctor` reports the level
+  runs reach. [D02]
 
 ### Fixed
 - Evidence could not be emitted through the event bus: it validated `evidence.created` events

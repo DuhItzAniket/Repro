@@ -94,6 +94,9 @@ jobs:
         run: uv sync --locked
       - name: Python tests
         run: uv run --locked pytest
+        env:
+          # The L3 escape suite (D02) must run where Docker has Linux containers: Ubuntu.
+          REPRO_REQUIRE_DOCKER: ${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}
       - name: CLI smoke test
         run: uv run --locked repro --version
 

@@ -355,6 +355,11 @@ Rules:
   a new session with resource limits set by a launcher before `exec`; a wall-clock timeout that
   kills the tree, and processes left behind killed and reported. `sandbox.ready` states the
   level reached and `network: detected-only`.
+- **L3 as built (D02, `repro.sandbox.DockerSandbox`):** the commit is streamed from its tree
+  object into a volume (modes and links exact on any host), unpacked by a no-network helper and
+  owned by uid 1000. Each command runs in a fresh container with the hardening above, pids,
+  memory (no swap) and CPU limits, and only Repro's audit hook mounted (read-only). Outputs are
+  read back with `docker cp`. `repro doctor` reports the level runs will reach.
 
 ## 9. Static analysis — see ADR-0006
 
