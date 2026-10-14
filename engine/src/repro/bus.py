@@ -3,7 +3,8 @@
 ``emit`` builds an event's envelope (a ULID, the time, ``v``, the kind's payload version and the
 producer), removes recognised credentials from its payload and target, validates the complete
 event against its kind's generated model (payload and stage), and hands it to the store's
-writer, which alone assigns ``seq``. When the writer commits, the bus passes the stored events to
+writer, which alone assigns ``seq`` (and an ``evidence.created`` event's evidence ``seq``, the
+same number). When the writer commits, the bus passes the stored events to
 its subscribers in ``seq`` order: nothing is published that is not durable.
 
 Subscribers are called on the writer's thread and must not block (C04 hands events to each
@@ -106,8 +107,12 @@ class EventBus:
         }
         if parent is not None:
             envelope["parent"] = parent
+        draft = {**envelope, "seq": 1}  # the writer assigns the real one
+        evidence = draft["payload"].get("evidence")
+        if kind == "evidence.created" and isinstance(evidence, Mapping) and "seq" not in evidence:
+            draft["payload"] = {**draft["payload"], "evidence": {**evidence, "seq": 1}}
         try:
-            EVENT_ADAPTER.validate_python({**envelope, "seq": 1})
+            EVENT_ADAPTER.validate_python(draft)
         except ValidationError as exc:
             raise EventError(f"invalid {kind} event: {exc}") from None
         return envelope

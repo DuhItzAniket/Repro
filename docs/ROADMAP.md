@@ -338,7 +338,7 @@ The sandbox escape suite passes at the level the card claims.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| D01 | Sandbox abstraction & process isolation (L0–L2) | M | C03, A08 | planned |
+| D01 | Sandbox abstraction & process isolation (L0–L2) | M | C03, A08 | done |
 | D02 | Container backend (L3) | M | D01 | planned |
 | D03 | Environment provisioning | L | D02 | planned |
 | D04 | Repro pytest plugin v1 & deterministic run config | M | D03 | planned |
@@ -696,3 +696,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | C07 | 2026-10-14 | [#35](https://github.com/DuhItzAniket/Repro/pull/35) | Import graphs (grimp for packages in an isolated process that never resolves target names through `sys.path`, THREAT_MODEL T19; `ast` for tests and scripts outside packages) and the blast radius over both sides' imports, with distance; hand-checked on this repository's own history |
 | C08 | 2026-10-14 | [#36](https://github.com/DuhItzAniket/Repro/pull/36) | `repro run` streams a change's build stage (snapshots, static analysis) into the cockpit live; `repro replay` and `repro serve` serve the built cockpit; the cockpit's event-stream client recovers gaps and resyncs from the engine's store; Gate C's Playwright test on pallets/itsdangerous in CI and on Windows (Edge) |
 | Gate C | 2026-10-14 | [#37](https://github.com/DuhItzAniket/Repro/pull/37) | Stage C complete; release v0.3.0 ([gate record](phases/C-gate.md)); Gate C's end-to-end test passes in CI (Linux) and on Windows (Edge) |
+| D01 | 2026-10-14 | [#38](https://github.com/DuhItzAniket/Repro/pull/38) | The process sandbox, L0 to L2: minimal environment; audit-hook detection of network, subprocess and file-write attempts as evidence; Job Objects (created suspended) on Windows, a session and resource limits on POSIX; bounded fork-bomb, memory-hog and timeout fixtures contained on both |

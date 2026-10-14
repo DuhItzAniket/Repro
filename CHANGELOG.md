@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The process sandbox (L0 to L2): a command runs with a minimal environment, Repro's audit
+  hook in every Python process it starts, and containment: a Job Object on Windows (created
+  suspended, assigned, resumed; job-wide memory, a process limit, kill-on-close), a process
+  group with resource limits on POSIX. A wall-clock timeout kills the whole tree; processes left
+  behind are killed and reported. Network, subprocess and file-write attempts become evidence
+  (`subprocess_attempt` and `file_attempt` are new evidence types). `sandbox.ready` states the
+  level reached, with the network detected only. `repro doctor` reports containment. [D01]
+
+### Fixed
+- Evidence could not be emitted through the event bus: it validated `evidence.created` events
+  without the evidence's `seq`, which only the store's writer assigns. [D01]
+
 ## [0.3.0] - 2026-10-14
 
 Stage C — Engine core & live stream. Gate record: `docs/phases/C-gate.md`.

@@ -10,7 +10,7 @@ from repro.bus import PAYLOAD_VERSIONS, EventBus, EventError, producer_tag
 from repro.scrub import REDACTED, scrub, scrub_text
 from repro.store import StoredEvent, StoreReader, StoreWriter
 from repro_events.models import EVENT_KINDS
-from store_support import run_record, started_writer
+from store_support import evidence_record, run_record, started_writer
 
 TIMEOUT = 30
 LOG = {"level": "info", "verb": "read", "message": "reading the diff"}
@@ -66,6 +66,19 @@ def test_a_parent_is_kept(bus: EventBus, run_id: str) -> None:
         run_id, "log.line", stage="read", status="ok", payload=LOG, parent=first.id
     ).result(TIMEOUT)
     assert second.envelope()["parent"] == first.id
+
+
+def test_evidence_is_emitted_without_a_seq_and_gets_its_events(
+    bus: EventBus, writer: StoreWriter, run_id: str
+) -> None:
+    record = evidence_record(run_id)  # no seq: only the writer knows it (found in D01)
+    (event,) = bus.emit(
+        run_id, "evidence.created", stage="run", status="ok", payload={"evidence": record}
+    ).result(TIMEOUT)
+    assert event.envelope()["payload"]["evidence"]["seq"] == event.seq
+    broken = {**record, "id": "ev_not-an-id"}
+    with pytest.raises(EventError, match=r"invalid evidence\.created"):
+        bus.emit(run_id, "evidence.created", stage="run", status="ok", payload={"evidence": broken})
 
 
 @pytest.mark.parametrize(

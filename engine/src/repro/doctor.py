@@ -22,6 +22,7 @@ from typing import Literal, Protocol
 
 from repro.logs import get_logger
 from repro.paths import RUN_ROOT_BUDGET
+from repro.sandbox import containment
 from repro.store.db import MIN_SQLITE, sqlite_version
 
 Status = Literal["ok", "warn", "fail"]
@@ -232,6 +233,20 @@ def check_docker(probe: Probe, *, windows: bool) -> Check:
     return Check("docker", "ok", found, detail=detail)
 
 
+def check_containment(how: str | None) -> Check:
+    """Whether this machine can contain a command's processes (L2, ADR-0004)."""
+    network = "the network is detected, not enforced, until a container runs it (L3)"
+    if how is None:
+        return Check(
+            "containment",
+            "warn",
+            "commands run at L1: not contained",
+            hint="Repro contains commands on Windows and POSIX; this platform has neither",
+            detail=network,
+        )
+    return Check("containment", "ok", f"L2: {how}", detail=network)
+
+
 def check_data_dir(path: Path) -> Check:
     """Writable if it exists (one temporary file, removed), else creatable where it would go."""
     if path.exists():
@@ -394,6 +409,7 @@ def diagnose(
         check_git(machine.probe),
         check_uv(machine.probe),
         check_docker(machine.probe, windows=machine.windows),
+        check_containment(containment()),
         check_data_dir(data_dir),
         check_run_root(run_root, windows=machine.windows),
     ]
