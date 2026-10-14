@@ -6,6 +6,7 @@ interface LayoutRequest {
   readonly ids: readonly string[];
   readonly links: Int32Array;
   readonly containment: number;
+  readonly tests: Uint8Array;
 }
 
 // The app compiles against the DOM library; a worker's global scope only needs these two members.
@@ -15,7 +16,7 @@ const scope = self as unknown as {
 };
 
 scope.onmessage = (event) => {
-  const { id, ids, links, containment } = event.data;
-  const positions = forceLayout({ ids, links, containment });
+  const { id, ids, links, containment, tests } = event.data;
+  const positions = forceLayout({ ids, links, containment, tests });
   scope.postMessage({ id, positions }, [positions.buffer]);
 };

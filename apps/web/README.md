@@ -11,9 +11,9 @@ A live, replayable projection of one run's event stream (ARCHITECTURE §13, DESI
 | `src/focus/` | The focus model (what is focused and what it highlights) and the evidence drawer's content |
 | `src/motion/` | Motion settings (replay speed, reduced motion) every layer and panel receives each frame (ADR-0011) |
 | `src/stage/` | WebGL stage: `StageHost` (the only three.js user), the `StageLayer` contract, instance buffers and render-model hashing, the segment primitive and its GLSL, the flash governor, adaptive DPR, frame statistics, the perf HUD (`?hud`) |
-| `src/stage/web/` | The dependency web: layout input and hash, the d3-force layout and its worker, `LayoutService`, and the edge, marker and bundle layers |
+| `src/stage/web/` | The dependency web: layout input and hash, the chord layout (modules in d3-force order) and its worker, `LayoutService`, the edge, node and marker layers, and the bunches of strands with the lines outside the wheel they trigger (`ReachIndex` picks their nodes) |
 | `src/stage/ring/` | The ring: card content from events, closed-form rotation and snaps, the atlas (packing, drawing, worker, service), and the card and tick layers |
-| `src/stage/streams/` | Event streams (streak style, lanes, layer) and the callout overlay |
+| `src/stage/streams/` | How events look outside the wheel (tints, reach) and the callout overlay with its lanes |
 | `src/panels/` | Canvas 2D panels: the `Panel` contract and `PanelHost` (draws only when the version changes), a recording context for golden tests, and all eight panels (feed, execution, workspace, behaviour, routes, signals, dispatch, change×check index) |
 | `src/perf/`, `perf/` | B12 gates: the headless frame pipeline, the allocation test, the calibrated frame-cost gate and its CI baseline |
 | `e2e/` | Playwright visual regression (`renderAt(t)` via `src/test-hook.ts`); baselines in `e2e/__screenshots__` come from CI only |

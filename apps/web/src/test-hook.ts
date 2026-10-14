@@ -15,12 +15,17 @@ import type { Focus } from "./focus/focus";
 import type { PresentationClock } from "./model/clock";
 import type { CockpitModel } from "./model/cockpit";
 import type { StageHost } from "./stage/host";
+import { clampLook, DEFAULT_LOOK, type Look } from "./stage/look";
 import type { RingModel } from "./stage/ring/layers";
 import type { LayoutService } from "./stage/web/layout-service";
 
 export interface RenderOptions {
   readonly focus?: Focus | null;
   readonly reduced?: boolean;
+  /** The viewer's look (B15), clamped like a stored one; the default when omitted. */
+  readonly look?: unknown;
+  /** Whether the stage settings menu is open (B15). */
+  readonly settings?: boolean;
 }
 
 export interface TestHook {
@@ -36,6 +41,8 @@ export interface TestHookDeps {
   readonly host: StageHost | null;
   readonly focus: Signal<Focus | null>;
   readonly reduced: Signal<boolean>;
+  readonly look: Signal<Look>;
+  readonly settings: Signal<boolean>;
   /** Forces every panel to redraw (after fonts load). */
   readonly invalidatePanels: () => void;
 }
@@ -67,6 +74,8 @@ export function installTestHook(deps: TestHookDeps): void {
       await document.fonts.ready;
       deps.focus.value = options.focus ?? null;
       deps.reduced.value = options.reduced ?? false;
+      deps.look.value = options.look === undefined ? DEFAULT_LOOK : clampLook(options.look);
+      deps.settings.value = options.settings ?? false;
       clock.pause();
       clock.seek(t);
       deps.invalidatePanels();

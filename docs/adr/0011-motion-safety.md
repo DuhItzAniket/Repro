@@ -50,3 +50,48 @@ owner at the Stage B gate.
   not the bound): every 333 ms window at ×0.5, ×1, ×4 and ×16, on the demo and
   stress fixtures, stays within the cap. At ×16 the stress run draws 717 of 5,789 streaks, 3 of
   192 bundles and 337 of 10,000 edge flares.
+
+## Implementation notes (B14)
+Flagged for the owner at the re-opened Stage B gate; no change of scope.
+- **Lines outside the wheel are not flashes.** From the owner's seventh review the per-event
+  streaks and the long-lived rays are gone: lines leave the wheel only when a bunch of strands
+  hits a section, and bounce out and back within 0.6 s. They are safe by construction, like the
+  dim strands: they blend with MAX at no more than 0.32 encoded, so a pixel under any number of
+  them rises at most to relative luminance 0.084 from the background's 0.0024, under the 10%
+  change that makes a flash. A unit test checks the bound on every segment the layer writes and
+  against the sRGB luminance curve. (B14's earlier rays were bright, up to 0.92, and made safe by
+  a fade of at least 40 s instead; that note no longer applies.)
+- **Areas.** An edge's flare counts only its arc pieces on the stage, since most of the web is
+  off-screen from B14. A bunch of strands counts every strand's bullet over the curve's control
+  polygon, each for its longest possible length (from its node to its section, spread along the
+  bar, plus how far it can follow the ring), its nodes' rings and its bar. Its dim lines are not
+  counted: they are MAX-blended at 0.32 encoded, so a pixel under one rises at most to relative
+  luminance 0.084 from the background's 0.0024, under the 10% that makes a flash. A bunch fires
+  only when its section is on screen, as the layer draws it. Aggregation is one bunch per
+  section of the wheel per window. The worst-window test (×0.5–×16, both fixtures) still holds.
+  With every streaming event that names a function, test or file able to fire a bunch (seventh
+  review), the cap admits on the demo 17 bunches at ×0.5, 20 at ×1, 8 at ×4 and 5 at ×16, of
+  67–133 that could fire; on the stress run 7, 8, 6 and 2, of 51–71 (measured on the unit-test
+  fixtures at 1440×900).
+- **Lines turn with the wheel** (B14). A bunch's landing end and its section's lines outside
+  follow the ring as it turns; reduced motion draws neither.
+- **Wall-clock motion.** Bunches live 1 s of wall-clock time: the bullets' 0.4 s trip from their
+  nodes, then the attached strands follow the ring and fade while the lines outside bounce. The
+  ring's drift is wall-clock too, one turn per 24 s at any replay speed, so ×16 does not spin it
+  sixteen times as fast.
+
+## Implementation notes (B15)
+Flagged for the owner with B15; no change of scope.
+- **Viewer settings stay inside the bound.** Viewers can set each part's thickness and
+  brightness (DESIGN.md "View and look"). The settings change only how the shader draws, never
+  which events draw, with two consequences for flash safety:
+  - the MAX-blended, uncounted parts (strands, lines outside) can only be dimmed: their
+    brightness range ends at ×1, the 0.32 ceiling, `clampLook` enforces it on every input
+    including stored values, and the host never raises a MAX layer's alpha;
+  - the counted parts (bullets with their node rings and bars, mesh flares) may be brighter or
+    wider. The governor counts area whatever the intensity, and counts it at the chosen width;
+    when a width changes it re-decides from the start, as it does for speed and geometry.
+  A unit test checks the worst window in every view at the widest widths, on both fixtures.
+- **Views.** The whole-wheel view is a different ring geometry, so the governor decides for the
+  view the viewer sees. Strands there are shorter, and the cap admits more bunches (demo ×1: 71
+  in the whole wheel, 13 in the arc).

@@ -1,5 +1,5 @@
 // Draws the card atlas off the main thread (ARCHITECTURE §13: "atlas.worker").
-import { type AtlasCard, atlasLayout, drawAtlas } from "./atlas";
+import { type AtlasCard, atlasLayout, cardUnits, drawAtlas } from "./atlas";
 
 interface AtlasRequest {
   readonly id: number;
@@ -14,7 +14,7 @@ const scope = self as unknown as {
 
 scope.onmessage = (event) => {
   const { id, cards } = event.data;
-  const layout = atlasLayout(cards.length);
+  const layout = atlasLayout(cards.map(cardUnits));
   const canvas = new OffscreenCanvas(layout.width, layout.height);
   const context = canvas.getContext("2d");
   if (context === null) {

@@ -1,5 +1,5 @@
 /**
- * Time and kind lookups over the EventStore. Transient visuals (streaks, bundles, ring snaps)
+ * Time and kind lookups over the EventStore. Transient visuals (strands, ring snaps)
  * are pure functions of the events whose visual window contains `t` (ARCHITECTURE §13), and
  * append-only lists (the feed, waveforms) are prefixes of a per-kind index. Neither needs
  * folding or snapshots: a binary search answers "as of cursor k" directly.

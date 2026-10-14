@@ -7,6 +7,7 @@
 import {
   AdditiveBlending,
   BufferAttribute,
+  CustomBlending,
   DataTexture,
   DoubleSide,
   DynamicDrawUsage,
@@ -14,6 +15,8 @@ import {
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   LinearFilter,
+  LinearMipmapLinearFilter,
+  MaxEquation,
   Mesh,
   NormalBlending,
   OrthographicCamera,
@@ -26,8 +29,10 @@ import { type FocusTargets, NO_FOCUS } from "../focus/focus";
 import { type Motion, NORMAL_MOTION } from "../motion/motion";
 import type { Ring } from "../shell/layout";
 import { AdaptiveDpr } from "./dpr";
+import { ringBand } from "./geometry";
 import type { InstanceBuffers } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
+import { DEFAULT_LOOK, type Look } from "./look";
 import type { CardLayer } from "./ring/layers";
 import { NO_RECENCY } from "./segments";
 import cardFrag from "./shaders/card.frag.glsl?raw";
@@ -97,14 +102,16 @@ export class StageHost {
   private readonly adaptive: AdaptiveDpr | null;
   private readonly now: () => number;
   private readonly viewport = [1, 1];
-  /** Ring centre and radius, shared by card materials. */
+  /** Ring centre, inner radius and band thickness, shared by card materials. */
   private readonly center = [0, 0];
   private readonly radius = { value: 1 };
+  private readonly band = { value: 1 };
   /** Shared by every layer's material: presentation time in ms. */
   private readonly time = { value: 0 };
   private readonly input: MutableFrame;
   private dpr: number;
   private lastStart = Number.NaN;
+  private meshDim = 1;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -136,14 +143,24 @@ export class StageHost {
       ring: { cx: 0, cy: 0, r: 1 },
       motion: NORMAL_MOTION,
       focus: NO_FOCUS,
+      look: DEFAULT_LOOK,
     };
+  }
+
+  /**
+   * Sets the viewer's look (B15), applied from the next frame, and how much the view dims the
+   * mesh (`meshDensity`).
+   */
+  setLook(look: Look, meshDim = 1): void {
+    this.input.look = look;
+    this.meshDim = meshDim;
   }
 
   add(layer: StageLayer): void {
     const material = isCardLayer(layer) ? this.cardMaterial() : this.segmentMaterial(layer);
     const mesh = new Mesh(geometryFor(layer.buffers), material);
     mesh.frustumCulled = false;
-    // Layers draw in the order they were added: the web, then the ring over it, then streaks.
+    // Layers draw in the order they were added: the web and its strands, then the ring over it.
     mesh.renderOrder = this.bindings.length;
     const binding: Binding = {
       layer,
@@ -160,6 +177,7 @@ export class StageHost {
 
   private segmentMaterial(layer: StageLayer): RawShaderMaterial {
     const recency = layer.recency ?? NO_RECENCY;
+    const max = layer.blend === "max";
     return new RawShaderMaterial({
       glslVersion: GLSL3,
       vertexShader: segmentVert,
@@ -167,14 +185,18 @@ export class StageHost {
       uniforms: {
         uViewport: { value: this.viewport },
         uDpr: { value: this.dpr },
+        uMax: { value: max ? 1 : 0 },
         uTime: this.time,
         uFlare: { value: recency.flare },
         uFlareMs: { value: recency.flareMs },
-        uFadeMs: { value: recency.fadeMs ?? 0 },
         uCenter: { value: this.center },
         uSpin: { value: [1, 0] },
+        uWidth: { value: 1 },
+        uAlpha: { value: 1 },
       },
-      blending: AdditiveBlending,
+      // Additive, or MAX for layers whose overlaps must not add up (premultiplied in the shader).
+      blending: max ? CustomBlending : AdditiveBlending,
+      ...(max ? { blendEquation: MaxEquation } : {}),
       transparent: true,
       depthTest: false,
       depthWrite: false,
@@ -194,6 +216,7 @@ export class StageHost {
         uViewport: { value: this.viewport },
         uCenter: { value: this.center },
         uRadius: this.radius,
+        uBand: this.band,
         uRotation: { value: 0 },
         uTime: this.time,
         uAtlas: { value: emptyTexture() },
@@ -228,6 +251,7 @@ export class StageHost {
     this.center[0] = ring.cx;
     this.center[1] = ring.cy;
     this.radius.value = ring.r;
+    this.band.value = ringBand(ring);
     this.applySize();
   }
 
@@ -260,6 +284,7 @@ export class StageHost {
       const { layer } = binding;
       layer.update(this.input);
       this.flare(binding, motion);
+      this.style(binding);
       if (binding.generation !== layer.buffers.generation) this.attach(binding);
       if (binding.version !== layer.buffers.version) {
         upload(binding.mesh.geometry, layer.buffers);
@@ -295,6 +320,22 @@ export class StageHost {
     uniforms.uFlareMs.value = recency.flareMs * motion.speed;
   }
 
+  /**
+   * Applies the viewer's look to a layer's widths and alphas (B15). A MAX-blended layer is never
+   * brightened: its alphas stay at most what it wrote, the flash-safe ceiling (ADR-0011 B14 note).
+   */
+  private style(binding: Binding): void {
+    const { part, blend } = binding.layer;
+    if (part === undefined) return;
+    const uniforms = binding.mesh.material.uniforms;
+    const look = (this.input.look ?? DEFAULT_LOOK).parts[part];
+    if (uniforms.uWidth !== undefined) uniforms.uWidth.value = look.width;
+    const dim = part === "mesh" ? this.meshDim : 1;
+    if (uniforms.uAlpha !== undefined)
+      uniforms.uAlpha.value =
+        blend === "max" ? Math.min(1, look.brightness) : look.brightness * dim;
+  }
+
   /** Sets a turning layer's rotation uniform (cards: an angle; segments: its cos and sin). */
   private spin(binding: Binding, rotation: number): void {
     const uniforms = binding.mesh.material.uniforms;
@@ -314,8 +355,10 @@ export class StageHost {
     binding.atlasVersion = version;
     const texture = new Texture(bitmap);
     texture.flipY = false; // ImageBitmaps cannot be flipped on upload; the atlas uses v = 0 at the top
-    texture.generateMipmaps = false;
-    texture.minFilter = LinearFilter;
+    // Mipmapped: zoomed out (B15) the cards are drawn smaller than the atlas, and without mipmaps
+    // their text would shimmer as the ring turns.
+    texture.generateMipmaps = true;
+    texture.minFilter = LinearMipmapLinearFilter;
     texture.magFilter = LinearFilter;
     texture.needsUpdate = true;
     binding.texture?.dispose();

@@ -6,7 +6,9 @@ import { CockpitModel } from "../model/cockpit";
 import { parseJsonl } from "../model/jsonl";
 import { runEvents } from "../model/test-support";
 import { type Motion, NORMAL_MOTION } from "../motion/motion";
-import { computeLayout } from "../shell/layout";
+import { computeLayout, type Ring } from "../shell/layout";
+import { viewRing } from "./camera";
+import { webRadius } from "./geometry";
 import {
   FLASH_BUDGET,
   FLASH_WINDOW_MS,
@@ -16,13 +18,13 @@ import {
 } from "./governor";
 import { hashRenderModels } from "./instances";
 import type { StageFrame, StageLayer } from "./layer";
+import { clampLook, DEFAULT_LOOK, LOOK_SPECS, type Look } from "./look";
 import { AtlasService } from "./ring/atlas-service";
 import { RingModel, ringLayers, rotationAt } from "./ring/layers";
-import { easeOutCubic, SNAP_MS } from "./ring/rotation";
-import { streakArea, streakLayer, streakShape, streakWidth } from "./streams/layers";
-import { residueLayer } from "./streams/residue";
-import { LONGEST_LIFE, lifetime, streams } from "./streams/style";
-import { BUNDLE_MS, bundleLayer, edgeLayer, webLayers } from "./web/layers";
+import { easeOutCubic, RING_DRIFT, SNAP_MS } from "./ring/rotation";
+import { streams } from "./streams/style";
+import { arcPieces, edgeHash } from "./web/arcs";
+import { BUNDLE_MS, bundleLayer, edgeLayer, pinArea, strandArea, webLayers } from "./web/layers";
 import { computeInline, LayoutService } from "./web/layout-service";
 
 const { stage, ring } = computeLayout(1440, 900);
@@ -41,15 +43,25 @@ beforeAll(async () => {
   await Promise.all([demo.layout.request(), stress.layout.request()]);
 }, 60_000);
 
-const frameOf = (model: CockpitModel, t: number, motion: Motion = NORMAL_MOTION): StageFrame => ({
+const frameOf = (
+  model: CockpitModel,
+  t: number,
+  motion: Motion = NORMAL_MOTION,
+  view: { ring?: Ring; look?: Look } = {},
+): StageFrame => ({
   t,
   cursor: model.store.cursorAt(t),
   width: stage.w,
   height: stage.h,
-  ring,
+  ring: view.ring ?? ring,
   motion,
+  ...(view.look === undefined ? {} : { look: view.look }),
 });
+/** The whole wheel (B15's view at zoom 1) on the same stage. */
+const whole = viewRing(ring, stage.w, stage.h, 1);
 const at = (speed: number): Motion => ({ speed, reduced: false });
+const ringOf = (model: CockpitModel) =>
+  new RingModel(model, new AtlasService(() => Promise.resolve(null)));
 
 /** The largest admitted area rising within any window of `window` ms (brute force). */
 function worstWindow(log: OnsetLog, window: number): number {
@@ -64,9 +76,16 @@ function worstWindow(log: OnsetLog, window: number): number {
   return worst;
 }
 
-function governed(run: { model: CockpitModel; layout: LayoutService }, speed: number) {
-  const governor = new FlashGovernor(run.model, run.layout);
-  governor.prepare(frameOf(run.model, 0, at(speed)));
+/** A governor with the ring, so it decides bunches as the app does. */
+function governed(
+  run: { model: CockpitModel; layout: LayoutService },
+  speed: number,
+  view: { ring?: Ring; look?: Look } = {},
+) {
+  const wheel = ringOf(run.model);
+  wheel.sync();
+  const governor = new FlashGovernor(run.model, run.layout, FLASH_BUDGET, wheel);
+  governor.prepare(frameOf(run.model, 0, at(speed), view));
   return governor;
 }
 
@@ -86,7 +105,9 @@ describe("flash governor (ADR-0011, WCAG 2.3.1)", () => {
   });
 
   it("holds the ×16 stress burst under the threshold by dropping what does not fit", () => {
-    const governor = governed(stress, 16);
+    // In the whole-wheel view (B15), where strands are short enough for some bunches to fit; in
+    // the arc view they come from all over the disc and none fits at ×16 (the bound still holds).
+    const governor = governed(stress, 16, { ring: whole });
     const { store } = stress.model;
     let streaming = 0;
     let drawn = 0;
@@ -94,13 +115,45 @@ describe("flash governor (ADR-0011, WCAG 2.3.1)", () => {
       const event = store.event(i);
       if (event === null || !streams(event)) continue;
       streaming++;
-      if (governor.streak(i)) drawn++;
+      if (governor.bundle(i)) drawn++;
     }
     expect(drawn).toBeGreaterThan(0);
     expect(drawn).toBeLessThan(streaming); // the burst exceeds the budget at ×16
     const worst = worstWindow(governor.onsets, FLASH_WINDOW_MS * 16);
     expect(worst).toBeLessThanOrEqual(FLASH_BUDGET);
     expect(worst / WCAG_FLASH_AREA).toBeLessThan(0.5 + 1e-9);
+  });
+
+  it("holds the cap in every view and at every width the viewer can choose (B15)", () => {
+    const widest = clampLook({
+      parts: {
+        bullets: { width: LOOK_SPECS.bullets.width.max },
+        mesh: { width: LOOK_SPECS.mesh.width.max },
+      },
+    });
+    for (const run of [demo, stress])
+      for (const view of [ring, viewRing(ring, stage.w, stage.h, 0.5), whole])
+        for (const look of [DEFAULT_LOOK, widest])
+          for (const speed of [1, 16]) {
+            const { onsets } = governed(run, speed, { ring: view, look });
+            expect(worstWindow(onsets, FLASH_WINDOW_MS * speed)).toBeLessThanOrEqual(FLASH_BUDGET);
+          }
+  });
+
+  it("counts wider bullets and arcs as more area, and re-decides when the widths change (B15)", () => {
+    // The bounds grow with the width.
+    expect(strandArea(300, 2)).toBeGreaterThan(strandArea(300));
+    expect(pinArea(8, 2)).toBeGreaterThan(pinArea(8));
+    // Re-preparing with another width re-decides from the start.
+    const governor = governed(demo, 1, { ring: whole });
+    const before = governor.version;
+    governor.prepare(
+      frameOf(demo.model, 0, at(1), {
+        ring: whole,
+        look: clampLook({ parts: { bullets: { width: 2 } } }),
+      }),
+    );
+    expect(governor.version).toBeGreaterThan(before);
   });
 
   it("decides the same however the log arrives (pure in the events, speed and geometry)", () => {
@@ -116,48 +169,21 @@ describe("flash governor (ADR-0011, WCAG 2.3.1)", () => {
     whole.prepare(frameOf(demo.model, 0, at(4)));
     expect(governor.onsets).toEqual(whole.onsets);
   });
-
-  it("bounds a streak's drawn area from above at every age", () => {
-    for (const event of runEvents().filter(streams).slice(0, 200)) {
-      const out = { angle: 0, from: 0, head: 0, tail: 0, alpha: 0 };
-      for (let age = 0; age <= lifetime(event); age += 10) {
-        if (!streakShape(event, age, 0, ring, out)) continue;
-        expect((out.head - out.tail) * streakWidth(event)).toBeLessThanOrEqual(streakArea(event));
-      }
-    }
-  });
 });
 
 describe("layers follow the governor and wall-clock time", () => {
-  it("draws exactly the admitted streaks whose wall-clock life covers t, at every speed", () => {
-    const { model } = stress;
-    const { store } = model;
-    for (const speed of SPEEDS) {
-      const governor = new FlashGovernor(model, stress.layout);
-      const layer = streakLayer(model, governor);
-      const burst = store.time[model.kinds.lastIndex("test.finished", store.length)] as number;
-      for (const t of [burst - 600, burst, burst + 900 * speed]) {
-        layer.update(frameOf(model, t, at(speed)));
-        let expected = 0;
-        for (let i = store.firstAtOrAfter(t - LONGEST_LIFE * speed); i < store.cursorAt(t); i++) {
-          const event = store.event(i);
-          if (event === null || !streams(event) || !governor.streak(i)) continue;
-          const age = (t - (store.time[i] as number)) / speed;
-          if (age >= 0 && age <= lifetime(event)) expected++;
-        }
-        expect(layer.buffers.count).toBe(Math.min(expected, 2048));
-      }
-    }
-  });
-
-  it("fades bundles over 1.2 s of wall-clock time and skips the ones the governor drops", () => {
+  it("draws strands for their wall-clock life, and none under reduced motion", () => {
     const { model, layout } = demo;
-    const traces = model.kinds.last("trace.sample", model.store.length, 1000);
-    const first = traces[0] as number;
-    const t0 = model.store.time[first] as number;
     for (const speed of [1, 16]) {
-      const governor = new FlashGovernor(model, layout);
-      const layer = bundleLayer(model, layout, governor);
+      const wheel = ringOf(model);
+      wheel.sync();
+      const governor = new FlashGovernor(model, layout, FLASH_BUDGET, wheel);
+      const layer = bundleLayer(model, layout, governor, wheel);
+      governor.prepare(frameOf(model, 0, at(speed)));
+      // The first bunch admitted at this speed (its section was on screen when it fired).
+      let first = 0;
+      while (first < model.store.length && !governor.bundle(first)) first++;
+      const t0 = model.store.time[first] as number;
       layer.update(frameOf(model, t0 + BUNDLE_MS * speed * 0.5, at(speed)));
       expect(layer.buffers.count).toBeGreaterThan(0);
       layer.update(frameOf(model, t0 + BUNDLE_MS * speed * 0.5, { speed, reduced: true }));
@@ -170,14 +196,25 @@ describe("layers follow the governor and wall-clock time", () => {
     const governor = new FlashGovernor(model, layout);
     const layer = edgeLayer(model, layout, governor);
     layer.update(frameOf(model, 0, at(16)));
-    expect(layer.buffers.count).toBe(model.graph.edgeCount); // one segment per edge, in order
+    // Each edge's pieces on the stage, in edge order, carry its flare decision.
+    const positions = layout.positions as Float32Array;
+    const radius = webRadius(ring);
+    const x = (n: number) => ring.cx + (positions[n * 2] as number) * radius;
+    const y = (n: number) => ring.cy + (positions[n * 2 + 1] as number) * radius;
     const flares = layer.buffers.array("flare");
+    let i = 0;
     let on = 0;
-    for (let e = 0; e < layer.buffers.count; e++) {
-      expect(flares[e]).toBe(governor.edgeFlare(e) ? 1 : 0);
-      on += flares[e] as number;
+    let shown = 0;
+    for (let e = 0; e < model.graph.edgeCount; e++) {
+      const s = model.graph.edgeSource[e] as number;
+      const t = model.graph.edgeTarget[e] as number;
+      const pieces = arcPieces(x(s), y(s), x(t), y(t), edgeHash(s, t), ring, stage.w, stage.h);
+      if (pieces > 0) shown++;
+      if (pieces > 0 && governor.edgeFlare(e)) on++;
+      for (let k = 0; k < pieces; k++) expect(flares[i++]).toBe(governor.edgeFlare(e) ? 1 : 0);
     }
-    expect(on).toBeLessThan(layer.buffers.count); // 10k edges cannot all flare at ×16
+    expect(i).toBe(layer.buffers.count);
+    expect(on).toBeLessThan(shown); // the edges on the stage cannot all flare at ×16
   });
 
   it("snaps the ring over 500 ms of wall-clock time, and instantly without drift when reduced", () => {
@@ -188,7 +225,7 @@ describe("layers follow the governor and wall-clock time", () => {
     if (snap === undefined) throw new Error("no snap");
     for (const speed of [1, 16]) {
       const motion = at(speed);
-      const drift = ringModel.angles.drift;
+      const drift = ringModel.angles.drift / speed; // wall-clock drift, in run time
       const offset = (t: number) => rotationAt(ringModel, t, motion) - drift * t;
       const start = offset(snap.time);
       const end = offset(snap.time + SNAP_MS * speed);
@@ -200,15 +237,30 @@ describe("layers follow the governor and wall-clock time", () => {
     expect(rotationAt(ringModel, snap.time + 400, reduced)).toBe(still);
   });
 
-  it("draws no streaks or bundles under reduced motion", () => {
+  it("turns the ring at the same wall-clock speed at every replay speed (B14)", () => {
+    const ringModel = new RingModel(demo.model, new AtlasService(() => Promise.resolve(null)));
+    ringModel.sync();
+    const last = ringModel.content.focus.at(-1);
+    if (last === undefined) throw new Error("no snap");
+    for (const speed of SPEEDS) {
+      const motion = at(speed);
+      const from = last.time + SNAP_MS * speed + 1; // after every snap has settled
+      const wallMs = 1_000;
+      const turned =
+        rotationAt(ringModel, from + wallMs * speed, motion) - rotationAt(ringModel, from, motion);
+      expect(turned / wallMs).toBeCloseTo(RING_DRIFT, 12);
+    }
+  });
+
+  it("draws no strands or outside lines under reduced motion", () => {
     const { model, layout } = demo;
-    const governor = new FlashGovernor(model, layout);
-    const layers = [streakLayer(model, governor), bundleLayer(model, layout, governor)];
+    const wheel = ringOf(model);
+    wheel.sync();
+    const governor = new FlashGovernor(model, layout, FLASH_BUDGET, wheel);
+    const layer = bundleLayer(model, layout, governor, wheel);
     for (const t of [24_000, 25_000, 30_500]) {
-      for (const layer of layers) {
-        layer.update(frameOf(model, t, { speed: 1, reduced: true }));
-        expect(layer.buffers.count).toBe(0);
-      }
+      layer.update(frameOf(model, t, { speed: 1, reduced: true }));
+      for (const part of [layer, layer.lines, layer.rays]) expect(part.buffers.count).toBe(0);
     }
   });
 });
@@ -216,13 +268,9 @@ describe("layers follow the governor and wall-clock time", () => {
 describe("scrubbing gives the same frame as playing (golden)", () => {
   function stageLayers(): StageLayer[] {
     const { model, layout } = demo;
-    const governor = new FlashGovernor(model, layout);
-    return [
-      ...webLayers(model, layout, governor),
-      ...ringLayers(model, new AtlasService(() => Promise.resolve(null))).layers,
-      residueLayer(model),
-      streakLayer(model, governor),
-    ];
+    const ringed = ringLayers(model, new AtlasService(() => Promise.resolve(null)));
+    const governor = new FlashGovernor(model, layout, FLASH_BUDGET, ringed.ring);
+    return [...webLayers(model, layout, governor, ringed.ring), ...ringed.layers];
   }
   const hashAt = (layers: StageLayer[], t: number, motion: Motion) => {
     for (const layer of layers) layer.update(frameOf(demo.model, t, motion));

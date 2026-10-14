@@ -2,19 +2,30 @@ import { describe, expect, it } from "vitest";
 import {
   ATLAS_MAX,
   ATLAS_SCALE,
+  type AtlasCard,
   atlasLayout,
-  CONTENT_CELL,
+  CARD_UNITS,
+  cardUnits,
+  DOT_COLS,
   drawAtlas,
+  ROW_PITCH,
   type TextSurface,
 } from "./atlas";
 import { AtlasService } from "./atlas-service";
 
 describe("atlasLayout", () => {
-  it("packs content and metadata cells side by side without overlap, within 2048 px", () => {
-    const layout = atlasLayout(160);
+  it("packs cells of each card's own size without overlap, within 2048 px", () => {
+    const units = Array.from({ length: 64 }, (_, i) => 30 + ((i * 37) % 80));
+    const layout = atlasLayout(units);
     expect(layout.width).toBeLessThanOrEqual(ATLAS_MAX);
     expect(layout.height).toBeLessThanOrEqual(ATLAS_MAX);
-    const rects = [...layout.content, ...layout.meta];
+    expect(layout.scale).toBe(ATLAS_SCALE);
+    const rects = layout.cells;
+    rects.forEach((r, i) => {
+      // Cells keep their aspect: band units across, the card's units along.
+      expect((r.u1 - r.u0) * layout.width).toBeCloseTo(CARD_UNITS * layout.scale, 6);
+      expect((r.v1 - r.v0) * layout.height).toBeCloseTo((units[i] as number) * layout.scale, 6);
+    });
     for (const r of rects) {
       expect(r.u0).toBeGreaterThanOrEqual(0);
       expect(r.v0).toBeGreaterThanOrEqual(0);
@@ -31,35 +42,78 @@ describe("atlasLayout", () => {
         expect(overlap).toBe(false);
       }
     }
-    expect(layout.content[0]?.u1).toBe(layout.meta[0]?.u0);
   });
 
-  it("refuses more cards than fit", () => {
-    expect(() => atlasLayout(10_000)).toThrow(RangeError);
+  it("lowers the scale when the cards do not fit at full scale, and refuses what never fits", () => {
+    const crowded = atlasLayout(Array.from({ length: 80 }, () => 120));
+    expect(crowded.scale).toBeLessThan(ATLAS_SCALE);
+    expect(crowded.height).toBeLessThanOrEqual(ATLAS_MAX);
+    expect(() => atlasLayout(Array.from({ length: 10_000 }, () => 100))).toThrow(RangeError);
+  });
+});
+
+describe("cardUnits", () => {
+  it("fits the header, the rows and the dot grid", () => {
+    const card: AtlasCard = { header: "// a / b", rows: [], dots: [], dotRows: 0, meta: [] };
+    expect(cardUnits(card)).toBe(30); // the minimum
+    const rows = Array.from({ length: 10 }, () => ({ num: "1", text: "x", flag: false }));
+    expect(cardUnits({ ...card, rows })).toBe(14 + 10 * ROW_PITCH + 4);
+    expect(cardUnits({ ...card, rows, dots: [1], dotRows: 4 })).toBe(14 + 10 * ROW_PITCH + 18 + 4);
   });
 });
 
 describe("drawAtlas", () => {
-  it("writes each card's lines inside its own cell", () => {
-    const calls: { text: string; x: number; y: number; max: number | undefined }[] = [];
+  it("writes each card's header, rows, dots and labels inside its own cell", () => {
+    const calls: { text: string; x: number; y: number; style: string }[] = [];
+    const dots: { x: number; y: number; style: string }[] = [];
     const surface: TextSurface = {
       font: "",
       fillStyle: "",
       textBaseline: "alphabetic",
+      textAlign: "left",
       clearRect: () => {},
-      fillText: (text, x, y, max) => calls.push({ text, x, y, max }),
+      fillRect: (x, y, w, h) => {
+        if (w === h) dots.push({ x, y, style: String(surface.fillStyle) });
+      },
+      fillText: (text, x, y) => calls.push({ text, x, y, style: String(surface.fillStyle) }),
+      measureText: (text) => ({ width: text.length * 6 }),
     };
-    const cards = [
-      { lines: ["a.py", "import b"], meta: ["a.py", "1 imp"] },
-      { lines: ["c.py"], meta: ["c.py"] },
+    const cards: AtlasCard[] = [
+      {
+        header: "// pkg / a",
+        rows: [
+          { num: "12", text: "def f()", flag: true },
+          { num: "", text: "import b", flag: false },
+        ],
+        dots: [0, 17],
+        dotRows: 2,
+        meta: ["1 imp", ""],
+      },
+      { header: "// c", rows: [], dots: [], dotRows: 0, meta: ["0 imp"] },
     ];
-    const layout = atlasLayout(cards.length);
+    const layout = atlasLayout(cards.map(cardUnits));
     drawAtlas(surface, layout, cards);
-    expect(calls.map((c) => c.text)).toEqual(["a.py", "import b", "a.py", "1 imp", "c.py", "c.py"]);
+    expect(calls.map((c) => c.text)).toEqual([
+      "// pkg / a",
+      "12",
+      "def f()",
+      "import b",
+      "1 imp",
+      "// c",
+      "0 imp",
+    ]);
     expect(surface.textBaseline).toBe("top");
-    const [x1] = layout.origins[1] as readonly [number, number];
-    expect(calls[4]?.x).toBeGreaterThan(x1);
-    expect(calls[0]?.max).toBeLessThanOrEqual(CONTENT_CELL.w * ATLAS_SCALE);
+    // A changed row is pure red, which the shader reads as --flag.
+    expect(calls[2]?.style).toBe("rgba(255,0,0,0.95)");
+    // The second card's text lies inside its own cell.
+    const [x1, y1] = layout.origins[1] as readonly [number, number];
+    for (const call of calls.slice(5)) {
+      expect(call.x).toBeGreaterThanOrEqual(x1);
+      expect(call.y).toBeGreaterThanOrEqual(y1);
+    }
+    // Two rows of DOT_COLS dots, two of them lit.
+    expect(dots).toHaveLength(2 * DOT_COLS);
+    expect(dots.filter((d) => d.style.endsWith("0.92)"))).toHaveLength(2);
   });
 });
 

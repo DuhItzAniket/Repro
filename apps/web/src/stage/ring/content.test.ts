@@ -2,7 +2,8 @@ import { STRESS } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
-import { MAX_CARDS, NEVER, ringContent, targetFile } from "./content";
+import { cardUnits, DOT_COLS } from "./atlas";
+import { cardHeader, MAX_CARDS, NEVER, ringContent, targetFile } from "./content";
 
 function modelOf(events: readonly unknown[]): CockpitModel {
   const model = new CockpitModel();
@@ -36,12 +37,31 @@ describe("ringContent", () => {
 
   it("builds each card only from what events say about the file", () => {
     const parse = content.cards.find((c) => c.file === "timekeeper/parse.py");
-    expect(parse?.lines[0]).toBe("timekeeper/parse.py");
-    expect(parse?.lines).toEqual(
-      expect.arrayContaining(["import timekeeper._util", "def parse_date"]),
+    expect(parse?.header).toBe("// timekeeper / parse");
+    // Its symbols with their line numbers, changed ones flagged, then its imports.
+    expect(parse?.rows).toEqual(
+      expect.arrayContaining([
+        { num: "42", text: "def parse_date()", flag: true },
+        { num: "", text: "from timekeeper import _util", flag: false },
+      ]),
     );
-    expect(parse?.meta).toEqual(["parse.py", expect.stringMatching(/^\d+ imp$/), "3 sym", "±2"]);
-    expect(parse?.weight).toBe(1 + (parse?.lines.length ?? 0));
+    expect(parse?.rows.findIndex((r) => r.num === "")).toBe(3); // symbols first
+    expect(parse?.meta).toEqual([
+      expect.stringMatching(/^\d+ imp$/),
+      expect.stringMatching(/^\d+ in$/),
+      "3 sym",
+      "±2",
+    ]);
+    // The neighbour fingerprint: lit buckets of the modules it imports or is imported by.
+    expect(parse?.dotRows).toBe(4);
+    expect(parse?.dots.length).toBeGreaterThan(3);
+    for (const d of parse?.dots ?? []) expect(d).toBeLessThan(DOT_COLS * 4);
+    expect(parse?.units).toBe(parse === undefined ? 0 : cardUnits(parse));
+  });
+
+  it("heads each card with its package and module, like the reference's", () => {
+    expect(cardHeader("timekeeper.tz.fold")).toBe("// tz / fold");
+    expect(cardHeader("timekeeper")).toBe("// timekeeper");
   });
 
   it("stamps appear, blast-radius and change times from the log", () => {

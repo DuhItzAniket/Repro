@@ -16,7 +16,8 @@ const LEAK_BUDGET_BYTES = 512 * 1024;
 /**
  * Bytes the stage layers may allocate per frame at the stress burst, once optimised. They
  * allocate no objects; what remains is V8 boxing doubles at calls it does not inline (about
- * 22 kB a frame with 2,048 live streaks, measured in B12). New per-event objects would exceed it.
+ * 22 kB a frame, measured in B12 with 2,048 live streaks, since removed). New per-event objects
+ * would exceed it.
  */
 const STAGE_ALLOC_BUDGET = 40 * 1024;
 const FRAMES = 1000;
