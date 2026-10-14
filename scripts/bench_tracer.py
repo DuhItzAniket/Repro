@@ -63,16 +63,22 @@ def call_times(run: TestRun) -> dict[str, float]:
     }
 
 
-def commit() -> str:
-    """The commit measured, ``-dirty`` when the working tree has changes (they were measured)."""
-    done = subprocess.run(
-        ["git", "-c", "core.longpaths=true", "describe", "--always", "--dirty", "--abbrev=7"],  # noqa: S607
+def _git(*args: str) -> str:
+    done = subprocess.run(  # noqa: S603 - git, with this script's own arguments
+        ["git", "-c", "core.longpaths=true", *args],  # noqa: S607
         cwd=ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
-    return done.stdout.strip() or "unknown"
+    return done.stdout.strip()
+
+
+def commit() -> str:
+    """The commit measured, ``-dirty`` when the code measured (the engine, the scripts) has
+    uncommitted changes; the results file this appends to does not count."""
+    name = _git("describe", "--always", "--abbrev=7") or "unknown"
+    return name + ("-dirty" if _git("status", "--porcelain", "--", "engine", "scripts") else "")
 
 
 def measure(rounds: int, python: str, work: Path) -> list[dict[str, Any]]:
