@@ -2,7 +2,15 @@
 
 from repro.gitops.changes import FileChange, Hunk, diff
 from repro.gitops.git import Git, GitError
-from repro.gitops.snapshot import Skipped, Snapshot, SnapshotError, path_problem, snapshot
+from repro.gitops.snapshot import (
+    Skipped,
+    Snapshot,
+    SnapshotError,
+    path_problem,
+    read_blobs,
+    regular_files,
+    snapshot,
+)
 from repro.gitops.worktree import CleanupError, add_worktree, remove_worktree
 
 __all__ = [
@@ -17,6 +25,8 @@ __all__ = [
     "add_worktree",
     "diff",
     "path_problem",
+    "read_blobs",
+    "regular_files",
     "remove_worktree",
     "snapshot",
 ]

@@ -29,7 +29,7 @@ import stat
 import subprocess
 import sys
 import threading
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import IO, Final
@@ -180,6 +180,28 @@ def _blobs(git: Git, shas: list[str]) -> Generator[tuple[str, IO[bytes], int]]:
         process.kill()
         process.wait()
         feeder.join(5)
+
+
+def regular_files(git: Git, commit: str) -> dict[str, str]:
+    """Each regular file of ``commit`` (not a symlink or a submodule): path → blob sha."""
+    return {
+        entry.path: entry.sha
+        for entry in _list_tree(git, commit)
+        if entry.kind == "blob" and entry.mode != "120000"
+    }
+
+
+def read_blobs(git: Git, shas: Sequence[str]) -> dict[str, bytes]:
+    """The bytes of each blob, read through one ``git cat-file --batch``."""
+    unique = list(dict.fromkeys(shas))
+    found: dict[str, bytes] = {}
+    stream = _blobs(git, unique)
+    try:
+        for sha, data, size in stream:
+            found[sha] = data.read(size)
+    finally:
+        stream.close()
+    return found
 
 
 def _copy(stream: IO[bytes], size: int, target: str, *, executable: bool) -> None:

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from gitrepo import Repo
-from repro.gitops import Git, SnapshotError, path_problem, snapshot
+from repro.gitops import Git, SnapshotError, path_problem, regular_files, snapshot
 from repro.gitops.snapshot import extended, remove_snapshot
 
 POSIX = sys.platform != "win32"
@@ -177,3 +177,17 @@ def test_remove_snapshot_handles_read_only_files(repo: Repo, tmp_path: Path) -> 
     (root / "pkg" / "locked.txt").chmod(stat.S_IREAD)
     remove_snapshot(root)
     assert not root.exists()
+
+
+def test_regular_files_lists_blobs_by_their_exact_path(repo: Repo) -> None:
+    sha = repo.commit(
+        {
+            "pkg/naïve café.py": "x = 1",  # git would quote this without -z
+            "run.py": ("x = 2", "100755"),
+            "link.py": ("run.py", "120000"),
+            "vendor": ("0123456789abcdef0123456789abcdef01234567", "160000"),
+        }
+    )
+    files = regular_files(Git(repo.path), sha)
+    assert set(files) == {"pkg/naïve café.py", "run.py"}
+    assert files["run.py"] == repo.git("rev-parse", f"{sha}:run.py")

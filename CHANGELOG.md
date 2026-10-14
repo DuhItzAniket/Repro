@@ -50,6 +50,14 @@ All notable changes to this project are documented here. The format follows
   and changed line ranges from `-U0`, `.git`-less snapshots written byte for byte from the tree
   object (not `git archive`, which honours `export-ignore`), with unsafe entries skipped and
   listed, and worktrees whose cleanup waits out Windows file locks. [C05]
+- Changed symbols: each file's module name from its packages (`__init__.py`), a symbol table
+  from `ast` (functions, methods, classes and module code, with stable `module:qualname#ordinal`
+  IDs), and, for two commits, the symbols that were modified, renamed, moved, added or removed,
+  as `symbol.changed` payloads. A symbol is modified only if its own code changed: comments,
+  reformatting and edits to nested definitions do not count against it. Overloads and other
+  repeated names are aligned by code, renames and moves matched by AST similarity, and a file
+  whose package changed above it moves with it. Files that do not parse, are too complex to
+  parse or have no importable module name are reported, never guessed. [C06]
 
 ## [0.2.0] - 2026-10-14
 

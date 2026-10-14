@@ -352,9 +352,13 @@ Rules:
 
 ## 9. Static analysis — see ADR-0006
 
-- **Symbols:** `ast` with `lineno`/`end_lineno`. Symbol ID = `module:qualname#ordinal`.
-  Rename and move matching across sides uses AST similarity when qualnames differ. Changes in a
-  module or class body become `module-level` symbols.
+- **Symbols:** `ast` with `lineno`/`end_lineno`. Symbol ID = `module:qualname#ordinal`, the
+  module named by walking up through `__init__.py` directories. A symbol changed when its own
+  code changed: its AST without positions, nested definitions reduced to markers, so comments
+  and reformatting are not changes. A class body change belongs to the class, and module code
+  outside definitions to the symbol `<module>`. Repeated names are aligned by own code. Rename
+  and move matching across sides uses AST similarity when qualnames differ. Files that cannot
+  be parsed are reported, never guessed (C06).
 - **Import graph:** `grimp` (BSD-2, Rust core, handles lazy imports). It is module-level only.
   Symbol-level reverse edges come from the dynamic per-test map, with optional static call edges
   later.

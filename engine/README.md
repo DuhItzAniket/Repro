@@ -42,6 +42,15 @@ and their changed line ranges; `snapshot` writes a commit's tree, byte for byte,
 `.git`-less directory, skipping and listing entries that are unsafe on this machine;
 `add_worktree` and `remove_worktree` give host-side checkouts that are always cleaned up.
 
+## Static analysis
+
+`repro.analysis` reads a target's Python source with `ast`, never importing it.
+`module_names` names each file as Python would import it; `build_table` lists a module's
+functions, methods and classes with stable IDs (`pkg.mod:Class.method#0`, `<module>` for the
+module's own code); `changed_symbols_between(git, base, head)` gives each symbol the change
+touched (`modified`, `renamed`, `moved`, `added`, `removed`), as `symbol.changed` payloads, and
+lists the files it could not read.
+
 ## API
 
 `repro.api.create_app` serves `GET /runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`,
