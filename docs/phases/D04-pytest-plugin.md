@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D03 |
-| **Branch / PR** | `phase/D04-pytest-plugin` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/D04-pytest-plugin` · [#41](https://github.com/DuhItzAniket/Repro/pull/41) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 A side's tests run under Repro's own pytest plugin and Repro's own command, whatever the project
@@ -96,7 +96,7 @@ input. The same tests run twice give the same outcomes.
   about 70 s here, provisioning included.
 - `TZ=UTC` is honoured on Windows: on a host whose own time zone is not UTC, the suite's
   `time.localtime(0)` is midnight on every Python (research/03 §10 had this unverified).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#41).
 
 ## Deviations from spec
 - IMPLEMENTATION_PLAN asks for the matrix "inside containers". Repro's image has one Python
