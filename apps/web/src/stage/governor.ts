@@ -12,7 +12,8 @@
  * upper bounds from each element's own geometry (`streakArea`, `bundleArea`, `arcArea`), and
  * the budget applies to the whole stage, not per 10° field, so the estimate errs on the safe side.
  * An edge counts only its pieces on the stage (most of the web is off-screen since B14), and a
- * bundle its longest possible reach.
+ * strand (bundle) its longest possible length, from its node to the far end of the arc it can
+ * land on.
  *
  * Decisions are made greedily in log order and depend only on the events up to each onset, the
  * replay speed and the stage geometry. They are therefore a pure function of (events, speed,
@@ -25,7 +26,15 @@ import type { StageFrame } from "./layer";
 import { streakArea } from "./streams/layers";
 import { streams } from "./streams/style";
 import { arcArea, edgeHash } from "./web/arcs";
-import { BUNDLE_REACH, bundleArea, EDGE_STYLE, MARKER_AREA } from "./web/layers";
+import {
+  aimRange,
+  bundleArea,
+  EDGE_STYLE,
+  FOLLOW,
+  landingArc,
+  MARKER_AREA,
+  strandReach,
+} from "./web/layers";
 
 /** What the governor needs from the web layout (a `LayoutService`, or a stub in tests). */
 export interface PlacedNodes {
@@ -174,7 +183,9 @@ export class FlashGovernor {
     const positions = this.layout.positions;
     const radius = webRadius(this.ring);
     const { cx, cy } = this.ring;
-    const reach = BUNDLE_REACH * this.height;
+    // Strands land within AIM of their node's bearing on the landing arc, and follow the ring
+    // by at most FOLLOW either way.
+    const arc = landingArc(this.ring, this.height);
     const n = store.length;
     this.streakOk = grow(this.streakOk, n);
     this.bundleOk = grow(this.bundleOk, n);
@@ -236,6 +247,17 @@ export class FlashGovernor {
           const last = this.lastBundle.get(key);
           const aggregated =
             Number.isFinite(this.budget) && last !== undefined && t - last < this.window;
+          const p = positions as Float32Array;
+          const ox = p[from * 2] as number;
+          const oy = p[from * 2 + 1] as number;
+          const [lo, hi] = aimRange(Math.atan2(oy, ox), arc);
+          const reach = strandReach(
+            ox * radius,
+            oy * radius,
+            this.ring.r - 3,
+            lo - FOLLOW,
+            hi + FOLLOW,
+          );
           if (!aggregated && this.admit(t, bundleArea(reach, hash32(event.id)), "bundle")) {
             this.bundleOk[i] = 1;
             this.lastBundle.set(key, t);

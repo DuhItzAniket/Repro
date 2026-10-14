@@ -1,10 +1,13 @@
 /**
  * Layout of the dependency web (DESIGN.md "Dependency web"; ARCHITECTURE §13). A force-directed
- * simulation orders the nodes, and the result is a **chord layout** (B14): modules sit on a
- * circle just inside the ring, in the angular order the simulation gave them, evenly spaced, and
- * symbols and tests sit a little inside, beside their module. Tightly connected modules end up
- * next to each other, so their edges are short arcs near the rim, and edges between distant
- * parts of the repo cross the disc as long curves: the reference's hairball, from real edges.
+ * simulation orders the nodes, and the result is a **chord layout** (B14):
+ * - modules sit on a circle (under the ring's band), in the angular order the simulation gave
+ *   them, evenly spaced. Tightly connected modules end up next to each other, so their edges are
+ *   short arcs near the rim, and edges between distant parts of the repo cross the disc as long
+ *   curves: the reference's hairball, from real edges;
+ * - symbols and tests, the nodes a run touches, sit **in front**: in the sector of the disc the
+ *   stage shows (within FRONT_ANGLE of 3 o'clock, at FRONT_RADII), in the same order, spread
+ *   like the nodes of a network. Strands fire from them to the ring.
  *
  * Deterministic by construction:
  * - initial positions come from node-id hashes by rejection sampling (no trigonometry);
@@ -26,9 +29,10 @@ import {
 import { fnv, type LayoutInput } from "./layout-input";
 
 export const LAYOUT_TICKS = 300;
-/** Radius of symbols and tests, inside the modules' circle (unit radius), ± a per-node jitter. */
-export const INNER_RADIUS = 0.9;
-const INNER_JITTER = 0.04;
+/** Half the angle of the front sector where symbols and tests sit (radians). */
+export const FRONT_ANGLE = (24 * Math.PI) / 180;
+/** Radii of the front sector, as shares of the modules' circle. */
+export const FRONT_RADII = [0.6, 0.86] as const;
 
 /** A deterministic point in the disc of radius `r` from an id (rejection sampling on its hash). */
 function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {
@@ -49,8 +53,9 @@ function seedPoint(id: string, r: number, node: SimulationNodeDatum): void {
 }
 
 /**
- * Runs the simulation and returns positions on the unit circle (modules) and just inside it
- * (symbols and tests), each at the angle of its rank around the simulation's centroid.
+ * Runs the simulation and returns positions: modules on the unit circle, each at the angle of its
+ * rank around the simulation's centroid; symbols and tests in the front sector, spread across it
+ * in the same order, at radii from their ids' hashes.
  */
 export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Array {
   const n = input.ids.length;
@@ -106,12 +111,23 @@ export function forceLayout(input: LayoutInput, ticks = LAYOUT_TICKS): Float32Ar
   // Symbols and tests: the members of containment links, which come after the drawn edges.
   const inner = new Uint8Array(n);
   for (let i = drawn; i < input.links.length / 2; i++) inner[input.links[i * 2 + 1] as number] = 1;
-  order.forEach((node, rank) => {
-    const angle = ((rank + 0.5) / n) * Math.PI * 2;
-    const jitter = ((fnv(0x811c9dc5, input.ids[node] as string) % 1000) / 1000 - 0.5) * 2;
-    const radius = inner[node] === 1 ? INNER_RADIUS + INNER_JITTER * jitter : 1;
+  const innerCount = inner.reduce((sum, v) => sum + v, 0);
+  const moduleCount = n - innerCount;
+  let moduleRank = 0;
+  let innerRank = 0;
+  for (const node of order) {
+    let angle: number;
+    let radius: number;
+    if (inner[node] === 1) {
+      angle = -FRONT_ANGLE + (2 * FRONT_ANGLE * (innerRank++ + 0.5)) / innerCount;
+      const spread = (fnv(0x811c9dc5, input.ids[node] as string) % 1000) / 1000;
+      radius = FRONT_RADII[0] + (FRONT_RADII[1] - FRONT_RADII[0]) * spread;
+    } else {
+      angle = ((moduleRank++ + 0.5) / moduleCount) * Math.PI * 2;
+      radius = 1;
+    }
     out[node * 2] = Math.cos(angle) * radius;
     out[node * 2 + 1] = Math.sin(angle) * radius;
-  });
+  }
   return out;
 }

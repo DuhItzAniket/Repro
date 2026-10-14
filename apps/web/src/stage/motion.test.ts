@@ -154,7 +154,7 @@ describe("layers follow the governor and wall-clock time", () => {
     }
   });
 
-  it("fades bundles over 1.2 s of wall-clock time and skips the ones the governor drops", () => {
+  it("draws strands for their wall-clock life, and none under reduced motion", () => {
     const { model, layout } = demo;
     const traces = model.kinds.last("trace.sample", model.store.length, 1000);
     const first = traces[0] as number;

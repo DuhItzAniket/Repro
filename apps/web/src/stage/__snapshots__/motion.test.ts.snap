@@ -2,13 +2,13 @@
 
 exports[`scrubbing gives the same frame as playing (golden) > is pinned at fixed times and speeds (same on every OS in CI) 1`] = `
 {
-  "x16@12000": "b7ea00402c7f394a",
-  "x16@24500": "4d57c980df2607bc",
-  "x16@30500": "8b127e59273bf6f0",
-  "x16@34000": "43e359024e16772d",
-  "x1@12000": "978a6a682fd349fe",
-  "x1@24500": "4a6c0c712321df15",
-  "x1@30500": "7372c3361fdd09c2",
-  "x1@34000": "0e3f0f2d6faa3178",
+  "x16@12000": "c3b644862a138f62",
+  "x16@24500": "852bf38ebbb0c892",
+  "x16@30500": "e4765a122b0af78a",
+  "x16@34000": "e61a76ca0de96bf8",
+  "x1@12000": "32b096a57c93303a",
+  "x1@24500": "0a033cc8e614403e",
+  "x1@30500": "b8ecb0977af828bb",
+  "x1@34000": "ada14eec2051bacb",
 }
 `;

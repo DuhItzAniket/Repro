@@ -9,22 +9,30 @@ import { FlashGovernor } from "../governor";
 import { hashRenderModels } from "../instances";
 import type { StageFrame, StageLayer } from "../layer";
 import { AtlasService } from "../ring/atlas-service";
-import { RingModel, rotationAt } from "../ring/layers";
+import { RingModel } from "../ring/layers";
+import { RING_TURN_MS } from "../ring/rotation";
 import { segmentAlpha } from "../segments";
 import { arcPieces, edgeHash } from "./arcs";
 import {
+  AIM,
+  aimRange,
   BUNDLE_MS,
   BUNDLE_STEPS,
   bundleLayer,
   EDGE_RECENCY,
   edgeLayer,
+  FADE_FROM,
+  FOLLOW,
+  landingAngle,
+  landingArc,
   MARKER_SIDES,
   MAX_BUNDLES,
   markerLayer,
   nodeLayer,
   SHOOT,
+  strandFade,
   strandHead,
-  strandPull,
+  strandReach,
 } from "./layers";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -132,19 +140,21 @@ describe("marker layer", () => {
 });
 
 describe("node layer", () => {
-  it("draws the tests on the stage as squares, each from its node's event", () => {
+  it("draws the run's nodes on the stage as small circles, each from its node's event", () => {
     const layer = nodeLayer(model, layout);
     layer.update(frameAt(0));
     const { graph } = model;
     const shown = graph.ids
       .map((_, n) => n)
       .filter((n) => {
-        if (graph.nodeTypeName(n) !== "test") return false;
+        if (graph.nodeTypeName(n) === "module") return false;
         const [x, y] = at(n);
-        return x >= -2.2 && y >= -2.2 && x <= stage.w + 2.2 && y <= stage.h + 2.2;
+        return x >= -3.2 && y >= -3.2 && x <= stage.w + 3.2 && y <= stage.h + 3.2;
       });
-    expect(shown.length).toBeGreaterThan(0);
-    expect(layer.buffers.count).toBe(4 * shown.length);
+    // The layout puts symbols and tests in front, so most of them are on the stage.
+    const inner = graph.ids.filter((_, n) => graph.nodeTypeName(n) !== "module").length;
+    expect(shown.length).toBeGreaterThan(inner * 0.8);
+    expect(layer.buffers.count).toBe(8 * shown.length);
   });
 });
 
@@ -163,7 +173,7 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
   });
 
-  it("only draws for events within the last 1.2 s, and at most 40 bundles", () => {
+  it("only draws for events within a strand's life, and at most 40 strands", () => {
     const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
     let peak = 0;
     for (let t = 0; t <= model.store.endTime; t += 250) {
@@ -176,18 +186,38 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
       if (triggers === 0) expect(layer.buffers.count).toBe(0);
     }
     expect(peak).toBeGreaterThan(0);
-    expect(peak).toBeLessThanOrEqual(MAX_BUNDLES * (20 * BUNDLE_STEPS + 1));
+    expect(peak).toBeLessThanOrEqual(MAX_BUNDLES * (12 * BUNDLE_STEPS + 11));
   });
 
-  it("lands each strand on its function's ring card at the inner rim, riding along as it turns", () => {
-    const rings = ringModel();
-    const layer = bundleLayer(model, layout, unlimited(layout), rings);
-    rings.sync();
-    const { start, end } = rings.angles;
+  it("fires each strand from its test's node, which lights up, and keeps it attached there", () => {
+    const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
+    const first = model.kinds.last("trace.sample", model.store.length, 1)[0] as number;
+    const t0 = model.store.time[first] as number;
+    const a = layer.buffers.array("a");
+    for (const life of [0.1, 0.5, 0.9]) {
+      layer.update(frameAt(t0 + life * BUNDLE_MS));
+      const event = model.store.event(first);
+      if (event?.kind !== "trace.sample") throw new Error("no trace");
+      const [x, y] = at(model.graph.byId.get(event.target?.test ?? "") as number);
+      // The node's ring starts at (x + 4.5, y), whatever the strand's head is doing.
+      let found = false;
+      for (let i = 0; i < layer.buffers.count; i++) {
+        if (
+          Math.abs((a[i * 2] as number) - (x + 4.5)) < 1e-3 &&
+          Math.abs((a[i * 2 + 1] as number) - y) < 1e-3
+        )
+          found = true;
+      }
+      expect(found).toBe(true);
+    }
+  });
+
+  it("lands each strand on the inner rim, in the landing arc or as far as it has followed the ring", () => {
+    const layer = bundleLayer(model, layout, unlimited(layout), ringModel());
+    const arc = landingArc(ring, stage.h);
     let pins = 0;
     for (let t = 20_000; t <= 28_000; t += 100) {
       layer.update(frameAt(t));
-      const rotation = rotationAt(rings, t, NORMAL_MOTION);
       const a = layer.buffers.array("a");
       const b = layer.buffers.array("b");
       const shape = layer.buffers.array("shape");
@@ -197,29 +227,46 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
         const mx = ((a[i * 2] as number) + (b[i * 2] as number)) / 2 - ring.cx;
         const my = ((a[i * 2 + 1] as number) + (b[i * 2 + 1] as number)) / 2 - ring.cy;
         expect(Math.sqrt(mx * mx + my * my)).toBeCloseTo(ring.r - 3, 0);
-        // At the centre of a card as the ring stands at this frame.
-        const angle = Math.atan2(my, mx) - rotation;
-        const onACard = Array.from(start).some((s, c) => {
-          const centre = (s + (end[c] as number)) / 2;
-          const d = Math.abs(((angle - centre) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-          return Math.min(d, Math.PI * 2 - d) < 1e-3;
-        });
-        expect(onACard).toBe(true);
+        expect(Math.abs(Math.atan2(my, mx))).toBeLessThanOrEqual(arc + FOLLOW + 1e-6);
+        expect(arc).toBeGreaterThan(AIM);
       }
     }
     expect(pins).toBeGreaterThan(0);
   });
 
-  it("shoots each strand in, then pulls its tail in after it (B14)", () => {
+  it("fires at the card in front of its node and follows that ring section as it turns (B14)", () => {
+    // A node at bearing 0.05 fires within AIM of it, on the arc the stage shows.
+    const [lo, hi] = aimRange(0.05, 0.4);
+    expect([lo, hi]).toEqual([0.05 - AIM, 0.05 + AIM]);
+    expect(aimRange(0.35, 0.4)[1]).toBe(0.4);
+    expect(landingAngle(0.1, 0, lo, hi)).toBeCloseTo(0.1, 12); // the card, where it stood
+    expect(landingAngle(0.1, 0.05, lo, hi)).toBeCloseTo(0.15, 12); // then carried with the ring
+    expect(landingAngle(0.9, 0, lo, hi)).toBeCloseTo(hi, 12); // a card further off: its direction
+    expect(landingAngle(0.1 + Math.PI * 2, 0, lo, hi)).toBeCloseTo(0.1, 12);
+    expect(landingAngle(0.1, 10, lo, hi)).toBeCloseTo(0.1 + FOLLOW, 12); // a snap is not followed
+    expect(FOLLOW).toBeCloseTo((Math.PI * 2 * BUNDLE_MS) / RING_TURN_MS, 12);
+  });
+
+  it("shoots each strand out, then fades it while it stays attached (B14)", () => {
     expect(strandHead(0)).toBe(0);
     expect(strandHead(SHOOT)).toBe(1);
     expect(strandHead(1)).toBe(1);
-    expect(strandPull(SHOOT)).toBe(0);
-    expect(strandPull(1)).toBe(1);
+    expect(strandFade(0)).toBe(1);
+    expect(strandFade(FADE_FROM)).toBe(1);
+    expect(strandFade(1)).toBe(0);
     for (let life = 0; life < 1; life += 0.01) {
       expect(strandHead(life + 0.01)).toBeGreaterThanOrEqual(strandHead(life));
-      expect(strandPull(life + 0.01)).toBeGreaterThanOrEqual(strandPull(life));
-      expect(strandPull(life)).toBeLessThanOrEqual(strandHead(life));
+      expect(strandFade(life + 0.01)).toBeLessThanOrEqual(strandFade(life));
+    }
+  });
+
+  it("bounds a strand's length by the far end of the arc it can land on", () => {
+    const rim = 100;
+    const half = 0.5;
+    const reach = strandReach(40, 10, rim, -half, half);
+    for (let angle = -half; angle <= half; angle += 0.01) {
+      const d = Math.hypot(Math.cos(angle) * rim - 40, Math.sin(angle) * rim - 10);
+      expect(d).toBeLessThanOrEqual(reach + 1e-9);
     }
   });
 
@@ -238,10 +285,10 @@ describe("bundle layer (B05: bundles are pure functions of (event, t))", () => {
     );
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "22000": "48be897551db5447",
-        "25500": "b4d22bcf96ad4c8c",
-        "45000": "48be897551db5447",
-        "8000": "d147e84ccf4d6242",
+        "22000": "fe02cad4258592dc",
+        "25500": "50cb5dcddbbdd767",
+        "45000": "fe02cad4258592dc",
+        "8000": "6ceb93f5bf9c6e40",
       }
     `);
   });

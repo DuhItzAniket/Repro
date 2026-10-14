@@ -4,13 +4,15 @@
  *   its `graph.edge` event happens and flares it briefly (recency), so playback and scrubbing
  *   cost no uploads. The web fills a disc just inside the ring, whose centre is left of the
  *   stage: the stage shows long arcs crossing its right part, like the reference.
- * - **nodes**: tests as tiny hollow squares, revealed with their `graph.node` events.
+ * - **nodes**: the run's nodes, tests and symbols, as small hollow circles in front of the web
+ *   (the layout's front sector), revealed with their `graph.node` events: the points strands
+ *   fire from.
  * - **markers**: tiny hollow circles on the nodes in the latest blast radius.
- * - **bundles** (strands): bright sheaves of 10–20 curves from a test to the ring card of the
- *   function it reaches (`trace.sample`, `diff.behaviour`), like the reference's (B14). A strand
- *   shoots in and lands on a short bar at the inner rim; then its tail is pulled in after it,
- *   while its landing end rides along with the card as the ring turns, and it is gone after
- *   450 ms. They are a pure function of the events in the window, `t` and the motion settings.
+ * - **bundles** (strands): bright sheaves of 6–9 curves from a test's node to the ring card of
+ *   the function it reaches (`trace.sample`, `diff.behaviour`), like the reference's (B14). A
+ *   strand shoots out from its node and lands on a short bar at the inner rim. It stays attached
+ *   to its node while its landing end follows that section of the ring as it turns, then fades
+ *   (750 ms). They are a pure function of the events in the window, `t` and the motion settings.
  *
  * Durations are wall-clock (ADR-0011). The flash governor decides which bundles are drawn and
  * which edges and markers flare; reduced motion draws no bundles and the host turns flares off.
@@ -19,10 +21,12 @@ import { hash32 } from "@repro/synth";
 import type { CockpitModel } from "../../model/cockpit";
 import { kindCode } from "../../model/codes";
 import type { EdgeType } from "../../model/graph";
+import type { Ring } from "../../shell/layout";
 import { ringTracker, webRadius } from "../geometry";
 import type { FlashGovernor } from "../governor";
 import type { StageFrame, StageLayer } from "../layer";
 import { type RingModel, rotationAt } from "../ring/layers";
+import { RING_DRIFT } from "../ring/rotation";
 import {
   ALWAYS,
   type Recency,
@@ -119,11 +123,21 @@ export function edgeLayer(
   };
 }
 
-const SQUARE = 2.2;
+const POINT_SIDES = 8;
+const POINT = Array.from({ length: POINT_SIDES + 1 }, (_, k) => {
+  const angle = (k / POINT_SIDES) * Math.PI * 2;
+  return [Math.cos(angle), Math.sin(angle)] as const;
+});
+/** Point radii, px: tests (where strands fire from) are a little larger than symbols. */
+const TEST_POINT = 3.2;
+const SYMBOL_POINT = 2.2;
 
-/** Tests as tiny hollow squares (the reference's scattered squares), when on the stage. */
+/**
+ * The run's nodes, tests and symbols, as small hollow circles where they are on the stage: the
+ * points of the network strands fire from (the reference's scattered circles).
+ */
 export function nodeLayer(model: CockpitModel, layout: LayoutService): StageLayer {
-  const buffers = segmentBuffers(256);
+  const buffers = segmentBuffers(1024);
   const writer = segmentWriter(buffers);
   const ringChanged = ringTracker();
   let drawnGraph = -1;
@@ -153,25 +167,33 @@ export function nodeLayer(model: CockpitModel, layout: LayoutService): StageLaye
       drawnH = frame.height;
       const { cx, cy } = frame.ring;
       const radius = webRadius(frame.ring);
-      buffers.reserve(graph.nodeCount * 4);
+      buffers.reserve(graph.nodeCount * POINT_SIDES);
       writer.begin();
       for (let n = 0; n < graph.nodeCount && n * 2 + 1 < positions.length; n++) {
-        if (graph.nodeTypeName(n) !== "test") continue;
+        const type = graph.nodeTypeName(n);
+        if (type === "module") continue;
+        const size = type === "test" ? TEST_POINT : SYMBOL_POINT;
         const x = cx + (positions[n * 2] as number) * radius;
         const y = cy + (positions[n * 2 + 1] as number) * radius;
-        if (x < -SQUARE || y < -SQUARE || x > frame.width + SQUARE || y > frame.height + SQUARE)
-          continue;
+        if (x < -size || y < -size || x > frame.width + size || y > frame.height + size) continue;
         const appear = store.time[graph.nodeEvent[n] as number] as number;
-        const corners = [
-          [x - SQUARE, y - SQUARE],
-          [x + SQUARE, y - SQUARE],
-          [x + SQUARE, y + SQUARE],
-          [x - SQUARE, y + SQUARE],
-        ] as const;
-        for (let k = 0; k < 4; k++) {
-          const [ax, ay] = corners[k] as readonly [number, number];
-          const [bx, by] = corners[(k + 1) % 4] as readonly [number, number];
-          writer.push(ax, ay, bx, by, 1, 1, 1, 1, 0.5, 1, appear, 0);
+        for (let k = 0; k < POINT_SIDES; k++) {
+          const [ax, ay] = POINT[k] as readonly [number, number];
+          const [bx, by] = POINT[k + 1] as readonly [number, number];
+          writer.push(
+            x + ax * size,
+            y + ay * size,
+            x + bx * size,
+            y + by * size,
+            1,
+            1,
+            1,
+            1,
+            type === "test" ? 0.6 : 0.45,
+            1,
+            appear,
+            0,
+          );
         }
       }
     },
@@ -259,63 +281,129 @@ export function markerLayer(
   };
 }
 
-/** A strand's life, wall-clock ms (the reference's last about 0.3–0.35 s). */
-export const BUNDLE_MS = 450;
+/** A strand's life, wall-clock ms. */
+export const BUNDLE_MS = 500;
 export const MAX_BUNDLES = 40;
-/** A strand reaches at most this share of the stage height from its landing point. */
-export const BUNDLE_REACH = 0.28;
-export const BUNDLE_STEPS = 12;
-/** Spacing between a sheaf's curves where it lands (px), where it starts, and at its bow. */
-const LAND_SPACING = 1.5;
-const START_SPACING = 3.4;
-const BOW_SPACING = 2.4;
+export const BUNDLE_STEPS = 14;
+/** Spacing between a strand's curves where it lands on the bar (px), at its node, and mid-way. */
+const LAND_SPACING = 2.6;
+const START_SPACING = 0.6;
+const BOW_SPACING = 3;
 /** Each curve's offset is its rank ± up to this much, so the sheaf is not a regular grating. */
 const OFFSET_JITTER = 0.45;
-/** Curves start up to this share of the way along, so the sheaf's far end is ragged. */
-const STAGGER = 0.3;
-/** Share of a strand's life its head takes to shoot from the test to the ring. */
+/** Curves leave the node at slightly staggered points, so the strand frays a little there. */
+const STAGGER = 0.08;
+/** Share of a strand's life its head takes to shoot from its node to the ring. */
 export const SHOOT = 0.3;
+/** From this share of its life on, the strand fades, still attached at both ends. */
+export const FADE_FROM = 0.65;
+/** The ring a node shows while one of its strands is alive, px. */
+const NODE_RING = 4.5;
+const NODE_SIDES = 10;
+const NODE_CIRCLE = Array.from({ length: NODE_SIDES + 1 }, (_, i) => {
+  const angle = (i / NODE_SIDES) * Math.PI * 2;
+  return [Math.cos(angle), Math.sin(angle)] as const;
+});
+const TAU = Math.PI * 2;
 
-/** How far along its path a strand's head is at `life` (0–1): it shoots in, easing out. */
+/** How far along its path a strand's head is at `life` (0–1): it shoots out, easing out. */
 export const strandHead = (life: number): number => 1 - (1 - Math.min(1, life / SHOOT)) ** 2;
 
-/** How far its tail has been pulled in at `life`: not at all until the head lands, then all. */
-export const strandPull = (life: number): number =>
-  life <= SHOOT ? 0 : ((Math.min(1, life) - SHOOT) / (1 - SHOOT)) ** 1.5;
+/** A strand's brightness at `life`: full until FADE_FROM, then fading to nothing at the end. */
+export const strandFade = (life: number): number =>
+  life <= FADE_FROM ? 1 : 1 - ((Math.min(1, life) - FADE_FROM) / (1 - FADE_FROM)) ** 2;
+
+/**
+ * How far a strand's landing end follows the ring as it turns, radians: the ring's drift over a
+ * strand's life (both wall-clock, so the same at every replay speed). A focus snap can turn the
+ * ring further; the strand keeps to this, so its length stays bounded.
+ */
+export const FOLLOW = RING_DRIFT * BUNDLE_MS;
+
+/**
+ * How far either side of its node's own bearing a strand can land, radians: it fires at its
+ * function's card when the card is in front of it, else at the ring in the card's direction, so
+ * strands stay short, like the reference's.
+ */
+export const AIM = (10 * Math.PI) / 180;
+
+/** Half the arc of the inner rim that strands land on: the part the stage shows, less a margin. */
+export function landingArc(ring: Ring, stageHeight: number): number {
+  return 0.85 * Math.asin(Math.min(1, stageHeight / 2 / ring.r));
+}
+
+/** Wraps an angle to (−π, π]. */
+function wrap(angle: number): number {
+  let a = angle % TAU;
+  if (a <= -Math.PI) a += TAU;
+  if (a > Math.PI) a -= TAU;
+  return a;
+}
+
+/** The range of angles a strand from a node at `bearing` fires at: within AIM of it, on the arc. */
+export function aimRange(bearing: number, arc: number): readonly [number, number] {
+  return [Math.max(-arc, bearing - AIM), Math.min(arc, bearing + AIM)];
+}
+
+/**
+ * Where a strand lands, as an angle on the ring: where its target stood when it fired, kept
+ * within [lo, hi] (its `aimRange`), then following the ring as it has turned since, by at most
+ * FOLLOW either way.
+ */
+export function landingAngle(fired: number, turned: number, lo: number, hi: number): number {
+  const start = Math.min(hi, Math.max(lo, wrap(fired)));
+  return start + Math.min(FOLLOW, Math.max(-FOLLOW, turned));
+}
+
+/**
+ * The longest a strand from a node at (dx, dy) from the ring's centre can be: to the farther end
+ * of the arc it can land on, angles [lo, hi] at radius `rim`. Over a range of angles narrower
+ * than a half turn, the point farthest from an inner point is at one of its ends.
+ */
+export function strandReach(dx: number, dy: number, rim: number, lo: number, hi: number): number {
+  const ax = Math.cos(lo) * rim - dx;
+  const ay = Math.sin(lo) * rim - dy;
+  const bx = Math.cos(hi) * rim - dx;
+  const by = Math.sin(hi) * rim - dy;
+  return Math.max(Math.sqrt(ax * ax + ay * ay), Math.sqrt(bx * bx + by * by));
+}
+
 const TRACE = kindCode("trace.sample", 1);
 const BEHAVIOUR = kindCode("diff.behaviour", 1);
 
-/** Curves in a bundle, from the event's hash. */
-export const bundleCurves = (h: number): number => 10 + (h % 11);
+/** Curves in a strand, from the event's hash. */
+export const bundleCurves = (h: number): number => 6 + (h % 4);
 /**
  * How far inside the landing point a strand's control point sits, as a share of its length
- * (0.45–0.6): the strand arrives at the rim along the ring's radius and bends away from it
- * towards the test, like the reference's.
+ * (0.2–0.28): the strand arrives at the rim along the ring's radius, like the reference's.
  */
-const bundleBend = (h: number): number => 0.45 + ((h >>> 8) % 100) / 666;
+const bundleBend = (h: number): number => 0.2 + ((h >>> 8) % 100) / 1250;
 /**
  * How far the control point also sits along the ring's turning direction, as a share of the
- * strand's length: strands sweep up into the rim from the side the cards are moving towards,
- * like the reference's, whichever side their test is on.
+ * strand's length: strands sweep into the rim from the side the cards are moving towards.
  */
-const SWEEP = 0.35;
-/** Length of the bar a bundle lands on, px. */
+const SWEEP = 0.1;
+/** Length of the bar a strand lands on, px. */
 const pinLength = (h: number): number => bundleCurves(h) * LAND_SPACING + 8;
 
 /**
- * Upper bound of a strand's drawn area in CSS px², for the flash governor, from a start at most
- * `len` from the landing point. Each curve is no longer than its control polygon (start →
+ * Upper bound of a strand's drawn area in CSS px², for the flash governor, for a strand at most
+ * `len` long (node to landing point). Each curve is no longer than its control polygon (node →
  * control point → landing). The control point is √(bend² + SWEEP²) · len from the landing, so
- * the polygon is at most len · (1 + 2 · √(bend² + SWEEP²)) plus three times the widest spread.
- * Each curve is a 1 px line with 2 px of anti-aliasing fringe. Plus the 2 px bar it lands on.
+ * the polygon is at most len · (1 + 2 · √(bend² + SWEEP²)) plus the curve's offsets at its three
+ * points. Each curve is a 1 px line with 2 px of anti-aliasing fringe. Plus the 2 px bar it lands
+ * on and the ring on its node.
  */
 export function bundleArea(len: number, h: number): number {
   const curves = bundleCurves(h);
-  const spread = START_SPACING * ((curves - 1) / 2 + OFFSET_JITTER);
+  const offset = (curves - 1) / 2 + OFFSET_JITTER;
   // sqrt, not Math.hypot: it is correctly rounded on every engine, so pins agree across OSes.
   const bend = bundleBend(h);
-  const curve = len * (1 + 2 * Math.sqrt(bend * bend + SWEEP * SWEEP)) + 3 * spread;
-  return curves * segmentArea(curve, 1) + segmentArea(pinLength(h), 2);
+  const polygon =
+    len * (1 + 2 * Math.sqrt(bend * bend + SWEEP * SWEEP)) +
+    (START_SPACING + 2 * BOW_SPACING + LAND_SPACING) * offset;
+  const ring = NODE_SIDES * segmentArea(2 * NODE_RING * Math.sin(Math.PI / NODE_SIDES), 1);
+  return curves * segmentArea(polygon, 1) + segmentArea(pinLength(h), 2) + ring;
 }
 
 /** Upper bound of a segment's drawn area in CSS px² (2 px of anti-aliasing fringe each way). */
@@ -323,22 +411,22 @@ export function segmentArea(len: number, width: number): number {
   return (len + 2) * (width + 2);
 }
 
-/** A curve's own hash within its bundle. */
+/** A curve's own hash within its strand. */
 const curveHash = (h: number, c: number): number =>
   Math.imul(h ^ Math.imul(c + 1, 0x9e3779b9), 0x85ebca6b) >>> 0;
 
 /**
- * Writes one strand from a start point to a landing point at `life` (0–1 of BUNDLE_MS), like the
- * reference's: its curves land side by side on the bar and fan out raggedly towards the start.
- * The head shoots from the start to the landing point (ease-out) in the first SHOOT of the life;
- * then the tail is pulled in along the path after it while the strand fades. The landing point
- * is wherever the card is at this frame, so a landed strand rides along with the ring. `tx, ty`
- * is the direction the bar runs in (unit length).
+ * Writes one strand at `life` (0–1 of BUNDLE_MS), from its node (ox, oy) to its landing point
+ * (qx, qy) on the inner rim, like the reference's: its curves leave the node together and land
+ * side by side on a bar. The head shoots out from the node (ease-out) in the first SHOOT of the
+ * life and stays attached at both ends: to the node, and to the ring, which carries the landing
+ * point along as it turns. From FADE_FROM on it fades. `tx, ty` is the direction the bar runs in
+ * (unit length), the ring's turning direction.
  */
 function drawBundle(
   writer: SegmentWriter,
-  px: number,
-  py: number,
+  ox: number,
+  oy: number,
   qx: number,
   qy: number,
   tx: number,
@@ -347,22 +435,21 @@ function drawBundle(
   h: number,
   flagged: boolean,
 ): void {
-  const dx = qx - px;
-  const dy = qy - py;
+  const dx = qx - ox;
+  const dy = qy - oy;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 1) return;
   const nx = -dy / len;
   const ny = dx / len;
   const curves = bundleCurves(h);
   // The control point sits inside the landing point along the radius (the bar's normal), so
-  // every curve arrives at the rim along the radius.
+  // every curve arrives at the rim along the radius, and a little along the turning direction.
   const bend = bundleBend(h) * len;
   const sweep = SWEEP * len;
   const cx = qx - ty * bend + tx * sweep;
   const cy = qy + tx * bend + ty * sweep;
   const head = strandHead(life);
-  const pull = strandPull(life);
-  const fade = 1 - pull * pull;
+  const fade = strandFade(life);
   const alpha = (flagged ? 0.8 : 0.7) * fade;
   const red = flagged ? 0.71 : 1; // --flag for behaviour differences, white otherwise
   const green = flagged ? 0.56 : 1;
@@ -370,21 +457,20 @@ function drawBundle(
   for (let c = 0; c < curves; c++) {
     const hc = curveHash(h, c);
     const offset = c - (curves - 1) / 2 + ((hc & 0xffff) / 0xffff - 0.5) * 2 * OFFSET_JITTER;
-    const ax = px + nx * offset * START_SPACING;
-    const ay = py + ny * offset * START_SPACING;
-    // The sheaf lands along the bar, side by side.
+    const ax = ox + nx * offset * START_SPACING;
+    const ay = oy + ny * offset * START_SPACING;
+    // The strand lands along the bar, side by side.
     const bx = qx + tx * offset * LAND_SPACING;
     const by = qy + ty * offset * LAND_SPACING;
     const kx = cx + tx * offset * BOW_SPACING;
     const ky = cy + ty * offset * BOW_SPACING;
     const from = ((hc >>> 16) / 0xffff) * STAGGER;
-    const tail = from + (1 - from) * pull;
-    if (head <= tail) continue;
-    const steps = Math.max(1, Math.ceil(BUNDLE_STEPS * (head - tail)));
+    if (head <= from) continue;
+    const steps = Math.max(1, Math.ceil(BUNDLE_STEPS * (head - from)));
     let x0 = 0;
     let y0 = 0;
     for (let s = 0; s <= steps; s++) {
-      const u = tail + ((head - tail) * s) / steps;
+      const u = from + ((head - from) * s) / steps;
       const v = 1 - u;
       const x1 = v * v * ax + 2 * v * u * kx + u * u * bx;
       const y1 = v * v * ay + 2 * v * u * ky + u * u * by;
@@ -392,6 +478,24 @@ function drawBundle(
       x0 = x1;
       y0 = y1;
     }
+  }
+  // The node it fires from lights up while the strand is alive.
+  for (let k = 0; k < NODE_SIDES; k++) {
+    const [ax, ay] = NODE_CIRCLE[k] as readonly [number, number];
+    const [bx, by] = NODE_CIRCLE[k + 1] as readonly [number, number];
+    writer.push(
+      ox + ax * NODE_RING,
+      oy + ay * NODE_RING,
+      ox + bx * NODE_RING,
+      oy + by * NODE_RING,
+      1,
+      red,
+      green,
+      blue,
+      0.9 * fade,
+      1,
+      ALWAYS,
+    );
   }
   if (head < 1) return;
   // The bar it lands on, like the reference's bright pins at the rim.
@@ -417,7 +521,7 @@ export function bundleLayer(
   governor: FlashGovernor,
   ring: RingModel,
 ): StageLayer {
-  const buffers = segmentBuffers(MAX_BUNDLES * (24 * BUNDLE_STEPS + 1));
+  const buffers = segmentBuffers(MAX_BUNDLES * (9 * BUNDLE_STEPS + NODE_SIDES + 1));
   const writer = segmentWriter(buffers);
   return {
     name: "bundles",
@@ -426,7 +530,7 @@ export function bundleLayer(
     update(frame: StageFrame) {
       writer.begin();
       governor.prepare(frame);
-      if (frame.motion.reduced) return; // reduced motion: no bundles (DESIGN.md "Motion")
+      if (frame.motion.reduced) return; // reduced motion: no strands (DESIGN.md "Motion")
       const positions = layout.positions;
       if (positions === null) return;
       ring.sync();
@@ -439,7 +543,7 @@ export function bundleLayer(
       const { cx, cy, r } = frame.ring;
       const radius = webRadius(frame.ring);
       const rotation = rotationAt(ring, frame.t, frame.motion, frame.focus);
-      const maxReach = BUNDLE_REACH * frame.height;
+      const arc = landingArc(frame.ring, frame.height);
       let bundles = 0;
       for (let i = end - 1; i >= start && bundles < MAX_BUNDLES; i--) {
         const code = store.kind[i];
@@ -452,45 +556,33 @@ export function bundleLayer(
         const to = graph.nodeForSymbol(event.payload.symbol_id);
         if (from === undefined || to === undefined) continue;
         if (Math.max(from, to) * 2 + 1 >= positions.length) continue;
-        // Land on the function's ring card at the inner rim, or on its node if it has no card.
+        // It fires at the function's ring card where the card stood then, within AIM of its
+        // node's bearing, and follows the ring from there; a function without a card is aimed
+        // at along its own node's direction.
+        const ox = positions[from * 2] as number;
+        const oy = positions[from * 2 + 1] as number;
+        const [lo, hi] = aimRange(Math.atan2(oy, ox), arc);
         const card = ring.cardOf.get(graph.files[to] as string);
-        let qx: number;
-        let qy: number;
-        let tx: number;
-        let ty: number;
+        let fired: number;
+        let turned = 0;
         if (card !== undefined) {
-          const angle =
-            ((ring.angles.start[card] as number) + (ring.angles.end[card] as number)) / 2 +
-            rotation;
-          qx = cx + Math.cos(angle) * (r - 3);
-          qy = cy + Math.sin(angle) * (r - 3);
-          tx = -Math.sin(angle);
-          ty = Math.cos(angle);
+          const then = rotationAt(ring, store.time[i] as number, frame.motion, frame.focus);
+          fired =
+            ((ring.angles.start[card] as number) + (ring.angles.end[card] as number)) / 2 + then;
+          turned = rotation - then;
         } else {
-          qx = cx + (positions[to * 2] as number) * radius;
-          qy = cy + (positions[to * 2 + 1] as number) * radius;
-          tx = 0;
-          ty = 1;
+          fired = Math.atan2(positions[to * 2 + 1] as number, positions[to * 2] as number);
         }
-        // Start from the test, or towards it when it is further than the reach.
-        let px = cx + (positions[from * 2] as number) * radius;
-        let py = cy + (positions[from * 2 + 1] as number) * radius;
-        const dx = px - qx;
-        const dy = py - qy;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > maxReach) {
-          px = qx + (dx / distance) * maxReach;
-          py = qy + (dy / distance) * maxReach;
-        }
+        const angle = landingAngle(fired, turned, lo, hi);
         bundles++;
         drawBundle(
           writer,
-          px,
-          py,
-          qx,
-          qy,
-          tx,
-          ty,
+          cx + ox * radius,
+          cy + oy * radius,
+          cx + Math.cos(angle) * (r - 3),
+          cy + Math.sin(angle) * (r - 3),
+          -Math.sin(angle),
+          Math.cos(angle),
           (frame.t - (store.time[i] as number)) / life,
           hash32(event.id),
           code === BEHAVIOUR,

@@ -165,8 +165,12 @@ entry. If something turns out wrong, add a correcting entry.
   how fast it can dim, so no 10% luminance fall fits in a second.
 - Motion was measured the same way. Cross-correlating a column of the ring between frames
   gives its rotation, about 280 px/s at mid-band (about 15° a second), while the web stays still.
-  At 30 fps a strand lives 0.3–0.35 s: it shoots in for about 0.1 s, then rides the turning
-  ring as its tail is pulled in. Our first pass had matched the stills but not this.
+  At 30 fps a strand lives 0.3–0.35 s: it shoots in for about 0.1 s and then rides the turning
+  ring. Our first pass had matched the stills but not this.
+- The owner's reading of the strands decided the model: they fire from the nodes of a network,
+  stay attached to them, and follow the wheel section they hit. Under a flash cap, how far a
+  strand may aim decides how many can be shown. Aiming within 10° of the node's bearing lets the
+  cap admit 24 of 190 demo strands at ×1, against 8 when they could aim across the visible arc.
 - After B14 the demo replays at ×1 with the whole cockpit at 60 fps on an integrated GPU
   (production build, 1440×900, DPR 1.75): p50 16.7 ms, p95 17.0 ms over 3,081 frames, with 1.14%
   over 25 ms.

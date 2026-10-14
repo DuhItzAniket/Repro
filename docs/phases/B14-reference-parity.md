@@ -45,10 +45,10 @@ frames at 3, 6 and 12 s; Repro's CI baseline at 30.5 s).
 - Web:
   - a chord layout from the force simulation's angular order (`force.ts`);
   - edges as arcs, only their pieces on the stage (`web/arcs.ts`);
-  - tests as squares (`nodeLayer`);
-  - strands (bundles) that shoot to their function's card, arrive along the radius, ride along
-    with the card as the ring turns, and have their tail pulled in after them (450 ms), as the
-    owner's second review asked (below).
+  - the run's nodes (symbols and tests) in front, as small circles (`nodeLayer`);
+  - strands (bundles) that fire from their test's node, stay attached to it, and follow the ring
+    section they land on as it turns, then fade (500 ms), as the owner's second and third reviews
+    asked (below).
 - Ring rotation: one turn per 24 s of wall-clock time at any replay speed (`RING_TURN_MS`), the
   reference's measured speed.
 - Streams: lanes ±24° with ±4.9° per event; rays from the outer rim, brightest there, growing
@@ -117,11 +117,28 @@ Studied frame by frame at 30 fps (5.8–6.4 s):
 Changes:
 - the ring turns once per 24 s of wall-clock time, also at ×4 and ×16 (it scaled with the replay
   speed before);
-- strands shoot in over 30% of a 450 ms life, land on their card at this frame's ring angle,
-  then are pulled in (`strandHead`, `strandPull`);
+- strands shoot in over 30% of their life and land on their card at this frame's ring angle;
 - their curves arrive along the ring's radius and sweep up into the rim from the side the cards
   are moving towards, like the reference's. Before, they bowed to a random side, which drew
   "eye" shapes where two strands met one card.
+
+## Third owner review (same day)
+"Still no changes": the owner described the strands as coming from the nodes of a network. They
+fire from those points towards the wheel and stay attached to them, while their other end
+follows the section of the wheel they shot towards. The second pass had the tail detach and
+slide in, and the origins were invisible: symbols and tests sat on a circle under the rim, and a
+strand started wherever its reach was clamped.
+
+Changes:
+- symbols and tests sit in front, spread across the sector of the web the stage shows
+  (`FRONT_ANGLE`, `FRONT_RADII`), in the simulation's order, and are drawn as small circles;
+- a strand fires from its test's node (the node lights up), stays attached to it, lands within
+  10° of the node's bearing (`AIM`, `aimRange`), follows that ring section by at most the ring's
+  drift over its life (`FOLLOW`, `landingAngle`), and fades (`strandFade`). It lives 500 ms;
+- the flash governor bounds each strand from its node to the far end of the arc it can land on
+  (`strandReach`). Aiming near the node's bearing keeps strands short enough to fit the cap: on
+  the demo it admits 24 of 190 strands at ×1, with 2–4 visible at once during the trace burst,
+  against 8 when strands could aim across the whole visible arc.
 
 ## Acceptance criteria
 - [x] AC1: the side-by-side reads as the same visual family (judgement; the owner confirms).
@@ -135,7 +152,7 @@ Changes:
 
       Comparison images stay local, because the reference is third-party media.
 - [x] AC2: all tests and gates pass, with every changed pin explained:
-  - `@repro/web` 238 tests (6 new for the rays);
+  - `@repro/web` 243 tests (11 new for the rays, strands and front nodes);
   - bundle 192.87 kB of 300 kB;
   - frame-cost ratios p50 0.0296 and p95 0.2474, against the baseline's 0.0496 and 0.2749;
   - heap flat (−96 kB over 1,000 frames);
@@ -144,10 +161,13 @@ Changes:
   The visual baselines are regenerated in CI and checked by eye.
 - [x] AC3: flash safety holds. The governor's worst-window test passes at every speed, and the
       rays' bound is unit-tested.
-- [x] AC4 (second review): strands ride along with their card and are pulled in, and the ring
-      turns at the reference's speed. Unit-tested:
-  - each landing bar sits at a card's centre for the ring angle of its frame;
-  - the head and pull laws are monotonic, with the tail never ahead of the head;
+- [x] AC4 (second and third reviews): strands fire from visible nodes, stay attached to them,
+      and follow the ring section they land on, and the ring turns at the reference's speed.
+      Unit-tested:
+  - a firing node's ring is drawn at its node at every age of the strand;
+  - landing bars lie on the inner rim, within the landing arc or as far as they have followed;
+  - the aim, follow, head and fade laws; the reach bound over the whole landing arc;
+  - the run's nodes are in the front sector, evenly spread, a file's members together;
   - the ring's turn per wall-clock second is the same at ×0.5–×16.
 
 ## Evidence

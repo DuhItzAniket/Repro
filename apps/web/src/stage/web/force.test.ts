@@ -2,7 +2,7 @@ import { STRESS } from "@repro/synth";
 import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
-import { forceLayout, INNER_RADIUS } from "./force";
+import { FRONT_ANGLE, FRONT_RADII, forceLayout } from "./force";
 import { type LayoutInput, layoutHash, layoutInput } from "./layout-input";
 import { computeInline, LayoutService } from "./layout-service";
 
@@ -51,45 +51,59 @@ describe("forceLayout (B05: identical across reloads; a chord layout since B14)"
   });
 
   it("pins the demo layout (same on every OS in CI)", () => {
-    expect(digest(positions)).toMatchInlineSnapshot(`"695320fe"`);
+    expect(digest(positions)).toMatchInlineSnapshot(`"8a5470c2"`);
   });
 
-  it("puts modules on the circle, symbols and tests just inside, evenly spaced by angle", () => {
+  it("puts modules evenly on the circle and the run's nodes in the front sector", () => {
     const { graph } = demo;
-    const angles: number[] = [];
+    const modules: number[] = [];
+    const front: number[] = [];
     for (let n = 0; n < graph.nodeCount; n++) {
       const x = positions[n * 2] as number;
       const y = positions[n * 2 + 1] as number;
       const r = Math.sqrt(x * x + y * y);
-      if (graph.nodeTypeName(n) === "module") expect(r).toBeCloseTo(1, 6);
-      else expect(Math.abs(r - INNER_RADIUS)).toBeLessThanOrEqual(0.04 + 1e-6);
-      angles.push((Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2));
+      const angle = Math.atan2(y, x);
+      if (graph.nodeTypeName(n) === "module") {
+        expect(r).toBeCloseTo(1, 6);
+        modules.push((angle + Math.PI * 2) % (Math.PI * 2));
+      } else {
+        expect(r).toBeGreaterThanOrEqual(FRONT_RADII[0] - 1e-6);
+        expect(r).toBeLessThanOrEqual(FRONT_RADII[1] + 1e-6);
+        expect(Math.abs(angle)).toBeLessThanOrEqual(FRONT_ANGLE + 1e-6);
+        front.push(angle);
+      }
     }
-    // One node per slot of 2π / n: sorted, neighbours are one slot apart.
-    angles.sort((a, b) => a - b);
-    const slot = (Math.PI * 2) / graph.nodeCount;
-    for (let i = 1; i < angles.length; i++) {
-      expect((angles[i] as number) - (angles[i - 1] as number)).toBeCloseTo(slot, 5);
+    // Evenly spaced: sorted, neighbours are one slot apart.
+    for (const [angles, slot] of [
+      [modules, (Math.PI * 2) / modules.length],
+      [front, (2 * FRONT_ANGLE) / front.length],
+    ] as const) {
+      const sorted = [...angles].sort((a, b) => a - b);
+      for (let i = 1; i < sorted.length; i++) {
+        expect((sorted[i] as number) - (sorted[i - 1] as number)).toBeCloseTo(slot, 5);
+      }
     }
   });
 
-  it("keeps a module's symbols and tests beside it, so their edges stay short", () => {
+  it("keeps a file's symbols and tests together in the front, in the circle's order", () => {
     const { graph } = demo;
-    const moduleOf = new Map<string, number>();
-    for (let n = 0; n < graph.nodeCount; n++)
-      if (graph.nodeTypeName(n) === "module") moduleOf.set(graph.files[n] as string, n);
-    const gaps: number[] = [];
+    const byFile = new Map<string, number[]>();
     for (let n = 0; n < graph.nodeCount; n++) {
-      const owner = moduleOf.get(graph.files[n] as string);
-      if (graph.nodeTypeName(n) === "module" || owner === undefined) continue;
-      const a = Math.atan2(positions[n * 2 + 1] as number, positions[n * 2] as number);
-      const b = Math.atan2(positions[owner * 2 + 1] as number, positions[owner * 2] as number);
-      const d = Math.abs(a - b);
-      gaps.push(Math.min(d, Math.PI * 2 - d));
+      if (graph.nodeTypeName(n) === "module") continue;
+      const file = graph.files[n] as string;
+      byFile.set(file, [
+        ...(byFile.get(file) ?? []),
+        Math.atan2(positions[n * 2 + 1] as number, positions[n * 2] as number),
+      ]);
     }
-    // Containment links pull them together: the median member sits within 20° of its module.
-    const median = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)] as number;
-    expect(median).toBeLessThan((20 * Math.PI) / 180);
+    // Containment links pull a file's members together in the simulation, so they sit close in
+    // the front: the median file spans less than a fifth of the sector.
+    const spans = [...byFile.values()]
+      .filter((angles) => angles.length > 1)
+      .map((angles) => Math.max(...angles) - Math.min(...angles))
+      .sort((a, b) => a - b);
+    expect(spans.length).toBeGreaterThan(3);
+    expect(spans[Math.floor(spans.length / 2)] as number).toBeLessThan((2 * FRONT_ANGLE) / 5);
   });
 
   it("handles an empty graph and the stress graph", () => {
