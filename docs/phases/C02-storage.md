@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | C — Engine core & live stream |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C01 |
-| **Branch / PR** | `phase/C02-storage` · PR pending |
-| **Started / finished** | 2026-10-14 / — |
+| **Branch / PR** | `phase/C02-storage` · [#30](https://github.com/DuhItzAniket/Repro/pull/30) |
+| **Started / finished** | 2026-10-14 / 2026-10-14 |
 
 ## Objective
 Runs, their events, their evidence and their artifacts are stored durably and in order: one

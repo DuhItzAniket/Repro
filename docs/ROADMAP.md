@@ -283,7 +283,7 @@ graph and blast radius in the cockpit live, and `repro replay` reproduces the sa
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | C01 | Engine skeleton, configuration & CLI | S | A05 | done |
-| C02 | Storage & evidence store | M | C01 | in progress |
+| C02 | Storage & evidence store | M | C01 | done |
 | C03 | Event bus & orchestrator | M | C02 | planned |
 | C04 | API & WebSocket transport | M | C03 | planned |
 | C05 | Git layer: refs, diffs, worktrees, snapshots | M | C01 | planned |
@@ -687,3 +687,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | B15 | 2026-10-14 | [#27](https://github.com/DuhItzAniket/Repro/pull/27) | Stage settings (thickness and brightness per part, kept per viewer, inside the flash bound), a zoom from the arc to the whole wheel, the run's nodes over the whole disc, callouts kept inside the stage |
 | Gate B (closed) | 2026-10-14 | [#28](https://github.com/DuhItzAniket/Repro/pull/28) | The owner approved the look after B14 and B15; gate record re-measured; release v0.2.0 ([gate record](phases/B-gate.md)) |
 | C01 | 2026-10-14 | [#29](https://github.com/DuhItzAniket/Repro/pull/29) | `repro doctor` (Python, git, uv, Docker, data paths, Windows long paths), layered settings with source-named errors, platform data paths, JSON logs on stderr; the other commands declared |
+| C02 | 2026-10-14 | [#30](https://github.com/DuhItzAniket/Repro/pull/30) | SQLite store whose schema enforces append-only events and gap-free `seq`; a single batching writer that publishes only after commit; evidence tied to its event; atomic content-addressed artifacts; 100k-event round trip and kill-anytime crash tests |
