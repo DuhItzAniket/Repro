@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | D — Sandboxed two-sided execution |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | D05 |
-| **Branch / PR** | `phase/D06-two-sided-execution` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/D06-two-sided-execution` · [#43](https://github.com/DuhItzAniket/Repro/pull/43) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 `repro run` runs the tests a change can affect on both sides, in sandboxes, and records what
@@ -96,7 +96,7 @@ and, explicitly, what could not be checked (flaky tests, unfinished runs, uncove
   `reproduce`, and `honest-fix` and `test-tamper` through `repro run` (process sandbox), with
   `test-tamper` also in containers (L3, network enforced). pytest 1019 → 1063 (1061 pass and 2
   skip).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#43).
 
 ## Deviations from spec
 - DeFlaker's label does not replace reruns (Design notes).
