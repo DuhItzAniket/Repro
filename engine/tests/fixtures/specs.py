@@ -423,6 +423,92 @@ BREAKS_ONE = RepoSpec(
     },
 )
 
+_NOISE = """\"\"\"Values that carry noise: the time, random draws, a set's order.\"\"\"
+
+import random
+import time
+
+
+def stamp(label):
+    return {"label": label, "at": time.time()}
+
+
+def roll(sides):
+    return random.randint(1, sides)
+
+
+def fruit(words):
+    return list({word.lower() for word in words})
+
+
+def since(started):
+    return max(0, int(time.time() - started))
+
+
+def total(values):
+    return sum(values)
+"""
+
+_TEST_NOISE = """import time
+
+from noise.values import fruit, roll, since, stamp, total
+
+
+def test_stamp():
+    assert stamp("a")["label"] == "a"
+
+
+def test_roll():
+    assert 1 <= roll(10**9) <= 10**9
+
+
+def test_fruit():
+    words = ["Pear", "apple", "Fig", "plum", "kiwi", "Lime"]
+    assert sorted(fruit(words)) == ["apple", "fig", "kiwi", "lime", "pear", "plum"]
+
+
+def test_since():
+    assert since(time.time()) >= 0
+
+
+def test_total():
+    assert total([1, 2, 3]) == 6
+"""
+
+# Head rewrites every function without changing what it does: what differs between base and
+# head is the noise alone, which A against A2 shows (E03).
+NOISY = RepoSpec(
+    name="noisy",
+    description="Functions whose results or arguments carry time, random and set-order noise.",
+    base={
+        "pyproject.toml": '[project]\nname = "noise-fixture"\nversion = "0.1.0"\n',
+        "noise/__init__.py": "",
+        "noise/values.py": _NOISE,
+        "tests/test_values.py": _TEST_NOISE,
+    },
+    heads={
+        "change/tidy": {
+            "noise/values.py": _NOISE.replace(
+                'return {"label": label, "at": time.time()}',
+                'made = time.time()\n    return {"label": label, "at": made}',
+            )
+            .replace("return random.randint(1, sides)", "return random.randint(1, int(sides))")
+            .replace(
+                "return list({word.lower() for word in words})",
+                "seen = {word.lower() for word in words}\n    return list(seen)",
+            )
+            .replace(
+                "return max(0, int(time.time() - started))",
+                "elapsed = time.time() - started\n    return max(0, int(elapsed))",
+            )
+            .replace("return sum(values)", "return sum(values, 0)")
+        }
+    },
+    pr_description={
+        "change/tidy": "Tidy the value helpers\n\nA refactor: no behaviour change.",
+    },
+)
+
 ALL_SPECS = {
     spec.name: spec
     for spec in (
@@ -433,5 +519,6 @@ ALL_SPECS = {
         TEST_TAMPER,
         PERF_REGRESS,
         BREAKS_ONE,
+        NOISY,
     )
 }

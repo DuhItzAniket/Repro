@@ -398,7 +398,7 @@ def run(
     from repro.ids import new_run_id  # noqa: PLC0415
     from repro.orchestrator import Orchestrator  # noqa: PLC0415
     from repro.pipeline import pipeline_jobs, remove_work  # noqa: PLC0415
-    from repro.store import StoreWriter  # noqa: PLC0415
+    from repro.store import ArtifactStore, StoreWriter  # noqa: PLC0415
 
     git, change = _resolve(repo, base, head)
     sock = _bind(host, port) if serve else None
@@ -414,6 +414,7 @@ def run(
         backend=settings.sandbox,
         cache=settings.paths.data_dir,
         analyse_only=analyse_only,
+        artifacts=ArtifactStore(settings.paths.runs, writer),
     )
     cleaned = threading.Lock()
 

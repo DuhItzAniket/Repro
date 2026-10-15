@@ -13,6 +13,10 @@ execution, and its evidence as events.
 - ``perf`` (run, D07): the tests that pass on both sides, timed untraced in ABBA blocks;
   ``perf.sample`` per test and run. ``perf-diff`` (diff): ``perf_diff`` evidence with
   ``diff.perf`` per timed test, and a ``perf_not_assessable`` item for those too fast to time.
+- ``behaviour`` (diff, E03): the calls A, A2 and H traced, as observations; A against H with
+  what differs between A and A2 masked. Each run's observations and the comparison are stored
+  as CBOR artifacts (``obs/``); the noise masked (``unstable_observation``), what could not be
+  compared (``encoding_failed``) and cut traces (``trace_truncated``) are missing items.
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -35,22 +39,27 @@ from repro.provision import (
     environment_missing,
     inspect_project,
 )
-from repro.runner import selection
+from repro.runner import observations, selection
+from repro.runner.observations import Behaviour
 from repro.runner.outcomes import unstable_observation
 from repro.runner.perf import Samples, TimingRun, assess, not_assessable, time_tests
 from repro.runner.selection import MapCache, Selected, map_key, no_covering_test
 from repro.runner.sides import Side
+from repro.runner.trace import plan as trace_plan
 from repro.runner.twosided import RunRecord, TwoSided, reproduce
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_available
 from repro.sandbox.detect import Detection
 from repro.sandbox.evidence import detection_evidence
 from repro.sandbox.image import sandbox_image
+from repro.store import ArtifactStore
 
 Backend = Literal["auto", "docker", "process"]
 #: Labels of runs that are not attempts of the selected tests themselves.
 _NOT_ATTEMPTS: Final = frozenset({"head tests", "base tests on head"})
 PROVISION_TIMEOUT_S: Final = 1800.0
 TESTS_TIMEOUT_S: Final = 3600.0
+#: The media type RFC 8949 §9.3 registers, for the observation artifacts.
+CBOR: Final = "application/cbor"
 
 
 @dataclass
@@ -63,6 +72,7 @@ class RunState:
     platform: dict[str, str] = field(default_factory=dict)
     timings: list[Samples] | None = None
     timing_runs: list[TimingRun] = field(default_factory=list)
+    behaviour: Behaviour | None = None
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 
@@ -191,16 +201,21 @@ def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) 
             state.platform.get("base", "?"),
         )
         events = _TestEvents(ctx)
+        resolvers = selection.side_resolvers(git, base, head)
+        plan = trace_plan(analysis.changes.changes, resolvers)
+        if plan:
+            ctx.log(f"tracing {len(set(plan.base.values()))} changed functions on both sides")
         state.result = reproduce(
             sides,
             analysis.changes.changes,
             (analysis.base, analysis.head),
-            selection.side_resolvers(git, base, head),
+            resolvers,
             cache=MapCache(cache / "maps"),
             cache_key=key,
             observe=events.observe,
             on_selected=events.selected,
             stop=lambda: ctx.cancelled,
+            trace=plan,
         )
 
     return Job(
@@ -355,6 +370,40 @@ def _perf_diff_job(state: RunState) -> Job:
     )
 
 
+def _behaviour_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
+    def run(ctx: JobContext) -> None:
+        result = state.result
+        behaviour = observations.behaviour_of(result) if result is not None else None
+        if behaviour is None:
+            ctx.log("no behaviour comparison: nothing traced on all of A, A2 and H")
+            return
+        state.behaviour = behaviour
+        if artifacts is not None:
+            refs = {}
+            for observed in behaviour.runs.values():
+                data = observations.dump_observations(observed)
+                ref = artifacts.put_bytes(ctx.run_id, f"obs/{observed.label}.cbor", data, CBOR)
+                refs[observed.label] = {"path": ref.path, "sha256": ref.sha256}
+            data = observations.dump_behaviour(behaviour, refs)
+            artifacts.put_bytes(ctx.run_id, "obs/behaviour.cbor", data, CBOR)
+        for item in observations.missing(behaviour):
+            ctx.emit("missing.recorded", status="warn", payload=item)
+        counts = behaviour.counts()
+        ctx.log(
+            f"behaviour: {counts['calls']} calls compared, {counts['same']} the same, "
+            f"{counts['unstable']} unstable, {counts['unknown']} not comparable, "
+            f"{counts['differences']} differences"
+        )
+
+    return Job(
+        "behaviour",
+        "diff",
+        run,
+        OnFailure(reason="trace_unavailable", detail="the traced calls could not be compared"),
+        needs=("tests",),
+    )
+
+
 def run_jobs(
     git: Git,
     base: str,
@@ -364,13 +413,16 @@ def run_jobs(
     *,
     backend: Backend,
     cache: Path,
+    artifacts: ArtifactStore | None = None,
 ) -> Sequence[Job]:
-    """The run and diff stages, after the build stage's snapshots and analysis."""
+    """The run and diff stages, after the build stage's snapshots and analysis; ``artifacts``
+    stores the observations (without it they stay in memory)."""
     return [
         _sandbox_job(git, "base", base, work, state, backend=backend, cache=cache),
         _sandbox_job(git, "head", head, work, state, backend=backend, cache=cache),
         _tests_job(git, base, head, state, cache=cache),
         _outcomes_job(state),
+        _behaviour_job(state, artifacts),
         _perf_job(state),
         _perf_diff_job(state),
     ]

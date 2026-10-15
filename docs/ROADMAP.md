@@ -399,7 +399,7 @@ control.
 |---|---|---|---|---|
 | E01 | Tracer core & overhead benchmark | L | D04, A08 | done |
 | E02 | Canonical value encoder | L | E01 | done |
-| E03 | Observation store & stability analysis | M | E02 | planned |
+| E03 | Observation store & stability analysis | M | E02 | in progress |
 | E04 | Behaviour diff engine & reproducers | M | E03 | planned |
 | E05 | API & dependency diff | M | C06, D03 | planned |
 | E06 | Deterministic input-replay probes | M | E04 | planned |

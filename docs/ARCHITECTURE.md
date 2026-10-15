@@ -209,6 +209,17 @@ the same way by the same test on both sides, skip that sorting for speed.
 *unstable*. They are masked from the A-vs-H comparison and listed on the card. This is the
 Diffy noise-floor idea (research/01 §2.2) applied at the function level.
 
+As built (E03, `runner/observations.py`): A, A′ and H trace the changed functions that exist
+on both sides, filed under the change's symbol ID; A′ differs from A in test order,
+`PYTHONHASHSEED` and the `random` seed. A call is keyed by `(test, phase, symbol, arguments'
+digest, occurrence)`. The fields compared are `outcome`, `type`, `value` (the result with
+dictionaries sorted), `order` (the result as it was) and `yields`; a field that differs between
+A and A′ is masked for that call, and a call set that differs (arguments from the clock or a
+random source) masks the calls on one side only and every field of the calls A′ did not make.
+Incomplete encodings, `unfinished` calls and spent budgets are never compared. Test code is
+traced but left out. The trace has its own file in the sandbox (`calls.jsonl`, 64 MiB at most),
+so it never crowds out the test results.
+
 ### 4.4 Differential probes (`runner/probes`, Stage G)
 Re-running existing tests misses most divergences. Shadow symbolic execution observed that
 patch tests "often exercise the same behaviour in the old and the new version". PatchDiff,
@@ -493,7 +504,9 @@ queued agents shown as `waiting`.
   for `evidence.created`, into `payload.evidence`, and inserts the evidence row in the same
   transaction. The run registry (`runs`) holds `running`, then the `run.finished` outcome.
 - **Artifacts** live at `~/.repro/runs/<run_id>/`: observations, JUnit, logs, snapshots
-  manifest and reproducers. Each artifact is content-addressed by SHA-256 in the `artifacts`
+  manifest and reproducers. Observations (E03) are deterministic CBOR (RFC 8949 §4.2.1,
+  `repro.store.cbor`): `obs/A.cbor`, `obs/A2.cbor`, `obs/H.cbor`, and `obs/behaviour.cbor`, the
+  comparison, which cites the three by path and SHA-256. Each artifact is content-addressed by SHA-256 in the `artifacts`
   table, written to a temporary file, hashed, flushed and renamed into place, and never changed.
   Paths are relative POSIX paths confined to the run's directory.
 - **WebSocket** `GET /runs/{id}/events?from=<seq>` uses replay-then-live without gaps. The

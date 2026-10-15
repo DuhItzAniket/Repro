@@ -16,6 +16,13 @@ missing = [
   "perf_not_assessable:tests/test_counter.py::test_record_first",
   "unstable_observation:tests/test_counter.py::test_record_second",
 ]
+# The behaviour comparison (E03): record() returns how many values it has seen, which
+# depends on the order the tests run in, so its results differ between A and A2.
+behaviour = [
+  "unstable_observation:counter.core:record#0",
+  "unstable_observation:tests/test_counter.py::test_record_first",
+  "unstable_observation:tests/test_counter.py::test_record_second",
+]
 
 [selection]
 uncovered = []

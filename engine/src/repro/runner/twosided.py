@@ -3,8 +3,12 @@ what differs is the change and not the run.
 
 1. **A**: base, mapped, every test (or, with the base map cached, only the selected ones).
 2. Head's tests are listed, and the tests to run are selected (D05).
-3. **A2**: base again, the selected tests in the reverse order, with another ``PYTHONHASHSEED``.
+3. **A2**: base again, the selected tests in the reverse order, with another ``PYTHONHASHSEED``
+   and another seed for ``random``.
 4. **H**: head, the selected tests, mapped (coverage of head-only code, and DeFlaker's check).
+
+With a trace plan (E03), A and A2 trace base's changed functions and H head's: the
+observations ``repro.runner.observations`` compares.
 5. Each flip (A and A2 agreeing, H differing) runs again *k* times on both sides.
 6. The base version of each edited test runs against head's code.
 
@@ -34,9 +38,13 @@ from repro.runner.selection import (
 )
 from repro.runner.sides import Side
 from repro.runner.testdiff import TestChange, test_changes
+from repro.runner.trace import TracePlan
 
-#: A2's hash seed: anything but the sandbox's 0.
+#: A2's hash seed and ``random`` seed: anything but the sandbox's and the plugin's 0.
 OTHER_HASH_SEED: Final = 1
+OTHER_SEED: Final = 1
+#: The traced runs, by label.
+TRACED_RUNS: Final = ("A", "A2", "H")
 OVERLAY: Final = "base_tests"
 
 
@@ -65,6 +73,12 @@ class TwoSided:
     test_changes: tuple[TestChange, ...] = ()
     runs: list[RunRecord] = field(default_factory=list)
     map_cached: bool = False
+    #: What A, A2 and H traced (None: nothing).
+    trace: TracePlan | None = None
+
+    def traced(self) -> dict[str, RunRecord]:
+        """A, A2 and H, those that ran, by label."""
+        return {r.label: r for r in self.runs if r.label in TRACED_RUNS}
 
     def problems(self) -> list[dict[str, Any]]:
         """``missing.recorded`` payloads for runs that did not finish, collection errors, and a
@@ -127,12 +141,15 @@ class _Reproduction:
         resolvers: tuple[Resolver, Resolver],
         observe: Observe | None,
         stop: Callable[[], bool] | None,
+        trace: TracePlan | None = None,
     ) -> None:
         self.base, self.head = sides
         self.resolvers = resolvers
         self.observe = observe
         self.stop = stop
-        self.result = TwoSided()
+        self.result = TwoSided(trace=trace or None)
+        self.on_base = list(trace.base) if trace else []
+        self.on_head = list(trace.head) if trace else []
         self.a: TestRun | None = None
         self.a2: TestRun | None = None
         self.h: TestRun | None = None
@@ -151,7 +168,7 @@ class _Reproduction:
         if cached is not None:
             self.result.base_map, self.result.map_cached = cached, True
             return None
-        full = self.run(self.base, "A", map_tests=True)
+        full = self.run(self.base, "A", map_tests=True, trace=self.on_base)
         self.result.base_map = test_map(full.results, self.resolvers[0])
         if cache is not None and key is not None and full.results.complete:
             cache.put(key, self.result.base_map)
@@ -163,12 +180,19 @@ class _Reproduction:
             if self.observe is not None:
                 self.observe(RunRecord("base", "A", tuple(on_base), full))
         elif on_base:
-            self.a = self.run(self.base, "A", on_base)
+            self.a = self.run(self.base, "A", on_base, trace=self.on_base)
         if on_base:
             reverse = list(reversed(on_base))
-            self.a2 = self.run(self.base, "A2", reverse, hash_seed=OTHER_HASH_SEED)
+            self.a2 = self.run(
+                self.base,
+                "A2",
+                reverse,
+                hash_seed=OTHER_HASH_SEED,
+                seed=OTHER_SEED,
+                trace=self.on_base,
+            )
         if on_head:
-            self.h = self.run(self.head, "H", on_head, map_tests=True)
+            self.h = self.run(self.head, "H", on_head, map_tests=True, trace=self.on_head)
             self.result.head_map = test_map(self.h.results, self.resolvers[1])
 
     def rerun(self, flips: list[str]) -> dict[str, tuple[list[str | None], list[str | None]]]:
@@ -250,11 +274,12 @@ def reproduce(
     observe: Observe | None = None,
     on_selected: Callable[[tuple[Selected, ...]], None] | None = None,
     stop: Callable[[], bool] | None = None,
+    trace: TracePlan | None = None,
 ) -> TwoSided:
     """Runs the steps of the module's docstring on ``sides`` (base, head) and classifies what
     they found. ``observe`` sees each run as it ends (A once the tests are selected), and
-    ``on_selected`` the selection."""
-    steps = _Reproduction(sides, resolvers, observe, stop)
+    ``on_selected`` the selection; ``trace`` is what A, A2 and H trace."""
+    steps = _Reproduction(sides, resolvers, observe, stop, trace)
     result = steps.result
     full = steps.map_base(cache, cache_key)
     listed = steps.run(steps.head, "head tests", collect_only=True)

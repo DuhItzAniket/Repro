@@ -43,6 +43,9 @@ JUNIT: Final = "junit.xml"
 #: At most this much of a results or JUnit file is read (a hostile run could write without end).
 MAX_BYTES: Final = 64 * 1024 * 1024
 MAX_RECORDS: Final = 200_000
+#: The trace's own file (E03): the plugin stops writing it at ``MAX_BYTES``.
+CALLS: Final = "calls.jsonl"
+MAX_CALLS: Final = 500_000
 #: At most this many places are read for one test's map.
 MAX_PLACES: Final = 50_000
 _TEXT: Final = 2000
@@ -133,6 +136,8 @@ class PytestRun:
     #: With tracing: every recorded call, and the (test, target) pairs whose budget ran out.
     calls: tuple["TraceCall", ...] = ()
     truncated: tuple[tuple[str, TraceTarget], ...] = ()
+    #: Why some of the trace is missing (its file reached its limit, or was cut short).
+    trace_cut: str | None = None
 
     @property
     def complete(self) -> bool:
@@ -279,6 +284,7 @@ class _Reading:
         self.unavailable: str | None = None
         self.calls: list[TraceCall] = []
         self.truncated: list[tuple[str, TraceTarget]] = []
+        self.cut: int | None = None  # the trace's bytes written before its file was closed
 
     def test(self, record: dict[str, Any]) -> None:
         result = _test(record)
@@ -307,6 +313,12 @@ class _Reading:
     def truncated_record(self, record: dict[str, Any]) -> None:
         self.truncated.append((_nodeid(record), _target(record["target"])))
 
+    def trace_cut(self, record: dict[str, Any]) -> None:
+        written = record["bytes"]
+        if not isinstance(written, int) or written < 0:
+            raise ValueError(record)
+        self.cut = written
+
     def add(self, record: dict[str, Any]) -> None:
         reader = {
             "test": self.test,
@@ -315,16 +327,25 @@ class _Reading:
             "collected": self.collected_record,
             "map": self.map_record,
             "map_unavailable": self.map_unavailable,
-            "call": self.call,
-            "truncated": self.truncated_record,
+            "trace_cut": self.trace_cut,
         }.get(record["kind"])
         if reader is None:
             raise ValueError(record["kind"])
         reader(record)
 
+    def add_traced(self, record: dict[str, Any]) -> None:
+        """A record of the trace's own file."""
+        reader = {"call": self.call, "truncated": self.truncated_record}.get(record["kind"])
+        if reader is None:
+            raise ValueError(record["kind"])
+        reader(record)
 
-def read_results(data: bytes | None) -> PytestRun:
-    """What the plugin wrote to ``results.jsonl`` (None: it wrote nothing at all)."""
+
+def read_results(
+    data: bytes | None, calls: bytes | None = None, *, calls_cut: bool = False
+) -> PytestRun:
+    """What the plugin wrote to ``results.jsonl`` (None: it wrote nothing at all) and, when
+    tracing, to ``calls.jsonl`` (``calls_cut``: that file was longer than was read)."""
     if data is None:
         return PytestRun({}, (), None, notes=("the plugin wrote no results",))
     reading = _Reading()
@@ -340,6 +361,19 @@ def read_results(data: bytes | None) -> PytestRun:
             malformed += 1
     if reading.session is None:
         notes.append("the run did not finish: no session record")
+    cut = None
+    if reading.cut is not None:
+        cut = f"the trace reached its limit of {MAX_BYTES // (1024 * 1024)} MiB"
+    elif calls_cut:
+        cut = f"the trace was longer than the {MAX_BYTES // (1024 * 1024)} MiB read"
+    for count, line in enumerate((calls or b"").splitlines()):
+        if count >= MAX_CALLS:
+            cut = f"more than {MAX_CALLS} calls were traced: the rest were not read"
+            break
+        try:
+            reading.add_traced(json.loads(line))
+        except (ValueError, KeyError, TypeError, AttributeError):
+            malformed += 1
     return PytestRun(
         reading.tests,
         tuple(reading.errors),
@@ -351,6 +385,7 @@ def read_results(data: bytes | None) -> PytestRun:
         map_unavailable=reading.unavailable,
         calls=tuple(reading.calls),
         truncated=tuple(reading.truncated),
+        trace_cut=cut,
     )
 
 
@@ -405,6 +440,11 @@ def run_tests(
         )
         results = sandbox.read_file(f"{relative}/{RESULTS}", limit=MAX_BYTES)
         junit = sandbox.read_file(f"{relative}/{JUNIT}", limit=MAX_BYTES)
+        calls, calls_cut = None, False
+        if targets is not None:
+            calls = sandbox.read_file(f"{relative}/{CALLS}", limit=MAX_BYTES + 1)
+            calls_cut = calls is not None and len(calls) > MAX_BYTES
+            calls = calls[:MAX_BYTES] if calls is not None else None
     else:
         output = sandbox.work / name
         here = env.project.root / directory if directory else env.project.root
@@ -424,7 +464,10 @@ def run_tests(
             writable=(output,),
         )
         results, junit = _read(output / RESULTS), _read(output / JUNIT)
-    return TestRun(execution, read_results(results), junit)
+        calls, calls_cut = None, False
+        if targets is not None and (output / CALLS).is_file():
+            calls, calls_cut = read_head(output / CALLS, MAX_BYTES)
+    return TestRun(execution, read_results(results, calls, calls_cut=calls_cut), junit)
 
 
 def _read(path: Path) -> bytes | None:

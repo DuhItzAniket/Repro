@@ -22,6 +22,13 @@ All notable changes to this project are documented here. The format follows
   interpreter's own descriptors. Hypothesis property tests and a corpus of hostile objects
   check it. With it, the tracer's benchmark stays at 1.01–1.18x on Python 3.12 to 3.15; call
   records are flushed once per test. [E02]
+- Behaviour observations: the base runs (A, A2) and the head run (H) trace the functions a
+  change modified, and their calls are joined across runs by test, function, arguments and
+  occurrence. What differs between the two base runs (another test order, hash seed and random
+  seed) is masked, per call and field, so time, randomness and hash order never become a
+  difference; what could not be compared is a missing item. Each run's observations and the
+  comparison are stored as deterministic CBOR artifacts (RFC 8949), read back only in that
+  form. A `noisy` fixture. The trace has its own capped file in the sandbox. [E03]
 
 ## [0.4.0] - 2026-10-15
 
