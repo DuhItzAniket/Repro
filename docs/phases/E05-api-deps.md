@@ -56,10 +56,10 @@ it adds, removes or moves, as declared or locked and as actually installed on ea
   calling those a lock would misstate the evidence, so the schema's `source` gains `declared`.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): the `api-break` and `new-dep` fixtures pass.
-- [ ] AC2 (roadmap): griffe never imports target code, tested with a module that raises on
+- [x] AC1 (roadmap): the `api-break` and `new-dep` fixtures pass.
+- [x] AC2 (roadmap): griffe never imports target code, tested with a module that raises on
   import.
-- [ ] AC3: every break and dependency difference is evidence with a `warn` check, schema-valid,
+- [x] AC3: every break and dependency difference is evidence with a `warn` check, schema-valid,
   through `repro run`; the other fixtures gain none.
 
 ## Test plan
@@ -73,12 +73,53 @@ it adds, removes or moves, as declared or locked and as actually installed on ea
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.analysis.api`: `api_diff`, `ApiBreak` (evidence, `diff.api` payload), `ApiDiff`
+  (missing items).
+- `repro.provision.deps`: `project_requirements`, `compare`, `DepChange`, `lock_drift`,
+  `LIST_INSTALLED`, `parse_installed`; `Side.installed`.
+- The `api` and `deps` jobs; `diff.deps` `source` gains `declared` (TS and Pydantic
+  regenerated); ADR-0006's implementation note.
+- Fixtures `api-break`, `new-dep`; `test_run_stage.py` names `api_diff` and `dep_diff`
+  evidence.
+- Tests: `test_api_diff.py` (4), `test_deps.py` (8), both fixtures in `test_twosided.py` and
+  `test_run_stage.py`. pytest 1248 → 1266 (1254 pass and 12 skip on Windows with Docker
+  Desktop stopped).
 
 ## Evidence
+- AC1: through `repro run`, `api-break` gives `parameter_removed` on `greet` (griffe:
+  "greeting.hello.greet: Parameter was removed (punctuation = '!')") and
+  `return_changed_type` on `shout` (Repro's comparison: "str → str | None"), with every test
+  P2P; `new-dep` gives `six` `added` as declared (1.17.0) and as installed (1.17.0 listed in
+  head's environment, absent from base's).
+- AC2: the API test's package has a module that writes a marker file and raises `SystemExit`
+  at import; after the diff of both sides no marker exists, and its breaks were all found.
+- The unit repository's breaks (`test_api_diff.py`): a required parameter added, an
+  attribute's value changed, an object removed, a parameter removed, a default turned into a
+  required keyword (griffe), two attribute annotations and a return annotation changed
+  (Repro); a private function's change, the tests, `conftest.py` and `setup.py` give none.
+- AC3: the other eight fixtures, run end to end, gain no `api_diff` or `dep_diff` evidence
+  (their expectations unchanged and met); the evidence and payloads validate against the
+  schema.
+- The installed listing, run against Repro's own environment, finds `griffelib` and
+  `packaging` and leaves out the workspace's editable `repro-engine`.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- The schema's `diff.deps` `source` gains `declared` (additive): requirements without a lock
+  are not a lockfile.
+- ARCHITECTURE §4.5 lists installed sets from `uv pip list --format json`; E05 lists them with
+  the side's own interpreter and `importlib.metadata`, inside its sandbox, which needs no uv
+  there and reads the same metadata.
+- Lock drift is evidence without a check event: the event schema has no `diff.*` kind for a
+  single side's environment, and its `dep_diff` checks compare sides.
 
 ## Known gaps
+- A library that is a single module, not a package, has no API diff.
+- Annotation changes are compared as text: an equivalent spelling (`List[int]` to
+  `list[int]`) is reported.
+- Packages a lock pins but whose marker excludes this platform are not checked for drift.
+- Without a lock, a range that resolves to a newer release on head than on base shows only in
+  the installed comparison.
 
 ## Dependencies added
 - `griffelib` 2.3.2 (ISC), griffe's library distribution: griffe 2.x is a meta-package of
