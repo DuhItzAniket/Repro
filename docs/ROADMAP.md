@@ -403,7 +403,7 @@ control.
 | E04 | Behaviour diff engine & reproducers | M | E03 | done |
 | E05 | API & dependency diff | M | C06, D03 | done |
 | E06 | Deterministic input-replay probes | M | E04 | done |
-| E07 | Real-data panels & Gate E scenario | M | E04, E05 | planned |
+| E07 | Real-data panels & Gate E scenario | M | E04, E05 | done |
 
 **E01** Tool-ID negotiation, PY_START / PY_RETURN / PY_UNWIND / yield capture, per-test
 attribution, budgets and truncation, threads and generators, plus a benchmark harness tracked
@@ -710,3 +710,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | E04 | 2026-10-15 | [#49](https://github.com/DuhItzAniket/Repro/pull/49) | Behaviour differences as evidence: classified (result, exception added/removed/changed, order only, input mutated, calls changed), grouped per test, function and class, run again on both sides for a reproducer with previews, behaviour_diff evidence and a warn diff.behaviour each; tracer encodes mutable arguments again at the end of a call; silent-change and false-claim fixtures give stable, reproduced diffs |
 | E05 | 2026-10-15 | [#50](https://github.com/DuhItzAniket/Repro/pull/50) | API and dependency differences: griffe (griffelib 2.3.2, allow_inspection=False, files from git) breaking changes plus Repro's return/attribute annotation comparison as api_diff + diff.api; requirements (lock or declared) and installed sets listed in each sandbox with -I -S as dep_diff + diff.deps; lock drift; api-break and new-dep fixtures; a trap module proves griffe imports nothing |
 | E06 | 2026-10-15 | [#51](https://github.com/DuhItzAniket/Repro/pull/51) | Input-replay probes: changed functions with JSON-typed parameters called with 40 derandomized Hypothesis inputs each on base, base again (other seeds) and head inside the sandboxes; inputs on which base disagrees with itself left out; probe_diff (provenance: generated) + diff.probe; probe-only fixture: percent(0, 0) raises on head only; timing now runs after the other runs |
+| E07 | 2026-10-15 | [#52](https://github.com/DuhItzAniket/Repro/pull/52) | The behaviour field and Signals from real runs: A, A2 and H preview each test's first four calls of each traced function, sent as trace.sample events; Gate E's browser test (silent-change: two stable behaviour diffs with reproducers 37.8 -> 38 and 0.0 -> 0, no failing test; noisy: noise unstable, no diff) and its CI job |

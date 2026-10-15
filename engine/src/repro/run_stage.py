@@ -62,8 +62,10 @@ from repro.runner.outcomes import unstable_observation
 from repro.runner.perf import Samples, TimingRun, assess, not_assessable, time_tests
 from repro.runner.selection import MapCache, Selected, map_key, no_covering_test
 from repro.runner.sides import Side
+from repro.runner.trace import MAX_SAMPLES, TracePlan
 from repro.runner.trace import plan as trace_plan
-from repro.runner.twosided import RunRecord, TwoSided, reproduce
+from repro.runner.trace import samples as trace_samples
+from repro.runner.twosided import TRACED_RUNS, RunRecord, TwoSided, reproduce
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_available
 from repro.sandbox.detect import Detection
 from repro.sandbox.evidence import detection_evidence
@@ -165,6 +167,7 @@ class _TestEvents:
     def __init__(self, ctx: JobContext) -> None:
         self.ctx = ctx
         self.attempts: dict[tuple[str, str], int] = defaultdict(int)
+        self.plan: TracePlan | None = None  # what A, A2 and H trace: their samples (E07)
 
     def selected(self, chosen: tuple[Selected, ...]) -> None:
         self.ctx.log(f"selected {len(chosen)} tests")
@@ -203,6 +206,19 @@ class _TestEvents:
             }
             status = "ok" if found.outcome in ("passed", "xfailed", "xpassed") else "warn"
             self.ctx.emit("test.finished", status=status, payload=finished, target=target)
+        self.samples(record, side)
+
+    def samples(self, record: RunRecord, side: str) -> None:
+        """``trace.sample`` per previewed call of a traced run (E07): what the behaviour field
+        and Signals draw while the run goes."""
+        if self.plan is None or record.label not in TRACED_RUNS:
+            return
+        names = self.plan.head if record.side == "head" else self.plan.base
+        found = trace_samples(record.run.results, names, side)
+        for payload, target in found:
+            self.ctx.emit("trace.sample", status="progress", payload=payload, target=target)
+        if len(found) >= MAX_SAMPLES:
+            self.ctx.log(f"{side}: samples stopped at {MAX_SAMPLES}", level="warning")
 
 
 def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) -> Job:
@@ -223,6 +239,7 @@ def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) 
         events = _TestEvents(ctx)
         resolvers = selection.side_resolvers(git, base, head)
         plan = trace_plan(analysis.changes.changes, resolvers)
+        events.plan = plan or None
         if plan:
             ctx.log(f"tracing {len(set(plan.base.values()))} changed functions on both sides")
         state.result = reproduce(

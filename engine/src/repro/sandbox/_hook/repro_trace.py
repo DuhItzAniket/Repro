@@ -30,7 +30,8 @@ twice.
 arguments' digest), the call, its result or exception and its arguments afterwards are also
 recorded as previews (``repro_encode.preview``): the reproducer of a behaviour difference. The
 digests of the run they were found in say which calls those are; only they leave the sandbox
-as text.
+as text. With ``REPRO_TRACE_SAMPLES=n`` (E07), each (test, target)'s first ``n`` calls are
+previewed too: the samples the cockpit's behaviour field and Signals show while a run goes.
 
 **Budget.** Each (test, target) records its first ``BUDGET`` calls (200, measured in A08);
 then the target is disabled for the rest of the test, and a ``truncated`` record says so: its
@@ -115,8 +116,10 @@ class Tracer:
         targets: list[Target],
         write: Callable[[dict[str, Any]], None],
         previews: set[Wanted] | None = None,
+        samples: int = 0,
     ) -> None:
         self.previews = previews or set()
+        self.samples = samples  # each (test, target)'s first calls previewed (E07)
         self.by_name: dict[tuple[str, str], list[Target]] = {}
         for target in targets:
             self.by_name.setdefault((target[0], target[1]), []).append(target)
@@ -175,7 +178,7 @@ class Tracer:
             if type(value) not in _IMMUTABLE:
                 call.arguments = arguments  # encoded again when the call ends
                 break
-        if self.previews and (test, target, call.args) in self.previews:
+        if index < self.samples or (self.previews and (test, target, call.args) in self.previews):
             call.names = names
             call.preview = _capped(f"{target[1]}({_arguments_preview(names, arguments)})")
         self.inflight[id(frame)] = call

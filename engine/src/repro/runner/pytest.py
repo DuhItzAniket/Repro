@@ -426,6 +426,27 @@ class TestRun:
     junit: bytes | None
 
 
+def _tracing(
+    trace: Sequence[TraceTarget], previews: Sequence[WantedCall], samples: int
+) -> tuple[dict[str, bytes], dict[str, str], dict[str, str]]:
+    """What a traced run needs: files to write beside the output, the variables naming them
+    (``{variable: file}``), and plain variables."""
+    if len(trace) > MAX_TARGETS:
+        raise ValueError(f"{len(trace)} functions to trace: at most {MAX_TARGETS}")
+    if len(previews) > MAX_PREVIEWS:
+        raise ValueError(f"{len(previews)} calls to preview: at most {MAX_PREVIEWS}")
+    if not trace:
+        return {}, {}, {}
+    files = {TRACE_TARGETS: json.dumps([list(target) for target in trace]).encode()}
+    named = {"REPRO_TRACE_TARGETS": TRACE_TARGETS}
+    if previews:
+        wanted = [[test, list(target), args] for test, target, args in previews]
+        files[PREVIEW_CALLS] = json.dumps(wanted).encode()
+        named["REPRO_PREVIEW_CALLS"] = PREVIEW_CALLS
+    plain = {"REPRO_TRACE_SAMPLES": str(samples)} if samples else {}
+    return files, named, plain
+
+
 def run_tests(
     sandbox: ProcessSandbox | DockerSandbox,
     env: Environment,
@@ -438,39 +459,29 @@ def run_tests(
     directory: str | None = None,
     trace: Sequence[TraceTarget] = (),
     previews: Sequence[WantedCall] = (),
+    samples: int = 0,
     timeout_s: float | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> TestRun:
     """Runs ``tests`` (node IDs, in that order; all if empty) with ``env``'s interpreter in
     ``sandbox``; with ``map_tests``, records the functions each runs; with ``collect_only``,
     only lists them. ``hash_seed`` replaces the sandbox's ``PYTHONHASHSEED``; ``directory``
-    (relative to the snapshot, POSIX) runs from there instead of the snapshot's root."""
+    (relative to the snapshot, POSIX) runs from there instead of the snapshot's root. With
+    ``trace``, its functions are traced (E01), ``previews`` names calls to preview (E04) and
+    ``samples`` how many of each test's first calls of each function to preview (E07)."""
     name = f"pytest-{uuid.uuid4().hex[:12]}"
     extra = ["--collect-only"] if collect_only else []
-    if len(trace) > MAX_TARGETS:
-        raise ValueError(f"{len(trace)} functions to trace: at most {MAX_TARGETS}")
-    targets = json.dumps([list(target) for target in trace]).encode() if trace else None
-    if len(previews) > MAX_PREVIEWS:
-        raise ValueError(f"{len(previews)} calls to preview: at most {MAX_PREVIEWS}")
-    wanted = (
-        json.dumps([[test, list(target), args] for test, target, args in previews]).encode()
-        if previews and trace
-        else None
-    )
+    files, named, plain = _tracing(trace, previews, samples)
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
         root = sandbox.container_path(directory or ".")
         variables = plugin_env(out, root=root, seed=seed, map_tests=map_tests)
+        if files:
+            sandbox.write_files(relative, files)
+        variables |= {variable: f"{out}/{file}" for variable, file in named.items()} | plain
         if hash_seed is not None:
             variables["PYTHONHASHSEED"] = str(hash_seed)
-        if targets is not None:
-            files = {TRACE_TARGETS: targets}
-            if wanted is not None:
-                files[PREVIEW_CALLS] = wanted
-                variables["REPRO_PREVIEW_CALLS"] = f"{out}/{PREVIEW_CALLS}"
-            sandbox.write_files(relative, files)
-            variables["REPRO_TRACE_TARGETS"] = f"{out}/{TRACE_TARGETS}"
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=out, tests=tests, extra=extra),
             cwd=directory or ".",
@@ -480,24 +491,20 @@ def run_tests(
         )
         results = sandbox.read_file(f"{relative}/{RESULTS}", limit=MAX_BYTES)
         junit = sandbox.read_file(f"{relative}/{JUNIT}", limit=MAX_BYTES)
-        calls, calls_cut = None, False
-        if targets is not None:
-            calls = sandbox.read_file(f"{relative}/{CALLS}", limit=MAX_BYTES + 1)
-            calls_cut = calls is not None and len(calls) > MAX_BYTES
-            calls = calls[:MAX_BYTES] if calls is not None else None
+        calls = sandbox.read_file(f"{relative}/{CALLS}", limit=MAX_BYTES + 1) if trace else None
+        calls_cut = calls is not None and len(calls) > MAX_BYTES
+        calls = calls[:MAX_BYTES] if calls is not None else None
     else:
         output = sandbox.work / name
         here = env.project.root / directory if directory else env.project.root
         variables = plugin_env(str(output), root=str(here), seed=seed, map_tests=map_tests)
+        if files:
+            output.mkdir(parents=True)
+            for file, data in files.items():
+                (output / file).write_bytes(data)
+        variables |= {variable: str(output / file) for variable, file in named.items()} | plain
         if hash_seed is not None:
             variables["PYTHONHASHSEED"] = str(hash_seed)
-        if targets is not None:
-            output.mkdir(parents=True)
-            (output / TRACE_TARGETS).write_bytes(targets)
-            variables["REPRO_TRACE_TARGETS"] = str(output / TRACE_TARGETS)
-            if wanted is not None:
-                (output / PREVIEW_CALLS).write_bytes(wanted)
-                variables["REPRO_PREVIEW_CALLS"] = str(output / PREVIEW_CALLS)
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=output.as_posix(), tests=tests, extra=extra),
             cwd=here,
@@ -508,7 +515,7 @@ def run_tests(
         )
         results, junit = _read(output / RESULTS), _read(output / JUNIT)
         calls, calls_cut = None, False
-        if targets is not None and (output / CALLS).is_file():
+        if trace and (output / CALLS).is_file():
             calls, calls_cut = read_head(output / CALLS, MAX_BYTES)
     return TestRun(execution, read_results(results, calls, calls_cut=calls_cut), junit)
 

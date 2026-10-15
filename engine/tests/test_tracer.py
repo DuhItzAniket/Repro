@@ -152,6 +152,17 @@ def test_input_mutation_and_previews(side: Side) -> None:
     assert {c.args_preview for c in again.calls if c.target != extend} == {None}
 
 
+def test_samples_preview_each_tests_first_calls(side: Side) -> None:
+    """E07: with ``samples``, each (test, target)'s first calls carry previews."""
+    results = side.trace(samples=1)
+    first, second = calls(results, "test_add", "add")
+    assert first.args_preview == "add(a=1, b=2)"
+    assert first.result_preview == "3"
+    assert second.args_preview is None
+    budget = calls(results, "test_budget", "add")
+    assert [c.args_preview is not None for c in budget[:3]] == [True, False, False]
+
+
 def test_the_budget(side: Side) -> None:
     results = side.trace()
     budget = calls(results, "test_budget", "add")

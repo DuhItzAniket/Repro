@@ -220,6 +220,11 @@ Incomplete encodings, `unfinished` calls and spent budgets are never compared. T
 traced but left out. The trace has its own file in the sandbox (`calls.jsonl`, 64 MiB at most),
 so it never crowds out the test results.
 
+As built (E07): A, A′ and H also preview each test's first four calls of each traced function
+(`REPRO_TRACE_SAMPLES`), and the engine emits them as `trace.sample` events (`base`,
+`base_repeat`, `head`) as each run ends, test code left out, at most 2,000 a run: the samples
+the cockpit's behaviour field and Signals draw before the diff stage's verdicts arrive.
+
 ### 4.4 Differential probes (`runner/probes`, Stage G)
 Re-running existing tests misses most divergences. Shadow symbolic execution observed that
 patch tests "often exercise the same behaviour in the old and the new version". PatchDiff,
