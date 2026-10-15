@@ -96,6 +96,8 @@ order never become a behaviour difference. Store the observations as replayable 
   `PytestRun.trace_cut`.
 - The `behaviour` job; `pipeline_jobs(artifacts=...)`; `repro run` stores the observations.
 - Fixture `noisy`; `behaviour` lists in `flaky.toml` and `perf-regress.toml`.
+- CI: the test job's time limit 15 → 30 minutes (a slow Windows runner ran out at 60 % of
+  the suite, nothing failed).
 - Tests: `test_cbor.py` (79), `test_observations.py` (21), the `noisy` fixture in
   `test_twosided.py` and `test_run_stage.py` (with the stored artifacts checked). pytest
   1121 → 1224 (1212 pass and 12 skip on Windows with Docker Desktop stopped).
