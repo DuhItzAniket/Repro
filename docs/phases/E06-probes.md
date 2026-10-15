@@ -55,10 +55,10 @@ differently, with the input as the reproducer.
   probes): measured beside them, its samples would carry their load.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): finds the seeded divergence in a fixture whose existing tests don't
+- [x] AC1 (roadmap): finds the seeded divergence in a fixture whose existing tests don't
   exercise it.
-- [ ] AC2 (roadmap): probes are deterministic across A and A′.
-- [ ] AC3: the probe differences are schema-valid evidence with `warn` checks through
+- [x] AC2 (roadmap): probes are deterministic across A and A′.
+- [x] AC3: the probe differences are schema-valid evidence with `warn` checks through
   `repro run`; the other fixtures gain none.
 
 ## Test plan
@@ -72,12 +72,42 @@ differently, with the input as the reproducer.
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.runner.probes`: `candidates`, `inputs`, `run_probes`, `compare`, `probe`,
+  `ProbeDiff` (evidence, `diff.probe` payload), `Probing` (missing items, the stored document).
+- `sandbox/_hook/repro_probe.py`, the probe runner; mypy told about the hook's plugin module.
+- The `probes` and `probe-diff` jobs; `perf` waits for `behaviour` and `probes`.
+- Fixture `probe-only`; `test_run_stage.py` names `probe_diff` evidence.
+- Tests: `test_probes.py` (26), `probe-only` in `test_twosided.py` and `test_run_stage.py`.
+  pytest 1266 → 1295 (1283 pass and 12 skip on Windows with Docker Desktop stopped).
 
 ## Evidence
+- AC1: on `probe-only`, `percent(part: int, whole: int)` is the one candidate; of its 40
+  generated inputs, 7 return `0.0` on base and raise on head, the first being
+  `percent(part=0, whole=0)` (base `0.0`, head `raises builtins.ZeroDivisionError('division by
+  zero')`): `probe_diff` `exception_added`, through `repro run` too, while the only test
+  (`percent(1, 4)`) passes on both sides and gives no behaviour difference.
+- AC2: generating the inputs twice gives the same 40; on `probe-only` the two base runs (hash
+  and `random` seeds 0 and 1) agree on all 40 (none left out); inputs on which they disagree
+  are left out and listed (unit test).
+- AC3: the other fixtures' functions probed are `parse_date` (`honest-fix`) and `shout`
+  (`api-break`); neither gives a difference, and their expectations are unchanged.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- ARCHITECTURE §4.4 has `diff.probe` evidence "reported separately"; it is its own evidence type
+  and check kind, which the card can tell apart by `provenance`.
+- Timing (D07) now runs after `behaviour` and `probes` rather than beside them.
 
 ## Known gaps
+- Generated text rarely forms structured values: `parse_date`'s fix (`honest-fix`) changes its
+  result only for valid ISO timestamps, which 40 short random strings did not include (the
+  behaviour comparison of the tests' own calls shows that change).
+- Methods, classes, keyword-only defaults that are not JSON, and parameters without
+  annotations are not probed.
+- A probe that hangs ends its whole side's run at the 300 s limit (a `timeout` item); the calls
+  before it are kept.
+- Another Hypothesis version may generate other inputs; the evidence records the version and
+  `obs/probes.cbor` the inputs.
 
 ## Dependencies added
 - Hypothesis (MPL-2.0) moves from the development group to the engine's dependencies
