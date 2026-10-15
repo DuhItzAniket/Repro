@@ -1,0 +1,32 @@
+# Expected Repro outcome for the silent-change fixture (E04 asserts the behaviour diffs).
+[fixture]
+name = "silent-change"
+head = "change/tidy-convert"
+
+[expected]
+status = "FLAGGED"
+claims = ["Simplify to_celsius()"]
+# to_celsius() now rounds to whole degrees: no test checks the value, so every test passes on
+# both sides, and only the behaviour comparison sees it (an unexplained difference).
+evidence = [
+  "behaviour_diff:result_changed:tests/test_convert.py::test_describe_mentions_celsius",
+  "behaviour_diff:result_changed:tests/test_convert.py::test_freezing",
+  "test_outcome:P2P:tests/test_convert.py::test_describe_mentions_celsius",
+  "test_outcome:P2P:tests/test_convert.py::test_freezing",
+]
+missing = [
+  "perf_not_assessable:tests/test_convert.py::test_describe_mentions_celsius",
+  "perf_not_assessable:tests/test_convert.py::test_freezing",
+]
+
+# Each difference's reproducer: what base and head gave for its first call.
+[reproducers]
+"result_changed:tests/test_convert.py::test_describe_mentions_celsius" = ["37.8", "38"]
+"result_changed:tests/test_convert.py::test_freezing" = ["0.0", "0"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_convert.py::test_describe_mentions_celsius" = ["blast_radius"]
+"tests/test_convert.py::test_freezing" = ["blast_radius"]

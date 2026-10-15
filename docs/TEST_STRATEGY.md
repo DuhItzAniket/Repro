@@ -71,8 +71,10 @@ Each fixture's expected outcome lives next to the specs as `<name>.toml` (stdlib
 From Stage D on, integration tests assert it end to end. Fixtures are added by the phase that
 first needs them; `honest-fix` exists since A07, `selection` and `untested` since D05,
 `flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D,
-`noisy` since E03. A fixture's `behaviour` list holds the missing items the behaviour comparison
-adds (E03); `test_run_stage.py` expects them with the rest.
+`noisy` since E03, `silent-change` and `false-claim` since E04. A fixture's `behaviour` list holds
+the missing items the behaviour comparison adds (E03), and its evidence lists its
+`behaviour_diff` items (E04), with `[reproducers]` where a test checks them; `test_run_stage.py`
+expects them with the rest.
 
 ### Golden files and property tests
 

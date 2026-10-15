@@ -509,6 +509,118 @@ NOISY = RepoSpec(
     },
 )
 
+_CONVERT = """\"\"\"Unit conversions.\"\"\"
+
+
+def to_celsius(fahrenheit):
+    return round((fahrenheit - 32) * 5 / 9, 1)
+
+
+def describe(fahrenheit):
+    return f"{to_celsius(fahrenheit)} C"
+"""
+
+_TEST_CONVERT = """from units.convert import describe, to_celsius
+
+
+def test_freezing():
+    assert to_celsius(32) == 0
+
+
+def test_describe_mentions_celsius():
+    assert describe(100).endswith(" C")
+"""
+
+# Head rounds to whole degrees: every test still passes, because none of them looks at the value
+# describe() shows (E04: a behaviour difference with no test outcome change).
+SILENT_CHANGE = RepoSpec(
+    name="silent-change",
+    description="An output change no test checks: every test passes on both sides.",
+    base={
+        "pyproject.toml": '[project]\nname = "units-fixture"\nversion = "0.1.0"\n',
+        "units/__init__.py": "",
+        "units/convert.py": _CONVERT,
+        "tests/test_convert.py": _TEST_CONVERT,
+    },
+    heads={
+        "change/tidy-convert": {
+            "units/convert.py": _CONVERT.replace(
+                "return round((fahrenheit - 32) * 5 / 9, 1)",
+                "return round((fahrenheit - 32) * 5 / 9)",
+            )
+        }
+    },
+    pr_description={
+        "change/tidy-convert": "Tidy the conversion helpers\n\nSimplify to_celsius().",
+    },
+)
+
+_STOCK = """\"\"\"Stock levels.\"\"\"
+
+
+def unique_skus(skus):
+    seen = []
+    for sku in skus:
+        if sku not in seen:
+            seen.append(sku)
+    return seen
+
+
+def restock(levels, sku, amount):
+    updated = dict(levels)
+    updated[sku] = updated.get(sku, 0) + amount
+    return updated
+"""
+
+_TEST_STOCK = """from inventory.stock import restock, unique_skus
+
+
+def test_unique_skus_keeps_first_seen():
+    assert unique_skus(["b", "a", "b"]) == ["b", "a"]
+
+
+def test_restock_adds():
+    levels = {"a": 1}
+    assert restock(levels, "a", 2)["a"] == 3
+"""
+
+# Head claims no behaviour change; restock() now changes the caller's dictionary in place (E04:
+# input mutation), while unique_skus()'s rewrite really does keep its behaviour.
+FALSE_CLAIM = RepoSpec(
+    name="false-claim",
+    description="A refactor that claims no behaviour change and mutates its input.",
+    base={
+        "pyproject.toml": '[project]\nname = "inventory-fixture"\nversion = "0.1.0"\n',
+        "inventory/__init__.py": "",
+        "inventory/stock.py": _STOCK,
+        "tests/test_stock.py": _TEST_STOCK,
+    },
+    heads={
+        "refactor/stock": {
+            "inventory/stock.py": _STOCK.replace(
+                """    seen = []
+    for sku in skus:
+        if sku not in seen:
+            seen.append(sku)
+    return seen""",
+                "    return list(dict.fromkeys(skus))",
+            ).replace(
+                """    updated = dict(levels)
+    updated[sku] = updated.get(sku, 0) + amount
+    return updated""",
+                """    levels[sku] = levels.get(sku, 0) + amount
+    return levels""",
+            )
+        }
+    },
+    pr_description={
+        "refactor/stock": (
+            "Simplify the stock helpers\n\nNo behaviour change: unique_skus() and restock() "
+            "are shorter and restock() no longer copies the levels."
+        ),
+    },
+)
+
 ALL_SPECS = {
     spec.name: spec
     for spec in (
@@ -520,5 +632,7 @@ ALL_SPECS = {
         PERF_REGRESS,
         BREAKS_ONE,
         NOISY,
+        SILENT_CHANGE,
+        FALSE_CLAIM,
     )
 }

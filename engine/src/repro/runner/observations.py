@@ -14,7 +14,8 @@ and another ``REPRO_SEED``) run the same code, so whatever differs between them 
 change:
 
 - a field of a call (``outcome``, ``type``, ``value``: the result with every dictionary sorted,
-  ``order``: the result as it was, ``yields``) that differs is *unstable* for that call;
+  ``order``: the result as it was, ``yields``, ``mutation``: the arguments' state when the call
+  ended) that differs is *unstable* for that call;
 - a (test, phase, symbol) whose calls differ (arguments that are not the same in both runs,
   another number of calls) has an unstable *call set*.
 
@@ -34,11 +35,12 @@ from typing import Any, Final, Literal
 
 from repro.runner.pytest import PytestRun, TraceCall, TraceTarget
 from repro.runner.selection import test_modules
+from repro.runner.trace import TracePlan
 from repro.runner.twosided import TRACED_RUNS, TwoSided
 from repro.store import cbor
 
 #: The fields of a call compared across runs, in this order.
-FIELDS: Final = ("outcome", "type", "value", "order", "yields")
+FIELDS: Final = ("outcome", "type", "value", "order", "yields", "mutation")
 #: A call's whole presence, when it is made on one side only.
 CALL: Final = "call"
 SUSPENDED: Final = "suspended"
@@ -66,6 +68,13 @@ class Observation:
     any_order: str | None  # the digest with dictionaries sorted, where it differs
     yields: tuple[str, ...]
     yields_complete: bool
+    #: The arguments' digest when the call ended, where they changed in place (E04).
+    after: str | None = None
+    after_complete: bool = True
+    #: Previews (only in a run that asked for them): the call, its result, its arguments after.
+    args_preview: str | None = None
+    result_preview: str | None = None
+    after_preview: str | None = None
 
     @property
     def group(self) -> Group:
@@ -78,11 +87,18 @@ class Observation:
             return None
         if name in ("value", "order"):
             return self._same_result(other, ordered=name == "order")
+        mine, theirs = self._field(name), other._field(name)
+        if not mine[1] or not theirs[1]:
+            return None
+        return bool(mine[0] == theirs[0])
+
+    def _field(self, name: str) -> tuple[object, bool]:
+        """A field's value and whether it is complete."""
         if name == "yields":
-            if not self.yields_complete or not other.yields_complete:
-                return None
-            return self.yields == other.yields
-        return bool(getattr(self, name) == getattr(other, name))  # outcome, type
+            return self.yields, self.yields_complete
+        if name == "mutation":  # the arguments' state when the call ended (None: unchanged)
+            return self.after, self.after_complete
+        return getattr(self, name), True  # outcome, type
 
     def _same_result(self, other: "Observation", *, ordered: bool) -> bool | None:
         if SUSPENDED in (self.outcome, other.outcome):
@@ -153,6 +169,11 @@ def _observation(key: Key, call: TraceCall) -> Observation:
         any_order=call.result_any_order,
         yields=call.yields,
         yields_complete=call.yields_complete,
+        after=call.args_after,
+        after_complete=call.args_after_complete,
+        args_preview=call.args_preview,
+        result_preview=call.result_preview,
+        after_preview=call.args_after_preview,
     )
 
 
@@ -222,6 +243,8 @@ class Behaviour:
     unkeyed: Mapping[Group, tuple[int, int]] = field(default_factory=dict)
     #: Changed functions not traced at all (more than one run can trace).
     left_out: tuple[str, ...] = ()
+    #: What was traced, test code left out (the reproducer runs trace the same, E04).
+    plan: TracePlan | None = None
 
     def differences(self) -> list[Compared]:
         """The candidate behaviour differences: what differs once the noise is masked."""
@@ -326,6 +349,7 @@ def behaviour_of(result: TwoSided) -> Behaviour | None:
     )
     behaviour = compare(base, again, head)
     behaviour.left_out = plan.left_out
+    behaviour.plan = plan
     return behaviour
 
 
@@ -436,7 +460,8 @@ def _missing(
 
 _CALL_FIELDS: Final = (
     "test", "phase", "symbol", "args", "occurrence", "index", "outcome", "type", "result",
-    "result_complete", "any_order", "yields", "yields_complete",
+    "result_complete", "any_order", "yields", "yields_complete", "after", "after_complete",
+    "args_preview", "result_preview", "after_preview",
 )  # fmt: skip
 
 
@@ -475,6 +500,11 @@ def dump_observations(run: RunObservations) -> bytes:
             _digest(o.any_order),
             [_digest(y) for y in o.yields],
             o.yields_complete,
+            _digest(o.after),
+            o.after_complete,
+            o.args_preview,
+            o.result_preview,
+            o.after_preview,
         ]
         for _, o in sorted(run.calls.items())
     ]
@@ -513,11 +543,14 @@ def load_observations(data: bytes) -> RunObservations:
         )
         for row in document["calls"]:
             (test, phase, symbol, args, occurrence, index, outcome, kind, result, complete,
-             any_order, yields, yields_complete) = row  # fmt: skip
+             any_order, yields, yields_complete, after, after_complete, args_preview,
+             result_preview, after_preview) = row  # fmt: skip
             key: Key = (tests[test], phase, symbols[symbol], _text(args), occurrence)
             run.calls[key] = Observation(
                 key, index, outcome, kind, _text(result), complete,
                 _text(any_order) or None, tuple(_text(y) for y in yields), yields_complete,
+                _text(after) or None, after_complete, args_preview, result_preview,
+                after_preview,
             )  # fmt: skip
         for test, phase, symbol, count in document["unkeyed"]:
             run.unkeyed[(tests[test], phase, symbols[symbol])] = count

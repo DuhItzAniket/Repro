@@ -51,6 +51,20 @@ def run_fixture(name: str, tmp_path: Path, sandbox: str) -> list[dict[str, Any]]
     return events
 
 
+def evidence_name(item: dict[str, Any]) -> str | None:
+    """An evidence item as the expectation files name it: ``<type>:<detail>:<target>``."""
+    data, target = item["data"], item["targets"][0]
+    detail = {
+        "test_outcome": "class",
+        "test_change": "change",
+        "perf_diff": "verdict",
+        "behaviour_diff": "change",
+    }.get(item["type"])
+    if detail is None:
+        return None
+    return f"{item['type']}:{data[detail]}:{target.get('test') or target['file']}"
+
+
 def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     expected = tomllib.loads((FIXTURES / f"{name}.toml").read_text(encoding="utf-8"))
     log = "\n".join(
@@ -65,19 +79,11 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
         for e in events
         if e["kind"] == "evidence.created"
     }
-    found = []
-    for item in evidence.values():
-        data, target = item["data"], item["targets"][0]
-        if item["type"] == "test_outcome":
-            found.append(f"test_outcome:{data['class']}:{target['test']}")
-        elif item["type"] == "test_change":
-            found.append(f"test_change:{data['change']}:{target.get('test') or target['file']}")
-        elif item["type"] == "perf_diff":
-            found.append(f"perf_diff:{data['verdict']}:{target['test']}")
+    found = [named for item in evidence.values() if (named := evidence_name(item)) is not None]
     assert sorted(found) == sorted(expected["expected"]["evidence"]), log
-    diffs = ("diff.outcome", "diff.tests", "diff.perf")
+    diffs = ("diff.outcome", "diff.tests", "diff.perf", "diff.behaviour")
     cited = [e["payload"]["evidence_id"] for e in events if e["kind"] in diffs]
-    compared = ("test_outcome", "test_change", "perf_diff")
+    compared = ("test_outcome", "test_change", "perf_diff", "behaviour_diff")
     assert sorted(cited) == sorted(i for i, item in evidence.items() if item["type"] in compared)
     for event in events:  # ADR-0015 §2: what each check's status means without claims
         payload = event["payload"]
@@ -95,6 +101,8 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             expected_status = "warn" if payload["change"] == "test_modified" else "fail"
         elif event["kind"] == "diff.perf":
             expected_status = "ok" if payload["verdict"] in ("improvement", "no_change") else "warn"
+        elif event["kind"] == "diff.behaviour":
+            expected_status = "warn"  # every difference needs a claim to explain it
         else:
             continue
         assert event["status"] == expected_status, (event["kind"], payload)
@@ -109,7 +117,9 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     assert sorted(missing) == sorted(expected["expected"]["missing"] + behaviour), log
 
 
-@pytest.mark.parametrize("name", ["honest-fix", "test-tamper", "perf-regress", "noisy"])
+@pytest.mark.parametrize(
+    "name", ["honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim"]
+)
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     events = run_fixture(name, tmp_path, "process")
     check_against_expectation(name, events)

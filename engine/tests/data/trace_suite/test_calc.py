@@ -1,6 +1,6 @@
 import pytest
 
-from calc import Box, add, fails, gen, many, ordered, recurse, threaded, with_kw
+from calc import Box, add, extend, fails, gen, many, ordered, recurse, threaded, with_kw
 
 
 @pytest.fixture
@@ -53,3 +53,8 @@ def test_setup_phase(three):
 
 def test_dict_order():
     assert ordered(["bb", "a"]) == {"a": 1, "bb": 2}
+
+
+def test_mutation():
+    items = [1]
+    assert extend(items, [2, 3]) == 3

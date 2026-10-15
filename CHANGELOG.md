@@ -29,6 +29,13 @@ All notable changes to this project are documented here. The format follows
   difference; what could not be compared is a missing item. Each run's observations and the
   comparison are stored as deterministic CBOR artifacts (RFC 8949), read back only in that
   form. A `noisy` fixture. The trace has its own capped file in the sandbox. [E03]
+- Behaviour differences as evidence: each call that behaves differently on head for the same
+  input is classified (another result, an exception added, removed or changed, its order only,
+  its input mutated, or other calls made), grouped per test and function, run again on both
+  sides to confirm it, and shown with a reproducer (the test, the call and what each side gave).
+  Each group is `behaviour_diff` evidence with a `diff.behaviour` check. The tracer encodes a
+  call's arguments again when it ends, to see them mutated. `calls_changed` joins the schema's
+  behaviour classes. Fixtures `silent-change` and `false-claim`. [E04]
 
 ## [0.4.0] - 2026-10-15
 

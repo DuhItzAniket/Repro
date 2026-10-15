@@ -55,6 +55,13 @@ Place = tuple[str, str, int]
 #: A function to trace: file, qualified name, and the first and last lines of its symbol.
 TraceTarget = tuple[str, str, int, int]
 TRACE_TARGETS: Final = "trace-targets.json"
+PREVIEW_CALLS: Final = "preview-calls.json"
+#: A preview's length at most (the event schema's ``Preview``).
+PREVIEW: Final = 512
+#: At most this many calls are previewed in one run.
+MAX_PREVIEWS: Final = 2000
+#: A call to preview: the test, the target, the arguments' digest.
+WantedCall = tuple[str, "TraceTarget", str]
 #: At most this many functions are traced in one run.
 MAX_TARGETS: Final = 2000
 _DIGEST: Final = 32  # BLAKE2b-128, hexadecimal
@@ -205,6 +212,14 @@ class TraceCall:
     yields_complete: bool
     #: The result's digest with every dictionary sorted, when it differs from ``result``.
     result_any_order: str | None = None
+    #: The arguments' digest when the call ended, where they changed in place (E04).
+    args_after: str | None = None
+    args_after_complete: bool = True
+    #: Previews, for the calls a run asked them for (``run_tests(previews=...)``): the call,
+    #: its result or exception, and its arguments afterwards if they changed.
+    args_preview: str | None = None
+    result_preview: str | None = None
+    args_after_preview: str | None = None
 
 
 def _target(raw: object) -> TraceTarget:
@@ -246,7 +261,20 @@ def _call(record: dict[str, Any]) -> TraceCall:
         yields=tuple(_hex(item) for item in yields),
         yields_complete=record["yields_complete"] is True,
         result_any_order=_optional_hex(record.get("result_any_order")),
+        args_after=_optional_hex(record.get("args_after")),
+        args_after_complete=record.get("args_after_complete", True) is True,
+        args_preview=_preview(record.get("args_preview")),
+        result_preview=_preview(record.get("result_preview")),
+        args_after_preview=_preview(record.get("args_after_preview")),
     )
+
+
+def _preview(raw: object) -> str | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise ValueError(raw)
+    return raw[:PREVIEW]
 
 
 def _optional_hex(raw: object) -> str | None:
@@ -409,6 +437,7 @@ def run_tests(
     collect_only: bool = False,
     directory: str | None = None,
     trace: Sequence[TraceTarget] = (),
+    previews: Sequence[WantedCall] = (),
     timeout_s: float | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> TestRun:
@@ -421,6 +450,13 @@ def run_tests(
     if len(trace) > MAX_TARGETS:
         raise ValueError(f"{len(trace)} functions to trace: at most {MAX_TARGETS}")
     targets = json.dumps([list(target) for target in trace]).encode() if trace else None
+    if len(previews) > MAX_PREVIEWS:
+        raise ValueError(f"{len(previews)} calls to preview: at most {MAX_PREVIEWS}")
+    wanted = (
+        json.dumps([[test, list(target), args] for test, target, args in previews]).encode()
+        if previews and trace
+        else None
+    )
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
@@ -429,7 +465,11 @@ def run_tests(
         if hash_seed is not None:
             variables["PYTHONHASHSEED"] = str(hash_seed)
         if targets is not None:
-            sandbox.write_files(relative, {TRACE_TARGETS: targets})
+            files = {TRACE_TARGETS: targets}
+            if wanted is not None:
+                files[PREVIEW_CALLS] = wanted
+                variables["REPRO_PREVIEW_CALLS"] = f"{out}/{PREVIEW_CALLS}"
+            sandbox.write_files(relative, files)
             variables["REPRO_TRACE_TARGETS"] = f"{out}/{TRACE_TARGETS}"
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=out, tests=tests, extra=extra),
@@ -455,6 +495,9 @@ def run_tests(
             output.mkdir(parents=True)
             (output / TRACE_TARGETS).write_bytes(targets)
             variables["REPRO_TRACE_TARGETS"] = str(output / TRACE_TARGETS)
+            if wanted is not None:
+                (output / PREVIEW_CALLS).write_bytes(wanted)
+                variables["REPRO_PREVIEW_CALLS"] = str(output / PREVIEW_CALLS)
         execution = sandbox.run(
             pytest_argv(env.python, out_dir=output.as_posix(), tests=tests, extra=extra),
             cwd=here,

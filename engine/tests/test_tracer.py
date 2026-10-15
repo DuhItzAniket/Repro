@@ -26,7 +26,7 @@ from repro.sandbox.detect import HOOK_DIR
 
 SUITE = Path(__file__).parent / "data" / "trace_suite"
 PYTHONS = ("3.12", "3.13", "3.14", "3.15")
-TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size", "ordered")
+TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size", "ordered", "extend")
 
 
 def hook_module(name: str) -> ModuleType:
@@ -128,6 +128,28 @@ def test_each_kind_of_call(side: Side) -> None:
     (fixture,) = calls(results, "test_setup_phase", "add")
     assert fixture.phase == "setup"
     assert {c.phase for c in calls(results, "test_add", "add")} == {"call"}
+
+
+def test_input_mutation_and_previews(side: Side) -> None:
+    """E04: arguments changed in place are encoded again when the call ends; the calls the
+    engine names get previews (its reproducer), and no other call does."""
+    (extend,) = [t for t in targets() if t[1] == "extend"]
+    first = side.trace()
+    (mutating,) = calls(first, "test_mutation", "extend")
+    assert mutating.args == digest(([1], [2, 3]))
+    assert mutating.args_after == digest(([1, 2, 3], [2, 3]))
+    assert mutating.args_preview is None
+    added = calls(first, "test_add", "add")
+    assert {c.args_after for c in added} == {None}  # numbers and strings: not looked at again
+    (method,) = calls(first, "test_method", "Box.size")
+    assert method.args_after is None  # an object, encoded again, unchanged
+    wanted = [("test_calc.py::test_mutation", extend, mutating.args)]
+    again = side.trace(previews=wanted)
+    (shown,) = calls(again, "test_mutation", "extend")
+    assert shown.args_preview == "extend(items=[1], extra=[2, 3])"
+    assert shown.result_preview == "3"
+    assert shown.args_after_preview == "items=[1, 2, 3], extra=[2, 3]"
+    assert {c.args_preview for c in again.calls if c.target != extend} == {None}
 
 
 def test_the_budget(side: Side) -> None:

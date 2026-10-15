@@ -10,6 +10,10 @@
  * through `repro run` in full: sandboxes (Docker when the machine has it), environments from the
  * package index, both sides' tests, the diff. The cockpit is read through its test hook, whose
  * panel summary is computed by the panels' own views.
+ *
+ * Since E04 each branch's changed functions are also compared call by call: every behaviour
+ * difference is a `diff.behaviour` check, `warn` until review explains it (ADR-0015), so in a
+ * run without review it ends flagged, beside the outcome and test-change checks.
  */
 import type { ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -74,21 +78,23 @@ test("a branch that breaks one test shows exactly that test flipping", async ({
     expect(execution.base.failed).toEqual([]);
     expect(execution.base_repeat.failed).toEqual([]);
     expect(execution.head.runs).toBe(4); // H and three reruns of the flip
-    // Change routes: the one changed function, routed to that test, its check flagged.
+    // Change routes: the one changed function, routed to that test, its two checks flagged:
+    // the P2F, and discount() giving another result for the same input (E04).
     expect(routes).toEqual([
       {
         symbol: "shop.prices:discount#0",
         tests: 1,
         step: 3,
-        checks: { passed: 0, flagged: 1, unassessed: 0, pending: 0 },
+        checks: { passed: 0, flagged: 2, unassessed: 0, pending: 0 },
       },
     ]);
-    // The index: a single check, the P2F, flagged; the header agrees.
-    expect(index.results).toEqual(["flagged"]);
+    // The index: those two checks, flagged; the header agrees.
+    expect(index.results).toEqual(["flagged", "flagged"]);
     expect(index.rows.map((row) => row.status)).toContain("flagged");
-    expect(summary.counters.checks).toBe(1);
-    expect(summary.counters.flagged).toBe(1);
+    expect(summary.counters.checks).toBe(2);
+    expect(summary.counters.flagged).toBe(2);
     expect(summary.kinds["diff.outcome"]).toBe(1);
+    expect(summary.kinds["diff.behaviour"]).toBe(1);
     expect(errors).toEqual([]);
   } finally {
     await Promise.all(started.map(stop));
@@ -120,13 +126,16 @@ test("a branch that deletes or weakens a test is flagged as test tampering", asy
     // Four test changes, each a flagged check: the deleted assertion, the added skip, and both
     // edited tests' base versions failing on head.
     expect(summary.kinds["diff.tests"]).toBe(4);
+    // Four behaviour differences, unexplained without review (E04): divide() returns an int and
+    // raises another ZeroDivisionError, and the edited tests make calls base made and head not.
+    expect(summary.kinds["diff.behaviour"]).toBe(4);
     const { results } = summary.panels.index;
     const count = (result: string) => results.filter((r) => r === result).length;
-    expect(count("flagged")).toBe(4);
+    expect(count("flagged")).toBe(8);
     // The two edited tests' outcomes are not comparable (modified); the untouched one passes.
     expect(count("unassessed")).toBe(2);
     expect(count("passed")).toBe(1);
-    expect(summary.counters.flagged).toBe(4);
+    expect(summary.counters.flagged).toBe(8);
     expect(summary.panels.index.rows.map((row) => row.status)).toContain("flagged");
     expect(errors).toEqual([]);
   } finally {

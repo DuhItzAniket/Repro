@@ -184,13 +184,15 @@
       "enum": ["read", "build", "review", "gap", "probe", "qa"]
     },
     "BehaviourChange": {
+      "description": "How a function behaves differently for the same input. calls_changed: in the same test it was called with other arguments on one side (E04).",
       "enum": [
         "result_changed",
         "exception_changed",
         "exception_added",
         "exception_removed",
         "input_mutated",
-        "order_only"
+        "order_only",
+        "calls_changed"
       ]
     },
     "Origin": {

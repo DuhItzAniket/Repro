@@ -21,6 +21,17 @@ Calls in flight are keyed by their frame's identity; code objects are held, so i
 not reused. Each call is attributed to the test and the phase (setup, call, teardown) running
 when it started.
 
+**Input mutation (E04).** A call's arguments are kept from PY_START and encoded again when
+it ends; ``args_after`` is recorded where they changed in place. A call whose arguments are all
+immutable scalars (numbers, strings, bytes, ``None``) cannot change them and is not encoded
+twice.
+
+**Previews (E04).** For the calls the engine names in ``REPRO_PREVIEW_CALLS`` (test, target,
+arguments' digest), the call, its result or exception and its arguments afterwards are also
+recorded as previews (``repro_encode.preview``): the reproducer of a behaviour difference. The
+digests of the run they were found in say which calls those are; only they leave the sandbox
+as text.
+
 **Budget.** Each (test, target) records its first ``BUDGET`` calls (200, measured in A08);
 then the target is disabled for the rest of the test, and a ``truncated`` record says so: its
 PY_START returns ``DISABLE``, and so do its PY_RETURN and PY_YIELD. Recorded calls still in
@@ -35,7 +46,7 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-from repro_encode import digest, digests, type_name
+from repro_encode import digest, digests, preview, type_name
 
 BUDGET = 200
 MAX_YIELDS = 32
@@ -49,6 +60,11 @@ class _Unset:
 
 _UNSET = _Unset()
 _VARKEYWORDS = 0x08  # inspect.CO_VARKEYWORDS
+#: Exact types whose values cannot change in place: arguments all of these need no second look.
+_IMMUTABLE = frozenset({int, float, bool, complex, str, bytes, type(None), _Unset})
+#: A preview's length at most (the event schema's ``Preview``).
+PREVIEW = 512
+Wanted = tuple[str, Target, str]  # test, target, arguments' digest
 
 
 def _names(code: Any) -> tuple[str, ...]:
@@ -60,7 +76,8 @@ def _names(code: Any) -> tuple[str, ...]:
 
 class _Call:
     __slots__ = (
-        "args", "args_complete", "code", "index", "phase", "target", "test", "yields",
+        "args", "args_complete", "arguments", "code", "index", "names", "phase", "preview",
+        "target", "test", "yields",
     )  # fmt: skip
 
     def __init__(self, target: Target, test: str, phase: str, index: int, code: int) -> None:
@@ -71,13 +88,35 @@ class _Call:
         self.index = index
         self.args = ""
         self.args_complete = True
+        self.arguments: tuple[Any, ...] | None = None  # kept to be encoded again at the end
+        self.preview: str | None = None  # the call itself, when the engine asked for it
+        self.names: tuple[str, ...] = ()  # its parameters' names, for the previews
         self.yields: list[str] = []
+
+
+def _arguments_preview(names: tuple[str, ...], arguments: tuple[Any, ...]) -> str:
+    """``name=value, ...``, each value previewed."""
+    return ", ".join(
+        f"{name}={'?' if value is _UNSET else preview(value, PREVIEW)}"
+        for name, value in zip(names, arguments, strict=False)
+    )
+
+
+def _capped(text: str) -> str:
+    """``text``, at most ``PREVIEW`` characters."""
+    return text if len(text) <= PREVIEW else text[: PREVIEW - 1] + "\u2026"
 
 
 class Tracer:
     """The tracer's state for one pytest session."""
 
-    def __init__(self, targets: list[Target], write: Callable[[dict[str, Any]], None]) -> None:
+    def __init__(
+        self,
+        targets: list[Target],
+        write: Callable[[dict[str, Any]], None],
+        previews: set[Wanted] | None = None,
+    ) -> None:
+        self.previews = previews or set()
         self.by_name: dict[tuple[str, str], list[Target]] = {}
         for target in targets:
             self.by_name.setdefault((target[0], target[1]), []).append(target)
@@ -129,8 +168,16 @@ class Tracer:
         local = frame.f_locals
         # The parameters' values in their order (their names are the function's, the same in
         # every call); one deleted before PY_START (it cannot be) would show as the marker.
-        arguments = tuple([local.get(name, _UNSET) for name in _names(code)])
+        names = _names(code)
+        arguments = tuple([local.get(name, _UNSET) for name in names])
         call.args, call.args_complete = digest(arguments)  # dictionaries in their order
+        for value in arguments:
+            if type(value) not in _IMMUTABLE:
+                call.arguments = arguments  # encoded again when the call ends
+                break
+        if self.previews and (test, target, call.args) in self.previews:
+            call.names = names
+            call.preview = _capped(f"{target[1]}({_arguments_preview(names, arguments)})")
         self.inflight[id(frame)] = call
         self.open[id(code)] = self.open.get(id(code), 0) + 1
         return True
@@ -151,7 +198,11 @@ class Tracer:
         if call is None:
             return False
         result, any_order, complete = digests(value)
-        self._emit(call, "return", result, complete, type_name(type(value)), any_order=any_order)
+        shown = preview(value, PREVIEW) if call.preview is not None else None
+        self._emit(
+            call, "return", result, complete, type_name(type(value)), any_order=any_order,
+            shown=shown,
+        )  # fmt: skip
         return True
 
     def yielded(self, frame: Any, value: Any) -> bool:
@@ -171,7 +222,8 @@ class Tracer:
             return
         # The exception itself: its type, its arguments, its cause chain (repro_encode).
         result, complete = digest(exc)
-        self._emit(call, "raise", result, complete, type_name(type(exc)))
+        shown = preview(exc, PREVIEW) if call.preview is not None else None
+        self._emit(call, "raise", result, complete, type_name(type(exc)), shown=shown)
 
     # -- tests -----------------------------------------------------------------------------------
 
@@ -205,8 +257,9 @@ class Tracer:
         kind: str,
         *,
         any_order: str = "",
+        shown: str | None = None,
     ) -> None:
-        record = {
+        record: dict[str, Any] = {
             "kind": "call",
             "nodeid": call.test,
             "phase": call.phase,
@@ -225,6 +278,19 @@ class Tracer:
         # difference in dictionary order alone is told apart from one in content (E04).
         if any_order and any_order != result:
             record["result_any_order"] = any_order
+        if call.arguments is not None:  # changed in place by the call?
+            after, after_complete = digest(call.arguments)
+            if after != call.args or after_complete != call.args_complete:
+                record["args_after"] = after
+                record["args_after_complete"] = after_complete
+        if call.preview is not None:
+            record["args_preview"] = call.preview
+            if shown is not None:
+                record["result_preview"] = shown
+            if "args_after" in record and call.arguments is not None:
+                after_text = _arguments_preview(call.names, call.arguments)
+                record["args_after_preview"] = _capped(after_text)
+        call.arguments = None
         self.write(record)
 
 
@@ -236,6 +302,17 @@ def parse_targets(raw: str) -> list[Target]:
     for item in json.loads(raw):
         path, qualname, start, end = item
         found.append((str(path), str(qualname), int(start), int(end)))
+    return found
+
+
+def parse_previews(raw: str) -> set[Wanted]:
+    """The calls the engine wants previews of: ``[[test, target, arguments' digest], ...]``."""
+    import json  # noqa: PLC0415 - only when asked
+
+    found: set[Wanted] = set()
+    for test, target, args in json.loads(raw):
+        path, qualname, start, end = target
+        found.add((str(test), (str(path), str(qualname), int(start), int(end)), str(args)))
     return found
 
 

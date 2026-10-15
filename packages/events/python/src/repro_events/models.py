@@ -134,7 +134,8 @@ SandboxBackend = Literal['process', 'docker', 'gvisor']
 
 AgentRole = Literal['read', 'build', 'review', 'gap', 'probe', 'qa']
 
-BehaviourChange = Literal['result_changed', 'exception_changed', 'exception_added', 'exception_removed', 'input_mutated', 'order_only']
+# How a function behaves differently for the same input. calls_changed: in the same test it was called with other arguments on one side (E04).
+BehaviourChange = Literal['result_changed', 'exception_changed', 'exception_added', 'exception_removed', 'input_mutated', 'order_only', 'calls_changed']
 
 Origin = Literal['introduced', 'pre-existing', 'n/a']
 

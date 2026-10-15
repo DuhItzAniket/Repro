@@ -13,10 +13,12 @@ execution, and its evidence as events.
 - ``perf`` (run, D07): the tests that pass on both sides, timed untraced in ABBA blocks;
   ``perf.sample`` per test and run. ``perf-diff`` (diff): ``perf_diff`` evidence with
   ``diff.perf`` per timed test, and a ``perf_not_assessable`` item for those too fast to time.
-- ``behaviour`` (diff, E03): the calls A, A2 and H traced, as observations; A against H with
-  what differs between A and A2 masked. Each run's observations and the comparison are stored
-  as CBOR artifacts (``obs/``); the noise masked (``unstable_observation``), what could not be
-  compared (``encoding_failed``) and cut traces (``trace_truncated``) are missing items.
+- ``behaviour`` (diff, E03, E04): the calls A, A2 and H traced, as observations; A against H
+  with what differs between A and A2 masked. Each run's observations and the comparison are
+  stored as CBOR artifacts (``obs/``); the noise masked (``unstable_observation``), what could
+  not be compared (``encoding_failed``) and cut traces (``trace_truncated``) are missing items.
+  The differences that remain run again on each side for their reproducers, then become
+  ``behaviour_diff`` evidence with a ``diff.behaviour`` each (``warn``, ADR-0015).
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -39,6 +41,7 @@ from repro.provision import (
     environment_missing,
     inspect_project,
 )
+from repro.runner import behaviour as behaviour_diffs
 from repro.runner import observations, selection
 from repro.runner.observations import Behaviour
 from repro.runner.outcomes import unstable_observation
@@ -374,26 +377,60 @@ def _behaviour_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
     def run(ctx: JobContext) -> None:
         result = state.result
         behaviour = observations.behaviour_of(result) if result is not None else None
-        if behaviour is None:
+        if result is None or behaviour is None:
             ctx.log("no behaviour comparison: nothing traced on all of A, A2 and H")
             return
         state.behaviour = behaviour
-        if artifacts is not None:
-            refs = {}
-            for observed in behaviour.runs.values():
-                data = observations.dump_observations(observed)
-                ref = artifacts.put_bytes(ctx.run_id, f"obs/{observed.label}.cbor", data, CBOR)
-                refs[observed.label] = {"path": ref.path, "sha256": ref.sha256}
-            data = observations.dump_behaviour(behaviour, refs)
-            artifacts.put_bytes(ctx.run_id, "obs/behaviour.cbor", data, CBOR)
-        for item in observations.missing(behaviour):
-            ctx.emit("missing.recorded", status="warn", payload=item)
         counts = behaviour.counts()
         ctx.log(
             f"behaviour: {counts['calls']} calls compared, {counts['same']} the same, "
             f"{counts['unstable']} unstable, {counts['unknown']} not comparable, "
             f"{counts['differences']} differences"
         )
+        modified = frozenset(s.test for s in result.selected if "modified_test" in s.reasons)
+        found = behaviour_diffs.differences(behaviour, modified)
+        itemised = found[: behaviour_diffs.MAX_GROUPS]
+        again = behaviour_diffs.Reproduction(None, None)
+        if itemised and behaviour.plan is not None and {"base", "head"} <= state.sides.keys():
+            tests = len({d.test for d in itemised})
+            ctx.log(f"reproducing {len(itemised)} behaviour differences: {tests} tests again")
+            again = behaviour_diffs.reproduce(
+                itemised,
+                (state.sides["base"], state.sides["head"]),
+                behaviour.plan,
+                stop=lambda: ctx.cancelled,
+                timeout_s=TESTS_TIMEOUT_S,
+            )
+        cited: list[dict[str, Any]] = []
+        if artifacts is not None:
+            refs = {}
+            runs = [*behaviour.runs.values(), *(r for r in (again.base, again.head) if r)]
+            for observed in runs:
+                data = observations.dump_observations(observed)
+                ref = artifacts.put_bytes(ctx.run_id, f"obs/{observed.label}.cbor", data, CBOR)
+                refs[observed.label] = {"path": ref.path, "sha256": ref.sha256}
+            data = observations.dump_behaviour(behaviour, refs)
+            ref = artifacts.put_bytes(ctx.run_id, "obs/behaviour.cbor", data, CBOR)
+            cited.append(ref.model_dump())
+        for item in observations.missing(behaviour):
+            ctx.emit("missing.recorded", status="warn", payload=item)
+        for difference in itemised:
+            record = difference.evidence(ctx.run_id, cited)
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            ctx.emit(
+                "diff.behaviour",
+                status="warn",  # ADR-0015 §2: every behaviour difference needs a claim
+                payload=difference.payload(record["id"]),
+                target={"symbol": difference.symbol, "test": difference.test},
+            )
+            if difference.stability == "unstable":
+                ctx.emit("missing.recorded", status="warn", payload=difference.missing())
+        if len(found) > len(itemised):
+            ctx.log(
+                f"{len(found) - len(itemised)} more behaviour differences are in "
+                "obs/behaviour.cbor, not itemised",
+                level="warning",
+            )
 
     return Job(
         "behaviour",
@@ -401,6 +438,7 @@ def _behaviour_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
         run,
         OnFailure(reason="trace_unavailable", detail="the traced calls could not be compared"),
         needs=("tests",),
+        timeout_s=TESTS_TIMEOUT_S,
     )
 
 
