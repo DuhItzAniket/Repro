@@ -57,6 +57,8 @@ def evidence_name(item: dict[str, Any]) -> str | None:
     data, target = item["data"], item["targets"][0]
     if item["type"] == "dep_diff":
         return f"dep_diff:{data['change']}/{data['source']}:{data['package']}"
+    if item["type"] == "policy_change":
+        return f"policy_change:{data['change']}:{target['file']}"
     detail = {
         "test_outcome": "class",
         "test_change": "change",
@@ -143,7 +145,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     "name",
     [
         "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
-        "api-break", "new-dep", "probe-only",
+        "api-break", "new-dep", "probe-only", "policy-weaken",
     ],
 )  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
@@ -155,6 +157,17 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
     assert {r["backend"] for r in ready} == {"process"}
     assert {r["network"] for r in ready} == {"detected-only"}
+    if name == "policy-weaken":  # F01: base's policy in force, head's edit named
+        (change,) = [
+            e["payload"]["evidence"]
+            for e in events
+            if e["kind"] == "evidence.created"
+            and e["payload"]["evidence"]["type"] == "policy_change"
+        ]
+        expected = tomllib.loads((FIXTURES / f"{name}.toml").read_text(encoding="utf-8"))
+        assert change["data"]["weakened"] == expected["expected"]["weakened"]
+        logged = [e["payload"]["message"] for e in events if e["kind"] == "log.line"]
+        assert "policy (repro.yml on base): invariants no_network, forbidden_paths" in logged
     if name == "noisy":  # E03: each traced run's observations and the comparison, stored
         assert_observations_stored(tmp_path)
     if name == "perf-regress":  # ABBA: ten timing runs on each side, three tests timed

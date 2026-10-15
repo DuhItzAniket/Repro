@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Repository policy: `repro.yml`, read from the base ref and validated against a JSON
+  Schema (the invariants, claim and coverage thresholds of PRODUCT.md), with errors that
+  name their line, column and path. An invalid file means no invariant is evaluated, and
+  says why; head's edit to the file is `policy_change` evidence naming how it would weaken
+  the policy. YAML is read with the safe loader, bounded, without aliases. Fixture
+  `policy-weaken`. New dependency: PyYAML. [F01]
+
 ## [0.5.0] - 2026-10-15
 
 Stage E — Behaviour evidence. Gate record: `docs/phases/E-gate.md`.

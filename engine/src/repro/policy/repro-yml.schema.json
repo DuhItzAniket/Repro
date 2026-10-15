@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "repro.yml",
+  "description": "A repository's policy for Repro: the invariants a change must keep, what a claim needs, and how much may go unchecked. Read from the base ref (ARCHITECTURE §12).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "The policy format's version.",
+      "const": 1,
+      "default": 1
+    },
+    "invariants": {
+      "description": "Each item names one invariant, with its options; at most one item per invariant.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/invariant" },
+      "default": []
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_explicit": {
+          "description": "A change with no extractable claim is UNVERIFIABLE.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {}
+    },
+    "missing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_uncovered_changed_symbols": {
+          "description": "Above this fraction of changed symbols no selected test reaches, the change is UNVERIFIABLE.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.25
+        }
+      },
+      "default": {}
+    }
+  },
+  "$defs": {
+    "patterns": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 },
+      "maxItems": 200
+    },
+    "invariant": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "public_api_stable": {
+          "description": "No breaking change to the public API (true, or the objects allowed to change).",
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": { "except": { "$ref": "#/$defs/patterns" } }
+            }
+          ]
+        },
+        "no_new_dependencies": {
+          "description": "No dependency added (true, or the packages allowed).",
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": { "allow": { "$ref": "#/$defs/patterns" } }
+            }
+          ]
+        },
+        "no_network": {
+          "description": "Head's tests attempt no network access.",
+          "type": "boolean"
+        },
+        "perf_budget": {
+          "description": "No selected test slower than base by more than this fraction.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_regression"],
+          "properties": {
+            "max_regression": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 }
+          }
+        },
+        "forbidden_paths": {
+          "description": "Paths (glob patterns, relative, with /) the change must not touch.",
+          "allOf": [{ "$ref": "#/$defs/patterns" }, { "minItems": 1 }]
+        }
+      }
+    }
+  }
+}

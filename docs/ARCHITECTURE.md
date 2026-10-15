@@ -565,6 +565,13 @@ values are errors naming their source (C01; `engine/README.md` lists the setting
 Policy is read from the base ref because a PR must not be able to weaken the rules it is
 judged by. If head changes `repro.yml`, that becomes a gap item and is flagged by default.
 
+As built (F01, `repro/policy/`): the file is validated against `repro-yml.schema.json` (JSON
+Schema 2020-12, PRODUCT.md's MVP set plus an optional `version: 1`), parsed with PyYAML's safe
+loader (one document, 64 KiB at most, no anchors or aliases, no duplicate keys), each error
+naming its line, column and path. No file: the defaults, no invariant. An invalid file: no
+policy, and an `unsupported_project` item listing the issues. Head's addition, removal or edit
+is `policy_change` evidence, with the ways it would weaken base's policy.
+
 ## 13. Web cockpit — see ADR-0008, ADR-0009, ADR-0011, DESIGN.md
 
 ```

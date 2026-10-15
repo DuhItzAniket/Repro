@@ -746,6 +746,48 @@ PROBE_ONLY = RepoSpec(
     },
 )
 
+_COUNT = """\"\"\"Counting.\"\"\"
+
+
+def count(items):
+    return len(items)
+"""
+
+_TEST_COUNT = """from tally.count import count
+
+
+def test_count():
+    assert count([1, 2, 3]) == 3
+"""
+
+_POLICY = """invariants:
+  - no_network: true
+  - forbidden_paths: ["migrations/**"]
+"""
+
+# Head drops an invariant from repro.yml beside a small change: the policy is still read from
+# base, and the edit is a policy change that weakens it (F01).
+POLICY_WEAKEN = RepoSpec(
+    name="policy-weaken",
+    description="Head edits repro.yml to drop an invariant.",
+    base={
+        "pyproject.toml": '[project]\nname = "tally-fixture"\nversion = "0.1.0"\n',
+        "repro.yml": _POLICY,
+        "tally/__init__.py": "",
+        "tally/count.py": _COUNT,
+        "tests/test_count.py": _TEST_COUNT,
+    },
+    heads={
+        "chore/relax-policy": {
+            "repro.yml": _POLICY.replace("  - no_network: true\n", ""),
+            "tally/count.py": _COUNT.replace("return len(items)", "return len(list(items))"),
+        }
+    },
+    pr_description={
+        "chore/relax-policy": "Count any iterable\n\ncount() accepts any iterable.",
+    },
+)
+
 ALL_SPECS = {
     spec.name: spec
     for spec in (
@@ -762,5 +804,6 @@ ALL_SPECS = {
         API_BREAK,
         NEW_DEP,
         PROBE_ONLY,
+        POLICY_WEAKEN,
     )
 }
