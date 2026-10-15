@@ -709,6 +709,43 @@ NEW_DEP = RepoSpec(
     pr_description={"feat/six": "Use six for text\n\nlabel() builds its text with six."},
 )
 
+_RATIO = """\"\"\"Ratios.\"\"\"
+
+
+def percent(part: int, whole: int) -> float:
+    if whole == 0:
+        return 0.0
+    return round(100 * part / whole, 1)
+"""
+
+_TEST_RATIO = """from stats.ratio import percent
+
+
+def test_percent():
+    assert percent(1, 4) == 25.0
+"""
+
+# Head drops a branch no test reaches: percent() now raises for a whole of zero. Only generated
+# inputs find it (E06).
+PROBE_ONLY = RepoSpec(
+    name="probe-only",
+    description="Wrong behaviour on inputs no existing test uses.",
+    base={
+        "pyproject.toml": '[project]\nname = "stats-fixture"\nversion = "0.1.0"\n',
+        "stats/__init__.py": "",
+        "stats/ratio.py": _RATIO,
+        "tests/test_ratio.py": _TEST_RATIO,
+    },
+    heads={
+        "refactor/percent": {
+            "stats/ratio.py": _RATIO.replace("    if whole == 0:\n        return 0.0\n", ""),
+        }
+    },
+    pr_description={
+        "refactor/percent": "Simplify percent()\n\npercent() drops a branch no test needs.",
+    },
+)
+
 ALL_SPECS = {
     spec.name: spec
     for spec in (
@@ -724,5 +761,6 @@ ALL_SPECS = {
         FALSE_CLAIM,
         API_BREAK,
         NEW_DEP,
+        PROBE_ONLY,
     )
 }

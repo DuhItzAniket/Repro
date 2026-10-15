@@ -24,6 +24,13 @@ execution, and its evidence as events.
 - ``deps`` (diff, E05): the requirements and the installed packages of both sides, compared,
   ``dep_diff`` evidence with a ``diff.deps`` each (``warn``); lock drift as ``lock_drift``
   evidence. Both run after ``tests``, so the diff stage follows the run stage.
+- ``probes`` (run, E06): the changed functions with JSON-typed parameters, called with
+  generated inputs on base, base again (other seeds) and head; ``probe-diff`` (diff):
+  ``probe_diff`` evidence (``provenance: generated``) with a ``diff.probe`` each (``warn``), the
+  probes and their results stored as ``obs/probes.cbor``.
+
+``perf`` waits for every other job that runs the sides (``behaviour``'s reproducers,
+``probes``): timing beside them would measure their load.
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -49,7 +56,7 @@ from repro.provision import (
 )
 from repro.provision import deps as dependencies
 from repro.runner import behaviour as behaviour_diffs
-from repro.runner import observations, selection
+from repro.runner import observations, probes, selection
 from repro.runner.observations import Behaviour
 from repro.runner.outcomes import unstable_observation
 from repro.runner.perf import Samples, TimingRun, assess, not_assessable, time_tests
@@ -61,13 +68,15 @@ from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_availabl
 from repro.sandbox.detect import Detection
 from repro.sandbox.evidence import detection_evidence
 from repro.sandbox.image import sandbox_image
-from repro.store import ArtifactStore
+from repro.store import ArtifactStore, cbor
 
 Backend = Literal["auto", "docker", "process"]
 #: Labels of runs that are not attempts of the selected tests themselves.
 _NOT_ATTEMPTS: Final = frozenset({"head tests", "base tests on head"})
 PROVISION_TIMEOUT_S: Final = 1800.0
 TESTS_TIMEOUT_S: Final = 3600.0
+#: A side's probe run at most (a generated input can make a function loop).
+PROBE_TIMEOUT_S: Final = 300.0
 #: The media type RFC 8949 §9.3 registers, for the observation artifacts.
 CBOR: Final = "application/cbor"
 
@@ -83,6 +92,7 @@ class RunState:
     timings: list[Samples] | None = None
     timing_runs: list[TimingRun] = field(default_factory=list)
     behaviour: Behaviour | None = None
+    probing: probes.Probing | None = None
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 
@@ -330,7 +340,7 @@ def _perf_job(state: RunState) -> Job:
         "run",
         run,
         OnFailure(reason="perf_not_assessable", detail="the timing runs did not complete"),
-        needs=("tests",),
+        needs=("tests", "behaviour", "probes"),  # alone: the others' runs would load its timing
         timeout_s=TESTS_TIMEOUT_S,
     )
 
@@ -530,6 +540,74 @@ def _deps_job(state: RunState) -> Job:
     )
 
 
+def _probes_job(git: Git, base: str, head: str, state: RunState) -> Job:
+    def run(ctx: JobContext) -> None:
+        analysis = state.analysis
+        if analysis is None or "base" not in state.sides or "head" not in state.sides:
+            ctx.log("no probes: the sides did not run", level="warning")
+            return
+        resolvers = selection.side_resolvers(git, base, head)
+        found = probes.candidates(analysis.changes.changes, resolvers)
+        if not found:
+            ctx.log("no probes: no changed function has JSON-typed parameters on both sides")
+            return
+        names = ", ".join(c.symbol for c in found[:5]) + (" …" if len(found) > 5 else "")  # noqa: PLR2004
+        ctx.log(f"probing {len(found)} functions with generated inputs: {names}")
+        state.probing = probes.probe(
+            (state.sides["base"], state.sides["head"]),
+            found,
+            timeout_s=PROBE_TIMEOUT_S,
+            stop=lambda: ctx.cancelled,
+        )
+
+    return Job(
+        "probes",
+        "run",
+        run,
+        OnFailure(reason="environment_failed", detail="the generated probes could not be run"),
+        needs=("tests",),
+        timeout_s=TESTS_TIMEOUT_S,
+    )
+
+
+def _probe_diff_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
+    def run(ctx: JobContext) -> None:
+        found = state.probing
+        if found is None:
+            ctx.log("no probe comparison: nothing was probed")
+            return
+        cited: list[dict[str, Any]] = []
+        if artifacts is not None:
+            data = cbor.encode(found.document())
+            cited.append(
+                artifacts.put_bytes(ctx.run_id, "obs/probes.cbor", data, CBOR).model_dump()
+            )
+        for difference in found.differences:
+            record = difference.evidence(ctx.run_id, cited)
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            ctx.emit(
+                "diff.probe",
+                status="warn",  # ADR-0015 §2: every difference needs a claim to explain it
+                payload=difference.payload(record["id"]),
+                target={"symbol": difference.candidate.symbol, "file": difference.candidate.file},
+            )
+        for item in found.missing():
+            ctx.emit("missing.recorded", status="warn", payload=item)
+        tried = sum(len(i) for i in found.inputs)
+        ctx.log(
+            f"probes: {tried} generated inputs over {len(found.candidates)} functions, "
+            f"{len(found.differences)} differences, {sum(found.unstable.values())} unstable"
+        )
+
+    return Job(
+        "probe-diff",
+        "diff",
+        run,
+        OnFailure(reason="environment_failed", detail="the probes could not be compared"),
+        needs=("probes",),
+    )
+
+
 def run_jobs(
     git: Git,
     base: str,
@@ -551,6 +629,8 @@ def run_jobs(
         _behaviour_job(state, artifacts),
         _api_job(git, base, head, work),
         _deps_job(state),
+        _probes_job(git, base, head, state),
+        _probe_diff_job(state, artifacts),
         _perf_job(state),
         _perf_diff_job(state),
     ]

@@ -29,7 +29,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 RUN_ID = new_run_id()
 FIXTURE_NAMES = [
     "honest-fix", "selection", "untested", "flaky", "test-tamper", "breaks-one", "noisy",
-    "silent-change", "false-claim", "api-break", "new-dep",
+    "silent-change", "false-claim", "api-break", "new-dep", "probe-only",
 ]  # fmt: skip
 
 
@@ -87,7 +87,10 @@ def missing_of(result: twosided.TwoSided) -> list[str]:
 def without_timing(items: list[str]) -> list[str]:
     """An expectation without what the performance and behaviour passes add (``reproduce``
     neither times nor compares behaviour)."""
-    later = ("perf_diff:", "perf_not_assessable:", "behaviour_diff:", "api_diff:", "dep_diff:")
+    later = (
+        "perf_diff:", "perf_not_assessable:", "behaviour_diff:", "api_diff:", "dep_diff:",
+        "probe_diff:",
+    )  # fmt: skip
     return sorted(i for i in items if not i.startswith(later))
 
 

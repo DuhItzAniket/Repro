@@ -239,6 +239,14 @@ JSON-able inputs are serialised on the host and replayed in both sandboxes. Cros
 `diffbehavior` is optional and kept for later (K04). Probe evidence is reported separately from
 evidence derived from existing tests. The card always shows which kind supports a finding.
 
+As built (E06, `runner/probes.py`, `sandbox/_hook/repro_probe.py`): module-level functions the
+change modified with the same JSON-typed parameters on both sides (read with `ast`), 40 inputs
+each from Hypothesis (`derandomize=True`, no database), run in each side's sandbox by its
+interpreter: base, base again with other hash and `random` seeds, head. Inputs on which the
+base runs disagree are left out; differences are classed as E04's and grouped per function:
+`probe_diff` with `provenance: generated`, `diff.probe` `warn`, the probes in
+`obs/probes.cbor`. Timing (D07) runs after the probes and E04's reproducers.
+
 ### 4.5 Diffs (`diff/`)
 | Differ | Input | Evidence produced |
 |---|---|---|

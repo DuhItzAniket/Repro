@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.143.0",
     "griffelib>=2.3.2,<2.4",
     "grimp>=3.17,<3.18",  # the grimp worker uses its package-finder setting, not public API
+    "hypothesis>=6.169.0",
     "packaging>=26.3",
     "pydantic>=2.14.1",
     "repro-events",

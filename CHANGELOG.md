@@ -42,6 +42,12 @@ All notable changes to this project are documented here. The format follows
   on each side, with lock drift. Each is evidence with a `diff.api` or `diff.deps` check.
   `diff.deps` sources gain `declared`. Fixtures `api-break` and `new-dep`. New dependencies:
   `griffelib` 2.3.2, `packaging`. [E05]
+- Generated input probes: the changed functions whose parameters are JSON types are called with
+  40 Hypothesis-generated inputs each (the same every run) on base, base again with other seeds,
+  and head, inside the sandboxes; inputs on which base disagrees with itself are left out, and
+  the rest that differ between base and head are `probe_diff` evidence (`provenance: generated`)
+  with a `diff.probe` check, the input as the reproducer. Timing now runs after the other runs.
+  Fixture `probe-only`; Hypothesis becomes a runtime dependency. [E06]
 
 ## [0.4.0] - 2026-10-15
 
