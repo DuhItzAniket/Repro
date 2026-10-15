@@ -6,7 +6,10 @@ Two sources per side, compared by PEP 503 name:
   (``Project.requirements``): a lock's pins (``uv.lock``, ``poetry.lock``, ``pdm.lock``: source
   ``lockfile``) or the declared requirements (``pyproject.toml``, ``requirements*.txt``,
   ``setup.py`` / ``setup.cfg``: source ``declared``). A pinned requirement (``==``) is compared
-  by version; any other by its text.
+  by version; any other by its text. When those come from a lock or requirement files, what the
+  metadata declares is compared as well (``declared_changes``, F02): a dependency added to
+  ``[project]`` alone is still a declared one. Metadata that cannot be read statically, with no
+  lock, is said so (``undeclared``): what it adds would go unseen.
 - **What was installed**: each side's environment, listed inside its own sandbox by its own
   interpreter (``-I -S``: distribution metadata is read, nothing is imported); the project's own
   editable install is left out (source ``installed``).
@@ -20,7 +23,7 @@ installed packages are compared.
 """
 
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final, Literal
 
@@ -62,8 +65,13 @@ print(json.dumps(sorted(found)))
 
 def project_requirements(project: Project) -> dict[str, str]:
     """Each requirement by name: its pinned version, or its specifier and marker as text."""
+    return by_name(project.requirements)
+
+
+def by_name(lines: Iterable[str]) -> dict[str, str]:
+    """Requirement lines by PEP 503 name: the pinned version, or the specifier and marker."""
     found: dict[str, str] = {}
-    for line in project.requirements:
+    for line in lines:
         try:
             requirement = Requirement(line)
         except InvalidRequirement:
@@ -180,6 +188,23 @@ def compare(
             change = _direction(before, after)
         found.append(DepChange(name, change, before, after, source, file))
     return found
+
+
+def declared_changes(base: Project, head: Project) -> list[DepChange]:
+    """What the metadata declares, compared when a side's requirements come from a lock or
+    requirement files (otherwise the requirements are the metadata, compared already)."""
+    if base.source is None and head.source is None:
+        return []
+    if base.declared is None or head.declared is None:
+        return []  # ``undeclared`` says so
+    file = head.declared_file or base.declared_file
+    return compare(by_name(base.declared), by_name(head.declared), "declared", file)
+
+
+def undeclared(project: Project) -> bool:
+    """Whether a dependency the project declares could go unseen: its metadata cannot be read
+    statically and no lock pins what it resolves to."""
+    return project.declared is None and source_of(project) != "lockfile"
 
 
 def _direction(before: str, after: str) -> Change:

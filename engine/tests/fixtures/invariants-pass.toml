@@ -1,0 +1,31 @@
+# Expected Repro outcome for the invariants-pass fixture (F02 and F03 assert the invariants).
+[fixture]
+name = "invariants-pass"
+head = "change/tidy-best"
+
+[expected]
+status = "VERIFIED"
+claims = ["Simplify best()"]
+# Every invariant enabled on base; the change keeps them all.
+evidence = [
+  "test_outcome:P2P:tests/test_score.py::test_best",
+  "test_outcome:P2P:tests/test_score.py::test_best_of_none",
+]
+missing = [
+  "perf_not_assessable:tests/test_score.py::test_best",
+  "perf_not_assessable:tests/test_score.py::test_best_of_none",
+]
+invariants = [
+  "forbidden_paths:pass",
+  "no_network:not_evaluated",
+  "no_new_dependencies:pass",
+  "perf_budget:not_evaluated",
+  "public_api_stable:pass",
+]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_score.py::test_best" = ["blast_radius"]
+"tests/test_score.py::test_best_of_none" = ["blast_radius"]

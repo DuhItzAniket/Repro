@@ -139,13 +139,25 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
                 missing.append(f"{item['reason']}:{name}")
     behaviour = expected["expected"].get("behaviour", [])  # E03's comparison adds these
     assert sorted(missing) == sorted(expected["expected"]["missing"] + behaviour), log
+    results = [
+        f"{e['payload']['invariant']}:{e['payload']['result']}"
+        for e in events
+        if e["kind"] == "invariant.result"
+    ]
+    assert sorted(results) == sorted(expected["expected"].get("invariants", [])), log
+    for event in events:
+        if event["kind"] == "invariant.result":  # ADR-0015 §2; it cites its own evidence first
+            status = {"pass": "ok", "fail": "fail", "not_evaluated": "warn"}
+            assert event["status"] == status[event["payload"]["result"]]
+            assert event["payload"]["evidence_ids"][0] in evidence
 
 
 @pytest.mark.parametrize(
     "name",
     [
         "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
-        "api-break", "new-dep", "probe-only", "policy-weaken",
+        "api-break", "new-dep", "probe-only", "policy-weaken", "forbidden-path",
+        "invariants-pass",
     ],
 )  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
@@ -174,7 +186,7 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
         samples = Counter(e["payload"]["side"] for e in events if e["kind"] == "perf.sample")
         assert samples == {"base": 30, "head": 30}
     stages = [e["stage"] for e in events if e["kind"] == "stage.started"]
-    assert stages == ["build", "run", "diff"]  # claims (read) arrive in Stage G
+    assert stages == ["build", "run", "diff", "check"]  # claims (read) arrive in Stage G
     assert events[-1]["kind"] == "run.finished"
     assert events[-1]["status"] == "ok"
 
@@ -251,21 +263,68 @@ def test_an_environment_that_cannot_be_built_is_unverifiable(tmp_path: Path) -> 
         },
         heads=spec.heads,
     )
-    built = build_repo(broken, tmp_path / "repo")
-    env = clean_env(tmp_path, REPRO_SANDBOX="process", REPRO_RUN_ROOT=str(tmp_path / "scratch"))
-    head = built.head_shas["fix/parse-date-utc"]
-    argv = ["run", "--repo", str(built.path), "--base", built.base_sha, "--head", head]
-    result = runner.invoke(app, [*argv, "--no-serve"], env=env)
-    assert result.exit_code == 0, result.output
-    with StoreReader(load_settings(env=env).paths.database) as reader:
-        (run,) = reader.runs(10)
-        events = [json.loads(event.body) for event in reader.events(run.id, 0, 100_000)]
+    events = run_spec(broken, "fix/parse-date-utc", tmp_path)
     missing = [e["payload"]["missing"] for e in events if e["kind"] == "missing.recorded"]
     assert sorted(m["detail"].split(":", 1)[0] for m in missing) == ["base", "head"]
     assert {m["reason"] for m in missing} == {"environment_failed"}
     assert all("repro-fixture-package-that-does-not-exist" in m["detail"] for m in missing)
     assert not [e for e in events if e["kind"] in ("evidence.created", "test.selected")]
     assert events[-1]["kind"] == "run.finished"
+
+
+def test_invariants_are_evaluated_when_head_cannot_be_built(tmp_path: Path) -> None:
+    """F02: head adds a dependency that does not install. The invariants that need no
+    environment are still evaluated, and that dependency is still one the change adds."""
+    spec = ALL_SPECS["forbidden-path"]
+    head = dict(spec.heads["change/rename-table"])
+    head["pyproject.toml"] = str(spec.base["pyproject.toml"]).replace(
+        'version = "0.1.0"\n',
+        'version = "0.1.0"\ndependencies = ["repro-fixture-package-that-does-not-exist==1.0"]\n',
+    )
+    policy = (
+        "invariants:\n  - public_api_stable: true\n  - no_new_dependencies: true\n"
+        '  - forbidden_paths: ["migrations/"]\n'
+    )
+    broken = type(spec)(
+        name="broken-head",
+        description=spec.description,
+        base={**spec.base, "repro.yml": policy},
+        heads={"change/rename-table": head},
+    )
+    events = run_spec(broken, "change/rename-table", tmp_path)
+    missing = [e["payload"]["missing"] for e in events if e["kind"] == "missing.recorded"]
+    assert [m["detail"].split(":", 1)[0] for m in missing if m["reason"] == "environment_failed"]
+    results = {
+        e["payload"]["invariant"]: e["payload"] for e in events if e["kind"] == "invariant.result"
+    }
+    assert {name: r["result"] for name, r in results.items()} == {
+        "public_api_stable": "pass",
+        "no_new_dependencies": "fail",
+        "forbidden_paths": "fail",
+    }
+    evidence = {
+        e["payload"]["evidence"]["id"]: e["payload"]["evidence"]
+        for e in events
+        if e["kind"] == "evidence.created"
+    }
+    cited = [evidence[i] for i in results["no_new_dependencies"]["evidence_ids"][1:]]
+    assert [(c["type"], c["data"]["package"], c["data"]["source"]) for c in cited] == [
+        ("dep_diff", "repro-fixture-package-that-does-not-exist", "declared")
+    ]
+    assert events[-1]["kind"] == "run.finished"
+
+
+def run_spec(spec: Any, head_ref: str, tmp_path: Path) -> list[dict[str, Any]]:
+    """``repro run`` on a fixture built from ``spec`` (process sandbox): its events."""
+    built = build_repo(spec, tmp_path / "repo")
+    env = clean_env(tmp_path, REPRO_SANDBOX="process", REPRO_RUN_ROOT=str(tmp_path / "scratch"))
+    head = built.head_shas[head_ref]
+    argv = ["run", "--repo", str(built.path), "--base", built.base_sha, "--head", head]
+    result = runner.invoke(app, [*argv, "--no-serve"], env=env)
+    assert result.exit_code == 0, result.output
+    with StoreReader(load_settings(env=env).paths.database) as reader:
+        (run,) = reader.runs(10)
+        return [json.loads(event.body) for event in reader.events(run.id, 0, 100_000)]
 
 
 docker = pytest.mark.skipif(

@@ -1,0 +1,25 @@
+# Expected Repro outcome for the forbidden-path fixture (F02 asserts the invariant).
+[fixture]
+name = "forbidden-path"
+head = "change/rename-table"
+
+[expected]
+status = "FLAGGED"
+claims = ["Rename the scores table"]
+# Head edits migrations/0001_initial.sql, which base's repro.yml forbids.
+evidence = [
+  "test_outcome:P2P:tests/test_score.py::test_best",
+  "test_outcome:P2P:tests/test_score.py::test_best_of_none",
+]
+missing = [
+  "perf_not_assessable:tests/test_score.py::test_best",
+  "perf_not_assessable:tests/test_score.py::test_best_of_none",
+]
+invariants = ["forbidden_paths:fail"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_score.py::test_best" = ["blast_radius"]
+"tests/test_score.py::test_best_of_none" = ["blast_radius"]

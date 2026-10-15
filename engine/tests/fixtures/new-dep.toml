@@ -13,6 +13,8 @@ evidence = [
   "test_outcome:P2P:tests/test_clock.py::test_label",
 ]
 missing = ["perf_not_assessable:tests/test_clock.py::test_label"]
+# F02: base's repro.yml enables no_new_dependencies, which six fails.
+invariants = ["no_new_dependencies:fail"]
 
 [selection]
 uncovered = []

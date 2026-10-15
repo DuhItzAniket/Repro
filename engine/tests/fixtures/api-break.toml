@@ -21,6 +21,8 @@ missing = [
   "perf_not_assessable:tests/test_hello.py::test_greet",
   "perf_not_assessable:tests/test_hello.py::test_shout",
 ]
+# F02: base's repro.yml enables public_api_stable, which the break fails.
+invariants = ["public_api_stable:fail"]
 
 [selection]
 uncovered = []

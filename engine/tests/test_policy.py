@@ -114,6 +114,21 @@ def test_defaults() -> None:
             "a: 1\n---\nb: 2\n",
             "repro.yml:2:1: expected a single document in the stream but found another document",
         ),
+        (
+            'invariants:\n  - forbidden_paths: ["migrations/**", "/etc/**"]\n',
+            "repro.yml:2:40: invariants[0].forbidden_paths[1]: '/etc/**': paths are relative to "
+            "the repository root: no leading /",
+        ),
+        (
+            "invariants:\n  - forbidden_paths:\n      - 'migrations\\**'\n",
+            "repro.yml:3:9: invariants[0].forbidden_paths[0]: 'migrations\\\\**': use / between "
+            "path segments, not \\",
+        ),
+        (
+            'invariants:\n  - forbidden_paths: ["src/../migrations/**"]\n',
+            "repro.yml:2:23: invariants[0].forbidden_paths[0]: 'src/../migrations/**': no empty, "
+            "'.' or '..' path segments",
+        ),
     ],
     ids=[
         "unknown invariant",
@@ -129,6 +144,9 @@ def test_defaults() -> None:
         "duplicate key",
         "syntax",
         "two documents",
+        "leading slash",
+        "backslash",
+        "dot-dot",
     ],
 )
 def test_actionable_errors(text: str, expected: str) -> None:

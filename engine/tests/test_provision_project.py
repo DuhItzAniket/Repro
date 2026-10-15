@@ -112,6 +112,40 @@ def test_setup_cfg_and_pep_621_groups_are_read(tmp_path: Path) -> None:
     assert project.build_requires == ("setuptools",)  # PEP 518's default
 
 
+def test_what_the_metadata_declares_is_read_whatever_the_kind(tmp_path: Path) -> None:
+    """F02: a requirements file need not list what ``[project]`` declares."""
+    root = make(
+        tmp_path,
+        {
+            "pyproject.toml": '[project]\nname = "x"\ndependencies = ["six>=1"]\n',
+            "requirements-dev.txt": "pytest\n",
+        },
+    )
+    project = inspect_project(root)
+    assert (project.kind, project.requirements) == ("requirements", ("pytest",))
+    assert (project.declared, project.declared_file) == (("six>=1",), "pyproject.toml")
+
+
+@pytest.mark.parametrize(
+    "files",
+    [
+        {"pyproject.toml": '[project]\nname = "x"\ndynamic = ["dependencies"]\n'},
+        {"setup.py": "from setuptools import setup\nsetup(**CONFIG)\n"},
+        {"setup.py": "from setuptools import setup\nsetup(install_requires=REQS)\n"},
+        {"setup.py": "from setuptools import setup\nsetup(extras_require=EXTRAS)\n"},
+        {"setup.cfg": "[options]\ninstall_requires = file: requirements.in\n"},
+        {"pyproject.toml": '[tool.poetry.dependencies]\npython = "^3.12"\nsix = "^1"\n'},
+    ],
+    ids=["dynamic", "kwargs", "not literal", "extras", "file directive", "poetry table"],
+)
+def test_metadata_that_cannot_be_read_statically_is_unknown(
+    tmp_path: Path, files: dict[str, str]
+) -> None:
+    """Not an empty list: a dependency added there would go unseen (F02)."""
+    project = inspect_project(make(tmp_path, {"requirements.txt": "pytest\n", **files}))
+    assert project.declared is None
+
+
 def test_pytest_is_added_when_the_project_does_not_declare_it(tmp_path: Path) -> None:
     root = make(tmp_path, {"requirements.txt": "iniconfig==2.0.0\n"})
     project = inspect_project(root)
