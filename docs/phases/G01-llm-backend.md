@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C03 |
-| **Branch / PR** | `phase/G01-llm-backend` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/G01-llm-backend` · [#60](https://github.com/DuhItzAniket/Repro/pull/60) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 One way for the engine to reach a model: an `LLMBackend` protocol, and its default
@@ -108,7 +108,7 @@ The real CLI (2.1.300) against the local API, Windows:
 - Full suite (Windows, Docker stopped): 1510 passed, 13 skipped, 1 failed: `net-call`'s
   `test_summary` timed as a performance regression while the machine had about 0.4 GiB free;
   it passed when run alone (the D07 timing effect noted in F05).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#60).
 
 ## Deviations from spec
 - ARCHITECTURE §10.2 asked for a subagent depth of 1: the variable takes a positive number and
