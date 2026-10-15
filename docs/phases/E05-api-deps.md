@@ -81,6 +81,8 @@ it adds, removes or moves, as declared or locked and as actually installed on ea
   regenerated); ADR-0006's implementation note.
 - Fixtures `api-break`, `new-dep`; `test_run_stage.py` names `api_diff` and `dep_diff`
   evidence.
+- D02's `test_a_memory_hog_is_killed` accepts the kernel's SIGKILL (exit 137): Ubuntu CI
+  ran it with Docker's `OOMKilled` flag false (E05's first run).
 - Tests: `test_api_diff.py` (4), `test_deps.py` (8), both fixtures in `test_twosided.py` and
   `test_run_stage.py`. pytest 1248 → 1266 (1254 pass and 12 skip on Windows with Docker
   Desktop stopped).
