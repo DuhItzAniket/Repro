@@ -1,0 +1,134 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "b9a2d51457d07732f52c85f503375b2f472ef9e8",
+      "sha": "b9a2d51457d07732f52c85f503375b2f472ef9e8"
+    },
+    "head": {
+      "ref": "52f58d2e05a7cbdc8dc9f0382645a6cc4582dde6",
+      "sha": "52f58d2e05a7cbdc8dc9f0382645a6cc4582dde6"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 5
+  },
+  "gap": [],
+  "generated_at": "<generated_at>",
+  "invariants": [],
+  "missing": [
+    {
+      "detail": "1 calls of noise.values:fruit#0 in 1 test differ between two runs of base (order, value); not compared with head",
+      "reason": "unstable_observation",
+      "resolution": "Make the function independent of time, randomness and hashing",
+      "targets": [
+        {
+          "symbol": "noise.values:fruit#0"
+        },
+        {
+          "test": "tests/test_values.py::test_fruit"
+        }
+      ]
+    },
+    {
+      "detail": "1 calls of noise.values:roll#0 in 1 test differ between two runs of base (order, value); not compared with head",
+      "reason": "unstable_observation",
+      "resolution": "Make the function independent of time, randomness and hashing",
+      "targets": [
+        {
+          "symbol": "noise.values:roll#0"
+        },
+        {
+          "test": "tests/test_values.py::test_roll"
+        }
+      ]
+    },
+    {
+      "detail": "2 calls of noise.values:since#0 in 1 test differ between two runs of base (call); not compared with head",
+      "reason": "unstable_observation",
+      "resolution": "Make the function independent of time, randomness and hashing",
+      "targets": [
+        {
+          "symbol": "noise.values:since#0"
+        },
+        {
+          "test": "tests/test_values.py::test_since"
+        }
+      ]
+    },
+    {
+      "detail": "1 calls of noise.values:stamp#0 in 1 test differ between two runs of base (order, value); not compared with head",
+      "reason": "unstable_observation",
+      "resolution": "Make the function independent of time, randomness and hashing",
+      "targets": [
+        {
+          "symbol": "noise.values:stamp#0"
+        },
+        {
+          "test": "tests/test_values.py::test_stamp"
+        }
+      ]
+    },
+    {
+      "detail": "5 tests run in under 5 ms on both sides, too fast to time: tests/test_values.py::test_fruit, tests/test_values.py::test_roll, tests/test_values.py::test_since, tests/test_values.py::test_stamp, tests/test_values.py::test_total",
+      "reason": "perf_not_assessable",
+      "resolution": "A benchmark that runs the changed code long enough to time",
+      "targets": [
+        {
+          "test": "tests/test_values.py::test_fruit"
+        },
+        {
+          "test": "tests/test_values.py::test_roll"
+        },
+        {
+          "test": "tests/test_values.py::test_since"
+        },
+        {
+          "test": "tests/test_values.py::test_stamp"
+        },
+        {
+          "test": "tests/test_values.py::test_total"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "UNVERIFIABLE",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "4 of 5 changed symbols unverified (80%, above 25%)",
+      "evidence_ids": [],
+      "rule": "coverage",
+      "targets": [
+        "noise.values:fruit#0",
+        "noise.values:roll#0",
+        "noise.values:since#0",
+        "noise.values:stamp#0"
+      ]
+    }
+  ],
+  "verdicts": []
+}

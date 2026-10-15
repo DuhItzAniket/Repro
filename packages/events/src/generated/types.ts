@@ -215,21 +215,30 @@ export interface ReproductionCardConditions {
   base: GitRef;
   head: GitRef;
   /**
-   * Constraints: pattern="^3\\.[0-9]+\\.[0-9]+"
+   * Head's interpreter (else base's); null when no environment was built.
    */
-  python_version: string;
+  python_version: string | null;
   /**
-   * Constraints: maxLength=200, minLength=1
+   * Head's sandbox platform (else base's); null when no sandbox was ready.
    */
-  platform: string;
-  isolation_level: IsolationLevel;
-  network: NetworkEnforcement;
+  platform: string | null;
+  /**
+   * The lower of the two sides' levels; null when no sandbox was ready.
+   */
+  isolation_level: IsolationLevel | null;
+  /**
+   * enforced only if every side's sandbox enforced it; null when none was ready.
+   */
+  network: NetworkEnforcement | null;
   lock_sha256: ReproductionCardConditionsLockSha256;
   /**
    * Constraints: minimum=0
    */
   selected_tests: number;
-  seeds: ReproductionCardConditionsSeeds;
+  /**
+   * The hash seeds of base's two runs (A and A'); null when the tests did not run.
+   */
+  seeds: ReproductionCardConditionsSeeds | null;
   /**
    * Constraints: maxLength=100, minLength=1
    */
@@ -290,10 +299,38 @@ export interface Verdict {
   agreement: VerdictAgreement | null;
 }
 
+export interface ReproductionCardStatusReasonsItem {
+  /**
+   * Constraints: maxLength=64, pattern="^[a-z][a-z_]*$"
+   */
+  rule: string;
+  detail: ShortText;
+  evidence_ids: EvidenceId[];
+  targets: string[];
+  /**
+   * Whether this reason gives the status (false: also incomplete, under a FLAGGED status).
+   */
+  decides: boolean;
+}
+
 export interface ReproductionCardGapItem {
   evidence_id: EvidenceId;
   type: EvidenceType;
+  /**
+   * The check event that reported it (diff.*), or policy_change.
+   * Constraints: pattern="^(diff\\.[a-z]+|policy_change)$"
+   */
+  check: string;
+  /**
+   * The class, change, verdict or breakage the check names.
+   * Constraints: maxLength=64
+   */
+  kind: string;
   summary: ShortText;
+  /**
+   * What the status rules made of it (F04).
+   */
+  resolution: "pre-existing" | "unassessed" | "passed" | "explained" | "flagged";
   origin: Origin;
   stability: Stability;
   explained_by: ClaimId[];
@@ -305,6 +342,7 @@ export interface ReproductionCardInvariantsItem {
    */
   name: string;
   result: "pass" | "fail" | "not_evaluated";
+  message: ShortText;
   evidence_ids: EvidenceId[];
 }
 
@@ -338,6 +376,10 @@ export interface ReproductionCard {
   conditions: ReproductionCardConditions;
   claims: Claim[];
   verdicts: Verdict[];
+  /**
+   * Why the status is what it is (FLAGGED: what flags; UNVERIFIABLE: what could not be checked), then what was also incomplete when FLAGGED (F04).
+   */
+  status_reasons: ReproductionCardStatusReasonsItem[];
   gap: ReproductionCardGapItem[];
   invariants: ReproductionCardInvariantsItem[];
   missing: MissingItem[];
@@ -903,7 +945,14 @@ export interface CardPublishedPayloadCounts {
  */
 export interface CardPublishedPayload {
   status: CardStatus;
+  /**
+   * SHA-256 of the card's canonical JSON (sorted keys, no whitespace, UTF-8).
+   */
   card_sha256: Sha256;
+  /**
+   * The card itself (F05; optional, so additive), so a log carries its own card and a replay can check it. The engine always includes it.
+   */
+  card?: ReproductionCard;
   counts: CardPublishedPayloadCounts;
 }
 

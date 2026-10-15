@@ -237,6 +237,17 @@ class StoreWriter:
 
         return self._call(update)
 
+    def put_card(self, run_id: str, status: str, body: str, created_at: str) -> "Future[object]":
+        """Records a run's Reproduction Card (F05): once, as ``card.published`` carries it."""
+
+        def insert(connection: sqlite3.Connection) -> None:
+            connection.execute(
+                "INSERT INTO cards (run_id, status, body, created_at) VALUES (?, ?, ?, ?)",
+                (run_id, status, body, created_at),
+            )
+
+        return self._call(insert)
+
     def record_artifact(self, run_id: str, ref: ArtifactRef, created_at: str) -> "Future[object]":
         """Records a stored artifact file. The same content at the same path is kept once."""
 

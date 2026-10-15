@@ -39,7 +39,14 @@ from repro.sandbox.detect import (
     read_detections,
 )
 from repro.sandbox.limits import Limits
-from repro.sandbox.process import POLL_S, Execution, Outcome, SandboxError, read_head
+from repro.sandbox.process import (
+    HASH_SEED,
+    POLL_S,
+    Execution,
+    Outcome,
+    SandboxError,
+    read_head,
+)
 
 #: Python 3.13 with uv on Debian bookworm, pinned by digest (A08 measured with this image).
 DEFAULT_IMAGE: Final = (
@@ -357,7 +364,7 @@ class DockerSandbox:
         env = {
             "HOME": TMP,
             "TMPDIR": TMP,
-            "PYTHONHASHSEED": "0",
+            "PYTHONHASHSEED": str(HASH_SEED),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONNOUSERSITE": "1",
             **extra,

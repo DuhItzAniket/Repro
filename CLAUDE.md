@@ -102,6 +102,7 @@ uv run repro --version  # engine CLI
 uv run repro doctor     # can this machine run Repro? (--json for a report)
 uv run repro run --repo <path> --base <ref> --head <ref>   # live in the cockpit (C08)
 uv run repro replay <run id | log.jsonl>                    # replayed from the start
+uv run repro export <run id | log.jsonl> --format md|json  # the card, checked against the log (F05)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
 
 pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply

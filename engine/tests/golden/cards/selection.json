@@ -1,0 +1,130 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "94579372084e005332cbf6f4c709a70cbbadd95a",
+      "sha": "94579372084e005332cbf6f4c709a70cbbadd95a"
+    },
+    "head": {
+      "ref": "476ed749be0432a7e935e4bf8214de4ed9ab85a9",
+      "sha": "476ed749be0432a7e935e4bf8214de4ed9ab85a9"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 6
+  },
+  "gap": [
+    {
+      "check": "diff.outcome",
+      "evidence_id": "ev_00000000000000000000000001",
+      "explained_by": [],
+      "kind": "modified",
+      "origin": "introduced",
+      "resolution": "unassessed",
+      "stability": "stable",
+      "summary": "modified: tests/test_cart.py::test_names (base passed, head passed)",
+      "type": "test_outcome"
+    },
+    {
+      "check": "diff.outcome",
+      "evidence_id": "ev_00000000000000000000000002",
+      "explained_by": [],
+      "kind": "new",
+      "origin": "introduced",
+      "resolution": "passed",
+      "stability": "stable",
+      "summary": "new: tests/test_prices.py::test_discount_is_clamped (base absent, head passed)",
+      "type": "test_outcome"
+    },
+    {
+      "check": "diff.tests",
+      "evidence_id": "ev_00000000000000000000000003",
+      "explained_by": [],
+      "kind": "test_modified",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "n/a",
+      "summary": "test_modified: tests/test_cart.py::test_names: the test's code changed",
+      "type": "test_change"
+    },
+    {
+      "check": "diff.behaviour",
+      "evidence_id": "ev_00000000000000000000000004",
+      "explained_by": [],
+      "kind": "calls_changed",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "stable",
+      "summary": "Cart.names(self=shop.cart.Cart(items=[('tea', 2.5), ('Banana', 1.0), ('apple', 1.0)])) is called on head only (in tests/test_cart.py::test_names; calls on one side: 1 head, 1 base)",
+      "type": "behaviour_diff"
+    }
+  ],
+  "generated_at": "<generated_at>",
+  "invariants": [],
+  "missing": [
+    {
+      "detail": "4 tests run in under 5 ms on both sides, too fast to time: tests/test_cart.py::test_total, tests/test_prices.py::test_discount, tests/test_prices.py::test_gross, tests/test_prices.py::test_net",
+      "reason": "perf_not_assessable",
+      "resolution": "A benchmark that runs the changed code long enough to time",
+      "targets": [
+        {
+          "test": "tests/test_cart.py::test_total"
+        },
+        {
+          "test": "tests/test_prices.py::test_discount"
+        },
+        {
+          "test": "tests/test_prices.py::test_gross"
+        },
+        {
+          "test": "tests/test_prices.py::test_net"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "FLAGGED",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "1 diff.behaviour flagged (calls_changed)",
+      "evidence_ids": [
+        "ev_00000000000000000000000004"
+      ],
+      "rule": "gap_flagged",
+      "targets": []
+    },
+    {
+      "decides": true,
+      "detail": "1 diff.tests flagged (test_modified)",
+      "evidence_ids": [
+        "ev_00000000000000000000000003"
+      ],
+      "rule": "gap_flagged",
+      "targets": []
+    }
+  ],
+  "verdicts": []
+}

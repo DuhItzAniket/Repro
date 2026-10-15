@@ -16,11 +16,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from conftest import Golden
 from typer.testing import CliRunner
 
+from card_support import normalised
 from cli_support import clean_env
 from fixtures.repo_builder import build_repo
 from fixtures.specs import ALL_SPECS
+from repro.card import canonical, digest, regenerate
 from repro.cli import app
 from repro.config import load_settings
 from repro.policy.gap import inputs_from_events
@@ -45,12 +48,31 @@ def run_fixture(name: str, tmp_path: Path, sandbox: str) -> list[dict[str, Any]]
     with StoreReader(load_settings(env=env).paths.database) as reader:
         (run,) = reader.runs(10)
         events = [json.loads(event.body) for event in reader.events(run.id, 0, 100_000)]
+        stored_card = reader.card(run.id)
     log = tmp_path / "run.jsonl"
     log.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
     lines, issues = read_log(log)
     assert issues + validate_log(load_schema_set(), lines) == []
     assert not list((tmp_path / "scratch").iterdir())  # the run left nothing behind
+    check_card(events, stored_card)
     return events
+
+
+def check_card(events: list[dict[str, Any]], stored: dict[str, Any] | None) -> None:
+    """F05: one card, published with the run's status, recorded in the store, and assembled
+    again from the log byte for byte."""
+    (published,) = [e for e in events if e["kind"] == "card.published"]
+    card = published["payload"]["card"]
+    assert published["payload"]["card_sha256"] == digest(canonical(card))
+    assert stored == card
+    found = regenerate(events)
+    assert found.identical, (found.sha256, found.published_sha256)
+    assert found.card == card
+    finished = events[-1]
+    assert (finished["kind"], finished["payload"]["card_status"]) == (
+        "run.finished",
+        card["status"],
+    )
 
 
 def evidence_name(item: dict[str, Any]) -> str | None:
@@ -152,10 +174,13 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             status = {"pass": "ok", "fail": "fail", "not_evaluated": "warn"}
             assert event["status"] == status[event["payload"]["result"]]
             assert event["payload"]["evidence_ids"][0] in evidence
-    # F04: the status the rules give without claims (no review stage yet), from the log alone.
+    # F04: the status the rules give without claims (no review stage yet), from the log alone;
+    # F05: the card the run published says the same.
     decision = decide(inputs_from_events(events))
     wanted = expected["expected"].get("deterministic_status", expected["expected"]["status"])
     assert decision.status == wanted, (decision, log)
+    (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
+    assert card["status"] == wanted
 
 
 @pytest.mark.parametrize(
@@ -166,9 +191,11 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
         "invariants-pass", "net-call", "selection", "untested", "flaky", "breaks-one",
     ],
 )  # fmt: skip
-def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
+def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path, golden: Golden) -> None:
     events = run_fixture(name, tmp_path, "process")
     check_against_expectation(name, events)
+    (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
+    golden.check(f"cards/{name}.json", normalised(card))  # F05: the card, as reviewed
     kinds = Counter(e["kind"] for e in events)
     assert kinds["sandbox.ready"] == 2
     assert kinds["env.provisioned"] == 2
@@ -192,7 +219,7 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
         samples = Counter(e["payload"]["side"] for e in events if e["kind"] == "perf.sample")
         assert samples == {"base": 30, "head": 30}
     stages = [e["stage"] for e in events if e["kind"] == "stage.started"]
-    assert stages == ["build", "run", "diff", "check"]  # claims (read) arrive in Stage G
+    assert stages == ["build", "run", "diff", "check", "card"]  # claims (read): Stage G
     assert events[-1]["kind"] == "run.finished"
     assert events[-1]["status"] == "ok"
 
@@ -280,6 +307,13 @@ def test_an_environment_that_cannot_be_built_is_unverifiable(tmp_path: Path) -> 
     decision = decide(inputs_from_events(events))
     assert decision.status == "UNVERIFIABLE"
     assert [r.rule for r in decision.reasons] == ["environment_failed"]
+    (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
+    conditions = card["conditions"]
+    assert (card["status"], conditions["python_version"], conditions["seeds"]) == (
+        "UNVERIFIABLE",
+        None,
+        None,
+    )  # F05: what the run did not reach is null, never guessed
     assert events[-1]["kind"] == "run.finished"
 
 
@@ -335,7 +369,9 @@ def run_spec(spec: Any, head_ref: str, tmp_path: Path) -> list[dict[str, Any]]:
     assert result.exit_code == 0, result.output
     with StoreReader(load_settings(env=env).paths.database) as reader:
         (run,) = reader.runs(10)
-        return [json.loads(event.body) for event in reader.events(run.id, 0, 100_000)]
+        events = [json.loads(event.body) for event in reader.events(run.id, 0, 100_000)]
+        check_card(events, reader.card(run.id))
+    return events
 
 
 docker = pytest.mark.skipif(

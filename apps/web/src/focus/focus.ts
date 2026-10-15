@@ -14,7 +14,9 @@ export type Focus =
   | { readonly kind: "symbol"; readonly symbol: string; readonly file: string }
   /** A check by its index in the checks projection's list (append-only, so stable). */
   | { readonly kind: "check"; readonly index: number }
-  | { readonly kind: "agent"; readonly id: string };
+  | { readonly kind: "agent"; readonly id: string }
+  /** The run's Reproduction Card (F05). */
+  | { readonly kind: "card" };
 
 /** A stable string for a focus: equal foci have equal keys. */
 export function focusKey(focus: Focus | null): string {
@@ -30,6 +32,8 @@ export function focusKey(focus: Focus | null): string {
       return `check:${focus.index}`;
     case "agent":
       return `agent:${focus.id}`;
+    case "card":
+      return "card";
   }
 }
 
@@ -82,6 +86,7 @@ export function focusTargets(
       add(state.checks.list[focus.index]?.target);
       break;
     case "agent":
+    case "card":
       break;
   }
   return { key: focusKey(focus), files, symbols };

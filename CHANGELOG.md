@@ -38,6 +38,11 @@ All notable changes to this project are documented here. The format follows
   explains flags; anything not checked (an invariant not evaluated, a job that did not
   complete, too many changed symbols unverified) leaves the change unverifiable. The policy
   in force is now `policy` evidence on every run, so a replay decides the same. [F04]
+- The Reproduction Card: every run ends with a card stage that assembles the card from the
+  run's own log (status and reasons, conditions, gap, invariants, missing items, replay
+  digest), publishes it in `card.published` and stores it; `run.finished` carries its status.
+  `repro export RUN|LOG --format md|json` writes it, refusing a card that differs from the one
+  published, and `repro replay` checks it. The cockpit opens it from a header button. [F05]
 
 ## [0.5.0] - 2026-10-15
 

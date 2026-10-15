@@ -1,0 +1,111 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "48eb1626c4c0b9cb56db1590d8f5e232c18f8d28",
+      "sha": "48eb1626c4c0b9cb56db1590d8f5e232c18f8d28"
+    },
+    "head": {
+      "ref": "b8bb3bd2b60f807120e9b831afa862e0d52c7698",
+      "sha": "b8bb3bd2b60f807120e9b831afa862e0d52c7698"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 3
+  },
+  "gap": [],
+  "generated_at": "<generated_at>",
+  "invariants": [
+    {
+      "evidence_ids": [
+        "ev_00000000000000000000000001"
+      ],
+      "message": "no breaking change of the public API",
+      "name": "public_api_stable",
+      "result": "pass"
+    },
+    {
+      "evidence_ids": [
+        "ev_00000000000000000000000002"
+      ],
+      "message": "no dependency added",
+      "name": "no_new_dependencies",
+      "result": "pass"
+    },
+    {
+      "evidence_ids": [
+        "ev_00000000000000000000000003"
+      ],
+      "message": "no network attempt detected by head's tests (detected only: the sandbox does not enforce the network)",
+      "name": "no_network",
+      "result": "pass"
+    },
+    {
+      "evidence_ids": [
+        "ev_00000000000000000000000004"
+      ],
+      "message": "1 timed tests within the budget (+<measured>); 2 too fast to time",
+      "name": "perf_budget",
+      "result": "pass"
+    },
+    {
+      "evidence_ids": [
+        "ev_00000000000000000000000005"
+      ],
+      "message": "no forbidden path touched (1 files changed)",
+      "name": "forbidden_paths",
+      "result": "pass"
+    }
+  ],
+  "missing": [
+    {
+      "detail": "2 tests run in under 5 ms on both sides, too fast to time: tests/test_score.py::test_best, tests/test_score.py::test_best_of_none",
+      "reason": "perf_not_assessable",
+      "resolution": "A benchmark that runs the changed code long enough to time",
+      "targets": [
+        {
+          "test": "tests/test_score.py::test_best"
+        },
+        {
+          "test": "tests/test_score.py::test_best_of_none"
+        }
+      ]
+    },
+    {
+      "detail": "no_network passed on detection alone: this sandbox does not enforce the network, and code that bypasses Python's socket functions is not seen",
+      "reason": "network_not_enforced",
+      "resolution": "Run with the Docker sandbox, which runs the tests without a network",
+      "targets": [
+        {
+          "file": "repro.yml"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "VERIFIED",
+  "status_reasons": [],
+  "verdicts": []
+}

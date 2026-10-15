@@ -52,10 +52,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final, Literal
 
+from repro import __version__
 from repro.analysis import StaticAnalysis
 from repro.analysis.api import api_diff
 from repro.gitops import Git
 from repro.gitops import diff as changed_files
+from repro.ids import new_evidence_id
 from repro.orchestrator import Job, JobContext, OnFailure
 from repro.policy import FILE as POLICY_FILE
 from repro.policy import Invariant, invariants
@@ -80,11 +82,19 @@ from repro.runner.sides import Side
 from repro.runner.trace import MAX_SAMPLES, TracePlan
 from repro.runner.trace import plan as trace_plan
 from repro.runner.trace import samples as trace_samples
-from repro.runner.twosided import TRACED_RUNS, RunRecord, TwoSided, reproduce
+from repro.runner.twosided import (
+    OTHER_HASH_SEED,
+    OTHER_SEED,
+    TRACED_RUNS,
+    RunRecord,
+    TwoSided,
+    reproduce,
+)
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_available
 from repro.sandbox.detect import Detection
 from repro.sandbox.evidence import detection_evidence
 from repro.sandbox.image import sandbox_image
+from repro.sandbox.process import HASH_SEED
 from repro.store import ArtifactStore, cbor
 
 Backend = Literal["auto", "docker", "process"]
@@ -262,6 +272,32 @@ class _TestEvents:
             self.ctx.log(f"{side}: samples stopped at {MAX_SAMPLES}", level="warning")
 
 
+def _seeds(run_id: str) -> dict[str, Any]:
+    """``environment`` evidence: the seeds base's two runs use (A, then A2), for the card's
+    conditions (F05)."""
+    data = {
+        "hash_seed": HASH_SEED,
+        "hash_seed_repeat": OTHER_HASH_SEED,
+        "seed": 0,
+        "seed_repeat": OTHER_SEED,
+    }
+    return {
+        "id": new_evidence_id(),
+        "run_id": run_id,
+        "type": "environment",
+        "targets": [{"file": "."}],
+        "summary": (
+            f"base runs twice: PYTHONHASHSEED {HASH_SEED} then {OTHER_HASH_SEED}, random seed 0 "
+            f"then {OTHER_SEED}; head with base's first"
+        ),
+        "data": data,
+        "artifacts": [],
+        "stability": "n/a",
+        "origin": "n/a",
+        "produced_by": {"component": "repro.runner.twosided", "version": __version__},
+    }
+
+
 def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) -> Job:
     def run(ctx: JobContext) -> None:
         analysis = state.analysis
@@ -283,6 +319,7 @@ def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) 
         events.plan = plan or None
         if plan:
             ctx.log(f"tracing {len(set(plan.base.values()))} changed functions on both sides")
+        ctx.emit("evidence.created", status="ok", payload={"evidence": _seeds(ctx.run_id)})
         state.result = reproduce(
             sides,
             analysis.changes.changes,

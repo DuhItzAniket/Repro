@@ -121,7 +121,11 @@ export function App({
   const l = layout.value;
   return (
     <div class="cockpit" data-mode={l.mode} style={{ height: `${l.contentHeight}px` }}>
-      <Header rect={l.header} view={view} />
+      <Header
+        rect={l.header}
+        view={view}
+        {...(focus === undefined ? {} : { onCard: () => focus.onFocus({ kind: "card" }) })}
+      />
       {/* Landmarks: the header (banner), main (stage, transport, panels), the drawer (aside). */}
       <main class="cockpit-main">
         <section

@@ -400,6 +400,20 @@ environment, a job that did not complete, an invariant not evaluated).
 | Status | `VERIFIED` / `FLAGGED` / `UNVERIFIABLE` (§4.6) |
 | Replay | Event-log digest and count, plus `repro replay <run-id>` |
 
+As built (F05, `repro/card/`): the card stage is a run's last job, after every other however it
+ended. It waits for its first event to be stored (the single writer commits in order, so every
+earlier event is stored too), reads the run's log back, and assembles the card from the events
+before `card.published` alone: F04's status and reasons, the conditions (head's interpreter and
+lock, else base's; the lower isolation level; `network: enforced` only if every side's sandbox
+enforced it; the seeds from the tests job's `environment` evidence; null for what the run did
+not reach), the claims and verdicts, the gap with each item's resolution, the invariants and the
+missing items. `replay.event_log_sha256` digests those events as canonical JSON lines, and
+`generated_at` is the last one's time. The card is canonical JSON (sorted keys, no whitespace,
+UTF-8); `card.published` carries it with its SHA-256 and counts, the `cards` table keeps it, and
+`run.finished` takes its status. `repro export RUN|LOG --format md|json` assembles it again and
+refuses one that differs from what the run published; `repro replay` reports the same check.
+The cockpit opens it from a header button, in the drawer.
+
 Exports (phase H04, Stage I): Markdown (PR comment and job summary), canonical JSON,
 **in-toto Statement v1** with a Repro predicate (subject = head commit digest; SCAI-like
 attributes whose evidence is digested ResourceDescriptors; see ADR-0012), JUnit XML (one

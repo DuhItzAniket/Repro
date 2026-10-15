@@ -1,0 +1,82 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "fda030e2fa8b3c009da9cfda00afe03335a9f482",
+      "sha": "fda030e2fa8b3c009da9cfda00afe03335a9f482"
+    },
+    "head": {
+      "ref": "96bf834fd2cfa4ad10d1c64a56448089bfcd6426",
+      "sha": "96bf834fd2cfa4ad10d1c64a56448089bfcd6426"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 2
+  },
+  "gap": [
+    {
+      "check": "diff.behaviour",
+      "evidence_id": "ev_00000000000000000000000001",
+      "explained_by": [],
+      "kind": "input_mutated",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "stable",
+      "summary": "restock(levels={'a': 1}, sku='a', amount=2) leaves its arguments in another state: head levels={'a': 3}, sku='a', amount=2; base unchanged (in tests/test_stock.py::test_restock_adds)",
+      "type": "behaviour_diff"
+    }
+  ],
+  "generated_at": "<generated_at>",
+  "invariants": [],
+  "missing": [
+    {
+      "detail": "2 tests run in under 5 ms on both sides, too fast to time: tests/test_stock.py::test_restock_adds, tests/test_stock.py::test_unique_skus_keeps_first_seen",
+      "reason": "perf_not_assessable",
+      "resolution": "A benchmark that runs the changed code long enough to time",
+      "targets": [
+        {
+          "test": "tests/test_stock.py::test_restock_adds"
+        },
+        {
+          "test": "tests/test_stock.py::test_unique_skus_keeps_first_seen"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "FLAGGED",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "1 diff.behaviour flagged (input_mutated)",
+      "evidence_ids": [
+        "ev_00000000000000000000000001"
+      ],
+      "rule": "gap_flagged",
+      "targets": []
+    }
+  ],
+  "verdicts": []
+}

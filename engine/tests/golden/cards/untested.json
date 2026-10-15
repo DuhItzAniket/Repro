@@ -1,0 +1,92 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "666cd882eaea935a69a9c0ef2333ebbec80bf671",
+      "sha": "666cd882eaea935a69a9c0ef2333ebbec80bf671"
+    },
+    "head": {
+      "ref": "d3d27c848dec2d65e1baf4cb874b7b1d67560e13",
+      "sha": "d3d27c848dec2d65e1baf4cb874b7b1d67560e13"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 0
+  },
+  "gap": [],
+  "generated_at": "<generated_at>",
+  "invariants": [],
+  "missing": [
+    {
+      "detail": "no selected test runs shop.prices:rounding#0 (added)",
+      "reason": "no_covering_test",
+      "resolution": "Add or point to a test that exercises it",
+      "targets": [
+        {
+          "file": "shop/prices.py",
+          "symbol": "shop.prices:rounding#0"
+        }
+      ]
+    },
+    {
+      "detail": "no selected test runs shop.report:<module>#0 (modified)",
+      "reason": "no_covering_test",
+      "resolution": "Add or point to a test that exercises it",
+      "targets": [
+        {
+          "file": "shop/report.py",
+          "symbol": "shop.report:<module>#0"
+        }
+      ]
+    },
+    {
+      "detail": "no selected test runs shop.report:summary#0 (modified)",
+      "reason": "no_covering_test",
+      "resolution": "Add or point to a test that exercises it",
+      "targets": [
+        {
+          "file": "shop/report.py",
+          "symbol": "shop.report:summary#0"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "UNVERIFIABLE",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "3 of 3 changed symbols unverified (100%, above 25%)",
+      "evidence_ids": [],
+      "rule": "coverage",
+      "targets": [
+        "shop.prices:rounding#0",
+        "shop.report:<module>#0",
+        "shop.report:summary#0"
+      ]
+    }
+  ],
+  "verdicts": []
+}

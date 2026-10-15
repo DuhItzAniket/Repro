@@ -9,7 +9,12 @@
       "$ref": "../common.schema.json#/$defs/CardStatus"
     },
     "card_sha256": {
+      "description": "SHA-256 of the card's canonical JSON (sorted keys, no whitespace, UTF-8).",
       "$ref": "../common.schema.json#/$defs/Sha256"
+    },
+    "card": {
+      "description": "The card itself (F05; optional, so additive), so a log carries its own card and a replay can check it. The engine always includes it.",
+      "$ref": "../models/card.schema.json"
     },
     "counts": {
       "type": "object",

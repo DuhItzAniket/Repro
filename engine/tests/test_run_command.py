@@ -242,7 +242,7 @@ def test_replay_serves_a_valid_event_log_and_refuses_an_invalid_one(
     broken.write_text(log.read_text("utf-8").replace('"seq": 2,', '"seq": 7,'), "utf-8")
     result = runner.invoke(app, ["replay", str(broken)], env=env)
     assert result.exit_code == 1
-    assert "the log is not replayed" in result.output
+    assert "the log is not used" in result.output
 
 
 def test_serve_serves_the_built_cockpit_beside_the_api(

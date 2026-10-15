@@ -40,6 +40,9 @@ from repro.sandbox.limits import Limits
 
 Outcome = Literal["exited", "timeout", "stopped"]
 POLL_S: Final = 0.05
+#: Every sandbox's ``PYTHONHASHSEED``: fixed, so string hashing is the same in every run (a run
+#: can ask for another, as A2 does). The card states it (F05).
+HASH_SEED: Final = 0
 #: The host variables a command may see: what a process needs to start, never credentials.
 PASSED_VARIABLES: Final = (
     "PATH",
@@ -161,7 +164,7 @@ class ProcessSandbox:
             TMPDIR=str(tmp),
             TEMP=str(tmp),
             TMP=str(tmp),
-            PYTHONHASHSEED="0",
+            PYTHONHASHSEED=str(HASH_SEED),
             PYTHONDONTWRITEBYTECODE="1",
             PYTHONNOUSERSITE="1",
         )

@@ -154,7 +154,33 @@ describe("evidence drawer", () => {
   });
 });
 
+describe("the Reproduction Card (F05)", () => {
+  it("opens from the header once the run has a card, and Escape returns focus", () => {
+    const open = root.querySelector<HTMLButtonElement>(".card-status");
+    expect(open?.textContent).toBe("card FLAGGED");
+    expect(open?.getAttribute("aria-label")).toBe("card FLAGGED: open the Reproduction Card");
+    act(() => open?.focus());
+    act(() => open?.click());
+    expect(focused.at(-1)).toEqual({ kind: "card" });
+    expect(root.querySelector("#drawer-title")?.textContent).toBe("Reproduction Card · FLAGGED");
+    expect(document.activeElement?.id).toBe("drawer-title");
+    act(() => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(root.querySelector(".drawer")).toBeNull();
+    expect(document.activeElement).toBe(open);
+  });
+});
+
 describe("axe-core", () => {
+  it("reports no violations with the card open", async () => {
+    act(() => ui.onFocus({ kind: "card" }));
+    const result = await axe.run(root, { rules: { "color-contrast": { enabled: false } } });
+    expect(result.violations.map((v) => v.id)).toEqual([]);
+  });
+
   it("reports no serious or critical violations, with the drawer open", async () => {
     act(() => ui.onFocus({ kind: "claim", id: "C3" }));
     // jsdom has no layout or canvas rendering, so contrast cannot be computed here (B12 checks

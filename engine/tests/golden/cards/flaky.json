@@ -1,0 +1,105 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "ad46cebfeec5a1cc1232b6281a0f4bb193d63658",
+      "sha": "ad46cebfeec5a1cc1232b6281a0f4bb193d63658"
+    },
+    "head": {
+      "ref": "ec04824c2929ef45a332163808667e2c18cfe41b",
+      "sha": "ec04824c2929ef45a332163808667e2c18cfe41b"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 2
+  },
+  "gap": [
+    {
+      "check": "diff.outcome",
+      "evidence_id": "ev_00000000000000000000000001",
+      "explained_by": [],
+      "kind": "flaky",
+      "origin": "n/a",
+      "resolution": "unassessed",
+      "stability": "unstable",
+      "summary": "flaky: tests/test_counter.py::test_record_second (base passed, head passed); base again failed",
+      "type": "test_outcome"
+    }
+  ],
+  "generated_at": "<generated_at>",
+  "invariants": [],
+  "missing": [
+    {
+      "detail": "tests/test_counter.py::test_record_second does not give the same outcome every run (base passed, base again failed, head passed)",
+      "reason": "unstable_observation",
+      "resolution": "Make the test independent of test order, hashing and timing",
+      "targets": [
+        {
+          "test": "tests/test_counter.py::test_record_second"
+        }
+      ]
+    },
+    {
+      "detail": "2 calls of counter.core:record#0 in 2 tests differ between two runs of base (order, value); not compared with head",
+      "reason": "unstable_observation",
+      "resolution": "Make the function independent of time, randomness and hashing",
+      "targets": [
+        {
+          "symbol": "counter.core:record#0"
+        },
+        {
+          "test": "tests/test_counter.py::test_record_first"
+        },
+        {
+          "test": "tests/test_counter.py::test_record_second"
+        }
+      ]
+    },
+    {
+      "detail": "1 tests run in under 5 ms on both sides, too fast to time: tests/test_counter.py::test_record_first",
+      "reason": "perf_not_assessable",
+      "resolution": "A benchmark that runs the changed code long enough to time",
+      "targets": [
+        {
+          "test": "tests/test_counter.py::test_record_first"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "UNVERIFIABLE",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "1 of 1 changed symbols unverified (100%, above 25%)",
+      "evidence_ids": [],
+      "rule": "coverage",
+      "targets": [
+        "counter.core:record#0"
+      ]
+    }
+  ],
+  "verdicts": []
+}

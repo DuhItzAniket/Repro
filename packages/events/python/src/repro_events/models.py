@@ -185,13 +185,13 @@ class ReproductionCardConditionsSeeds(ReproModel):
 class ReproductionCardConditions(ReproModel):
     base: GitRef
     head: GitRef
-    python_version: Annotated[str, Field(pattern='^3\\.[0-9]+\\.[0-9]+')]
-    platform: Annotated[str, Field(max_length=200, min_length=1)]
-    isolation_level: IsolationLevel
-    network: NetworkEnforcement
+    python_version: Annotated[str, Field(pattern='^3\\.[0-9]+\\.[0-9]+')] | None
+    platform: Annotated[str, Field(max_length=200, min_length=1)] | None
+    isolation_level: IsolationLevel | None
+    network: NetworkEnforcement | None
     lock_sha256: ReproductionCardConditionsLockSha256
     selected_tests: Annotated[int, Field(ge=0)]
-    seeds: ReproductionCardConditionsSeeds
+    seeds: ReproductionCardConditionsSeeds | None
     repro_version: Annotated[str, Field(max_length=100, min_length=1)]
     models: list[Annotated[str, Field(max_length=200)]]
 
@@ -233,10 +233,22 @@ class Verdict(ReproModel):
 
 
 
+class ReproductionCardStatusReasonsItem(ReproModel):
+    rule: Annotated[str, Field(max_length=64, pattern='^[a-z][a-z_]*$')]
+    detail: ShortText
+    evidence_ids: list[EvidenceId]
+    targets: list[Annotated[str, Field(max_length=1024, min_length=1)]]
+    decides: bool
+
+
+
 class ReproductionCardGapItem(ReproModel):
     evidence_id: EvidenceId
     type: EvidenceType
+    check: Annotated[str, Field(pattern='^(diff\\.[a-z]+|policy_change)$')]
+    kind: Annotated[str, Field(max_length=64)]
     summary: ShortText
+    resolution: Literal['pre-existing', 'unassessed', 'passed', 'explained', 'flagged']
     origin: Origin
     stability: Stability
     explained_by: Annotated[list[ClaimId], AfterValidator(_unique_items)]
@@ -246,6 +258,7 @@ class ReproductionCardGapItem(ReproModel):
 class ReproductionCardInvariantsItem(ReproModel):
     name: Annotated[str, Field(pattern='^[a-z][a-z0-9_]*$')]
     result: Literal['pass', 'fail', 'not_evaluated']
+    message: ShortText
     evidence_ids: list[EvidenceId]
 
 
@@ -277,6 +290,7 @@ class ReproductionCard(ReproModel):
     conditions: ReproductionCardConditions
     claims: list[Claim]
     verdicts: list[Verdict]
+    status_reasons: list[ReproductionCardStatusReasonsItem]
     gap: list[ReproductionCardGapItem]
     invariants: list[ReproductionCardInvariantsItem]
     missing: list[MissingItem]
@@ -693,8 +707,10 @@ class CardPublishedPayloadCounts(ReproModel):
 class CardPublishedPayload(ReproModel):
     """The Reproduction Card was computed and stored."""
 
+    __non_nullable_optional__ = frozenset(['card'])
     status: CardStatus
     card_sha256: Sha256
+    card: ReproductionCard | None = None
     counts: CardPublishedPayloadCounts
 
 

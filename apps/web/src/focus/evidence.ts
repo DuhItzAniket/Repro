@@ -2,12 +2,14 @@
  * The evidence drawer's content (DESIGN.md "Panels": a side drawer with the evidence, "raw diff,
  * trace samples, verdict text"). A pure function of (focus, events up to the cursor): it shows
  * what the log says about the focused claim, check, file, symbol or agent, quoting evidence
- * summaries and data, verdict rationales and quotes, and trace samples as recorded.
+ * summaries and data, verdict rationales and quotes, and trace samples as recorded; or the
+ * run's Reproduction Card, once published (F05, `./card`).
  */
 import type { ReproEvent } from "@repro/events";
 import { nameOf } from "../model/changes";
 import { basename, checkIndex, relates, routeTests, type Scope } from "../model/check-index";
 import type { CockpitModel } from "../model/cockpit";
+import { cardView } from "./card";
 import type { Focus } from "./focus";
 
 export interface Fact {
@@ -291,6 +293,13 @@ export function drawerView(focus: Focus, model: CockpitModel, cursor: number): D
           { title: "Recent tool calls", paragraphs: agent.recent.map((line) => line.text) },
         ],
       };
+    }
+    case "card": {
+      const checks = state.checks.list;
+      return cardView(state.run.card, (evidenceId) => {
+        const index = checks.findIndex((check) => check.evidence.includes(evidenceId));
+        return index < 0 ? null : index;
+      });
     }
   }
 }
