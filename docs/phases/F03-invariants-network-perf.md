@@ -49,9 +49,9 @@ it only watches.
   `perf_not_assessable` items; the result counts them.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): each invariant emits `invariant.result` plus evidence.
-- [ ] AC2 (roadmap): `no_network` distinguishes enforced from detected-only.
-- [ ] AC3 (roadmap): a passing and a failing fixture per invariant.
+- [x] AC1 (roadmap): each invariant emits `invariant.result` plus evidence.
+- [x] AC2 (roadmap): `no_network` distinguishes enforced from detected-only.
+- [x] AC3 (roadmap): a passing and a failing fixture per invariant.
 
 ## Test plan
 | Criterion | Check |
@@ -64,12 +64,45 @@ it only watches.
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.policy.invariants`: `no_network`, `Attempt`, `network_not_enforced`, `perf_budget`,
+  `Timed`; F02's `not_yet` is gone (every invariant is evaluated).
+- `repro.sandbox.detect.leaves_host`.
+- `RunState.network`, `head_network`, `head_network_complete`, `perf_timed`,
+  `perf_too_fast`; the `invariants` job's `_evaluate`, after `outcomes` and `perf-diff` too.
+- Fixture `net-call`; `perf-regress` with a 20 % `perf_budget`; `invariants-pass` with
+  `test_best_of_many_rounds`; `policy-weaken` expects `no_network` to pass.
+- Tests: `test_what_reaches_past_this_machine` (12), `test_no_network`, `test_perf_budget`,
+  `test_a_run_reproduces_the_fixture[net-call]`, `test_each_fixture_gives_exactly_its_evidence[net-call]`,
+  `test_no_network_rests_on_enforcement_in_containers` (Docker). pytest 1374 → 1391 (1378
+  pass and 13 skip on Windows with Docker Desktop stopped).
 
 ## Evidence
+Through `repro run` (Windows, process sandbox):
+
+| Fixture | Result |
+|---|---|
+| `net-call` | `no_network` fail: "head's tests attempted the network: 192.0.2.1:80", citing two `network_attempt` records (the lookup and the connection, both refused by the guard); the test itself passes on both sides |
+| `perf-regress` | `perf_budget` fail: "1 tests slower than base past the budget (+20%): tests/test_tags.py::test_unique_tags (x17.26, 95% CI from x16.18)", citing its `perf_diff`; `test_report_is_sorted` (no change) is within it |
+| `invariants-pass` | all five pass; `no_network`: "no network attempt detected by head's tests (detected only: the sandbox does not enforce the network)", with a `network_not_enforced` item; `perf_budget`: "1 timed tests within the budget (+50%); 2 too fast to time" |
+| `policy-weaken` | `no_network` pass (detected only, with its item) and `forbidden_paths` pass: base's policy, head's removal of `no_network` not applied |
+
+- The containers' case (`no_network` passing with `network: enforced` and no
+  `network_not_enforced` item) runs on CI's Ubuntu job, which requires Docker.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- TEST_STRATEGY's `perf-regress` row already expected a `perf_budget` failure: the fixture
+  only now has the `repro.yml` that enables it.
 
 ## Known gaps
+- Detections come from the target's own processes: under L2, code that bypasses Python's
+  socket functions, or tampers with the hook's log, is not seen (the `network_not_enforced`
+  item says so). Under L3 the network is absent whatever the code does.
+- Only head's test runs are judged; the probes' and timing runs' attempts are not (they run the
+  same code, with the same guard).
+- A slowdown D07 cannot tell from this machine's noise leaves `perf_budget` not evaluated, so
+  budgets under D07's 10 % minimum effect are rarely decided on a laptop.
+- What a failed or unevaluated invariant does to the card's status is F04's.
 
 ## Dependencies added
 None.
