@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | E03 |
-| **Branch / PR** | `phase/E04-behaviour-diff` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E04-behaviour-diff` · [#49](https://github.com/DuhItzAniket/Repro/pull/49) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Turn what E03's comparison finds into evidence a reviewer can act on: each difference
@@ -122,7 +122,7 @@ Python 3.13); each was reproduced on both sides:
   No interval lies above 1.20×. The mutation check costs the dict-heavy records test about
   five points (1.14–1.18× at E02, 1.19–1.24× now): its argument, a dictionary, is encoded
   twice per call. `fib` and the small calls, whose arguments are numbers, skip it.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#49).
 
 ## Deviations from spec
 - The schema's `BehaviourChange` gains `calls_changed` (additive): one-sided calls had no class.
