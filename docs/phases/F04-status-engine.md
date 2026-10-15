@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | F — Policy & deterministic card |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | F02, F03, E04 |
-| **Branch / PR** | `phase/F04-status-engine` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/F04-status-engine` · [#57](https://github.com/DuhItzAniket/Repro/pull/57) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Decide a change's status, `VERIFIED`, `FLAGGED` or `UNVERIFIABLE`, by deterministic rules
@@ -115,7 +115,7 @@ The reasons, as printed for four of them:
   head".
 - The property held over 2000 generated inputs; the table covers every rule alone, with and
   without claims, and FLAGGED's precedence.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#57).
 
 ## Deviations from spec
 - §4.6's FLAGGED list names behaviour and probe diffs, P2F, test weakening, failed invariants
