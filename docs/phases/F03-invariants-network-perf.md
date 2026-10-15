@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | F — Policy & deterministic card |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | F01, D02, D07 |
-| **Branch / PR** | `phase/F03-invariants-network-perf` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/F03-invariants-network-perf` · [#56](https://github.com/DuhItzAniket/Repro/pull/56) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Decide the last two of `repro.yml`'s invariants from the run's own evidence: whether head's
@@ -88,7 +88,7 @@ Through `repro run` (Windows, process sandbox):
 
 - The containers' case (`no_network` passing with `network: enforced` and no
   `network_not_enforced` item) runs on CI's Ubuntu job, which requires Docker.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#56).
 
 ## Deviations from spec
 - TEST_STRATEGY's `perf-regress` row already expected a `perf_budget` failure: the fixture
