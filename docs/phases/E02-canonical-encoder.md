@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | E01 |
-| **Branch / PR** | `phase/E02-canonical-encoder` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E02-canonical-encoder` · [#47](https://github.com/DuhItzAniket/Repro/pull/47) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Turn any value a traced function receives or returns into a digest that is the same for the
@@ -135,7 +135,7 @@ medians, BCa 95 % intervals; `docs/perf/E01-tracer-bench.jsonl`:
   with hostile dunders under a `raise ... from` chain), alone and inside generated mixtures:
   none of their code runs.
 - Digests identical on 3.12.13, 3.13.13, 3.14.4 and 3.15.0, and under two other hash seeds.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#47).
 
 ## Deviations from spec
 - ARCHITECTURE §4.3: "Dicts get ordered and order-insensitive digests." Arguments get the

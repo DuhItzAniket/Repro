@@ -398,7 +398,7 @@ control.
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | E01 | Tracer core & overhead benchmark | L | D04, A08 | done |
-| E02 | Canonical value encoder | L | E01 | in progress |
+| E02 | Canonical value encoder | L | E01 | done |
 | E03 | Observation store & stability analysis | M | E02 | planned |
 | E04 | Behaviour diff engine & reproducers | M | E03 | planned |
 | E05 | API & dependency diff | M | C06, D03 | planned |
@@ -705,3 +705,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | D07 | 2026-10-15 | [#44](https://github.com/DuhItzAniket/Repro/pull/44) | Performance pass: the tests passing on both sides timed untraced in ABBA blocks (10 runs a side, call phase); ratio of medians with a BCa 95 % interval, Mann-Whitney with Benjamini-Hochberg, noise floor max(10 %, A/A spread from base's own samples), 5 ms timing floor and `perf_not_assessable`; fixture `perf-regress`; statistics checked against SciPy and statsmodels |
 | Gate D | 2026-10-15 | [#45](https://github.com/DuhItzAniket/Repro/pull/45) | Stage D complete; release v0.4.0 ([gate record](phases/D-gate.md)); Gate D's browser test (a test flipping P2F in Execution, Change routes and the index; test tampering flagged) passes in CI (Linux) and on Windows (Edge, containers) |
 | E01 | 2026-10-15 | [#46](https://github.com/DuhItzAniket/Repro/pull/46) | Tracer core: every call of a change's target functions per test (arguments at PY_START, results, exceptions, yields) as stable digests; one sys.monitoring tool for map and tracer; 200 calls per test and target, then switched off completely; beside coverage.py; benchmark harness with BCa intervals, no interval above 1.20x on 3.12–3.15 |
+| E02 | 2026-10-15 | [#47](https://github.com/DuhItzAniket/Repro/pull/47) | Canonical encoder: objects, builtin subclasses, exceptions and standard-library values read through the interpreter's own descriptors (no target code runs); paths and addresses normalised; guards; previews; for results an order-insensitive digest from the same walk; Hypothesis properties and an 18-kind hostile corpus; tracer benchmark 1.01–1.18x on 3.12–3.15 |
