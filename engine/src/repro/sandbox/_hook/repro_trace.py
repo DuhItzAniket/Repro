@@ -129,7 +129,7 @@ class Tracer:
         local = frame.f_locals
         # The parameters' values in their order (their names are the function's, the same in
         # every call); one deleted before PY_START (it cannot be) would show as the marker.
-        arguments = tuple(local.get(name, _UNSET) for name in _names(code))
+        arguments = tuple([local.get(name, _UNSET) for name in _names(code)])
         call.args, call.args_complete = digest(arguments)  # dictionaries in their order
         self.inflight[id(frame)] = call
         self.open[id(code)] = self.open.get(id(code), 0) + 1
