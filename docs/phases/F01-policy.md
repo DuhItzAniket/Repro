@@ -51,9 +51,9 @@ change that edits that file to loosen the rules it is judged by.
   supported Python, and its composer keeps each node's line and column, which the errors need.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): invalid configs give actionable errors.
-- [ ] AC2 (roadmap): policy weakening in head is flagged.
-- [ ] AC3: the policy is read from base, never head; PRODUCT.md's example loads as written.
+- [x] AC1 (roadmap): invalid configs give actionable errors.
+- [x] AC2 (roadmap): policy weakening in head is flagged.
+- [x] AC3: the policy is read from base, never head; PRODUCT.md's example loads as written.
 
 ## Test plan
 | Criterion | Check |
@@ -66,12 +66,38 @@ change that edits that file to loosen the rules it is judged by.
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.policy`: `repro-yml.schema.json`, `load`, `Policy`, `Invariant`, `PolicyIssue`,
+  `PolicyError`, `weakenings`; `repro.policy.stage`: `read_policy`, `PolicyRead`,
+  `PolicyChange`, `file_at`.
+- The `policy` job (build stage); `RunState.policy`.
+- Fixture `policy-weaken`; `test_run_stage.py` names `policy_change` evidence and checks the
+  policy in force.
+- Tests: `test_policy.py` (26). pytest 1297 → 1326 (1314 pass and 12 skip on Windows with
+  Docker Desktop stopped).
 
 ## Evidence
+- AC1: the errors a person gets, verbatim from the tests:
+  `repro.yml:2:5: invariants[0]: unknown key 'no_netwrk' (known: forbidden_paths, no_network,
+  no_new_dependencies, perf_budget, public_api_stable)`;
+  `repro.yml:2:36: invariants[0].perf_budget.max_regression: 0 is less than or equal to the
+  minimum of 0`; `repro.yml:2:1: duplicate key 'claims'`;
+  `repro.yml:1:4: anchors and aliases are not allowed`; a file with three mistakes reports all
+  three at once. Files over 64 KiB, not UTF-8, or nested 5,000 deep are refused.
+- AC2: `policy-weaken` through `repro run`: the log reads "policy (repro.yml on base):
+  invariants no_network, forbidden_paths" (base's, in force), and head's edit is
+  `policy_change` evidence with `weakened: ["no_network removed"]`. Every kind of weakening is
+  named (`test_weakenings`), and a stricter policy gives none.
+- AC3: PRODUCT.md's example loads as written, and its document reads back as the same policy.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- ROADMAP F01 says "a head-side policy change becoming a gap item": it is `policy_change`
+  evidence now (the schema's evidence type for it); the status it gives the change is F04's.
+- An optional `version: 1` key, not in PRODUCT.md's example, so the format can change later.
 
 ## Known gaps
+- The invariants are read, not yet evaluated (F02, F03).
+- Only `repro.yml` at the repository's root is read (not `.repro.yml` or `repro.yaml`).
 
 ## Dependencies added
 - PyYAML ≥ 6.0.3 (MIT; 6.0.3 uploaded 2025-09-29, wheels for CPython 3.12+ on Windows and
