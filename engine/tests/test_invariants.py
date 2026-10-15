@@ -32,6 +32,15 @@ EV1, EV2 = "ev_01JABCDEFGHJKMNPQRSTVWXYZ1", "ev_01JABCDEFGHJKMNPQRSTVWXYZ2"
         ("docs/?.md", "docs/a.md", True),
         ("docs/?.md", "docs/ab.md", False),
         ("a[b].txt", "a[b].txt", True),  # brackets are literal, not a character class
+        # A pattern that matches a directory forbids everything under it.
+        ("migrations", "migrations/0001_initial.sql", True),
+        ("migrations/", "migrations/deep/x.sql", True),
+        ("migrations/", "migrations", False),  # a file: "/" asks for a directory
+        ("migrations", "migrations", True),
+        ("migrations/*", "migrations/deep/x.sql", True),
+        ("**/migrations", "app/migrations/x.py", True),
+        ("docs/*.md", "docs/sub/a.md", False),
+        ("*.lock", "uv.lock/x", True),  # a directory with that name
     ],
 )
 def test_path_patterns(pattern: str, path: str, expected: bool) -> None:
@@ -91,6 +100,13 @@ def test_no_new_dependencies() -> None:
     )
     assert checked(rules.no_new_dependencies(invariant, changes[1:])).result == "pass"
     assert checked(rules.no_new_dependencies(invariant, None)).result == "not_evaluated"
+    # A side's declared dependencies not read: what it adds there would go unseen.
+    unread = checked(rules.no_new_dependencies(invariant, changes[1:], unread=["head"]))
+    assert (unread.result, unread.message) == (
+        "not_evaluated",
+        "the dependencies declared on head could not be read statically",
+    )
+    assert rules.no_new_dependencies(invariant, changes, unread=["head"]).result == "fail"
 
 
 def test_forbidden_paths() -> None:

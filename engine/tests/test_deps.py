@@ -39,6 +39,29 @@ def test_requirements_by_name_pinned_or_as_written() -> None:
     assert deps.source_of(project("requirements")) == "declared"
 
 
+def test_what_the_metadata_declares_is_compared_beside_requirement_files() -> None:
+    """F02: a dependency added to ``[project]`` alone, in a project installed from
+    requirement files, is still one the change declares."""
+    files = ("requirements", Path(), "requirements.txt", None, ("pytest",), (), True)
+    base = Project(*files, declared=("attrs",), declared_file="pyproject.toml")  # type: ignore[arg-type]
+    head = Project(*files, declared=("attrs", "six>=1"), declared_file="pyproject.toml")  # type: ignore[arg-type]
+    (added,) = deps.declared_changes(base, head)
+    assert (added.package, added.change, added.source, added.file) == (
+        "six",
+        "added",
+        "declared",
+        "pyproject.toml",
+    )
+    # Requirements that are the metadata: compared already, not twice.
+    assert deps.declared_changes(project("unknown"), project("unknown")) == []
+    # Metadata that cannot be read: nothing compared, and said so unless a lock pins it.
+    unread = Project(*files, declared=None)  # type: ignore[arg-type]
+    assert deps.declared_changes(base, unread) == []
+    assert deps.undeclared(unread)
+    assert not deps.undeclared(Project("uv", Path(), "uv.lock", None, (), (), True, declared=None))
+    assert not deps.undeclared(head)
+
+
 def test_each_kind_of_change() -> None:
     base = {"a": "1.0", "b": "2.0", "c": "1.5", "d": ">=1", "e": "3"}
     head = {"a": "1.2", "b": "1.9", "c": "1.5", "d": ">=2", "f": "0.1"}

@@ -9,6 +9,11 @@ project's kind and its pinned or declared requirements come from, in order:
 - ``pyproject.toml`` ``[project]`` and dependency groups, then ``setup.py`` / ``setup.cfg``
   literals (``install_requires`` and test extras, read with ``ast`` and ``configparser``).
 
+Whatever the requirements come from, what the metadata (``[project]``, ``setup.py``,
+``setup.cfg``) declares is read too (``Project.declared``), for the dependency comparison: a
+requirements file or a lock can leave out a dependency the metadata adds. It is None when it
+cannot be read statically (``dynamic`` dependencies, a ``setup()`` that is not literal).
+
 Every requirement must come from the package index: a URL, a path, a VCS reference or a pip
 option (another index, ``--find-links``) is refused with its reason, because the install step
 that fetches them has network access. ``pytest`` is added when the project does not declare it,
@@ -26,6 +31,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final, Literal
+
+from packaging.requirements import InvalidRequirement, Requirement
 
 ProjectKind = Literal["uv", "poetry", "pdm", "requirements", "setuptools", "unknown"]
 
@@ -67,6 +74,11 @@ class Project:
     #: Whether the project itself is installed (it has a pyproject.toml or setup.py).
     installable: bool
     notes: tuple[str, ...] = field(default=())
+    #: What the project's metadata declares (``[project]``, ``setup.py``, ``setup.cfg``),
+    #: whatever ``requirements`` come from; None if it cannot be read statically (E05, F02).
+    declared: tuple[str, ...] | None = ()
+    #: The metadata file (``pyproject.toml``, ``setup.py`` or ``setup.cfg``), if any.
+    declared_file: str | None = None
 
 
 def normalise(name: str) -> str:
@@ -187,8 +199,12 @@ def _literal_strings(node: ast.expr | None) -> list[str] | None:
     return values
 
 
-def _setup_py(path: Path) -> list[str]:
-    """``install_requires``, ``tests_require`` and test extras, when ``setup()`` gives literals."""
+def _setup_py(path: Path, *, strict: bool = False) -> list[str]:
+    """``install_requires``, ``tests_require`` and test extras, when ``setup()`` gives literals.
+
+    ``strict``: anything else that could hide a requirement (``**`` arguments, extras that are
+    not literal, no ``setup()`` call) is a ``ProjectError`` too.
+    """
     try:
         tree = ast.parse(path.read_bytes())
     except (SyntaxError, ValueError) as exc:
@@ -198,23 +214,35 @@ def _setup_py(path: Path) -> list[str]:
             continue
         func = node.func
         name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
-        if name != "setup":
-            continue
-        keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg}
-        found: list[str] = []
-        for key in ("install_requires", "tests_require"):
-            if key in keywords:
-                values = _literal_strings(keywords[key])
-                if values is None:
-                    raise ProjectError(f"setup.py: {key} is not a literal list")
-                found += values
-        extras = keywords.get("extras_require")
-        if isinstance(extras, ast.Dict):
-            for extra, value in zip(extras.keys, extras.values, strict=True):
-                if isinstance(extra, ast.Constant) and extra.value in TEST_GROUPS:
-                    found += _literal_strings(value) or []
-        return found
+        if name == "setup":
+            return _setup_call(node, strict=strict)
+    if strict:
+        raise ProjectError("setup.py: no setup() call")
     return []
+
+
+def _setup_call(node: ast.Call, *, strict: bool) -> list[str]:
+    if strict and any(kw.arg is None for kw in node.keywords):
+        raise ProjectError("setup.py: setup() takes ** arguments")
+    keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+    found: list[str] = []
+    for key in ("install_requires", "tests_require"):
+        if key in keywords:
+            values = _literal_strings(keywords[key])
+            if values is None:
+                raise ProjectError(f"setup.py: {key} is not a literal list")
+            found += values
+    extras = keywords.get("extras_require")
+    if strict and extras is not None and not isinstance(extras, ast.Dict):
+        raise ProjectError("setup.py: extras_require is not a literal dict")
+    if isinstance(extras, ast.Dict):
+        for extra, value in zip(extras.keys, extras.values, strict=True):
+            if isinstance(extra, ast.Constant) and extra.value in TEST_GROUPS:
+                values = _literal_strings(value)
+                if strict and values is None:
+                    raise ProjectError(f"setup.py: the {extra.value} extra is not a literal")
+                found += values or []
+    return found
 
 
 def _setup_cfg(path: Path) -> list[str]:
@@ -238,6 +266,34 @@ def _pyproject_requirements(pyproject: dict[str, Any]) -> list[str]:
         found += extras.get(group, [])
         found += [item for item in groups.get(group, []) if isinstance(item, str)]
     return found
+
+
+def _declared(root: Path, pyproject: dict[str, Any]) -> tuple[str, ...] | None:
+    """What the project's metadata declares, read as ``_pyproject_requirements``, ``_setup_py``
+    and ``_setup_cfg`` read it; None if a requirement could hide from that reading: dependencies
+    the build computes (``dynamic``), Poetry's own table (not PEP 508), a ``setup()`` that is not
+    literal, a line that is not a requirement."""
+    project = pyproject.get("project", {})
+    poetry = pyproject.get("tool", {}).get("poetry", {}).get("dependencies", {})
+    dynamic = project.get("dynamic", [])
+    if {"dependencies", "optional-dependencies"} & set(dynamic) or set(poetry) - {"python"}:
+        return None
+    found = _pyproject_requirements(pyproject)
+    try:
+        if (root / "setup.py").is_file():
+            found += _setup_py(root / "setup.py", strict=True)
+        if (root / "setup.cfg").is_file():
+            found += _setup_cfg(root / "setup.cfg")
+    except ProjectError:
+        return None
+    lines = [line.split(" #", 1)[0].strip() for line in found]
+    lines = [line for line in lines if line and not line.startswith("#")]
+    for line in lines:
+        try:
+            Requirement(line)
+        except InvalidRequirement:
+            return None  # "file: requirements.in", a pip option: not a requirement to compare
+    return tuple(dict.fromkeys(lines))
 
 
 def _kind(root: Path, pyproject: dict[str, Any]) -> ProjectKind:
@@ -300,4 +356,13 @@ def inspect_project(root: Path, *, uv: str = "uv") -> Project:
         build_requires=tuple(build_requires) if installable else (),
         installable=installable,
         notes=tuple(notes),
+        declared=_declared(root, pyproject),
+        declared_file=next(
+            (
+                name
+                for name in ("pyproject.toml", "setup.py", "setup.cfg")
+                if (root / name).is_file()
+            ),
+            None,
+        ),
     )

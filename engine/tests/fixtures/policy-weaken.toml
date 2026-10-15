@@ -14,6 +14,8 @@ evidence = [
 ]
 missing = ["perf_not_assessable:tests/test_count.py::test_count"]
 weakened = ["no_network removed"]
+# F02: base's two invariants are evaluated, head's removal of one is not applied.
+invariants = ["forbidden_paths:pass", "no_network:not_evaluated"]
 
 [selection]
 uncovered = []

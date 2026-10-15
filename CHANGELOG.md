@@ -18,6 +18,15 @@ All notable changes to this project are documented here. The format follows
   the change's files: `invariant` evidence citing what it rests on, and an
   `invariant.result` check. Anything they need that was not observed makes them "not
   evaluated", never a pass. Fixtures `forbidden-path` and `invariants-pass`. [F02]
+- Jobs can come `after` others without needing them to succeed: the invariants, the API
+  comparison and the dependency comparison now run when a side could not be installed or
+  tested, so a dependency that does not install is still reported as added. [F02]
+- The dependency comparison also reads what `pyproject.toml`, `setup.py` or `setup.cfg`
+  declares when a project installs from requirement files or a lock; metadata that cannot be
+  read statically, with no lock, is a missing item. [F02]
+- `forbidden_paths`: a pattern that matches a directory forbids everything under it
+  (`migrations`, `migrations/`); a pattern that could never match (a leading `/`, a backslash,
+  a `..` segment) is a `repro.yml` error with its line. [F02]
 
 ## [0.5.0] - 2026-10-15
 

@@ -8,7 +8,9 @@ The file comes from the target repository, so it is untrusted input:
 - anchors and aliases refused (an alias can make a small file expand without bound) and
   duplicate keys refused (YAML keeps the last silently);
 - every error names the file, its line and column, and the path into the document, so it can
-  be fixed from the message alone.
+  be fixed from the message alone;
+- a ``forbidden_paths`` pattern that could never match a repository path (a backslash, a
+  leading ``/``, a ``..`` segment) is an error, not a rule that silently passes (F02).
 
 Policy is read from the **base** ref; what head did to the file is compared, and a change that
 weakens it (an invariant dropped or relaxed, a threshold raised) is listed (``weakenings``).
@@ -119,6 +121,7 @@ def load(data: bytes, file: str = FILE) -> Policy:
         return DEFAULT
     issues = list(_schema_issues(document, node, file))
     issues += list(_duplicate_invariants(document, node, file))
+    issues += list(_path_issues(document, node, file))
     if issues:
         raise PolicyError(issues)
     return _policy(document)
@@ -242,6 +245,31 @@ def _duplicate_invariants(document: Any, root: yaml.Node, file: str) -> Iterator
                 f"{name} is listed twice",
             )
         seen.add(name)
+
+
+def path_problem(pattern: str) -> str | None:
+    """Why a ``forbidden_paths`` pattern could never match a repository path (git's paths are
+    relative, with ``/``), or None."""
+    if "\\" in pattern:
+        return "use / between path segments, not \\"
+    if pattern.startswith("/"):
+        return "paths are relative to the repository root: no leading /"
+    segments = pattern.removeprefix("./").removesuffix("/").split("/")
+    if any(segment in ("", ".", "..") for segment in segments):
+        return "no empty, '.' or '..' path segments"
+    return None
+
+
+def _path_issues(document: Any, root: yaml.Node, file: str) -> Iterator[PolicyIssue]:
+    """A pattern that matches nothing would pass every change: refused, not ignored."""
+    items = document.get("invariants", []) if isinstance(document, dict) else []
+    for index, item in enumerate(items if isinstance(items, list) else []):
+        patterns = item.get("forbidden_paths") if isinstance(item, dict) else None
+        for position, pattern in enumerate(patterns if isinstance(patterns, list) else []):
+            problem = path_problem(pattern) if isinstance(pattern, str) else None
+            if problem is not None:
+                path = ["invariants", index, "forbidden_paths", position]
+                yield _at(_node_at(root, path), file, _path_text(path), f"{pattern!r}: {problem}")
 
 
 def _policy(document: Mapping[str, Any]) -> Policy:

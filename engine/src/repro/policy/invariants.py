@@ -10,9 +10,13 @@ result is ``invariant`` evidence of its own, citing the evidence it rests on, an
   and nothing else broke.
 - ``no_new_dependencies``: no package added to the lock or the declared requirements (E05)
   outside ``allow``. A package that is only installed (pulled in by another) is not a
-  dependency the change declares.
+  dependency the change declares. Not evaluated if a side's declared dependencies cannot be
+  read statically (and are not locked) and nothing else was added.
 - ``forbidden_paths``: no file added, removed, modified or renamed (either path) matching the
-  patterns: ``*`` within a path segment, ``**`` across segments, ``?`` one character.
+  patterns: ``*`` within a path segment, ``**`` across segments, ``?`` one character. A
+  pattern that matches a directory forbids everything under it (``migrations``,
+  ``migrations/``), as ``migrations/**`` does; a pattern ending in ``/`` matches directories
+  only.
 """
 
 import re
@@ -138,10 +142,13 @@ def public_api_stable(
 
 
 def no_new_dependencies(
-    invariant: Invariant, changes: Sequence[tuple[str, str, str, str]] | None
+    invariant: Invariant,
+    changes: Sequence[tuple[str, str, str, str]] | None,
+    unread: Sequence[str] = (),
 ) -> InvariantResult:
     """``changes``: (package, change, source, evidence ID) per dependency difference, None if
-    the dependencies were not compared."""
+    the dependencies were not compared; ``unread``: the sides whose declared dependencies could
+    not be read (what they add would go unseen)."""
     name, options = invariant.name, invariant.options
     if changes is None:
         return InvariantResult(
@@ -162,6 +169,13 @@ def no_new_dependencies(
             tuple(evidence for _, _, _, evidence in added),
             {"added": packages},
             options,
+        )
+    if unread:
+        return InvariantResult(
+            name,
+            "not_evaluated",
+            f"the dependencies declared on {' and '.join(unread)} could not be read statically",
+            options=options,
         )
     return InvariantResult(name, "pass", "no dependency added", options=options)
 
@@ -192,8 +206,16 @@ def _glob(pattern: str) -> re.Pattern[str]:
 
 
 def matches(pattern: str, path: str) -> bool:
-    """Whether a repository path (relative, ``/``) matches a ``forbidden_paths`` pattern."""
-    return _glob(pattern[2:] if pattern.startswith("./") else pattern).match(path) is not None
+    """Whether a repository path (relative, ``/``) matches a ``forbidden_paths`` pattern: the
+    path itself, or a directory it is under."""
+    pattern = pattern.removeprefix("./")
+    directory_only = pattern.endswith("/")
+    regex = _glob(pattern.rstrip("/"))
+    parts = path.split("/")
+    candidates = ["/".join(parts[:end]) for end in range(1, len(parts))]
+    if not directory_only:
+        candidates.append(path)
+    return any(regex.match(candidate) for candidate in candidates)
 
 
 def forbidden_paths(invariant: Invariant, touched: Sequence[str] | None) -> InvariantResult:

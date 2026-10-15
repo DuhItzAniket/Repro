@@ -69,11 +69,12 @@ def job(
     needs: tuple[str, ...] = (),
     timeout_s: float = 30,
     on_failure: OnFailure = GRAPH,
+    after: tuple[str, ...] = (),
 ) -> Job:
     def say(ctx: JobContext) -> None:
         ctx.log(f"{name} done", status="ok")
 
-    return Job(name, stage, run or say, on_failure, needs, timeout_s)  # type: ignore[arg-type]
+    return Job(name, stage, run or say, on_failure, needs, timeout_s, after)  # type: ignore[arg-type]
 
 
 def fail(ctx: JobContext) -> None:
@@ -172,6 +173,35 @@ def test_a_failure_is_recorded_and_its_dependants_are_skipped(
     stage_end = next(e for e in events if e["kind"] == "stage.finished")
     assert stage_end["status"] == "fail"
     assert events[-1]["payload"]["counts"]["missing"] == 2
+
+
+def test_a_job_after_others_runs_once_they_end_however_they_end(
+    orchestrator: Orchestrator, tmp_path: Path
+) -> None:
+    """F02: the invariants say themselves what they could not evaluate, so a failed or skipped
+    job before them does not skip them."""
+    seen: list[str] = []
+
+    def report(ctx: JobContext) -> None:
+        seen.append("report")
+
+    jobs = [
+        job("graph", "build", fail),
+        job("blast", "build", needs=("graph",)),
+        job("api", "diff"),
+        job("report", "check", report, needs=("api",), after=("graph", "blast")),
+    ]
+    result = orchestrator.run(SPEC, jobs)
+    assert dict(result.jobs) == {
+        "graph": "failed",
+        "blast": "skipped",
+        "api": "ok",
+        "report": "ok",
+    }
+    assert seen == ["report"]
+    events = events_of(tmp_path / "repro.db", result.run_id)
+    missing = [e["payload"]["missing"]["detail"] for e in events if e["kind"] == "missing.recorded"]
+    assert len(missing) == 2  # graph's and blast's, none for report
 
 
 def test_a_job_that_overruns_is_abandoned_and_recorded_as_a_timeout(
@@ -276,6 +306,8 @@ def test_jobs_run_concurrently_up_to_the_limit_and_after_their_needs(
         ([job("a", "read"), job("a", "build")], "duplicate jobs: a"),
         ([job("a", "read", needs=("z",))], "unknown jobs: z"),
         ([job("a", "read", needs=("b",)), job("b", "read", needs=("a",))], "cycle"),
+        ([job("a", "read", after=("z",))], "waits for unknown jobs: z"),
+        ([job("a", "read", after=("b",)), job("b", "read", needs=("a",))], "cycle"),
         ([job("a", "lunch")], "unknown stage"),
         ([job("a", "read", timeout_s=0)], "timeout must be positive"),
     ],

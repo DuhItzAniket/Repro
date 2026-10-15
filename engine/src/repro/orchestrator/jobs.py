@@ -46,7 +46,11 @@ class OnFailure:
 
 @dataclass(frozen=True, slots=True)
 class Job:
-    """One unit of a run's work. ``run`` raises to fail; it should poll ``ctx.check()``."""
+    """One unit of a run's work. ``run`` raises to fail; it should poll ``ctx.check()``.
+
+    ``needs``: jobs that must succeed first (the job is skipped otherwise). ``after``: jobs it
+    waits for, however they end; it reads what they left and says what is missing.
+    """
 
     name: str
     stage: Stage
@@ -54,6 +58,7 @@ class Job:
     on_failure: OnFailure
     needs: tuple[str, ...] = ()
     timeout_s: float = 600.0
+    after: tuple[str, ...] = ()
 
 
 Emit = Callable[..., "Future[list[StoredEvent]]"]

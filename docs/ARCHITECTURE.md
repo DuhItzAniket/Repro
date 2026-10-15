@@ -258,7 +258,7 @@ base runs disagree are left out; differences are classed as E04's and grouped pe
 | Outcome | per-test outcomes A, A′, H, reruns | `test_outcome` (F2P / P2F / flaky …) |
 | Behaviour | observations joined on `(test, function, args_hash)` | `behaviour_diff`: different result, new or changed exception, input mutation, order-only. Each item has a minimal reproducer (test node ID plus encoded args preview) |
 | API | griffe `find_breaking_changes(base, head)` plus Repro's annotation-string comparison of return and attribute types (griffe does not check these yet) | `api_diff` |
-| Dependencies | lockfiles (uv.lock, poetry.lock, pdm.lock, requirements) **and** installed sets (`uv pip list --format json`) on both sides | `dep_diff`, `lock_drift`. As built (E05, `provision/deps.py`): the requirements D03 read (a lock's pins: `lockfile`; otherwise `declared`) and the installed distributions, listed in each side's sandbox by its own interpreter with `-I -S` (metadata only; the project's editable install left out); PEP 440 order for `upgraded` / `downgraded`; lock drift for installed packages off their pin. `diff.deps` is `warn` |
+| Dependencies | lockfiles (uv.lock, poetry.lock, pdm.lock, requirements) **and** installed sets (`uv pip list --format json`) on both sides | `dep_diff`, `lock_drift`. As built (E05, `provision/deps.py`): the requirements D03 read (a lock's pins: `lockfile`; otherwise `declared`) and the installed distributions, listed in each side's sandbox by its own interpreter with `-I -S` (metadata only; the project's editable install left out); PEP 440 order for `upgraded` / `downgraded`; lock drift for installed packages off their pin. `diff.deps` is `warn`. F02: when the requirements come from a lock or requirement files, what the metadata (`[project]`, `setup.py`, `setup.cfg`) declares is compared too (`declared`); metadata that cannot be read statically, with no lock, is an `unsupported_project` item; the requirements are compared even for a side that could not be installed |
 | Behaviour (as built, E04) | E03's comparison of A and H, noise masked | `behaviour_diff` per (test, function, class): `result_changed`, `exception_added` / `_removed` / `_changed`, `order_only`, `input_mutated` (the arguments, kept from PY_START, encoded again when the call ends), `calls_changed` (other arguments on one side). The tests with differences run again on both sides with previews of each group's first call: the reproducer is that run's call and results, and a difference that does not come back is `unstable`. `diff.behaviour` is `warn` (ADR-0015) |
 | Perf | untraced interleaved runs with an A/A noise floor | `perf_diff` with ratio of medians, BCa bootstrap 95 % CI and noise floor. Tests below the timing floor are `perf_not_assessable`. As built (D07, `runner/perf.py`): the `P2P` tests, ABBA until 10 runs a side, call-phase times; a regression needs the CI above 1, the ratio past max(10 %, the A/A spread of base's own ABBA samples), and Mann-Whitney significant after Benjamini-Hochberg; 5 ms timing floor |
 
@@ -572,6 +572,14 @@ naming its line, column and path. No file: the defaults, no invariant. An invali
 policy, and an `unsupported_project` item listing the issues. Head's addition, removal or edit
 is `policy_change` evidence, with the ways it would weaken base's policy.
 
+As built (F02, `policy/invariants.py`, the `invariants` job in the check stage): each invariant
+base enables gets `invariant` evidence and an `invariant.result` (`ok` / `fail` / `warn` for
+pass / fail / not evaluated), citing the `api_diff` or `dep_diff` evidence it rests on. The job
+comes after `api` and `deps` without needing them to succeed, so an invariant whose evidence
+could not be produced is `not_evaluated`, never skipped or passed. `forbidden_paths` patterns
+are paths (`*`, `**`, `?`; a pattern matching a directory forbids what is under it); one that
+could never match a repository path is a policy error.
+
 ## 13. Web cockpit — see ADR-0008, ADR-0009, ADR-0011, DESIGN.md
 
 ```
@@ -640,8 +648,9 @@ Workers: layout.worker (d3-force, seeded, cached by graph hash) · atlas.worker 
 - **Errors:** every stage failure becomes events (`status: fail`) plus missing items. A run
   always ends with `run.finished` and, where possible, a card. In the orchestrator (C03) a failed
   or timed-out job emits a `log.line` with status `fail` and a `missing.recorded` item (a timeout's
-  reason is `timeout`); a job whose dependency did not succeed is skipped and records its missing
-  item; `run.finished` is emitted in a `finally`. Jobs run on daemon threads; timeouts and
+  reason is `timeout`); a job whose dependency (`needs`) did not succeed is skipped and records
+  its missing item, while a job that only comes `after` others (F02) runs once they end, however
+  they end, and says itself what it could not evaluate; `run.finished` is emitted in a `finally`. Jobs run on daemon threads; timeouts and
   cancellation are cooperative inside Python and forceful for subprocesses (the process tree is
   killed).
 - **Windows specifics:** `git -c core.longpaths=true` per command (the user's global config is

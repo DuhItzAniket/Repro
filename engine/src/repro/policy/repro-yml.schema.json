@@ -91,7 +91,7 @@
           }
         },
         "forbidden_paths": {
-          "description": "Paths (glob patterns, relative, with /) the change must not touch.",
+          "description": "Paths the change must not touch: glob patterns relative to the repository root, with / (* within a segment, ** across segments, ? one character); a pattern that matches a directory forbids everything under it.",
           "allOf": [{ "$ref": "#/$defs/patterns" }, { "minItems": 1 }]
         }
       }

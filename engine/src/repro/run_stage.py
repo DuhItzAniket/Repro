@@ -23,7 +23,10 @@ execution, and its evidence as events.
   changes), ``api_diff`` evidence with a ``diff.api`` each (``warn``).
 - ``deps`` (diff, E05): the requirements and the installed packages of both sides, compared,
   ``dep_diff`` evidence with a ``diff.deps`` each (``warn``); lock drift as ``lock_drift``
-  evidence. Both run after ``tests``, so the diff stage follows the run stage.
+  evidence. Both come ``after`` ``tests``, so the diff stage follows the run stage, and run
+  however the tests ended (F02): ``api`` reads git alone, and ``deps`` compares the
+  requirements read from the snapshots even for a side that could not be installed (the
+  installed packages only where there is an environment).
 - ``probes`` (run, E06): the changed functions with JSON-typed parameters, called with
   generated inputs on base, base again (other seeds) and head; ``probe-diff`` (diff):
   ``probe_diff`` evidence (``provenance: generated``) with a ``diff.probe`` each (``warn``), the
@@ -33,7 +36,9 @@ execution, and its evidence as events.
 ``probes``): timing beside them would measure their load.
 
 - ``invariants`` (check, F02): each invariant base's ``repro.yml`` enables, evaluated from the
-  run's evidence: ``invariant`` evidence and an ``invariant.result`` each.
+  run's evidence: ``invariant`` evidence and an ``invariant.result`` each. It comes ``after``
+  ``api`` and ``deps`` without needing them to succeed: an invariant whose evidence they could
+  not produce is ``not_evaluated``, and ``forbidden_paths`` needs only git.
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -56,6 +61,7 @@ from repro.policy.stage import PolicyRead
 from repro.provision import (
     DockerProvisioner,
     HostProvisioner,
+    Project,
     ProjectError,
     ProvisionError,
     environment_missing,
@@ -95,6 +101,8 @@ class RunState:
     """What the run's jobs hand on to each other."""
 
     analysis: StaticAnalysis | None = None
+    #: Each side's project as read from its snapshot, provisioned or not (D03; F02).
+    projects: dict[str, Project] = field(default_factory=dict)
     sides: dict[str, Side] = field(default_factory=dict)
     result: TwoSided | None = None
     platform: dict[str, str] = field(default_factory=dict)
@@ -107,8 +115,10 @@ class RunState:
     #: The API's breaks, (symbol, breakage, evidence ID), and the packages not read (E05; F02).
     api_breaks: list[tuple[str, str, str]] | None = None
     api_unread: list[str] = field(default_factory=list)
-    #: The dependency differences, (package, change, source, evidence ID) (E05; F02).
+    #: The dependency differences, (package, change, source, evidence ID), and the sides whose
+    #: declared dependencies could not be read (E05; F02).
     dep_changes: list[tuple[str, str, str, str]] | None = None
+    dep_unread: list[str] = field(default_factory=list)
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 
@@ -136,6 +146,7 @@ def _sandbox_job(
     def provision(ctx: JobContext) -> None:
         tree = work / "snapshots" / side
         project = inspect_project(tree)
+        state.projects[side] = project
         box_dir = work / "sandboxes" / side
         limits = Limits(timeout_s=900)
         provisioning = f"{side}: provisioning the environment ({project.kind})"
@@ -505,47 +516,40 @@ def _api_job(git: Git, base: str, head: str, work: Path, state: RunState) -> Job
             ctx.emit("missing.recorded", status="warn", payload=missing)
         packages = ", ".join(found.packages) or "no packages"
         ctx.log(f"public API ({packages}): {len(found.breaks)} breaking changes")
+        ctx.check()  # an abandoned job's comparison is not the run's
         state.api_breaks = breaks
         state.api_unread = sorted({package for _, package, _ in found.problems})
 
+    # Read from git alone: compared even when a side could not be installed or tested, after
+    # the tests so that the diff stage follows the run stage.
     return Job(
         "api",
         "diff",
         run,
         OnFailure(reason="unsupported_project", detail="the public API could not be compared"),
-        needs=("tests",),
+        after=("tests",),
     )
 
 
 def _deps_job(state: RunState) -> Job:
     def run(ctx: JobContext) -> None:
-        if "base" not in state.sides or "head" not in state.sides:
-            ctx.log("no dependency comparison: a side has no environment", level="warning")
+        if "base" not in state.projects or "head" not in state.projects:
+            ctx.log("no dependency comparison: a side's project was not read", level="warning")
             return
-        base, head = state.sides["base"], state.sides["head"]
-        projects = base.env.project, head.env.project
+        base, head = state.projects["base"], state.projects["head"]
         changes = dependencies.compare(
-            dependencies.project_requirements(projects[0]),
-            dependencies.project_requirements(projects[1]),
-            dependencies.source_of(projects[1]),
-            projects[1].source or projects[0].source,
+            dependencies.project_requirements(base),
+            dependencies.project_requirements(head),
+            dependencies.source_of(head),
+            head.source or base.source,
         )
-        listed: dict[str, dict[str, str]] = {}
-        for side in (base, head):
-            found = side.installed()
-            if found is None:
-                detail = f"{side.name}: the installed packages could not be listed"
-                payload: dict[str, Any] = {
-                    "missing": {
-                        "reason": "environment_failed",
-                        "targets": [],
-                        "detail": detail,
-                        "resolution": None,
-                    }
-                }
-                ctx.emit("missing.recorded", status="warn", payload=payload)
-            else:
-                listed[side.name] = found
+        changes += dependencies.declared_changes(base, head)
+        unread = [
+            side for side in ("base", "head") if dependencies.undeclared(state.projects[side])
+        ]
+        for side in unread:
+            ctx.emit("missing.recorded", status="warn", payload=_undeclared(side, state))
+        listed = _installed(ctx, state)
         if len(listed) == 2:  # noqa: PLR2004 - both sides
             changes += dependencies.compare(listed["base"], listed["head"], "installed", None)
         cited: list[tuple[str, str, str, str]] = []
@@ -556,12 +560,12 @@ def _deps_job(state: RunState) -> Job:
             target = {"file": change.file or "."}
             payload = change.payload(record["id"])
             ctx.emit("diff.deps", status="warn", payload=payload, target=target)  # ADR-0015 §2
-        state.dep_changes = cited
+        ctx.check()  # an abandoned job's comparison is not the run's
+        state.dep_changes, state.dep_unread = cited, unread
         drift = [
             item
-            for side in (base, head)
-            if side.name in listed
-            for item in dependencies.lock_drift(side.name, side.env.project, listed[side.name])
+            for side, found in listed.items()
+            for item in dependencies.lock_drift(side, state.projects[side], found)
         ]
         for item in drift:
             ctx.emit(
@@ -569,13 +573,58 @@ def _deps_job(state: RunState) -> Job:
             )
         ctx.log(f"dependencies: {len(changes)} differences, {len(drift)} drifted from the lock")
 
+    # The requirements are read from the snapshots: compared even when a side could not be
+    # installed (a dependency that does not install is still one the change adds); the
+    # installed packages only where there is an environment.
     return Job(
         "deps",
         "diff",
         run,
         OnFailure(reason="environment_failed", detail="the dependencies could not be compared"),
-        needs=("tests",),
+        after=("tests",),
     )
+
+
+def _undeclared(side: str, state: RunState) -> dict[str, Any]:
+    project = state.projects[side]
+    where = project.declared_file or "the project's metadata"
+    return {
+        "missing": {
+            "reason": "unsupported_project",
+            "targets": [{"file": project.declared_file}] if project.declared_file else [],
+            "detail": (
+                f"{side}: the dependencies {where} declares cannot be read statically (computed "
+                "by the build, or not literal), and no lock pins them: a dependency added there "
+                "is not seen"
+            ),
+            "resolution": "Declare the dependencies statically, or lock them",
+        }
+    }
+
+
+def _installed(ctx: JobContext, state: RunState) -> dict[str, dict[str, str]]:
+    """Each side's installed packages, where it has an environment (a side without one has its
+    missing item already); a missing item for a side whose could not be listed."""
+    listed: dict[str, dict[str, str]] = {}
+    for name in ("base", "head"):
+        side = state.sides.get(name)
+        if side is None:
+            continue
+        found = side.installed()
+        if found is None:
+            detail = f"{name}: the installed packages could not be listed"
+            payload: dict[str, Any] = {
+                "missing": {
+                    "reason": "environment_failed",
+                    "targets": [],
+                    "detail": detail,
+                    "resolution": None,
+                }
+            }
+            ctx.emit("missing.recorded", status="warn", payload=payload)
+        else:
+            listed[name] = found
+    return listed
 
 
 def _probes_job(git: Git, base: str, head: str, state: RunState) -> Job:
@@ -649,7 +698,10 @@ def _probe_diff_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
 def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
     def run(ctx: JobContext) -> None:
         read = state.policy
-        if read is None or read.policy is None or not read.policy.invariants:
+        if read is None or read.policy is None:
+            ctx.log(f"no invariants evaluated: {POLICY_FILE} on base is not valid", status="warn")
+            return
+        if not read.policy.invariants:
             ctx.log("no invariants: none enabled by the base policy")
             return
         touched = sorted(
@@ -661,7 +713,10 @@ def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
                 api = invariants.public_api_stable(invariant, state.api_breaks, state.api_unread)
                 results.append(api)
             elif invariant.name == "no_new_dependencies":
-                results.append(invariants.no_new_dependencies(invariant, state.dep_changes))
+                deps = invariants.no_new_dependencies(
+                    invariant, state.dep_changes, state.dep_unread
+                )
+                results.append(deps)
             elif invariant.name == "forbidden_paths":
                 results.append(invariants.forbidden_paths(invariant, touched))
             else:
@@ -683,7 +738,9 @@ def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
         "check",
         run,
         OnFailure(reason="unsupported_project", detail="the invariants could not be evaluated"),
-        needs=("policy", "api", "deps"),
+        needs=("policy",),
+        # Whatever these find, or "not evaluated" for an invariant if they found nothing.
+        after=("api", "deps"),
     )
 
 

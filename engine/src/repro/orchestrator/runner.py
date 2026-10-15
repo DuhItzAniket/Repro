@@ -1,7 +1,8 @@
 """Running a run: its jobs as a DAG, with timeouts, cancellation and a guaranteed end.
 
-The orchestrator thread schedules: a job starts once every job it needs has succeeded, while
-fewer than ``concurrency`` jobs run; a job whose dependency did not succeed is skipped. Jobs run
+The orchestrator thread schedules: a job starts once every job it needs has succeeded and every
+job it comes ``after`` has ended, while fewer than ``concurrency`` jobs run; a job whose
+dependency (``needs``) did not succeed is skipped. Jobs run
 on daemon threads (an abandoned one cannot block the process from exiting). A job still running
 at its deadline is abandoned: its context is cancelled and closed, so it can emit nothing more.
 
@@ -104,9 +105,12 @@ def check_pipeline(jobs: Sequence[Job]) -> None:
         unknown = sorted(set(job.needs) - known)
         if unknown:
             raise PipelineError(f"{job.name} needs unknown jobs: {', '.join(unknown)}")
+        unknown = sorted(set(job.after) - known)
+        if unknown:
+            raise PipelineError(f"{job.name} waits for unknown jobs: {', '.join(unknown)}")
         if job.timeout_s <= 0:
             raise PipelineError(f"{job.name}: the timeout must be positive")
-    remaining = {job.name: set(job.needs) for job in jobs}
+    remaining = {job.name: {*job.needs, *job.after} for job in jobs}
     while remaining:
         ready = [name for name, needs in remaining.items() if not needs]
         if not ready:
@@ -318,7 +322,7 @@ class _Execution:
                 return
             for name in list(pending):
                 job = self.jobs[name]
-                if any(need not in self.status for need in job.needs):
+                if any(other not in self.status for other in (*job.needs, *job.after)):
                     continue
                 failed = [need for need in job.needs if self.status[need] != "ok"]
                 if failed:
