@@ -6,10 +6,6 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-10-15
-
-Stage E — Behaviour evidence. Gate record: `docs/phases/E-gate.md`.
-
 ### Added
 - Repository policy: `repro.yml`, read from the base ref and validated against a JSON
   Schema (the invariants, claim and coverage thresholds of PRODUCT.md), with errors that
