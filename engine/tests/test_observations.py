@@ -189,7 +189,7 @@ def test_what_cannot_be_compared_is_never_a_difference() -> None:
     found = compared(a, a2, h)
     assert found[(T1, digest(1), 0)].unknown == ("value", "order")
     assert found[(T1, digest(1), 0)].differs == ()
-    assert found[(T2, digest(1), 0)].unknown == ("outcome", "type", "value", "order", "yields")
+    assert found[(T2, digest(1), 0)].unknown == observations.FIELDS
     assert found[(T2, digest(1), 0)].differs == ()
 
 

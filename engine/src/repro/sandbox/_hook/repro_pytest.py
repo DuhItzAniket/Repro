@@ -292,7 +292,11 @@ def pytest_configure() -> None:
         listed = Path(targets).read_text(encoding="utf-8")
         if _OUT:
             _STATE["calls"] = (Path(_OUT) / "calls.jsonl").open("w", encoding="utf-8")
-        tracer = repro_trace.Tracer(repro_trace.parse_targets(listed), _trace)
+        wanted = os.environ.get("REPRO_PREVIEW_CALLS")
+        previews = None
+        if wanted:  # E04: the calls whose values the engine asks to see
+            previews = repro_trace.parse_previews(Path(wanted).read_text(encoding="utf-8"))
+        tracer = repro_trace.Tracer(repro_trace.parse_targets(listed), _trace, previews)
     if mapping or tracer is not None:
         monitor = _start_monitor(places, mapping=mapping, tracer=tracer)
         _STATE["monitor"] = monitor

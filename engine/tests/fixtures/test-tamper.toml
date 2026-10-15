@@ -9,6 +9,10 @@ claims = ["divide() uses integer division", "No behaviour change"]
 # The head breaks divide(1, 4) and percent(), deletes the assertion that caught the first and
 # skips the test that caught the second. Both edited tests' base versions fail on head.
 evidence = [
+  "behaviour_diff:calls_changed:tests/test_ops.py::test_divide",
+  "behaviour_diff:calls_changed:tests/test_ops.py::test_percent",
+  "behaviour_diff:exception_changed:tests/test_ops.py::test_divide_by_zero",
+  "behaviour_diff:result_changed:tests/test_ops.py::test_divide",
   "test_change:assertion_removed:tests/test_ops.py::test_divide",
   "test_change:base_test_fails_on_head:tests/test_ops.py::test_divide",
   "test_change:base_test_fails_on_head:tests/test_ops.py::test_percent",

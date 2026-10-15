@@ -48,3 +48,8 @@ class Box:
 
 def ordered(keys):
     return {key: len(key) for key in keys}
+
+
+def extend(items, extra):
+    items.extend(extra)
+    return len(items)

@@ -9,8 +9,10 @@ claims = ["parse_date returns timezone-aware datetimes normalised to UTC"]
 
 # Evidence the card must contain: <evidence type>:<detail>:<target>
 evidence = [
-  "test_outcome:F2P:tests/test_dates.py::test_parse_date_with_timezone",
+  "behaviour_diff:result_changed:tests/test_dates.py::test_parse_date_naive_input_is_utc",
+  "behaviour_diff:result_changed:tests/test_dates.py::test_parse_date_with_timezone",
   "test_outcome:F2P:tests/test_dates.py::test_parse_date_naive_input_is_utc",
+  "test_outcome:F2P:tests/test_dates.py::test_parse_date_with_timezone",
 ]
 missing = []
 

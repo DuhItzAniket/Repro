@@ -138,7 +138,10 @@ export type SandboxBackend = "process" | "docker" | "gvisor";
 
 export type AgentRole = "read" | "build" | "review" | "gap" | "probe" | "qa";
 
-export type BehaviourChange = "result_changed" | "exception_changed" | "exception_added" | "exception_removed" | "input_mutated" | "order_only";
+/**
+ * How a function behaves differently for the same input. calls_changed: in the same test it was called with other arguments on one side (E04).
+ */
+export type BehaviourChange = "result_changed" | "exception_changed" | "exception_added" | "exception_removed" | "input_mutated" | "order_only" | "calls_changed";
 
 export type Origin = "introduced" | "pre-existing" | "n/a";
 

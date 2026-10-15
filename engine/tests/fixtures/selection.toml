@@ -12,6 +12,7 @@ claims = [
 ]
 # test_names was edited (its own code changed): its outcomes are of two different tests.
 evidence = [
+  "behaviour_diff:calls_changed:tests/test_cart.py::test_names",
   "test_change:test_modified:tests/test_cart.py::test_names",
   "test_outcome:P2P:tests/test_cart.py::test_total",
   "test_outcome:P2P:tests/test_prices.py::test_discount",

@@ -1,0 +1,29 @@
+# Expected Repro outcome for the false-claim fixture (E04 asserts the behaviour diffs).
+[fixture]
+name = "false-claim"
+head = "refactor/stock"
+
+[expected]
+status = "FLAGGED"
+claims = ["No behaviour change"]
+# restock() now changes the caller's dictionary: the claim is contradicted by an input
+# mutation, while unique_skus()'s rewrite keeps its behaviour (no difference).
+evidence = [
+  "behaviour_diff:input_mutated:tests/test_stock.py::test_restock_adds",
+  "test_outcome:P2P:tests/test_stock.py::test_restock_adds",
+  "test_outcome:P2P:tests/test_stock.py::test_unique_skus_keeps_first_seen",
+]
+missing = [
+  "perf_not_assessable:tests/test_stock.py::test_restock_adds",
+  "perf_not_assessable:tests/test_stock.py::test_unique_skus_keeps_first_seen",
+]
+
+[reproducers]
+"input_mutated:tests/test_stock.py::test_restock_adds" = ["unchanged", "levels={'a': 3}, sku='a', amount=2"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_stock.py::test_restock_adds" = ["blast_radius"]
+"tests/test_stock.py::test_unique_skus_keeps_first_seen" = ["blast_radius"]
