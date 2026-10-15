@@ -169,7 +169,7 @@ def test_a_memory_hog_is_killed(box: DockerSandbox) -> None:
     # Docker's OOMKilled flag says so too, but not every time: E05's CI run had exit 137
     # with the flag false. The sandbox itself kills only on a timeout or a stop, which are
     # other outcomes, so an exited run's 137 is the kernel's.
-    assert run.oom_killed or run.returncode == 137 or b"MemoryError" in run.stderr  # noqa: PLR2004
+    assert run.oom_killed or run.returncode == 137 or b"MemoryError" in run.stderr
 
 
 def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
