@@ -35,4 +35,21 @@ describe("summarise (the gates' view of the cockpit)", () => {
   it("has a Change routes row per changed symbol", () => {
     expect(summary.panels.routes).toHaveLength(model.changes.changed.length);
   });
+
+  it("shows the behaviour field's cells and the engine's behaviour checks (Gate E)", () => {
+    expect(summary.panels.behaviour).toHaveLength(model.observations.cells.length);
+    expect(summary.behaviourDiffs).toHaveLength(summary.kinds["diff.behaviour"] ?? 0);
+    for (const diff of summary.behaviourDiffs) {
+      const cell = summary.panels.behaviour.find(
+        (c) => c.test === diff.test && c.symbol === diff.symbol,
+      );
+      // The engine's verdict wins over the samples (DESIGN.md panel 4).
+      if (cell !== undefined)
+        expect(cell.status).toBe(diff.stability === "unstable" ? "unstable" : "differs");
+    }
+  });
+
+  it("lists the three Signals series", () => {
+    expect(summary.panels.signals.map((s) => s.label)).toEqual(["PASS RATE", "DRIFT", "PERF Δ"]);
+  });
 });

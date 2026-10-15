@@ -40,8 +40,8 @@ behaviour diff with its reproducer, and the noise of the A/A′ control is not.
   are left out of its samples, as the comparison leaves them out (E03).
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): the Gate E scenario passes end to end in the cockpit.
-- [ ] AC2: the behaviour field and Signals are fed by the run's `trace.sample` events, schema-
+- [x] AC1 (roadmap): the Gate E scenario passes end to end in the cockpit.
+- [x] AC2: the behaviour field and Signals are fed by the run's `trace.sample` events, schema-
   valid, through `repro run`.
 
 ## Test plan
@@ -54,12 +54,41 @@ behaviour diff with its reproducer, and the noise of the A/A′ control is not.
 *Filled in at the end of the phase:*
 
 ## What shipped
+- Tracer: `samples` (`REPRO_TRACE_SAMPLES`); `run_tests(samples=...)` and `_tracing`;
+  `twosided.SAMPLES` (4) for A, A′ and H.
+- `repro.runner.trace.samples`, `MAX_SAMPLES`; `trace.sample` events from the tests job.
+- Test hook: `panels.behaviour`, `panels.signals`, `behaviourDiffs`.
+- `apps/web/gate/gate-e.spec.ts`; the `gate E` CI job (Docker).
+- Tests: `test_samples_preview_each_tests_first_calls`, `test_samples_for_the_cockpit`, two
+  test-hook cases. pytest 1295 → 1297 (1285 pass and 12 skip on Windows with Docker Desktop
+  stopped); Vitest `@repro/web` 296 → 298.
 
 ## Evidence
+Gate E's browser test, Windows, Edge, process sandbox (local):
+
+| Scenario | Result |
+|---|---|
+| `silent-change` (57 s) | no test failed on BASE, A′ or HEAD; two `diff.behaviour` checks, both `result_changed` and `stable`, with their reproducers' values: `test_describe_mentions_celsius` base `37.8`, head `38`; `test_freezing` base `0.0`, head `0`; the behaviour field's two `to_celsius` cells differ; Signals' DRIFT has points and ends at `1.00`; the index flags the two checks ("4 checks / 2 passed / 2 flagged") |
+| `noisy` (57 s) | no test failed; no `diff.behaviour`; the `stamp`, `roll` and `fruit` cells unstable, `total` the same, no cell differing; DRIFT ends at `0.00`; "5 checks / 5 passed / 0 flagged" |
+
+- Both screenshots were checked by eye: on `silent-change` the HEAD cells glow in the flag
+  colour and Change routes reads "to_celsius 2 tests 2 flagged".
+- Gate D still passes with the samples (`breaks-one` 38 s, `test-tamper` 51 s, the same run).
+- The first Gate E run found the spec looking for a "BEHAVIOUR DRIFT" series; the panel labels
+  it "DRIFT" (DESIGN.md's name for the signal is BEHAVIOUR DRIFT), fixed in the spec.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- The roadmap names Execution among the real-data panels: it has drawn real test events since
+  D06, so E07 changes nothing in it; the behaviour field and Signals' drift were the panels
+  still waiting for real samples.
 
 ## Known gaps
+- Samples show the first four calls of each function per test: a difference only in later
+  calls lights its cell when the engine's `diff.behaviour` arrives, not before.
+- A function whose noise is only in its arguments (`since`, called with the time) can show as
+  the same in the field when its results agree: the samples are matched by call position; its
+  masked call set is listed as a missing item, not as a cell state.
 
 ## Dependencies added
 None.
