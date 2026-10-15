@@ -23,6 +23,17 @@
 | F05 | [#58](https://github.com/DuhItzAniket/Repro/pull/58) | The Reproduction Card: assembled from the log, published, stored, exported (Markdown, canonical JSON), checked on replay, shown in the cockpit |
 
 ## CI matrix
+| OS | Python | Node | Result | Run |
+|---|---|---|---|---|
+| ubuntu-latest (Docker: L3 suites required, incl. `no_network` enforced) | 3.13 | 24 | pass (12 min 39 s) | [CI run 38754368209](https://github.com/DuhItzAniket/Repro/actions/runs/38754368209) on [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+| windows-latest | 3.13 | 24 | pass (15 min 52 s) | [CI run 38754368209](https://github.com/DuhItzAniket/Repro/actions/runs/38754368209) on [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+| ubuntu-latest, Gate E (containers) | 3.13 | 24 | pass (3 min 22 s) | [CI run 38754368209](https://github.com/DuhItzAniket/Repro/actions/runs/38754368209) on [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+| ubuntu-latest, Gate D (containers) | 3.13 | 24 | pass (2 min 26 s) | [CI run 38754368209](https://github.com/DuhItzAniket/Repro/actions/runs/38754368209) on [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+| ubuntu-latest, Gate C (`--analyse-only`) | 3.13 | 24 | pass (59 s) | [CI run 38754368209](https://github.com/DuhItzAniket/Repro/actions/runs/38754368209) on [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+| ubuntu-latest + Playwright image (visual, baselines regenerated in F05) | — | 24 | pass (2 min 43 s) | [CI run 38754368209](https://github.com/DuhItzAniket/Repro/actions/runs/38754368209) on [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+
+Gate F's criteria are engine criteria: `test_run_stage.py` and `test_card.py` demonstrate them
+in the `test` jobs on both operating systems (process sandbox), and in containers on Ubuntu.
 
 ## Metrics at gate (measured)
 | Metric | Value |
