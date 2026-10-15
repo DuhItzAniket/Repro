@@ -200,8 +200,10 @@ taken from `type`, `object` and `BaseException` themselves and applied to `type(
 metaclass, `__getattribute__`, `__class__` property or other dunder of the target runs; a class
 that puts its own descriptor in place of `__dict__` or a slot is encoded opaque instead. Builtin
 subclasses keep their builtin value (read through the base type's own methods and iterators,
-never rebuilt). Adapters cover only modules the target already imported. The second digest
-sorts every dictionary; the tracer records it only where it differs.
+never rebuilt). Adapters cover only modules the target already imported. Dictionaries keep
+insertion order (the same in every process). For results, the same walk also gives a digest
+with every dictionary sorted, recorded only where it differs; arguments, the join keys, built
+the same way by the same test on both sides, skip that sorting for speed.
 
 **Stability.** Fields that differ between A and A′ (same code, different seed and order) are
 *unstable*. They are masked from the A-vs-H comparison and listed on the card. This is the
