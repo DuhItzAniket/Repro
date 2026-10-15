@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | E02 |
-| **Branch / PR** | `phase/E03-observation-store` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E03-observation-store` · [#48](https://github.com/DuhItzAniket/Repro/pull/48) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Trace a change's functions in the runs Repro already makes (A, A2, H), join their calls across
@@ -130,7 +130,7 @@ What the comparison found on every fixture (A against H, A2's noise masked), Win
 - Overhead after the trace file moved (commit `1e9237b`, 3.13.13, 8 rounds): `fib(28)` 1.11×
   (1.03–1.19), records 1.18× (1.11–1.26), small calls 1.10× (1.02–1.21);
   `docs/perf/E01-tracer-bench.jsonl`.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#48).
 
 ## Deviations from spec
 - ROADMAP E03 names "CBOR artifacts plus index": the index is `obs/behaviour.cbor` (every key,
