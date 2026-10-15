@@ -479,7 +479,7 @@ agent eval set meets the thresholds set in G09.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| G01 | LLM backend & locked-down runtime | M | C03 | planned |
+| G01 | LLM backend & locked-down runtime | M | C03 | in progress |
 | G02 | Cassettes, prompt versioning & cost accounting | M | G01 | planned |
 | G03 | Read-only evidence tools | M | G01, F04 | planned |
 | G04 | Reader agent (claim extraction) | M | G02, G03 | planned |

@@ -245,3 +245,21 @@ entry. If something turns out wrong, add a correcting entry.
   failed upstream job each produced a pass or a silent skip in F02's first version. Each is
   now an error or an explicit "not evaluated", and a network invariant's pass states whether the
   sandbox enforced the network or only watched for attempts.
+
+## 2026-10-15 · G01 · A judge that cannot read the repository it judges
+- The reviewer agents' lockdown was tested against the Claude Code CLI the Agent SDK bundles
+  (2.1.300), run against a local stand-in for the Messages API that records what reaches the
+  model. A negative test of a defence is only evidence if the attack works without it: each
+  planted file was first run on an unlocked CLI, which loaded a `CLAUDE.md` from the working
+  directory's ancestors, ran the project's hooks when the working directory was the repository,
+  and loaded the `CLAUDE.md` and hooks of the configuration directory. Under the lockdown none
+  of the three placements loaded or ran anything ([phase record](../phases/G01-llm-backend.md)).
+- Each layer was checked by removing it alone. Without `setting_sources=[]` two placements got
+  through; without the CLAUDE.md variable nothing got through while settings stayed off, but
+  every CLAUDE.md did with settings on; a tool gate that allowed everything let pre-approved
+  foreign tools run. Layers that look redundant in the default configuration each stop
+  something when another fails.
+- Structured output is delivered through a synthetic tool (`StructuredOutput`). A gate that
+  denied every tool outside Repro's own prefix also denied the answer, and the agent looped to
+  its turn limit: an allow-list must name the runtime's own channels, and is better kept per
+  call than per prefix.

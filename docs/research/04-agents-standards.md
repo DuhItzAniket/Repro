@@ -107,6 +107,31 @@ The README still says ClaudeSDKClient is needed for custom tools and hooks. The 
 - Give each concurrent session its own `cwd` **[V]**.
 - With Repro's planned default of 12 concurrent agents, that floor is roughly 12 GiB of RAM.
 
+### 1.11 Update for G01 (2026-10-15)
+- **0.2.167**, released 2026-10-14, is the latest release, under MIT **[V PyPI]**. Since 0.2.165,
+  0.2.166 added typed hook inputs and outputs and `SystemInitData`, fixed the type of
+  `SandboxSettings.ignoreViolations`, and bundled CLI 2.1.299; 0.2.167 bundles CLI **2.1.300**
+  **[V CHANGELOG]**.
+- `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` takes "a positive whole number in plain digits;
+  anything else is ignored", and 1 turns nesting off; `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`
+  is the same. `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` keeps every CLAUDE.md (user, project, auto
+  memory) out of context **[V env-vars]**.
+- After an error result (`error_max_turns`, ...) the CLI exits non-zero and the SDK raises
+  `ResultError`, which carries the result's subtype, errors and `terminal_reason`, after the
+  `ResultMessage` itself has been yielded **[V SDK source, `_errors.py`, `_internal/query.py`]**.
+- Measured with CLI 2.1.300 against a local stand-in for the Messages API
+  (`engine/tests/test_agents_cli.py`), not documented:
+  - `output_format` reaches the model as a tool named `StructuredOutput` whose input schema is
+    the output schema. A text answer is re-prompted once, then ends as `success` with no
+    `structured_output`; an answer that breaks the schema ends as
+    `error_max_structured_output_retries` after five requests in all.
+  - With `system_prompt` as a file, the system prompt is the SDK's one-line preamble ("You are a
+    Claude agent, built on Anthropic's Claude Agent SDK.") and the file's text; the CLI adds an
+    environment block (working directory, platform, OS version, date) as a message.
+  - An unlocked CLI (`setting_sources` naming user, project and local) loads a `CLAUDE.md` from
+    the `cwd`'s ancestors, runs the project's hooks only when the `cwd` is the project, and loads
+    the `CLAUDE.md` and hooks of the `CLAUDE_CONFIG_DIR` directory.
+
 ---
 
 ## 2. Evidence-cited LLM verdicts and judge reliability

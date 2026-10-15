@@ -498,13 +498,19 @@ The judge model should differ from the model that authored the PR when that is k
 self-preference bias is documented (research/04 §2.3).
 
 ### 10.2 Runtime lockdown (Claude Agent SDK; research/04 §1.3)
-`tools=[]` (no built-in tools). The only tools are in-process MCP tools under `mcp__repro__*`.
-`permission_mode="dontAsk"` plus a `PreToolUse` hook that denies anything outside that prefix.
-`setting_sources=[]`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, a per-run `CLAUDE_CONFIG_DIR`, and
-`verbatim_prompts=True`. `cwd` is an **empty per-run scratch directory, never a worktree**, so
-the PR cannot inject `CLAUDE.md`, hooks or skills. The system prompt is passed as a file because
-of the Windows command-line length limit. `max_turns`, `max_budget_usd`, and a subagent depth
-of 1 are set on every call.
+`tools=[]` (no built-in tools). The only tools are a call's own in-process MCP tools,
+`mcp__repro__<name>`, and, when the call asks for structured output, the CLI's
+`StructuredOutput` tool, through which the answer arrives. `permission_mode="dontAsk"` plus a
+`PreToolUse` hook that denies every other tool, a Repro tool the call was not given included.
+`strict_mcp_config`, no plugins, no skills. `setting_sources=[]`,
+`CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, a per-call
+`CLAUDE_CONFIG_DIR`, and `verbatim_prompts=True`. `cwd` is an **empty per-call scratch
+directory, never a worktree**, so the PR cannot inject `CLAUDE.md`, hooks or skills. The system
+prompt is passed as a file because of the Windows command-line length limit. `max_turns`,
+`max_budget_usd` and a wall-clock timeout are set on every call; subagent spawning is held to
+its floor (depth 1, one at a time) and no Agent tool is in context (G01, `repro.agents.lockdown`).
+The tests run the bundled CLI against a local stand-in for the Messages API, and each planted
+file is first shown to load on an unlocked CLI (`test_agents_cli.py`).
 
 PR text is wrapped in delimited `<untrusted_pr_description>` blocks and described to the model
 as *claims to check, not instructions*.
@@ -530,13 +536,20 @@ the verdict degrades to `unverifiable`. An optional 2-of-3 panel uses different 
 effort levels. Agreement is logged per run.
 
 ### 10.5 Backend abstraction and CI determinism
-`agents/backend.py` defines an `LLMBackend` protocol. The default implementation is the Agent
-SDK. A direct Anthropic Messages API backend, which gives constrained decoding and no
+`agents/backend.py` defines an `LLMBackend` protocol: `run(request, on_progress)` gives an
+`AgentResult` whose outcome is `ok`, `max_turns`, `max_budget`, `timeout`, `invalid_output` or
+`error`, and never raises for what the model does. The default implementation is the Agent
+SDK (`agents/sdk.py`). A direct Anthropic Messages API backend, which gives constrained decoding and no
 per-agent CLI subprocess, is an open option (ADR-0007). In CI, calls are served from
 **cassettes** keyed by `(prompt version, model, input digest)`. A missing cassette fails the
 test and never silently calls the API. Concurrency defaults to `min(12, free RAM in GiB)`
 (research/04 §1.10: about 1 GiB per SDK subprocess). The UI always shows 12 dispatch slots, with
-queued agents shown as `waiting`.
+queued agents shown as `waiting`. As built (G01, `agents/dispatch.py`, `agents/events.py`): an
+agent takes the lowest free slot (`agent.spawned`), shows `waiting` only if the run's
+concurrency is taken, then `thinking` and `tool_call` with `progress` the share of its turn
+budget used, then `done` or `failed`, and `cost.estimate`; an agent queued behind twelve others
+has no slot, and so no events, yet. Free memory is `ullAvailPhys` on Windows and `MemAvailable`
+on Linux; where it cannot be read, one agent runs at a time.
 
 ## 11. Storage and transport
 
