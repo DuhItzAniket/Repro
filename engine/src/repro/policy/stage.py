@@ -5,6 +5,8 @@
   with its line, so the file can be fixed from it; the invariants are then not evaluated.
 - Head adds, removes or edits the file: ``policy_change`` evidence saying how (and how it
   weakens base's policy, if it does). Head's policy is never applied.
+- Whatever the case, ``policy`` evidence records the policy in force (F04), so the status can
+  be decided again from the run's log alone.
 """
 
 from dataclasses import dataclass, field
@@ -73,6 +75,34 @@ class PolicyRead:
     found: bool = False  # base has a repro.yml
     change: PolicyChange | None = None
     head_policy: Policy | None = field(default=None, repr=False)
+
+    def evidence(self, run_id: str) -> dict[str, Any]:
+        """The ``policy`` evidence: the policy in force (base's, or the defaults), so a run's
+        status can be decided again from its log alone (F04)."""
+        if self.policy is None:
+            summary = f"{FILE} on base is not valid: no policy, no invariant evaluated"
+        elif not self.found:
+            summary = f"no {FILE} on base: the defaults"
+        else:
+            names = ", ".join(i.name for i in self.policy.invariants) or "no invariant"
+            summary = f"{FILE} on base: {names}"
+        return {
+            "id": new_evidence_id(),
+            "run_id": run_id,
+            "type": "policy",
+            "targets": [{"file": FILE}],
+            "summary": summary[:1000],
+            "data": {
+                "found": self.found,
+                "valid": self.policy is not None,
+                "policy": self.policy.document() if self.policy is not None else None,
+                "issues": [str(issue) for issue in self.issues][:50],
+            },
+            "artifacts": [],
+            "stability": "stable",
+            "origin": "n/a",
+            "produced_by": {"component": "repro.policy", "version": __version__},
+        }
 
     def missing(self) -> list[dict[str, Any]]:
         if self.policy is not None:

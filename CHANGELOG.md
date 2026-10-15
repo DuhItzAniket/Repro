@@ -33,6 +33,11 @@ All notable changes to this project are documented here. The format follows
   `network_not_enforced` item for the latter. A timed test that D07 calls a regression with
   its interval past `max_regression` fails `perf_budget`. Fixture `net-call`; `perf-regress`
   and `invariants-pass` enable them. [F03]
+- The status engine: `VERIFIED`, `FLAGGED` or `UNVERIFIABLE` by deterministic rules over a
+  run's event log, with the reasons and the evidence each rests on. A difference no claim
+  explains flags; anything not checked (an invariant not evaluated, a job that did not
+  complete, too many changed symbols unverified) leaves the change unverifiable. The policy
+  in force is now `policy` evidence on every run, so a replay decides the same. [F04]
 
 ## [0.5.0] - 2026-10-15
 

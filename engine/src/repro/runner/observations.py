@@ -423,7 +423,8 @@ def _untraced(behaviour: Behaviour) -> list[dict[str, Any]]:
         detail = f"more changed functions than one run can trace: {shown}" + (
             f" and {more} more" if more > 0 else ""
         )
-        targets = [{"symbol": symbol} for symbol in behaviour.left_out[:LISTED]]
+        # Every one is a target: the status counts them as unverified (F04).
+        targets = [{"symbol": symbol} for symbol in behaviour.left_out]
         items.append(
             {
                 "missing": {

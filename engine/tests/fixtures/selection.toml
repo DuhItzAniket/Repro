@@ -5,6 +5,9 @@ head = "change/prices-and-names"
 
 [expected]
 status = "VERIFIED"
+# Without a review stage nothing explains test_names' edit and its new calls: the rules flag
+# them (F04; ADR-0015 §3). The claims explain them once Stage G judges them.
+deterministic_status = "FLAGGED"
 claims = [
   "net() raises ValueError for negative amounts",
   "discount() clamps its percentage to 0-100",
