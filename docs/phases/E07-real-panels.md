@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | E04, E05 |
-| **Branch / PR** | `phase/E07-real-panels` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E07-real-panels` · [#52](https://github.com/DuhItzAniket/Repro/pull/52) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Drive the cockpit's behaviour field and Signals from what a real run observes, and prove
@@ -76,7 +76,7 @@ Gate E's browser test, Windows, Edge, process sandbox (local):
 - Gate D still passes with the samples (`breaks-one` 38 s, `test-tamper` 51 s, the same run).
 - The first Gate E run found the spec looking for a "BEHAVIOUR DRIFT" series; the panel labels
   it "DRIFT" (DESIGN.md's name for the signal is BEHAVIOUR DRIFT), fixed in the spec.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#52).
 
 ## Deviations from spec
 - The roadmap names Execution among the real-data panels: it has drawn real test events since
