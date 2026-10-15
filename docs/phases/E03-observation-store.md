@@ -70,11 +70,11 @@ order never become a behaviour difference. Store the observations as replayable 
   collected, after the plan is made; tracing a test function costs one call per test.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): on fixtures with time, random and set-order noise, all noise is classified
+- [x] AC1 (roadmap): on fixtures with time, random and set-order noise, all noise is classified
   `unstable` and none of it becomes a diff.
-- [ ] AC2: observations are stored as CBOR artifacts and read back unchanged; the comparison
+- [x] AC2: observations are stored as CBOR artifacts and read back unchanged; the comparison
   cites them by digest.
-- [ ] AC3: the existing fixtures keep their evidence; what tracing adds to them is explicit.
+- [x] AC3: the existing fixtures keep their evidence; what tracing adds to them is explicit.
 
 ## Test plan
 | Criterion | Check |
@@ -87,12 +87,67 @@ order never become a behaviour difference. Store the observations as replayable 
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.store.cbor`: deterministic CBOR encoder and strict decoder.
+- `repro.runner.observations`: `observe`, `stability`, `compare`, `behaviour_of`, `missing`,
+  `dump_observations` / `load_observations`, `dump_behaviour`.
+- `repro.runner.trace`: `TracePlan`, `plan`, `without_test_code`.
+- `reproduce(trace=...)`: A and A2 trace base, H head; A2 with `seed=OTHER_SEED`.
+- The plugin's `calls.jsonl` with `MAX_TRACE_BYTES` and `trace_cut`; `read_results(calls=...)`,
+  `PytestRun.trace_cut`.
+- The `behaviour` job; `pipeline_jobs(artifacts=...)`; `repro run` stores the observations.
+- Fixture `noisy`; `behaviour` lists in `flaky.toml` and `perf-regress.toml`.
+- Tests: `test_cbor.py` (79), `test_observations.py` (21), the `noisy` fixture in
+  `test_twosided.py` and `test_run_stage.py` (with the stored artifacts checked). pytest
+  1121 → 1224 (1212 pass and 12 skip on Windows with Docker Desktop stopped).
 
 ## Evidence
+What the comparison found on every fixture (A against H, A2's noise masked), Windows, Python
+3.13:
+
+| Fixture | Calls compared | Same | Unstable | Not comparable | Differences | Missing items added |
+|---|---|---|---|---|---|---|
+| `noisy` | 6 | 1 (`total`) | 5 (`fruit`, `roll`, `stamp`, `since` ×2) | 0 | 0 | `unstable_observation` ×4 |
+| `flaky` | 2 | 0 | 2 (`record` counts what it saw) | 0 | 0 | `unstable_observation` ×1 |
+| `perf-regress` | 2 | 2 | 0 | 0 | 0 | `encoding_failed` (50,000-tag arguments, past the node guard) |
+| `honest-fix` | 2 | 0 | 0 | 0 | 2 (`parse_date`, the fix) | none |
+| `selection` | 6 | 4 | 0 | 0 | 2 | none |
+| `breaks-one` | 1 | 0 | 0 | 0 | 1 (`discount`) | none |
+| `test-tamper` | 4 | 0 | 0 | 0 | 4 (`divide`, `percent`) | none |
+| `untested` | no selected test reaches `summary`, so A2 and H do not run: nothing compared (its `no_covering_test` item says so) | | | | | |
+
+- AC1: every call carrying time, a random draw or a set's order is `unstable`, and the four
+  functions are listed; the one stable function compares equal; no difference. The `random`
+  seed matters: run again with A2 on the plugin's seed 0, `roll` agreed between A and A2 (the
+  plugin seeds `random` per test) and came out `stable`.
+- The differences the other fixtures show are the changes themselves; E04 turns them into
+  evidence. Before test code was left out, `test-tamper`'s edited test functions showed up as
+  differences of their own.
+- AC2: every RFC 8949 Appendix A example in the subset encodes and decodes exactly (52);
+  non-deterministic forms, tags, indefinite lengths, duplicate keys and trailing bytes are
+  refused (16 cases); generated values round-trip to the same bytes. Through `repro run`, the
+  `noisy` run stored `obs/A.cbor`, `obs/A2.cbor`, `obs/H.cbor` and `obs/behaviour.cbor`, each
+  read back and matching the digest the comparison cites.
+- Overhead after the trace file moved (commit `1e9237b`, 3.13.13, 8 rounds): `fib(28)` 1.11×
+  (1.03–1.19), records 1.18× (1.11–1.26), small calls 1.10× (1.02–1.21);
+  `docs/perf/E01-tracer-bench.jsonl`.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- ROADMAP E03 names "CBOR artifacts plus index": the index is `obs/behaviour.cbor` (every key,
+  where it was seen, its stability and what differs, citing the observation artifacts by
+  digest), not a separate database table; the `artifacts` table already indexes the files.
+- ARCHITECTURE §4.3 masks "fields"; E03 also masks whole call sets (inputs that differ
+  between A and A2), which the noise in arguments needs.
+- A2's `random` seed differs from A's now (D06 changed only the order and the hash seed); this
+  can mark more tests flaky, which is what A2 is for.
 
 ## Known gaps
+- Calls past a test's budget (200) are not compared; nor are calls with arguments too large or
+  deep to encode completely (both listed).
+- Noise that A2 does not vary (a value fixed per machine, a file the tests write) is not
+  detected as noise.
+- The comparison lists differences but does not classify them, attach reproducers or emit
+  events: E04.
 
 ## Dependencies added
 None.
