@@ -403,7 +403,7 @@ control.
 | E04 | Behaviour diff engine & reproducers | M | E03 | done |
 | E05 | API & dependency diff | M | C06, D03 | done |
 | E06 | Deterministic input-replay probes | M | E04 | done |
-| E07 | Real-data panels & Gate E scenario | M | E04, E05 | planned |
+| E07 | Real-data panels & Gate E scenario | M | E04, E05 | in progress |
 
 **E01** Tool-ID negotiation, PY_START / PY_RETURN / PY_UNWIND / yield capture, per-test
 attribution, budgets and truncation, threads and generators, plus a benchmark harness tracked

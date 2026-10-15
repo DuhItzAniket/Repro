@@ -48,6 +48,11 @@ All notable changes to this project are documented here. The format follows
   the rest that differ between base and head are `probe_diff` evidence (`provenance: generated`)
   with a `diff.probe` check, the input as the reproducer. Timing now runs after the other runs.
   Fixture `probe-only`; Hypothesis becomes a runtime dependency. [E06]
+- The cockpit's behaviour field and Signals from real runs: the traced runs preview each test's
+  first four calls of each changed function, sent as `trace.sample` events while the run goes.
+  Gate E's browser test (`gate-e.spec.ts`, CI job `gate E`): an output change no test checks
+  shows as two stable behaviour diffs with their reproducers, and A/A′ noise as unstable cells,
+  never a diff. [E07]
 
 ## [0.4.0] - 2026-10-15
 

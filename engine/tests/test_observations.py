@@ -392,3 +392,40 @@ def test_noise_is_unstable_and_never_a_difference(tmp_path: Path) -> None:
         for target in item["missing"]["targets"]
     ]
     assert sorted(found) == sorted(expected["expected"]["behaviour"])
+
+
+# -- samples (E07) -------------------------------------------------------------------------------
+
+
+def test_samples_for_the_cockpit() -> None:
+    from repro.runner.trace import samples  # noqa: PLC0415
+
+    previewed: dict[str, Any] = {"args_preview": "f(a=1)", "result_preview": "2"}
+    raised: dict[str, Any] = {
+        "args_preview": "f(a=2)",
+        "outcome": "raise",
+        "type": "builtins.ValueError",
+    }
+    run = PytestRun(
+        {T1: Reported(T1, "passed", 0.01, None, None)},
+        (),
+        {"exitstatus": 0},
+        collected={T1: ("tests/test_m.py", "test_one", 1)},
+        calls=(
+            call(index=1, args=2, **raised),
+            call(index=0, **previewed),
+            call(index=2, args=3),  # not previewed
+            call(target=("tests/test_m.py", "helper", 5, 6), **previewed),  # test code
+            call(target=("other.py", "g", 1, 2), **previewed),  # not a target of the plan
+        ),
+    )
+    names = {**NAMES, ("tests/test_m.py", "helper", 5, 6): "test_m:helper#0"}
+    found = samples(run, names, "head")
+    assert [(p["call_index"], p["result_preview"], p["raised"]) for p, _ in found] == [
+        (0, "2", None),
+        (1, None, "builtins.ValueError"),
+    ]
+    for payload, target in found:
+        models.TraceSamplePayload.model_validate(payload)
+        assert target == {"test": T1}
+    assert len(samples(run, names, "head", limit=1)) == 1

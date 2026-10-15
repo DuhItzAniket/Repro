@@ -11,9 +11,10 @@
  * screenshots do not depend on how fast the machine renders.
  *
  * `summary()` (C08) describes what the cockpit holds, for the gate tests: a live run and its
- * replay must hold the same events in the same order, and so show the same state (Gate C), and
- * Execution, Change routes and the index must show a run's outcomes (Gate D). The panel parts
- * come from the panels' own views at the end of the data, so they are what is drawn.
+ * replay must hold the same events in the same order, and so show the same state (Gate C),
+ * Execution, Change routes and the index must show a run's outcomes (Gate D), and the
+ * behaviour field and Signals must show a run's behaviour (Gate E). The panel parts come from
+ * the panels' own views at the end of the data, so they are what is drawn.
  */
 import type { Signal } from "@preact/signals";
 import type { Focus } from "./focus/focus";
@@ -21,9 +22,11 @@ import type { RowStatus } from "./model/check-index";
 import type { ClockMode, PresentationClock } from "./model/clock";
 import { type CockpitModel, type HeaderCounters, headerCounters } from "./model/cockpit";
 import type { CheckResult } from "./model/projections/checks";
+import { behaviourPanel, type CellStatus } from "./panels/behaviour";
 import { indexPanel } from "./panels/check-index";
 import { kindOf } from "./panels/execution";
 import { routesPanel } from "./panels/routes";
+import { signalsPanel } from "./panels/signals";
 import type { StageHost } from "./stage/host";
 import { clampLook, DEFAULT_LOOK, type Look } from "./stage/look";
 import type { RingModel } from "./stage/ring/layers";
@@ -59,6 +62,28 @@ export interface PanelsSummary {
     readonly results: readonly CheckResult[];
     readonly rows: readonly { readonly id: string; readonly status: RowStatus }[];
   };
+  /** The behaviour field (panel 4): each observed (test, function) cell, as drawn. */
+  readonly behaviour: readonly {
+    readonly test: string;
+    readonly symbol: string;
+    readonly status: CellStatus;
+  }[];
+  /** Signals (panel 6): each series, its number of points and the value it shows last. */
+  readonly signals: readonly {
+    readonly label: string;
+    readonly points: number;
+    readonly latest: string;
+  }[];
+}
+
+/** A `diff.behaviour` check as the engine sent it (Gate E reads its reproducer). */
+export interface BehaviourDiffSummary {
+  readonly symbol: string;
+  readonly test: string;
+  readonly change: string;
+  readonly stability: string;
+  readonly base: string | null;
+  readonly head: string | null;
 }
 
 export interface CockpitSummary {
@@ -78,6 +103,7 @@ export interface CockpitSummary {
   /** Presentation time of the last event (ms). */
   readonly end: number;
   readonly panels: PanelsSummary;
+  readonly behaviourDiffs: readonly BehaviourDiffSummary[];
 }
 
 export interface TestHook {
@@ -117,6 +143,8 @@ function panelsSummary(model: CockpitModel): PanelsSummary {
   });
   const routes = routesPanel(model).view(end, cursor);
   const index = indexPanel(model).view(end, cursor);
+  const field = behaviourPanel(model).view(end, cursor);
+  const signals = signalsPanel(model).view(end, cursor);
   return {
     execution: { base: lane("base"), base_repeat: lane("base_repeat"), head: lane("head") },
     routes: routes.rows.map((row) => ({
@@ -129,6 +157,16 @@ function panelsSummary(model: CockpitModel): PanelsSummary {
       results: index.results,
       rows: index.rows.map((row) => ({ id: row.id, status: row.status })),
     },
+    behaviour: field.cells.map((cell) => ({
+      test: cell.test,
+      symbol: cell.symbol,
+      status: cell.status,
+    })),
+    signals: signals.series.map((series) => ({
+      label: series.label,
+      points: series.points.length,
+      latest: series.latest,
+    })),
   };
 }
 
@@ -138,12 +176,22 @@ export function summarise(model: CockpitModel, mode: ClockMode): CockpitSummary 
   let digest = 0x811c9dc5;
   let blast: unknown = null;
   const modules: string[] = [];
+  const behaviourDiffs: BehaviourDiffSummary[] = [];
   for (let i = 0; i < store.length; i++) {
     const event = store.event(i);
     if (event === null) continue;
     kinds[event.kind] = (kinds[event.kind] ?? 0) + 1;
     digest = fnv1a(`${event.id}\n`, digest);
     if (event.kind === "blast.computed") blast = event.payload;
+    if (event.kind === "diff.behaviour")
+      behaviourDiffs.push({
+        symbol: event.payload.symbol_id,
+        test: event.payload.test,
+        change: event.payload.change,
+        stability: event.payload.stability,
+        base: event.payload.base_preview,
+        head: event.payload.head_preview,
+      });
     if (event.kind === "graph.node" && event.payload.node.type === "module")
       modules.push(event.payload.node.id);
   }
@@ -159,6 +207,7 @@ export function summarise(model: CockpitModel, mode: ClockMode): CockpitSummary 
     mode,
     end: store.endTime,
     panels: panelsSummary(model),
+    behaviourDiffs,
   };
 }
 

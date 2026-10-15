@@ -296,7 +296,10 @@ def pytest_configure() -> None:
         previews = None
         if wanted:  # E04: the calls whose values the engine asks to see
             previews = repro_trace.parse_previews(Path(wanted).read_text(encoding="utf-8"))
-        tracer = repro_trace.Tracer(repro_trace.parse_targets(listed), _trace, previews)
+        samples = int(os.environ.get("REPRO_TRACE_SAMPLES", "0") or 0)  # E07
+        tracer = repro_trace.Tracer(
+            repro_trace.parse_targets(listed), _trace, previews, samples=max(0, samples)
+        )
     if mapping or tracer is not None:
         monitor = _start_monitor(places, mapping=mapping, tracer=tracer)
         _STATE["monitor"] = monitor

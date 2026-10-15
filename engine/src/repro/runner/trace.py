@@ -100,6 +100,37 @@ def _found(symbols: Iterable[str], resolver: Resolver) -> list[tuple[TraceTarget
     return found
 
 
+#: ``trace.sample`` events from one run, at most.
+MAX_SAMPLES: Final = 2000
+
+
+def samples(
+    run: PytestRun, names: Mapping[TraceTarget, str], side: str, limit: int = MAX_SAMPLES
+) -> list[tuple[dict[str, Any], dict[str, str]]]:
+    """``trace.sample`` payloads and targets for the previewed calls of ``run`` (E07): the
+    targets ``names`` maps, test code left out (the files the run collected tests from, and
+    ``conftest.py``), at most ``limit``."""
+    test_files = {place[0] for place in run.collected.values() if place is not None}
+    found = []
+    for call in sorted(run.calls, key=lambda c: (c.test, c.target, c.index)):
+        if call.args_preview is None or call.target not in names:
+            continue
+        if call.target[0] in test_files or PurePosixPath(call.target[0]).name == CONFTEST:
+            continue
+        payload = {
+            "side": side,
+            "symbol_id": names[call.target],
+            "call_index": call.index,
+            "args_preview": call.args_preview,
+            "result_preview": call.result_preview if call.outcome == "return" else None,
+            "raised": call.type[:512] if call.outcome == "raise" else None,
+        }
+        found.append((payload, {"test": call.test}))
+        if len(found) >= limit:
+            break
+    return found
+
+
 def same(left: tuple[str, bool], right: tuple[str, bool]) -> bool | None:
     """Whether two encodings (digest, complete) are of the same value; None when either is
     incomplete: a truncated or failed encoding is never taken as equal to anything (E02)."""

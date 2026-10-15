@@ -45,6 +45,8 @@ OTHER_HASH_SEED: Final = 1
 OTHER_SEED: Final = 1
 #: The traced runs, by label.
 TRACED_RUNS: Final = ("A", "A2", "H")
+#: Calls previewed per test and function in each traced run: the cockpit's samples (E07).
+SAMPLES: Final = 4
 OVERLAY: Final = "base_tests"
 
 
@@ -168,7 +170,7 @@ class _Reproduction:
         if cached is not None:
             self.result.base_map, self.result.map_cached = cached, True
             return None
-        full = self.run(self.base, "A", map_tests=True, trace=self.on_base)
+        full = self.run(self.base, "A", map_tests=True, trace=self.on_base, samples=SAMPLES)
         self.result.base_map = test_map(full.results, self.resolvers[0])
         if cache is not None and key is not None and full.results.complete:
             cache.put(key, self.result.base_map)
@@ -180,7 +182,7 @@ class _Reproduction:
             if self.observe is not None:
                 self.observe(RunRecord("base", "A", tuple(on_base), full))
         elif on_base:
-            self.a = self.run(self.base, "A", on_base, trace=self.on_base)
+            self.a = self.run(self.base, "A", on_base, trace=self.on_base, samples=SAMPLES)
         if on_base:
             reverse = list(reversed(on_base))
             self.a2 = self.run(
@@ -190,9 +192,12 @@ class _Reproduction:
                 hash_seed=OTHER_HASH_SEED,
                 seed=OTHER_SEED,
                 trace=self.on_base,
+                samples=SAMPLES,
             )
         if on_head:
-            self.h = self.run(self.head, "H", on_head, map_tests=True, trace=self.on_head)
+            self.h = self.run(
+                self.head, "H", on_head, map_tests=True, trace=self.on_head, samples=SAMPLES
+            )
             self.result.head_map = test_map(self.h.results, self.resolvers[1])
 
     def rerun(self, flips: list[str]) -> dict[str, tuple[list[str | None], list[str | None]]]:
