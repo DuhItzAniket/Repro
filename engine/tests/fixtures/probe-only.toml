@@ -1,0 +1,23 @@
+# Expected Repro outcome for the probe-only fixture (E06 asserts the probe diff).
+[fixture]
+name = "probe-only"
+head = "refactor/percent"
+
+[expected]
+status = "FLAGGED"
+claims = ["percent() drops a branch no test needs"]
+# The only test uses percent(1, 4): the same on both sides. Generated inputs with a whole of
+# zero return 0.0 on base and raise ZeroDivisionError on head.
+evidence = [
+  "probe_diff:exception_added:stats.ratio:percent#0",
+  "test_outcome:P2P:tests/test_ratio.py::test_percent",
+]
+missing = ["perf_not_assessable:tests/test_ratio.py::test_percent"]
+# The reproducer: the first generated input that differs, and what each side gave.
+probe = ["percent(part=0, whole=0)", "0.0", "raises builtins.ZeroDivisionError('division by zero')"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_ratio.py::test_percent" = ["blast_radius"]

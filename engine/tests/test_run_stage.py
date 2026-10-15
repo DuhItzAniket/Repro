@@ -63,6 +63,7 @@ def evidence_name(item: dict[str, Any]) -> str | None:
         "perf_diff": "verdict",
         "behaviour_diff": "change",
         "api_diff": "breakage",
+        "probe_diff": "change",
     }.get(item["type"])
     if detail is None:
         return None
@@ -86,7 +87,15 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     }
     found = [named for item in evidence.values() if (named := evidence_name(item)) is not None]
     assert sorted(found) == sorted(expected["expected"]["evidence"]), log
-    diffs = ("diff.outcome", "diff.tests", "diff.perf", "diff.behaviour", "diff.api", "diff.deps")
+    diffs = (
+        "diff.outcome",
+        "diff.tests",
+        "diff.perf",
+        "diff.behaviour",
+        "diff.api",
+        "diff.deps",
+        "diff.probe",
+    )
     cited = [e["payload"]["evidence_id"] for e in events if e["kind"] in diffs]
     compared = (
         "test_outcome",
@@ -95,6 +104,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
         "behaviour_diff",
         "api_diff",
         "dep_diff",
+        "probe_diff",
     )
     assert sorted(cited) == sorted(i for i, item in evidence.items() if item["type"] in compared)
     for event in events:  # ADR-0015 §2: what each check's status means without claims
@@ -113,7 +123,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             expected_status = "warn" if payload["change"] == "test_modified" else "fail"
         elif event["kind"] == "diff.perf":
             expected_status = "ok" if payload["verdict"] in ("improvement", "no_change") else "warn"
-        elif event["kind"] in ("diff.behaviour", "diff.api", "diff.deps"):
+        elif event["kind"] in ("diff.behaviour", "diff.api", "diff.deps", "diff.probe"):
             expected_status = "warn"  # every difference needs a claim to explain it
         else:
             continue
@@ -133,7 +143,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     "name",
     [
         "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
-        "api-break", "new-dep",
+        "api-break", "new-dep", "probe-only",
     ],
 )  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:

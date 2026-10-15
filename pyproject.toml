@@ -93,5 +93,5 @@ exclude = ["^engine/tests/data/"]
 # The sandbox hook's modules import each other by top-level name, as they are loaded inside the
 # sandbox (the hook directory first on PYTHONPATH); each is still checked as a file of engine/src.
 [[tool.mypy.overrides]]
-module = ["repro_encode", "repro_trace"]
+module = ["repro_encode", "repro_trace", "repro_pytest"]
 ignore_missing_imports = true
