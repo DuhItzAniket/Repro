@@ -226,3 +226,22 @@ entry. If something turns out wrong, add a correcting entry.
   removed zero guard on 7 of 40 inputs, but not a change confined to valid ISO timestamps: short
   random text does not form structured values. Generated probes complement, not replace, the
   comparison of the tests' own calls.
+
+## 2026-10-15 · Stage F · A status a replay can decide again
+- Deterministic status rules over a run's event log (F04) were checked by a property ("never
+  VERIFIED while an unexplained stable difference or a failed invariant exists", 2000 generated
+  inputs a run) and a table of every rule. On the 17 fixture repositories they give 13 FLAGGED,
+  3 UNVERIFIABLE and 1 VERIFIED. Without a review stage every behaviour difference is
+  unexplained, so the two honest fixes among them are FLAGGED until claims are judged: the
+  deterministic and the reviewed status are different measurements and are recorded apart.
+- A card assembled from the log alone was byte-identical when assembled again from the stored
+  log in every end-to-end run (17 fixtures and 2 runs whose environment could not be built).
+  Making that true needed two facts the log did not hold: the policy's thresholds and the
+  seeds, now evidence of their own. Of the 17 normalised golden cards, 16 matched exactly in a
+  second full run; the 17th matched alone, its timing test having turned into a regression
+  while a type check and a lint ran on the same machine.
+- Rules that pass when their evidence cannot exist are a class of verification bug of their
+  own: a path pattern that matches nothing, dependency metadata the tool cannot read, and a
+  failed upstream job each produced a pass or a silent skip in F02's first version. Each is
+  now an error or an explicit "not evaluated", and a network invariant's pass states whether the
+  sandbox enforced the network or only watched for attempts.

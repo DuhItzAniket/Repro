@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-15
+
+Stage F — Policy & deterministic card. Gate record: `docs/phases/F-gate.md`.
+
 ### Added
 - Repository policy: `repro.yml`, read from the base ref and validated against a JSON
   Schema (the invariants, claim and coverage thresholds of PRODUCT.md), with errors that
@@ -432,7 +436,9 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.6.0
+[0.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.5.0
 [0.4.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.4.0
 [0.3.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.2.0

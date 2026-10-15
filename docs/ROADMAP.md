@@ -440,7 +440,7 @@ scenario passes end to end in the cockpit.
 
 **Goal:** declared invariants and a complete, rule-based card. Repro is useful with no LLM at all.
 
-**Gate F:** each invariant has a passing and a failing fixture. Every fixture repo yields the
+**Gate F (passed 2026-10-15, v0.6.0, record: [`phases/F-gate.md`](phases/F-gate.md)):** each invariant has a passing and a failing fixture. Every fixture repo yields the
 expected deterministic status. `repro replay` regenerates identical cards.
 
 | ID | Phase | Size | Depends | Status |
@@ -717,3 +717,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | F03 | 2026-10-15 | [#56](https://github.com/DuhItzAniket/Repro/pull/56) | no_network fails on head's network attempts past this machine (loopback and Unix sockets are local), citing the sandbox's evidence, and its pass states enforced (L3) or detected-only, with a network_not_enforced item for the latter; perf_budget fails a D07 regression whose interval is past max_regression, and is not evaluated when the slowdown is within this machine's noise; net-call fixture (TEST-NET-1), perf-regress and invariants-pass enable them |
 | F04 | 2026-10-15 | [#57](https://github.com/DuhItzAniket/Repro/pull/57) | VERIFIED, FLAGGED or UNVERIFIABLE by deterministic rules over a run's event log, each reason citing evidence or targets: a difference no supported claim explains flags (all of them without a review stage), anything not checked leaves the change unverifiable, including changed symbols masked as noise; policy evidence on every run so a replay decides the same; property test and a table of every rule; every fixture's status asserted from its log |
 | F05 | 2026-10-15 | [#58](https://github.com/DuhItzAniket/Repro/pull/58) | every run ends with its Reproduction Card, assembled from the run's own log (F04 status and reasons, conditions, gap with resolutions, invariants, missing items, replay digest), published in card.published with the card and stored; repro export (md, json) refuses a card that differs from its log and repro replay reports it; the cockpit's header button opens the card in the drawer; golden cards for every fixture, byte-identical when assembled again |
+| Gate F | 2026-10-15 | [#59](https://github.com/DuhItzAniket/Repro/pull/59) | Stage F complete; release v0.6.0 ([gate record](phases/F-gate.md)); each of the five invariants passes on one fixture and fails on another, all 17 fixtures get their expected deterministic status from their own logs, and every card assembled again from its stored log is byte-identical, in CI on Ubuntu and Windows |
