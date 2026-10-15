@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | F — Policy & deterministic card |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | F01, E05 |
-| **Branch / PR** | `phase/F02-invariants` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/F02-invariants` · [#55](https://github.com/DuhItzAniket/Repro/pull/55) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Turn three of `repro.yml`'s invariants into results a reviewer can trust: whether a change
@@ -108,7 +108,7 @@ Through `repro run` (Windows, process sandbox), each fixture's `invariant.result
   dependency declared in `pyproject.toml` went unseen in a project installed from requirement
   files (now compared); `migrations/`, `migrations` and `/migrations/**` matched nothing (now a
   directory match, or an error).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#55).
 
 ## Deviations from spec
 - The roadmap's "a passing and a failing fixture per invariant": `invariants-pass` passes all
