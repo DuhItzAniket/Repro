@@ -564,6 +564,10 @@ export interface CostEstimatePayload {
    */
   usd: number;
   estimate: true;
+  /**
+   * live: the call reached the model now; cassette: it was replayed, and this is what it cost when recorded (G02). Absent in logs from before G02.
+   */
+  source?: "live" | "cassette";
 }
 
 /**

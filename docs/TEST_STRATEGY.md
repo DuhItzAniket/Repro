@@ -116,8 +116,10 @@ CI runs on `ubuntu-latest` and `windows-latest`. Tests cover:
 ## 5. Agent evaluation (summary)
 
 Detailed in `docs/ARCHITECTURE.md` §Agents and `docs/paper/README.md`.
-- **CI (deterministic):** agent calls are served from recorded responses keyed by prompt hash.
-  A missing recording fails the test. It never silently calls the API.
+- **CI (deterministic):** agent calls are served from cassettes keyed by prompt version, model
+  and input digest (run-specific IDs normalised; G02). A missing recording fails the test. It
+  never silently calls the API: every test runs against a closed loopback API with a dummy key,
+  and tests that start the Claude Code CLI fail on any connection past loopback.
 - **Eval suite (live):** labelled PRs with expected claims and verdicts. Tracked metrics:
   claim-extraction precision/recall, verdict accuracy, **citation validity rate** (cited
   evidence exists and relates to the claim's targets), rejection rate, tokens and cost per PR.

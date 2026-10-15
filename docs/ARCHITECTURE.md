@@ -539,10 +539,28 @@ effort levels. Agreement is logged per run.
 `agents/backend.py` defines an `LLMBackend` protocol: `run(request, on_progress)` gives an
 `AgentResult` whose outcome is `ok`, `max_turns`, `max_budget`, `timeout`, `invalid_output` or
 `error`, and never raises for what the model does. The default implementation is the Agent
-SDK (`agents/sdk.py`). A direct Anthropic Messages API backend, which gives constrained decoding and no
-per-agent CLI subprocess, is an open option (ADR-0007). In CI, calls are served from
-**cassettes** keyed by `(prompt version, model, input digest)`. A missing cassette fails the
-test and never silently calls the API. Concurrency defaults to `min(12, free RAM in GiB)`
+SDK (`agents/sdk.py`). A direct Anthropic Messages API backend, which gives constrained
+decoding and no per-agent CLI subprocess, is an open option (ADR-0007). In CI, calls are served
+from **cassettes** keyed by `(prompt version, model, input digest)`. A missing cassette fails the
+test and never silently calls the API.
+
+As built (G02, `agents/cassette.py`): the digest is the SHA-256 of what the model is given (role,
+prompts, tools, output schema, effort; not the budget, which a run's ledger may lower) with its
+run-specific IDs (`ev_`, `evt_`, `run_`) replaced by kind and first-seen order, so the same call
+in another run has the same digest. A cassette holds the request, the transcript (progress and
+Repro tool calls with their outputs, in order) and the result, as canonical, scrubbed JSON at
+`<root>/<prompt>/<version>/<model>/<digest>.json`. Replay has no backend to call; it maps the
+recording's IDs to the current run's by the same order, makes the recorded tool calls again and
+fails as stale if one returns something else. `timeout` and `error` outcomes are never recorded.
+Prompts are versioned files (`agents/prompts/<name>.md`, `version:` front matter) whose texts are
+locked by SHA-256 per version (`lock.json`, only added to); a call names its prompt as
+`<name>/<version>`. Costs come from the CLI's per-model `model_usage`, one `cost.estimate` per
+model with `source` `live` or `cassette`; a run's `RunLedger` totals them and, with a limit,
+reserves each call's dollar budget from what is left. Tests never reach a model: the conftest
+points the API at a closed loopback port, and tests that start the CLI run behind a proxy that
+fails them on any connection past loopback.
+
+Concurrency defaults to `min(12, free RAM in GiB)`
 (research/04 §1.10: about 1 GiB per SDK subprocess). The UI always shows 12 dispatch slots, with
 queued agents shown as `waiting`. As built (G01, `agents/dispatch.py`, `agents/events.py`): an
 agent takes the lowest free slot (`agent.spawned`), shows `waiting` only if the run's

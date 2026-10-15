@@ -36,6 +36,7 @@ def request(*, tools: tuple[ReproTool, ...] = (PING,), schema: Any = None) -> Ag
         system_prompt="Judge the claim.",
         prompt="<untrusted_pr_description>x</untrusted_pr_description>",
         model="claude-opus-5-5",
+        prompt_version="review/1",
         budget=Budget(max_turns=5, max_budget_usd=0.5, timeout_s=60),
         tools=tools,
         output_schema=schema,

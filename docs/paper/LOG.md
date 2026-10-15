@@ -263,3 +263,19 @@ entry. If something turns out wrong, add a correcting entry.
   denied every tool outside Repro's own prefix also denied the answer, and the agent looped to
   its turn limit: an allow-list must name the runtime's own channels, and is better kept per
   call than per prefix.
+
+## 2026-10-15 · G02 · Replaying a judge in a run it never saw
+- An agent call's input carries identifiers drawn afresh in every run (evidence, event and run
+  ULIDs), so a cassette keyed by a digest of the raw input would never be found again: record
+  and replay would agree only within the run that recorded. Keying by the input with those IDs
+  replaced by kind and first-seen order, and mapping the recording's IDs to the run's by the
+  same order on replay, makes a recorded verdict cite the replaying run's own evidence
+  ([phase record](../phases/G02-cassettes.md)). An ID the model made up stays made up, so
+  citation validation sees the same failure in a replay as live.
+- A replay re-executes the recorded tool calls and fails as stale if one returns something
+  else: a recorded answer is only reused while the evidence it was given is unchanged.
+- "Offline" was measured, not assumed. Behind a proxy that refuses and records every
+  connection past loopback, an unlocked Claude Code CLI whose model API was local still tried
+  to reach Anthropic's API five times in a one-turn session (feature flags and telemetry). The
+  locked-down runtime made none, and every agent test now fails on any such attempt.
+

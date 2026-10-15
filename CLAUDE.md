@@ -114,7 +114,7 @@ uv run repro-events-codegen --check   # drift gate (CI): fails if generated code
 uv run python scripts/check_licenses.py   # licence allow-list over all installed deps (CI)
 uv run repro-events validate <log.jsonl>   # schema + log invariants of an event log
 pnpm fixtures                             # regenerate apps/web/fixtures/*.jsonl (review the diff!)
-uv run pytest --update-goldens            # rewrite golden files (review the diff!)
+uv run pytest --update-goldens            # rewrite golden files, lock new prompt versions (review the diff!)
 pnpm --filter @repro/web exec playwright test -c playwright.gate.config.ts
                         # Gate C end to end; needs pnpm build, uv sync and REPRO_GATE_REPO
                         # (a clone of pallets/itsdangerous); REPRO_GATE_CHANNEL=msedge on Windows

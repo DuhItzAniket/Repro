@@ -21,6 +21,7 @@ from repro.agents import (
     Dispatch,
     LLMBackend,
     Progress,
+    RunLedger,
     Usage,
     run_agent,
 )
@@ -43,6 +44,7 @@ REQUEST = AgentRequest(
     system_prompt="Judge the claim.",
     prompt="Is it supported?",
     model="claude-opus-5-5",
+    prompt_version="r/1",
     budget=Budget(max_turns=4),
 )
 WORK = (
@@ -72,14 +74,16 @@ def run_job(
 
 
 def agents(
-    backend: LLMBackend, dispatch: Dispatch, count: int, results: list[AgentResult]
+    backend: LLMBackend,
+    dispatch: Dispatch,
+    count: int,
+    results: list[AgentResult],
+    ledger: RunLedger | None = None,
 ) -> Callable[[JobContext], None]:
     def work(ctx: JobContext) -> None:
         async def all_of_them() -> list[AgentResult]:
             calls = [
-                run_agent(
-                    ctx, backend, dispatch, REQUEST, agent=dispatch.agent_id(), prompt_version="r/1"
-                )
+                run_agent(ctx, backend, dispatch, REQUEST, agent=dispatch.agent_id(), ledger=ledger)
                 for _ in range(count)
             ]
             return await asyncio.gather(*calls)
@@ -139,6 +143,7 @@ def test_an_agent_call_is_reported_as_it_runs(writer: StoreWriter, schema_set: S
         "cache_read_tokens": 800,
         "usd": 0.0123,
         "estimate": True,
+        "source": "live",
     }
 
 
@@ -213,9 +218,7 @@ def test_cancelling_the_run_cancels_the_call(writer: StoreWriter) -> None:
     def work(ctx: JobContext) -> None:
         async def one() -> AgentResult:
             started.set()
-            return await run_agent(
-                ctx, backend, dispatch, REQUEST, agent="a01", prompt_version="r/1"
-            )
+            return await run_agent(ctx, backend, dispatch, REQUEST, agent="a01")
 
         asyncio.run(one())
 
@@ -248,3 +251,42 @@ def test_a_call_that_overruns_its_job_is_cancelled(writer: StoreWriter) -> None:
     assert backend.cancelled == 1
     hold.set()
     assert "done" not in {e["payload"].get("state") for e in of_agents(events)}
+
+
+def test_a_replayed_call_reports_each_models_recorded_cost(
+    writer: StoreWriter, schema_set: SchemaSet
+) -> None:
+    small = Usage(input_tokens=90, output_tokens=10, cache_read_tokens=0, cost_usd=0.0004)
+    by_model = {"claude-opus-5-5": USAGE, "claude-haiku-5-5": small}
+    result = AgentResult("ok", turns=1, usage=USAGE, by_model=by_model, replayed=True)
+    _, _, events = run_job(writer, agents(ScriptedBackend(result), Dispatch(1), 1, []))
+
+    check_log(schema_set, events)
+    costs = [e["payload"] for e in of_agents(events) if e["kind"] == "cost.estimate"]
+    assert [(c["model"], c["usd"], c["source"]) for c in costs] == [
+        ("claude-haiku-5-5", 0.0004, "cassette"),
+        ("claude-opus-5-5", 0.0123, "cassette"),
+    ]
+
+
+def test_a_run_whose_agent_budget_is_spent_starts_no_more_calls(
+    writer: StoreWriter, schema_set: SchemaSet
+) -> None:
+    """A $0.02 run budget, calls estimated at $0.0123: the first may spend $0.02, the second
+    what is left, and the third finds nothing left and is never made."""
+    backend = ScriptedBackend(AgentResult("ok", turns=1, usage=USAGE))
+    ledger = RunLedger(limit_usd=0.02)
+    results: list[AgentResult] = []
+    _, status, events = run_job(writer, agents(backend, Dispatch(1), 3, results, ledger))
+
+    assert status == "ok"
+    check_log(schema_set, events)
+    budgets = [request.budget.max_budget_usd for request in backend.requests]
+    assert budgets == [0.02, pytest.approx(0.02 - 0.0123)]
+    assert sorted(r.outcome for r in results) == ["max_budget", "ok", "ok"]
+    assert ledger.spent_usd == pytest.approx(0.0246)
+    failed = [e for e in of_agents(events) if e["payload"].get("state") == "failed"]
+    assert [e["payload"]["detail"] for e in failed] == [
+        "max_budget: the run's agent budget of $0.02 is spent"
+    ]
+    assert len([e for e in of_agents(events) if e["kind"] == "cost.estimate"]) == 2

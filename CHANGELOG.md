@@ -21,6 +21,19 @@ All notable changes to this project are documented here. The format follows
   dispatch slots, reported as `agent.spawned`, `agent.state` (`waiting` when queued, then
   `thinking` and `tool_call` with the share of the turn budget used, then `done` or `failed`)
   and `cost.estimate`; cancelling a run cancels its agents' calls. [G01]
+- Cassettes: agent calls recorded once and replayed offline, keyed by prompt version, model
+  and a digest of the input taken with run-specific IDs normalised, so a recording replays in
+  any later run with that run's evidence IDs. A missing cassette fails instead of calling the
+  API; a replay whose recorded tool calls now return something else fails as stale. Cassettes
+  are canonical, scrubbed JSON. [G02]
+- Versioned prompt files (`version:` front matter, `string.Template` placeholders filled once)
+  with a lock of every version's SHA-256, so a version always names one text. [G02]
+- Cost accounting: usage per model from the CLI, one `cost.estimate` per model with a new
+  optional `source` (`live` or `cassette`), and a run ledger that, given a limit, starts no
+  agent call once the run's budget is spent. [G02]
+- Tests never reach a model or the internet through the CLI: every test runs against a closed
+  loopback API with a dummy key, and tests that start the CLI fail on any connection past
+  loopback. [G02]
 
 ## [0.6.0] - 2026-10-15
 

@@ -131,6 +131,15 @@ The README still says ClaudeSDKClient is needed for custom tools and hooks. The 
   - An unlocked CLI (`setting_sources` naming user, project and local) loads a `CLAUDE.md` from
     the `cwd`'s ancestors, runs the project's hooks only when the `cwd` is the project, and loads
     the `CLAUDE.md` and hooks of the `CLAUDE_CONFIG_DIR` directory.
+- The CLI respects `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` (comma- or space-separated); its
+  feature-flag fetches and telemetry event logging go to `api.anthropic.com`, and
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` turns off its optional traffic **[V network-config]**.
+  Measured (G02, behind a proxy that refuses and records): with that traffic on, an unlocked CLI
+  whose model API was local still tried to reach `api.anthropic.com:443` five times in a
+  one-turn session; with it off, none.
+- `ResultMessage.model_usage` maps each model to `inputTokens`, `outputTokens`,
+  `cacheReadInputTokens`, `cacheCreationInputTokens` and `costUSD`, among other fields
+  (measured with CLI 2.1.300).
 
 ---
 
@@ -622,6 +631,8 @@ All accessed 2026-10-13.
 | 94 | https://websockets.readthedocs.io/en/stable/topics/broadcast.html | V |
 | 95 | https://docs.kurrent.io/clients/python/v1.1/subscriptions (and other client versions, via search) | S |
 | 96 | https://html.spec.whatwg.org/multipage/server-sent-events.html | V |
+| 97 | https://code.claude.com/docs/en/env-vars (read 2026-10-15, §1.11) | V |
+| 98 | https://code.claude.com/docs/en/network-config (read 2026-10-15, §1.11) | V |
 
 Gaps: the web-search budget ran out near the end. These items are still **[S]** or **[U]**:
 - The check-run summary limit, the comment-body limit, and attestation plan availability.

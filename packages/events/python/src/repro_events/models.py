@@ -415,12 +415,14 @@ class AgentStatePayload(ReproModel):
 class CostEstimatePayload(ReproModel):
     """Client-side token and cost estimate for an agent call (not billing data)."""
 
+    __non_nullable_optional__ = frozenset(['source'])
     model: Annotated[str, Field(max_length=200, min_length=1)]
     input_tokens: Annotated[int, Field(ge=0)]
     output_tokens: Annotated[int, Field(ge=0)]
     cache_read_tokens: Annotated[int, Field(ge=0)]
     usd: Annotated[float, Field(ge=0)]
     estimate: Literal[True]
+    source: Literal['live', 'cassette'] | None = None
 
 
 

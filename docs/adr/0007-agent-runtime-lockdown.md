@@ -58,3 +58,6 @@ still shows 12 slots and marks queued agents as `waiting`.
   `CLAUDE.md`, hook, skill, subagent, command and `.mcp.json` is first shown to load on an
   unlocked CLI, then not to load under the lockdown (`engine/tests/test_agents_cli.py`; the
   phase record `docs/phases/G01-llm-backend.md` has the evidence).
+- Decision 4 (G02, `repro.agents.cassette`): cassettes are keyed by prompt version, model and an
+  input digest taken with run-specific IDs normalised, and a replay maps the recording's IDs to
+  the run's; a missing cassette raises, and replay has no backend through which to call.

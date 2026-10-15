@@ -32,29 +32,21 @@ from repro.agents import AgentRequest, AgentResult, AgentSdkBackend, Budget, Rep
 from repro.agents.lockdown import STRUCTURED_OUTPUT, lockdown_options
 from repro.agents.sdk import _server
 
+#: Every test here runs the CLI: behind a proxy that fails it on any connection past
+#: loopback (the repository's conftest).
+pytestmark = pytest.mark.model_cli
+
 MARK = "PLANTED-7f3a"
 SYSTEM = "You check one claim against the evidence."
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
-#: Variables that would send the CLI elsewhere than the fake API, or log it in as someone.
-FOREIGN = (
-    "ANTHROPIC_AUTH_TOKEN",
-    "CLAUDE_CODE_OAUTH_TOKEN",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
-    "ANTHROPIC_MODEL",
-    "CLAUDE_CONFIG_DIR",
-)
 
 
 @pytest.fixture
 def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """An empty home and a dummy key: nothing from the machine's own Claude setup is used."""
+    """An empty home: nothing from the machine's own Claude setup is used. (The repository's
+    conftest already removes its credentials and points the API at a closed port.)"""
     home = tmp_path / "home"
     home.mkdir()
-    for name in FOREIGN:
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-not-a-key")
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
     return home
@@ -117,6 +109,7 @@ def agent_request(tools: tuple[ReproTool, ...], **changes: Any) -> AgentRequest:
         "system_prompt": SYSTEM,
         "prompt": "Is the claim supported?",
         "model": "claude-sonnet-5-5",
+        "prompt_version": "review/1",
         "budget": Budget(max_turns=4, max_budget_usd=1.0, timeout_s=120),
         "tools": tools,
     }
