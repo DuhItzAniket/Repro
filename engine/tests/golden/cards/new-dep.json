@@ -1,0 +1,111 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "eb12b8a3929d92ca1908238db97614dbb36036a9",
+      "sha": "eb12b8a3929d92ca1908238db97614dbb36036a9"
+    },
+    "head": {
+      "ref": "d367b67d2e01c7a9e7d2889072b796e4a03212b2",
+      "sha": "d367b67d2e01c7a9e7d2889072b796e4a03212b2"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 1
+  },
+  "gap": [
+    {
+      "check": "diff.deps",
+      "evidence_id": "ev_00000000000000000000000001",
+      "explained_by": [],
+      "kind": "added",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "stable",
+      "summary": "six added (1.17.0), as declared",
+      "type": "dep_diff"
+    },
+    {
+      "check": "diff.deps",
+      "evidence_id": "ev_00000000000000000000000002",
+      "explained_by": [],
+      "kind": "added",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "stable",
+      "summary": "six added (1.17.0), installed",
+      "type": "dep_diff"
+    }
+  ],
+  "generated_at": "<generated_at>",
+  "invariants": [
+    {
+      "evidence_ids": [
+        "ev_00000000000000000000000003",
+        "ev_00000000000000000000000001"
+      ],
+      "message": "new dependencies: six",
+      "name": "no_new_dependencies",
+      "result": "fail"
+    }
+  ],
+  "missing": [
+    {
+      "detail": "1 tests run in under 5 ms on both sides, too fast to time: tests/test_clock.py::test_label",
+      "reason": "perf_not_assessable",
+      "resolution": "A benchmark that runs the changed code long enough to time",
+      "targets": [
+        {
+          "test": "tests/test_clock.py::test_label"
+        }
+      ]
+    }
+  ],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "FLAGGED",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "2 diff.deps flagged (added)",
+      "evidence_ids": [
+        "ev_00000000000000000000000001",
+        "ev_00000000000000000000000002"
+      ],
+      "rule": "gap_flagged",
+      "targets": []
+    },
+    {
+      "decides": true,
+      "detail": "invariants failed: no_new_dependencies",
+      "evidence_ids": [
+        "ev_00000000000000000000000003",
+        "ev_00000000000000000000000001"
+      ],
+      "rule": "invariant_failed",
+      "targets": []
+    }
+  ],
+  "verdicts": []
+}

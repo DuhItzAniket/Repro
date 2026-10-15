@@ -12,6 +12,7 @@
     "conditions",
     "claims",
     "verdicts",
+    "status_reasons",
     "gap",
     "invariants",
     "missing",
@@ -114,19 +115,51 @@
           "$ref": "../common.schema.json#/$defs/GitRef"
         },
         "python_version": {
-          "type": "string",
-          "pattern": "^3\\.[0-9]+\\.[0-9]+"
+          "description": "Head's interpreter (else base's); null when no environment was built.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^3\\.[0-9]+\\.[0-9]+"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "platform": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "description": "Head's sandbox platform (else base's); null when no sandbox was ready.",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "isolation_level": {
-          "$ref": "../common.schema.json#/$defs/IsolationLevel"
+          "description": "The lower of the two sides' levels; null when no sandbox was ready.",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/IsolationLevel"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "network": {
-          "$ref": "../common.schema.json#/$defs/NetworkEnforcement"
+          "description": "enforced only if every side's sandbox enforced it; null when none was ready.",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/NetworkEnforcement"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "lock_sha256": {
           "type": "object",
@@ -160,19 +193,27 @@
           "minimum": 0
         },
         "seeds": {
-          "type": "object",
-          "required": ["hash_seed", "hash_seed_repeat"],
-          "properties": {
-            "hash_seed": {
-              "type": "integer",
-              "minimum": 0
+          "description": "The hash seeds of base's two runs (A and A'); null when the tests did not run.",
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["hash_seed", "hash_seed_repeat"],
+              "properties": {
+                "hash_seed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "hash_seed_repeat": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
             },
-            "hash_seed_repeat": {
-              "type": "integer",
-              "minimum": 0
+            {
+              "type": "null"
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "repro_version": {
           "type": "string",
@@ -201,11 +242,58 @@
         "$ref": "verdict.schema.json"
       }
     },
+    "status_reasons": {
+      "description": "Why the status is what it is (FLAGGED: what flags; UNVERIFIABLE: what could not be checked), then what was also incomplete when FLAGGED (F04).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "detail", "evidence_ids", "targets", "decides"],
+        "properties": {
+          "rule": {
+            "type": "string",
+            "pattern": "^[a-z][a-z_]*$",
+            "maxLength": 64
+          },
+          "detail": {
+            "$ref": "../common.schema.json#/$defs/ShortText"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "../common.schema.json#/$defs/EvidenceId"
+            }
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          },
+          "decides": {
+            "description": "Whether this reason gives the status (false: also incomplete, under a FLAGGED status).",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "gap": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["evidence_id", "type", "summary", "origin", "stability", "explained_by"],
+        "required": [
+          "evidence_id",
+          "type",
+          "check",
+          "kind",
+          "summary",
+          "origin",
+          "stability",
+          "resolution",
+          "explained_by"
+        ],
         "properties": {
           "evidence_id": {
             "$ref": "../common.schema.json#/$defs/EvidenceId"
@@ -213,8 +301,22 @@
           "type": {
             "$ref": "../common.schema.json#/$defs/EvidenceType"
           },
+          "check": {
+            "description": "The check event that reported it (diff.*), or policy_change.",
+            "type": "string",
+            "pattern": "^(diff\\.[a-z]+|policy_change)$"
+          },
+          "kind": {
+            "description": "The class, change, verdict or breakage the check names.",
+            "type": "string",
+            "maxLength": 64
+          },
           "summary": {
             "$ref": "../common.schema.json#/$defs/ShortText"
+          },
+          "resolution": {
+            "description": "What the status rules made of it (F04).",
+            "enum": ["pre-existing", "unassessed", "passed", "explained", "flagged"]
           },
           "origin": {
             "$ref": "../common.schema.json#/$defs/Origin"
@@ -237,7 +339,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "result", "evidence_ids"],
+        "required": ["name", "result", "evidence_ids", "message"],
         "properties": {
           "name": {
             "type": "string",
@@ -245,6 +347,9 @@
           },
           "result": {
             "enum": ["pass", "fail", "not_evaluated"]
+          },
+          "message": {
+            "$ref": "../common.schema.json#/$defs/ShortText"
           },
           "evidence_ids": {
             "type": "array",

@@ -11,6 +11,7 @@ uv run repro --version
 uv run repro doctor          # Python, SQLite, git, uv, Docker and the data paths (--json)
 uv run repro run --repo <path> --base <ref> --head <ref>   # the cockpit shows it live
 uv run repro replay <run id | log.jsonl>                    # from the start
+uv run repro export <run id | log.jsonl> --format md|json  # the Reproduction Card
 uv run repro serve           # the cockpit, the read-only API and the event stream
 uv run pytest
 ```
@@ -18,7 +19,10 @@ uv run pytest
 `run`, `replay` and `serve` listen on `127.0.0.1:8780` (loopback only; `--port`, `--open` to
 open the browser, `--allow-origin` for a dev server) and serve the built cockpit (`pnpm build`;
 the `ui_dir` setting points elsewhere). `run --no-serve` waits for the run and exits 0 if it
-completed, 1 if not. `export` is declared and exits with status 2, naming its phase (F05).
+completed, 1 if not. Every run ends with its card (F05): `export` assembles it again from the
+log, as Markdown or canonical JSON (`-o FILE` to write a file), and exits 1 if it differs from
+the card the run published; `replay` reports the same check before serving. The in-toto, SARIF
+and JUnit formats exit with status 2, naming their phase (H04).
 
 ## Store
 

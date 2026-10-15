@@ -15,6 +15,7 @@ the orchestrator itself. The run registry is updated and the WAL checkpointed af
 """
 
 import contextlib
+import json
 import queue
 import threading
 import time
@@ -288,9 +289,10 @@ class _Execution:
             "evidence": sum(event.kind == "evidence.created" for event in committed),
             "missing": sum(event.kind == "missing.recorded" for event in committed),
         }
+        cards = [json.loads(event.body) for event in committed if event.kind == "card.published"]
         payload = {
             "outcome": outcome,
-            "card_status": None,
+            "card_status": cards[-1]["payload"]["status"] if cards else None,  # F05
             "duration_ms": max(0, round((time.monotonic() - started) * 1000)),
             "counts": counts,
         }

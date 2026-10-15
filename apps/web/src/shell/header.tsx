@@ -35,14 +35,36 @@ export function ProgressBar({ stages }: { stages: readonly StageSegment[] }) {
   );
 }
 
-export function Header({ rect, view }: { rect: Rect; view: ShellView }) {
+export function Header({
+  rect,
+  view,
+  onCard,
+}: {
+  rect: Rect;
+  view: ShellView;
+  /** Opens the Reproduction Card (F05); the button shows once the run has a card status. */
+  onCard?: () => void;
+}) {
   const counters = view.counters.value;
   const run = view.run.value;
   const status = view.status.value;
   return (
     <header class="header" style={rectStyle(rect)}>
       <div class="brand">
-        <h1 class="title">Repro</h1>
+        <div class="brand-line">
+          <h1 class="title">Repro</h1>
+          {run.cardStatus !== null && onCard !== undefined && (
+            <button
+              type="button"
+              class="card-status"
+              data-status={run.cardStatus}
+              aria-label={`card ${run.cardStatus}: open the Reproduction Card`}
+              onClick={onCard}
+            >
+              {`card ${run.cardStatus}`}
+            </button>
+          )}
+        </div>
         <p class="subtitle">
           agent changes → reproduced evidence
           {run.repo !== null && (

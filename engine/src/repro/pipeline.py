@@ -5,7 +5,8 @@ change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``),
 (``repro.yml`` from base; head's change to it as ``policy_change`` evidence, F01). Then, unless the
 run only analyses, the run and diff stages (``repro.run_stage``, D06): each side's sandbox and
 environment, the selected tests on both sides, and the evidence of what differs. What could not
-be read or run becomes a ``missing.recorded`` item, never a silent gap.
+be read or run becomes a ``missing.recorded`` item, never a silent gap. Last, the card stage
+(``repro.card.job``, F05) assembles the card from the run's own log.
 """
 
 from collections.abc import Sequence
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from repro.analysis import StaticAnalysis, analyse, graph_payloads
+from repro.card.job import CardStore, card_job
 from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
 from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
@@ -200,8 +202,10 @@ def pipeline_jobs(
     cache: Path,
     analyse_only: bool,
     artifacts: ArtifactStore | None = None,
+    cards: CardStore | None = None,
 ) -> tuple[Sequence[Job], RunState]:
-    """Every job of a run, and the state they share (close it when the run is over)."""
+    """Every job of a run, and the state they share (close it when the run is over). With
+    ``cards``, the card stage ends the run (F05)."""
     state = RunState()
     jobs = list(build_jobs(git, change, work, state))
     if not analyse_only:
@@ -209,6 +213,8 @@ def pipeline_jobs(
         jobs += run_jobs(
             git, base, head, work, state, backend=backend, cache=cache, artifacts=artifacts
         )
+    if cards is not None:
+        jobs.append(card_job(cards, [job.name for job in jobs]))
     return jobs, state
 
 

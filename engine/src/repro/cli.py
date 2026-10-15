@@ -1,15 +1,18 @@
 """The ``repro`` command line.
 
-``doctor``, ``run``, ``replay`` and ``serve`` work. ``export`` takes the options its phase needs
-and exits with status 2, naming the phase that brings it: nothing pretends to work.
+``doctor``, ``run``, ``replay``, ``serve`` and ``export`` work; an export format that arrives
+later (H04) exits with status 2, naming the phase that brings it: nothing pretends to work.
 
 ``run``, ``replay`` and ``serve`` serve the cockpit on a loopback port: ``run`` streams its run
-live from the same process, ``replay`` shows a stored run or an event log from the start.
+live from the same process, ``replay`` shows a stored run or an event log from the start, after
+assembling its card again from the log and checking it against the one the run published
+(F05). ``export`` writes that card as Markdown or canonical JSON.
 
 Global options override the environment and the configuration file (``repro.config``). Logs go
 to stderr; a command's output goes to stdout.
 """
 
+import json
 import os
 import re
 import socket
@@ -20,7 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, Any, NoReturn
 
 import typer
 
@@ -35,6 +38,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
     from repro.bus import EventBus
+    from repro.card import Regenerated
     from repro.gitops import Git
     from repro.orchestrator import Job, Orchestrator, RunHandle, RunResult
     from repro.pipeline import Change
@@ -395,6 +399,7 @@ def run(
     """
     settings = _session(ctx).settings()
     from repro.bus import EventBus  # noqa: PLC0415
+    from repro.card.job import StoreCards  # noqa: PLC0415
     from repro.ids import new_run_id  # noqa: PLC0415
     from repro.orchestrator import Orchestrator  # noqa: PLC0415
     from repro.pipeline import pipeline_jobs, remove_work  # noqa: PLC0415
@@ -415,6 +420,7 @@ def run(
         cache=settings.paths.data_dir,
         analyse_only=analyse_only,
         artifacts=ArtifactStore(settings.paths.runs, writer),
+        cards=StoreCards(settings.paths.database, writer),
     )
     cleaned = threading.Lock()
 
@@ -454,39 +460,27 @@ def replay(
     open_browser: OpenOption = False,
     allow_origin: AllowOriginOption = None,
 ) -> None:
-    """Replay a recorded run in the cockpit from the start, exactly as it happened."""
-    settings = _session(ctx).settings()
-    if _RUN_ID.match(source):
-        from repro.store import StoreError, StoreReader  # noqa: PLC0415
+    """Replay a recorded run in the cockpit from the start, exactly as it happened.
 
-        try:
-            with StoreReader(settings.paths.database) as reader:
-                record = reader.run(source)
-        except StoreError as exc:
-            typer.echo(f"repro replay: the store is not available: {exc}", err=True)
-            raise typer.Exit(2) from None
-        if record is None:
-            typer.echo(f"repro replay: no run {source} in {settings.paths.database}", err=True)
-            raise typer.Exit(2)
+    The run's card is first assembled again from its log and checked against the one the run
+    published; a difference is reported (``repro export`` refuses such a card), and the log is
+    shown as it is.
+    """
+    settings = _session(ctx).settings()
+    events = _events_of(settings, source, "replay")
+    if events:
+        found = _regenerated(events, "replay", strict=False)
+        same = ", identical to the published card" if found.identical else ""
+        typer.echo(
+            f"card: {found.card['status']}, assembled again from the log{same} "
+            f"(SHA-256 {found.sha256})"
+        )
+    if _RUN_ID.match(source):
         sock = _bind(host, port)
         _serve(settings, sock, page=f"/?run={source}&replay", allow_origin=allow_origin,
                open_browser=open_browser)  # fmt: skip
         return
     path = Path(source)
-    if not path.is_file():
-        typer.echo(f"repro replay: {source} is neither a run ID nor an event log file", err=True)
-        raise typer.Exit(2)
-    from repro_events.log import read_log, validate_log  # noqa: PLC0415
-    from repro_events.schemas import load_schema_set  # noqa: PLC0415
-
-    lines, issues = read_log(path)
-    issues += validate_log(load_schema_set(), lines) if lines else []
-    errors = [issue for issue in issues if issue.severity == "error"]
-    for issue in errors[:20]:
-        typer.echo(f"repro replay: {path.name}: {issue}", err=True)
-    if errors:
-        typer.echo(f"repro replay: {len(errors)} problems; the log is not replayed", err=True)
-        raise typer.Exit(1)
     sock = _bind(host, port)
     _serve(settings, sock, page="/?log=/replay.jsonl", allow_origin=allow_origin,
            replay_log=path.resolve(), open_browser=open_browser)  # fmt: skip
@@ -506,14 +500,98 @@ def serve(
     _serve(settings, sock, page="/", allow_origin=allow_origin, open_browser=open_browser)
 
 
+def _events_of(settings: Settings, source: str, command: str) -> list[dict[str, Any]]:
+    """A run's events: from the store for a run ID, else from a log file, validated."""
+    if _RUN_ID.match(source):
+        from repro.store import StoreError, StoreReader  # noqa: PLC0415
+
+        try:
+            with StoreReader(settings.paths.database) as reader:
+                if reader.run(source) is None:
+                    typer.echo(f"repro {command}: no run {source} in the store", err=True)
+                    raise typer.Exit(2)
+                return [json.loads(stored.body) for stored in reader.iter_events(source)]
+        except StoreError as exc:
+            typer.echo(f"repro {command}: the store is not available: {exc}", err=True)
+            raise typer.Exit(2) from None
+    path = Path(source)
+    if not path.is_file():
+        typer.echo(f"repro {command}: {source} is neither a run ID nor an event log file", err=True)
+        raise typer.Exit(2)
+    from repro_events.log import read_log, validate_log  # noqa: PLC0415
+    from repro_events.schemas import load_schema_set  # noqa: PLC0415
+
+    lines, issues = read_log(path)
+    issues += validate_log(load_schema_set(), lines) if lines else []
+    errors = [issue for issue in issues if issue.severity == "error"]
+    for issue in errors[:20]:
+        typer.echo(f"repro {command}: {path.name}: {issue}", err=True)
+    if errors:
+        typer.echo(f"repro {command}: {len(errors)} problems; the log is not used", err=True)
+        raise typer.Exit(1)
+    return [line.event for line in lines]
+
+
+def _regenerated(events: list[dict[str, Any]], command: str, *, strict: bool) -> "Regenerated":
+    """The card, assembled again from the log. One that differs from the card the run
+    published is reported; with ``strict``, the command then exits 1."""
+    from repro.card import regenerate  # noqa: PLC0415
+
+    try:
+        found = regenerate(events)
+    except ValueError as exc:
+        typer.echo(f"repro {command}: no card can be assembled: {exc}", err=True)
+        raise typer.Exit(1) from None
+    if found.published_sha256 is None:
+        typer.echo(
+            f"repro {command}: the log holds no card.published (the run ended before its card "
+            "stage); this card is assembled from the whole log",
+            err=True,
+        )
+    elif not found.identical:
+        typer.echo(
+            f"repro {command}: the card assembled from the log ({found.sha256}) differs from the "
+            f"one the run published ({found.published_sha256})",
+            err=True,
+        )
+        if strict:
+            raise typer.Exit(1)
+    return found
+
+
 @app.command()
 def export(
     ctx: typer.Context,
-    run_id: Annotated[str, typer.Argument(metavar="RUN", help="The run to export.")],
+    source: Annotated[
+        str, typer.Argument(metavar="RUN", help="A run ID or an event log (.jsonl).")
+    ],
     output_format: Annotated[
         ExportFormat, typer.Option("--format", help="The card format.")
     ] = ExportFormat.md,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write to this file, not stdout.")
+    ] = None,
 ) -> None:
-    """Export a run's Reproduction Card."""
-    _session(ctx).settings()
-    _not_yet("export", "F05 (the card) and H04 (exporters)", run=run_id, format=output_format.value)
+    """Export a run's Reproduction Card, assembled again from the run's log.
+
+    The card is checked against the one the run published: if they differ, nothing is written
+    and the exit status is 1. Markdown (md) or canonical JSON (json); the attestation and
+    report formats arrive in H04.
+    """
+    settings = _session(ctx).settings()
+    if output_format not in (ExportFormat.md, ExportFormat.json):
+        _not_yet("export", "H04 (exporters)", run=source, format=output_format.value)
+    from repro.card import canonical, render  # noqa: PLC0415
+
+    found = _regenerated(_events_of(settings, source, "export"), "export", strict=True)
+    data = (
+        render(found.card).encode("utf-8")
+        if output_format is ExportFormat.md
+        else canonical(found.card) + b"\n"
+    )
+    if output is not None:
+        output.write_bytes(data)
+        typer.echo(f"wrote {output} ({found.card['status']}, card SHA-256 {found.sha256})")
+    else:
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.flush()

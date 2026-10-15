@@ -1,0 +1,88 @@
+{
+  "card_version": 1,
+  "claims": [],
+  "conditions": {
+    "base": {
+      "ref": "e11566fafe9837936de6c84047680b96e2231f67",
+      "sha": "e11566fafe9837936de6c84047680b96e2231f67"
+    },
+    "head": {
+      "ref": "b28b221a53325d2d2fcced54e1e12a3150401ec5",
+      "sha": "b28b221a53325d2d2fcced54e1e12a3150401ec5"
+    },
+    "isolation_level": "L2",
+    "lock_sha256": {
+      "base": null,
+      "head": null
+    },
+    "models": [],
+    "network": "detected-only",
+    "platform": "<platform>",
+    "python_version": "<python_version>",
+    "repro_version": "<repro_version>",
+    "seeds": {
+      "hash_seed": 0,
+      "hash_seed_repeat": 1
+    },
+    "selected_tests": 1
+  },
+  "gap": [
+    {
+      "check": "diff.outcome",
+      "evidence_id": "ev_00000000000000000000000001",
+      "explained_by": [],
+      "kind": "P2F",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "stable",
+      "summary": "P2F: tests/test_prices.py::test_discount (base passed, head failed)",
+      "type": "test_outcome"
+    },
+    {
+      "check": "diff.behaviour",
+      "evidence_id": "ev_00000000000000000000000002",
+      "explained_by": [],
+      "kind": "result_changed",
+      "origin": "introduced",
+      "resolution": "flagged",
+      "stability": "stable",
+      "summary": "discount(amount=50, percent=10) gives another result: head 5.0, base 45.0 (in tests/test_prices.py::test_discount)",
+      "type": "behaviour_diff"
+    }
+  ],
+  "generated_at": "<generated_at>",
+  "invariants": [],
+  "missing": [],
+  "pr": null,
+  "replay": {
+    "event_count": "<count>",
+    "event_log_sha256": "<sha256>"
+  },
+  "repo": {
+    "name": "repo",
+    "url": null
+  },
+  "run_id": "run_00000000000000000000000000",
+  "status": "FLAGGED",
+  "status_reasons": [
+    {
+      "decides": true,
+      "detail": "1 diff.behaviour flagged (result_changed)",
+      "evidence_ids": [
+        "ev_00000000000000000000000002"
+      ],
+      "rule": "gap_flagged",
+      "targets": []
+    },
+    {
+      "decides": true,
+      "detail": "1 diff.outcome flagged (P2F)",
+      "evidence_ids": [
+        "ev_00000000000000000000000001"
+      ],
+      "rule": "gap_flagged",
+      "targets": []
+    }
+  ],
+  "verdicts": []
+}

@@ -13,6 +13,7 @@
       "!**/coverage",
       "!docs/research",
       "!packages/events/src/generated",
+      "!engine/tests/golden",
       "!spikes/**/results"
     ]
   },

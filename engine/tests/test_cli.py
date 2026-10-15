@@ -48,7 +48,7 @@ def test_an_unfinished_command_says_so_and_exits_2(tmp_path: Path) -> None:
     result = runner.invoke(app, argv, env=clean_env(tmp_path))
     assert result.exit_code == NOT_YET
     assert "not available yet" in result.output
-    assert "F05" in result.output
+    assert "H04" in result.output
 
 
 def test_run_requires_its_refs(tmp_path: Path) -> None:

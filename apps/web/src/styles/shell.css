@@ -63,6 +63,43 @@ body {
   color: var(--hot);
 }
 
+.brand-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* The card's status (F05): a word, not a colour alone; FLAGGED in the flag colour. */
+.card-status {
+  padding: 1px 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--micro-size);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.card-status[data-status="FLAGGED"] {
+  border-color: var(--flag-deep);
+  color: var(--flag);
+}
+
+.card-status:hover,
+.card-status:focus-visible {
+  border-color: var(--text-dim);
+  color: var(--hot);
+}
+
+.card-status:focus-visible {
+  outline: 1px solid var(--hot);
+  outline-offset: 1px;
+}
+
 .subtitle {
   margin: 4px 0 0;
   overflow: hidden;
@@ -510,6 +547,12 @@ body {
 .drawer th {
   font-weight: 400;
   color: var(--text-dim);
+}
+
+/* A row's first cell names it (a link, a label): it wraps between words, never inside one, so
+   a long neighbour cannot squeeze it to a letter a line (F05). */
+.drawer tr > :first-child {
+  overflow-wrap: normal;
 }
 
 .drawer .link {

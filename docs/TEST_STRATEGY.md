@@ -99,6 +99,11 @@ fixture whose differences only a claim explains (`honest-fix`, `selection`) says
 - The status engine (F04): never VERIFIED while an unexplained stable gap or a failed
   invariant exists, over 2000 generated inputs per run (`test_status.py`), beside a table of
   every rule.
+- Golden cards (F05): each fixture's card through `repro run`, in
+  `engine/tests/golden/cards/<fixture>.json`, with what differs between two runs made fixed
+  (`card_support.normalised`: IDs, times, the machine, Repro's version, the log's digest and
+  size, timing numbers). Every run also checks that its card, assembled again from the stored
+  log, is byte-identical to the one it published.
 
 ## 4. Cross-platform
 
