@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | E04 |
-| **Branch / PR** | `phase/E06-probes` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E06-probes` · [#51](https://github.com/DuhItzAniket/Repro/pull/51) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Find what a change does on inputs its tests never use: call the changed functions with
@@ -91,7 +91,7 @@ differently, with the input as the reproducer.
   are left out and listed (unit test).
 - AC3: the other fixtures' functions probed are `parse_date` (`honest-fix`) and `shout`
   (`api-break`); neither gives a difference, and their expectations are unchanged.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#51).
 
 ## Deviations from spec
 - ARCHITECTURE §4.4 has `diff.probe` evidence "reported separately"; it is its own evidence type
