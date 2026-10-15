@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | F — Policy & deterministic card |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | A04 |
-| **Branch / PR** | `phase/F01-policy` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/F01-policy` · [#54](https://github.com/DuhItzAniket/Repro/pull/54) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Give a repository a way to state what its changes must keep, in a file Repro reads from the
@@ -88,7 +88,7 @@ change that edits that file to loosen the rules it is judged by.
   `policy_change` evidence with `weakened: ["no_network removed"]`. Every kind of weakening is
   named (`test_weakenings`), and a stricter policy gives none.
 - AC3: PRODUCT.md's example loads as written, and its document reads back as the same policy.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#54).
 
 ## Deviations from spec
 - ROADMAP F01 says "a head-side policy change becoming a gap item": it is `policy_change`
