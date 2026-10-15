@@ -440,7 +440,7 @@ scenario passes end to end in the cockpit.
 
 **Goal:** declared invariants and a complete, rule-based card. Repro is useful with no LLM at all.
 
-**Gate F:** each invariant has a passing and a failing fixture. Every fixture repo yields the
+**Gate F (passed 2026-10-15, v0.6.0, record: [`phases/F-gate.md`](phases/F-gate.md)):** each invariant has a passing and a failing fixture. Every fixture repo yields the
 expected deterministic status. `repro replay` regenerates identical cards.
 
 | ID | Phase | Size | Depends | Status |
