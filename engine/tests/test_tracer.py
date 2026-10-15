@@ -26,7 +26,7 @@ from repro.sandbox.detect import HOOK_DIR
 
 SUITE = Path(__file__).parent / "data" / "trace_suite"
 PYTHONS = ("3.12", "3.13", "3.14", "3.15")
-TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size")
+TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size", "ordered")
 
 
 def hook_module(name: str) -> ModuleType:
@@ -91,11 +91,11 @@ def test_each_kind_of_call(side: Side) -> None:
     (first, second) = calls(results, "test_add", "add")
     assert (first.outcome, first.args, first.result) == (
         "return",
-        digest([("a", 1), ("b", 2)]),
+        digest((1, 2)),  # the parameters' values, in their order
         digest(3),
     )
     assert (second.args, second.result, second.type) == (
-        digest([("a", "a"), ("b", "b")]),
+        digest(("a", "b")),
         digest("ab"),
         "builtins.str",
     )
@@ -103,7 +103,7 @@ def test_each_kind_of_call(side: Side) -> None:
     assert (raised.outcome, raised.type, raised.result) == (
         "raise",
         "builtins.ValueError",
-        digest(("bad", 3)),
+        digest(ValueError("bad", 3)),  # its type, arguments and (empty) cause chain
     )
     (generated,) = calls(results, "test_generator", "gen")
     assert generated.outcome == "return"
@@ -112,14 +112,19 @@ def test_each_kind_of_call(side: Side) -> None:
     # Collected when its test returned: Python closes it with GeneratorExit.
     assert (abandoned.outcome, abandoned.yields) == ("suspended", (digest(0),))
     recursion = calls(results, "test_recursion", "recurse")
-    assert [c.args for c in recursion] == [digest([("n", n)]) for n in range(5, -1, -1)]
+    assert [c.args for c in recursion] == [digest((n,)) for n in range(5, -1, -1)]
     assert [c.result for c in recursion] == [digest(n) for n in range(5, -1, -1)]
     assert len(calls(results, "test_threads", "add")) == 4
     (keywords,) = calls(results, "test_keywords", "with_kw")
-    starred = [("a", 1), ("b", 4), ("args", (2, 3)), ("kw", {"c": {"x", "y", "z"}})]
+    starred = (1, 4, (2, 3), {"c": {"x", "y", "z"}})  # a, b, *args, **kw
     assert keywords.args == digest(starred)
     (method,) = calls(results, "test_method", "Box.size")
     assert (method.outcome, method.result, method.args_complete) == ("return", digest(3), True)
+    (keyed,) = calls(results, "test_dict_order", "ordered")
+    returned = {"bb": 2, "a": 1}
+    ordered, any_order, _ = ENCODE.digests(returned)
+    assert (keyed.result, keyed.result_any_order) == (ordered, any_order)
+    assert keyed.result_any_order != keyed.result
     (fixture,) = calls(results, "test_setup_phase", "add")
     assert fixture.phase == "setup"
     assert {c.phase for c in calls(results, "test_add", "add")} == {"call"}

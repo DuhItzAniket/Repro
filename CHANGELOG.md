@@ -13,6 +13,15 @@ All notable changes to this project are documented here. The format follows
   test and function, then the function is switched off completely; a run with no free
   `sys.monitoring` tool ID, or past the budget, says so as a missing item. It runs beside
   coverage.py. A benchmark harness (`scripts/bench_tracer.py`) tracks its overhead. [E01]
+- The canonical encoder: objects by their type and state, builtin subclasses (named tuples and
+  the like) by their value and state, exceptions by type, arguments and cause chain, standard
+  library values (dates, decimals, paths, UUIDs, patterns, enum members) by their canonical
+  text, functions and modules as named tokens; directories and addresses normalised; for
+  results, a second digest with dictionaries sorted, so a change in order alone can be told
+  apart. No code of the target runs to encode a value: everything is read through the
+  interpreter's own descriptors. Hypothesis property tests and a corpus of hostile objects
+  check it. With it, the tracer's benchmark stays at 1.01–1.18x on Python 3.12 to 3.15; call
+  records are flushed once per test. [E02]
 
 ## [0.4.0] - 2026-10-15
 

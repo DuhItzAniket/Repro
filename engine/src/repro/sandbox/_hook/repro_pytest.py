@@ -63,7 +63,11 @@ def _write(record: dict[str, Any]) -> None:
     handle = _STATE["file"]
     if handle is not None:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
-        handle.flush()
+        # Call records go out with the next other record (a test's own ends it): a flush per
+        # traced call cost about 2.3 us on Windows (E02). A process killed mid-test loses at
+        # most that test's calls, and a cut last line is counted as malformed.
+        if record["kind"] != "call":
+            handle.flush()
 
 
 def _seed_for(nodeid: str) -> int:
