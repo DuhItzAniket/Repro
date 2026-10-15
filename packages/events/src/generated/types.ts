@@ -784,7 +784,10 @@ export interface DiffDepsPayload {
   change: "added" | "removed" | "upgraded" | "downgraded" | "changed";
   base_version: string | null;
   head_version: string | null;
-  source: "lockfile" | "installed";
+  /**
+   * lockfile: a lock's pins; declared: the project's own requirements (no lock, E05); installed: the side's environment.
+   */
+  source: "lockfile" | "declared" | "installed";
 }
 
 /**

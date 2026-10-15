@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-13
-- **Phase:** A01 (implemented in C06–C07, E06)
+- **Phase:** A01 (implemented in C06–C07, E05)
 
 ## Context
 The build stage needs a symbol table, a changed-lines → symbols mapping, a module import graph
@@ -24,6 +24,12 @@ verified on 2026-10-13 (research/03 §4):
   Repro's own annotation-string comparison for return and attribute types.
 - No code-executing analysers run on the host. jedi and pyright may run later inside the
   sandbox only.
+
+## Implementation note (E05)
+griffe 2.x is published as a meta-package (`griffe`) of `griffelib`, the library, and
+`griffecli`, its command line; Repro depends on `griffelib` 2.3.2 only (the same `griffe`
+import). Its `find_breaking_changes` still leaves return and attribute annotations as TODOs,
+so Repro's annotation comparison stands as decided.
 
 ## Consequences
 Symbol-level reverse dependencies come from the dynamic per-test map (ADR-0005), not static

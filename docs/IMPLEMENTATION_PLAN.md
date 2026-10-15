@@ -49,7 +49,7 @@ to Python 3.15, which was released only on 2026-10-09.
 | Schema codegen | in-house `repro-events-codegen` (ADR-0014) | json-schema-to-typescript 16.0.0 / datamodel-code-generator 0.83.0 evaluated and not used |
 | ajv / ajv-formats | 8.20.0 / 3.0.1 | Draft 2020-12 validation in TypeScript tests |
 | pytest / hypothesis | 9.1.1 / 6.169.0 | |
-| grimp / griffe | 3.17 / 2.3.2 | griffe with `allow_inspection=False` |
+| grimp / griffe | 3.17 / 2.3.2 | griffe with `allow_inspection=False`; the `griffelib` distribution (E05) |
 | three | 0.186.1 (r186) | `WebGLRenderer` only |
 | vite / vitest / playwright | 8.3.4 / 5.0.4 / 1.64.0 | |
 | biome | 2.5.15 | |

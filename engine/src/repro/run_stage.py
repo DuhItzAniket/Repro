@@ -19,6 +19,11 @@ execution, and its evidence as events.
   not be compared (``encoding_failed``) and cut traces (``trace_truncated``) are missing items.
   The differences that remain run again on each side for their reproducers, then become
   ``behaviour_diff`` evidence with a ``diff.behaviour`` each (``warn``, ADR-0015).
+- ``api`` (diff, E05): the public API's breaking changes (griffe, statically, plus annotation
+  changes), ``api_diff`` evidence with a ``diff.api`` each (``warn``).
+- ``deps`` (diff, E05): the requirements and the installed packages of both sides, compared,
+  ``dep_diff`` evidence with a ``diff.deps`` each (``warn``); lock drift as ``lock_drift``
+  evidence. Both run after ``tests``, so the diff stage follows the run stage.
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -31,6 +36,7 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from repro.analysis import StaticAnalysis
+from repro.analysis.api import api_diff
 from repro.gitops import Git
 from repro.orchestrator import Job, JobContext, OnFailure
 from repro.provision import (
@@ -41,6 +47,7 @@ from repro.provision import (
     environment_missing,
     inspect_project,
 )
+from repro.provision import deps as dependencies
 from repro.runner import behaviour as behaviour_diffs
 from repro.runner import observations, selection
 from repro.runner.observations import Behaviour
@@ -442,6 +449,87 @@ def _behaviour_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
     )
 
 
+def _api_job(git: Git, base: str, head: str, work: Path) -> Job:
+    def run(ctx: JobContext) -> None:
+        found = api_diff(git, base, head, work / "api")
+        for item in found.breaks:
+            record = item.evidence(ctx.run_id)
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            target = {"symbol": item.symbol, **({"file": item.file} if item.file else {})}
+            payload = item.payload(record["id"])
+            ctx.emit("diff.api", status="warn", payload=payload, target=target)  # ADR-0015 §2
+        for missing in found.missing():
+            ctx.emit("missing.recorded", status="warn", payload=missing)
+        packages = ", ".join(found.packages) or "no packages"
+        ctx.log(f"public API ({packages}): {len(found.breaks)} breaking changes")
+
+    return Job(
+        "api",
+        "diff",
+        run,
+        OnFailure(reason="unsupported_project", detail="the public API could not be compared"),
+        needs=("tests",),
+    )
+
+
+def _deps_job(state: RunState) -> Job:
+    def run(ctx: JobContext) -> None:
+        if "base" not in state.sides or "head" not in state.sides:
+            ctx.log("no dependency comparison: a side has no environment", level="warning")
+            return
+        base, head = state.sides["base"], state.sides["head"]
+        projects = base.env.project, head.env.project
+        changes = dependencies.compare(
+            dependencies.project_requirements(projects[0]),
+            dependencies.project_requirements(projects[1]),
+            dependencies.source_of(projects[1]),
+            projects[1].source or projects[0].source,
+        )
+        listed: dict[str, dict[str, str]] = {}
+        for side in (base, head):
+            found = side.installed()
+            if found is None:
+                detail = f"{side.name}: the installed packages could not be listed"
+                payload: dict[str, Any] = {
+                    "missing": {
+                        "reason": "environment_failed",
+                        "targets": [],
+                        "detail": detail,
+                        "resolution": None,
+                    }
+                }
+                ctx.emit("missing.recorded", status="warn", payload=payload)
+            else:
+                listed[side.name] = found
+        if len(listed) == 2:  # noqa: PLR2004 - both sides
+            changes += dependencies.compare(listed["base"], listed["head"], "installed", None)
+        for change in changes:
+            record = change.evidence(ctx.run_id)
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            target = {"file": change.file or "."}
+            payload = change.payload(record["id"])
+            ctx.emit("diff.deps", status="warn", payload=payload, target=target)  # ADR-0015 §2
+        drift = [
+            item
+            for side in (base, head)
+            if side.name in listed
+            for item in dependencies.lock_drift(side.name, side.env.project, listed[side.name])
+        ]
+        for item in drift:
+            ctx.emit(
+                "evidence.created", status="warn", payload={"evidence": item.evidence(ctx.run_id)}
+            )
+        ctx.log(f"dependencies: {len(changes)} differences, {len(drift)} drifted from the lock")
+
+    return Job(
+        "deps",
+        "diff",
+        run,
+        OnFailure(reason="environment_failed", detail="the dependencies could not be compared"),
+        needs=("tests",),
+    )
+
+
 def run_jobs(
     git: Git,
     base: str,
@@ -461,6 +549,8 @@ def run_jobs(
         _tests_job(git, base, head, state, cache=cache),
         _outcomes_job(state),
         _behaviour_job(state, artifacts),
+        _api_job(git, base, head, work),
+        _deps_job(state),
         _perf_job(state),
         _perf_diff_job(state),
     ]

@@ -36,6 +36,12 @@ All notable changes to this project are documented here. The format follows
   Each group is `behaviour_diff` evidence with a `diff.behaviour` check. The tracer encodes a
   call's arguments again when it ends, to see them mutated. `calls_changed` joins the schema's
   behaviour classes. Fixtures `silent-change` and `false-claim`. [E04]
+- API and dependency differences: the public API's breaking changes (griffe, reading files
+  only, plus changed return and attribute annotations, which griffe does not check), and the
+  dependencies added, removed, upgraded or downgraded, as locked or declared and as installed
+  on each side, with lock drift. Each is evidence with a `diff.api` or `diff.deps` check.
+  `diff.deps` sources gain `declared`. Fixtures `api-break` and `new-dep`. New dependencies:
+  `griffelib` 2.3.2, `packaging`. [E05]
 
 ## [0.4.0] - 2026-10-15
 
