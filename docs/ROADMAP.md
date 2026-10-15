@@ -391,7 +391,7 @@ a CI excluding 1. An A/A run on an unchanged repo produces no perf diff over 20 
 **Goal:** function-level "same input, different output" evidence that is stable, explainable
 and cheap enough to run.
 
-**Gate E:** a change that alters a function's output **without failing any test** is detected,
+**Gate E (passed 2026-10-15, v0.5.0, record: [`phases/E-gate.md`](phases/E-gate.md)):** a change that alters a function's output **without failing any test** is detected,
 shown as a stable behaviour diff with a reproducer, and is not confused with noise in the A/A′
 control.
 
@@ -711,3 +711,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | E05 | 2026-10-15 | [#50](https://github.com/DuhItzAniket/Repro/pull/50) | API and dependency differences: griffe (griffelib 2.3.2, allow_inspection=False, files from git) breaking changes plus Repro's return/attribute annotation comparison as api_diff + diff.api; requirements (lock or declared) and installed sets listed in each sandbox with -I -S as dep_diff + diff.deps; lock drift; api-break and new-dep fixtures; a trap module proves griffe imports nothing |
 | E06 | 2026-10-15 | [#51](https://github.com/DuhItzAniket/Repro/pull/51) | Input-replay probes: changed functions with JSON-typed parameters called with 40 derandomized Hypothesis inputs each on base, base again (other seeds) and head inside the sandboxes; inputs on which base disagrees with itself left out; probe_diff (provenance: generated) + diff.probe; probe-only fixture: percent(0, 0) raises on head only; timing now runs after the other runs |
 | E07 | 2026-10-15 | [#52](https://github.com/DuhItzAniket/Repro/pull/52) | The behaviour field and Signals from real runs: A, A2 and H preview each test's first four calls of each traced function, sent as trace.sample events; Gate E's browser test (silent-change: two stable behaviour diffs with reproducers 37.8 -> 38 and 0.0 -> 0, no failing test; noisy: noise unstable, no diff) and its CI job |
+| Gate E | 2026-10-15 | [#53](https://github.com/DuhItzAniket/Repro/pull/53) | Stage E complete; release v0.5.0 ([gate record](phases/E-gate.md)); Gate E's browser test (an output change no test checks shown as two stable behaviour diffs with reproducers; A/A′ noise unstable, never a diff) passes in CI (Linux, containers) and on Windows (Edge) |

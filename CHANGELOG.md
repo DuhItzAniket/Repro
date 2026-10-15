@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-15
+
+Stage E — Behaviour evidence. Gate record: `docs/phases/E-gate.md`.
+
 ### Added
 - The tracer: for each function a change touches, every call in each test, its arguments read
   before the body runs, its result, exception or yields, as stable digests (the same under any
