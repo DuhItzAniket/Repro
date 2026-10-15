@@ -157,7 +157,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     [
         "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
         "api-break", "new-dep", "probe-only", "policy-weaken", "forbidden-path",
-        "invariants-pass",
+        "invariants-pass", "net-call",
     ],
 )  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
@@ -341,3 +341,32 @@ def test_a_run_in_containers(tmp_path: Path) -> None:
     assert {(r["backend"], r["isolation_level"], r["network"]) for r in ready} == {
         ("docker", "L3", "enforced")
     }
+
+
+@docker
+def test_no_network_rests_on_enforcement_in_containers(tmp_path: Path) -> None:
+    """F03: where the sandbox has no network, no_network's pass says so, and no
+    ``network_not_enforced`` item is needed (the process sandbox's pass carries one)."""
+    events = run_fixture("invariants-pass", tmp_path, "docker")
+    results = {
+        e["payload"]["invariant"]: e["payload"] for e in events if e["kind"] == "invariant.result"
+    }
+    assert {name: r["result"] for name, r in results.items()} == dict.fromkeys(
+        (
+            "public_api_stable",
+            "no_new_dependencies",
+            "no_network",
+            "perf_budget",
+            "forbidden_paths",
+        ),
+        "pass",
+    )
+    evidence = {
+        e["payload"]["evidence"]["id"]: e["payload"]["evidence"]
+        for e in events
+        if e["kind"] == "evidence.created"
+    }
+    no_network = evidence[results["no_network"]["evidence_ids"][0]]
+    assert no_network["data"]["details"] == {"network": "enforced"}
+    reasons = {e["payload"]["missing"]["reason"] for e in events if e["kind"] == "missing.recorded"}
+    assert "network_not_enforced" not in reasons

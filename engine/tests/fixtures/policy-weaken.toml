@@ -12,10 +12,11 @@ evidence = [
   "policy_change:modified:repro.yml",
   "test_outcome:P2P:tests/test_count.py::test_count",
 ]
-missing = ["perf_not_assessable:tests/test_count.py::test_count"]
+# network_not_enforced: no_network passes on the process sandbox's detection alone (F03).
+missing = ["network_not_enforced:", "perf_not_assessable:tests/test_count.py::test_count"]
 weakened = ["no_network removed"]
-# F02: base's two invariants are evaluated, head's removal of one is not applied.
-invariants = ["forbidden_paths:pass", "no_network:not_evaluated"]
+# F02, F03: base's two invariants are evaluated, head's removal of one is not applied.
+invariants = ["forbidden_paths:pass", "no_network:pass"]
 
 [selection]
 uncovered = []

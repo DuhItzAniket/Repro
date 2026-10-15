@@ -1,14 +1,16 @@
-"""Declared invariants (F02): each one's pass, fail and not-evaluated cases, from evidence.
+"""Declared invariants (F02, F03): each one's pass, fail and not-evaluated cases, from evidence.
 
-Roadmap F02: "passing and failing fixture per invariant": through ``repro run``, the
-``invariants-pass`` fixture passes them, and ``api-break``, ``new-dep`` and ``forbidden-path``
-each fail theirs (``test_run_stage.py``). Here the rules are tested on their own.
+Roadmap F02 / F03: "passing and failing fixture per invariant": through ``repro run``, the
+``invariants-pass`` fixture passes them all, and ``api-break``, ``new-dep``, ``forbidden-path``,
+``net-call`` and ``perf-regress`` each fail theirs (``test_run_stage.py``). Here the rules are
+tested on their own.
 """
 
 import pytest
 
 from repro.policy import Invariant
 from repro.policy import invariants as rules
+from repro.sandbox.detect import leaves_host
 from repro_events import models
 
 RUN_ID = "run_01JABCDEFGHJKMNPQRSTVWXYZ0"
@@ -121,10 +123,79 @@ def test_forbidden_paths() -> None:
     assert checked(rules.forbidden_paths(invariant, None)).result == "not_evaluated"
 
 
-def test_an_invariant_not_yet_evaluated_says_so() -> None:
-    result = checked(rules.not_yet(Invariant("no_network"), "F03"))
-    assert (result.result, result.status, result.message) == (
+@pytest.mark.parametrize(
+    ("event", "detail", "leaves"),
+    [
+        ("socket.connect", "192.0.2.1:80", True),
+        ("socket.connect", "127.0.0.1:52011", False),  # asyncio's self-pipe on Windows
+        ("socket.connect", "::1:8080", False),
+        ("socket.connect", "::ffff:127.0.0.1:80", False),
+        ("socket.connect", "0.0.0.0:80", False),
+        ("socket.connect", "/run/app/app.sock", False),  # a Unix socket
+        ("socket.getaddrinfo", "example.com:443", True),
+        ("socket.getaddrinfo", "localhost:8000", False),
+        ("socket.getaddrinfo", "None:0", False),  # a passive lookup, to bind
+        ("socket.gethostbyname", "example.com", True),
+        ("socket.gethostbyname", "localhost", False),
+        ("socket.sendto", "8.8.8.8:53", True),
+    ],
+)
+def test_what_reaches_past_this_machine(event: str, detail: str, leaves: bool) -> None:
+    assert leaves_host(event, detail) is leaves
+
+
+def test_no_network() -> None:
+    invariant = Invariant("no_network")
+    local = rules.Attempt("socket.connect", "127.0.0.1:52011", EV1)
+    out = rules.Attempt("socket.connect", "192.0.2.1:80", EV2)
+    failed = checked(rules.no_network(invariant, [local, out], network="enforced"))
+    assert (failed.result, failed.cites, failed.message) == (
+        "fail",
+        (EV2,),
+        "head's tests attempted the network: 192.0.2.1:80",
+    )
+    assert failed.details == {"attempts": ["192.0.2.1:80"], "network": "enforced"}
+    enforced = checked(rules.no_network(invariant, [local], network="enforced"))
+    assert (enforced.result, enforced.details) == ("pass", {"network": "enforced"})
+    detected = checked(rules.no_network(invariant, [], network="detected-only"))
+    assert (detected.result, detected.details) == ("pass", {"network": "detected-only"})
+    assert "detected only" in detected.message
+    missing = rules.network_not_enforced()
+    models.MissingRecordedPayload.model_validate(missing)
+    assert missing["missing"]["reason"] == "network_not_enforced"
+    assert checked(rules.no_network(invariant, None, network=None)).result == "not_evaluated"
+    cut = rules.no_network(invariant, [], network="detected-only", complete=False)
+    assert checked(cut).result == "not_evaluated"
+    # An attempt seen counts even when other records were lost.
+    assert rules.no_network(invariant, [out], network="enforced", complete=False).result == "fail"
+
+
+def timed(test: str, verdict: str, ratio: float, low: float, high: float) -> rules.Timed:
+    return rules.Timed(test, verdict, ratio, low, high, EV1 if verdict == "regression" else EV2)
+
+
+def test_perf_budget() -> None:
+    invariant = Invariant("perf_budget", {"max_regression": 0.2})
+    steady = timed("t::steady", "no_change", 1.02, 0.97, 1.08)
+    slower = timed("t::slower", "regression", 1.15, 1.11, 1.19)  # a regression, within budget
+    over = timed("t::over", "regression", 3.4, 3.1, 3.7)
+    failed = checked(rules.perf_budget(invariant, [steady, slower, over], ["t::fast"]))
+    assert (failed.result, failed.cites) == ("fail", (EV1,))
+    assert failed.message == (
+        "1 tests slower than base past the budget (+20%): t::over (x3.40, 95% CI from x3.10)"
+    )
+    passed = checked(rules.perf_budget(invariant, [steady, slower], ["t::fast"]))
+    assert (passed.result, passed.message) == (
+        "pass",
+        "2 timed tests within the budget (+20%); 1 too fast to time",
+    )
+    # Past the budget by its interval, but not a regression past this machine's noise.
+    noisy = timed("t::noisy", "no_change", 1.3, 1.25, 1.36)
+    unclear = checked(rules.perf_budget(invariant, [steady, noisy]))
+    assert (unclear.result, unclear.details) == ("not_evaluated", {"unclear": ["t::noisy"]})
+    assert checked(rules.perf_budget(invariant, None)).result == "not_evaluated"
+    none = checked(rules.perf_budget(invariant, [], ["t::fast"]))
+    assert (none.result, none.message) == (
         "not_evaluated",
-        "warn",
-        "evaluated from F03 on",
+        "no selected test could be timed (1 too fast to time)",
     )

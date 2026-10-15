@@ -35,10 +35,12 @@ execution, and its evidence as events.
 ``perf`` waits for every other job that runs the sides (``behaviour``'s reproducers,
 ``probes``): timing beside them would measure their load.
 
-- ``invariants`` (check, F02): each invariant base's ``repro.yml`` enables, evaluated from the
-  run's evidence: ``invariant`` evidence and an ``invariant.result`` each. It comes ``after``
-  ``api`` and ``deps`` without needing them to succeed: an invariant whose evidence they could
-  not produce is ``not_evaluated``, and ``forbidden_paths`` needs only git.
+- ``invariants`` (check, F02, F03): each invariant base's ``repro.yml`` enables, evaluated
+  from the run's evidence: ``invariant`` evidence and an ``invariant.result`` each. It comes
+  ``after`` ``api``, ``deps``, ``outcomes`` (head's network attempts) and ``perf-diff`` without
+  needing them to succeed: an invariant whose evidence they could not produce is
+  ``not_evaluated``, and ``forbidden_paths`` needs only git. A ``no_network`` pass where the
+  sandbox only detects is a ``network_not_enforced`` item.
 
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
@@ -56,7 +58,7 @@ from repro.gitops import Git
 from repro.gitops import diff as changed_files
 from repro.orchestrator import Job, JobContext, OnFailure
 from repro.policy import FILE as POLICY_FILE
-from repro.policy import invariants
+from repro.policy import Invariant, invariants
 from repro.policy.stage import PolicyRead
 from repro.provision import (
     DockerProvisioner,
@@ -119,6 +121,16 @@ class RunState:
     #: declared dependencies could not be read (E05; F02).
     dep_changes: list[tuple[str, str, str, str]] | None = None
     dep_unread: list[str] = field(default_factory=list)
+    #: Each side's network, as its ``sandbox.ready`` states it (F03).
+    network: dict[str, str] = field(default_factory=dict)
+    #: Head's network attempts with their evidence, None if the tests did not run, and whether
+    #: every detection was read (F03).
+    head_network: list[invariants.Attempt] | None = None
+    head_network_complete: bool = True
+    #: Each timed test's comparison with its evidence, None if nothing was timed, and the tests
+    #: too fast to time (D07; F03).
+    perf_timed: list[invariants.Timed] | None = None
+    perf_too_fast: list[str] = field(default_factory=list)
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 
@@ -156,14 +168,18 @@ def _sandbox_job(
             container = DockerSandbox(box_dir, git, sha, image=image, limits=limits)
             state.containers.append(container)
             state.platform[side] = f"docker {image}"
-            ctx.emit("sandbox.ready", status="ok", payload=container.ready_payload(side))
+            ready = container.ready_payload(side)
+            state.network[side] = ready["network"]
+            ctx.emit("sandbox.ready", status="ok", payload=ready)
             ctx.log(provisioning)
             env = DockerProvisioner(image).provision(side, project, container)
             state.sides[side] = Side(side, container, env)
         else:
             box = ProcessSandbox(box_dir, limits)
             state.platform[side] = f"process {sys.platform}"
-            ctx.emit("sandbox.ready", status="ok", payload=box.ready_payload(side))
+            ready = box.ready_payload(side)
+            state.network[side] = ready["network"]
+            ctx.emit("sandbox.ready", status="ok", payload=ready)
             ctx.log(provisioning)
             env = HostProvisioner(cache / "envs").provision(side, project, box)
             state.sides[side] = Side(side, box, env)
@@ -318,12 +334,22 @@ def _outcomes_job(state: RunState) -> Job:
             target = {"file": change.file, **({"test": change.test} if change.test else {})}
             payload = change.payload(record["id"])
             ctx.emit("diff.tests", status=change.status, payload=payload, target=target)
+        attempts: list[invariants.Attempt] = []
         for side in ("base", "head"):
             fallback = {"file": "."}
             for record in detection_evidence(
                 _detections(result, side), run_id=ctx.run_id, side=side, fallback_target=fallback
             ):
                 ctx.emit("evidence.created", status="warn", payload={"evidence": record})
+                if side == "head" and record["type"] == "network_attempt":
+                    data = record["data"]
+                    attempts.append(invariants.Attempt(data["event"], data["detail"], record["id"]))
+        state.head_network = attempts
+        state.head_network_complete = all(
+            not r.run.execution.detections.truncated and not r.run.execution.detections.dropped
+            for r in result.runs
+            if r.side == "head"
+        )
         missing = [no_covering_test(gap) for gap in result.gaps]
         missing += [unstable_observation(diff) for diff in result.outcomes if not diff.stable]
         missing += result.problems()
@@ -408,8 +434,14 @@ def _perf_diff_job(state: RunState) -> Job:
                 }
                 ctx.emit("missing.recorded", status="warn", payload=payload)
         compared, too_fast = assess(state.timings)
+        timed: list[invariants.Timed] = []
         for diff in compared:
             record = diff.evidence(ctx.run_id)
+            timed.append(
+                invariants.Timed(
+                    diff.test, diff.verdict, diff.ratio, diff.ci_low, diff.ci_high, record["id"]
+                )
+            )
             ctx.emit("evidence.created", status="ok", payload={"evidence": record})
             status = "warn" if diff.verdict == "regression" else "ok"
             ctx.emit(
@@ -420,6 +452,8 @@ def _perf_diff_job(state: RunState) -> Job:
             )
         if too_fast:
             ctx.emit("missing.recorded", status="warn", payload=not_assessable(too_fast))
+        ctx.check()  # an abandoned job's comparison is not the run's
+        state.perf_timed, state.perf_too_fast = timed, list(too_fast)
         verdicts = ", ".join(f"{d.test}: {d.verdict}" for d in compared[:10]) or "none timed"
         ctx.log(f"performance: {verdicts}; {len(too_fast)} too fast to time")
 
@@ -707,20 +741,7 @@ def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
         touched = sorted(
             {p for c in changed_files(git, base, head) for p in (c.old_path, c.new_path) if p}
         )
-        results = []
-        for invariant in read.policy.invariants:
-            if invariant.name == "public_api_stable":
-                api = invariants.public_api_stable(invariant, state.api_breaks, state.api_unread)
-                results.append(api)
-            elif invariant.name == "no_new_dependencies":
-                deps = invariants.no_new_dependencies(
-                    invariant, state.dep_changes, state.dep_unread
-                )
-                results.append(deps)
-            elif invariant.name == "forbidden_paths":
-                results.append(invariants.forbidden_paths(invariant, touched))
-            else:
-                results.append(invariants.not_yet(invariant, "F03"))
+        results = [_evaluate(invariant, state, touched) for invariant in read.policy.invariants]
         for result in results:
             record = result.evidence(ctx.run_id)
             ctx.emit("evidence.created", status="ok", payload={"evidence": record})
@@ -730,6 +751,11 @@ def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
                 payload=result.payload(record["id"]),
                 target={"file": POLICY_FILE},
             )
+            if (result.invariant, result.result) == ("no_network", "pass") and (
+                result.details.get("network") != "enforced"
+            ):
+                payload = invariants.network_not_enforced()
+                ctx.emit("missing.recorded", status="warn", payload=payload)
         summary = ", ".join(f"{r.invariant} {r.result}" for r in results)
         ctx.log(f"invariants: {summary}")
 
@@ -740,8 +766,30 @@ def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
         OnFailure(reason="unsupported_project", detail="the invariants could not be evaluated"),
         needs=("policy",),
         # Whatever these find, or "not evaluated" for an invariant if they found nothing.
-        after=("api", "deps"),
+        after=("api", "deps", "outcomes", "perf-diff"),
     )
+
+
+def _evaluate(
+    invariant: Invariant, state: RunState, touched: Sequence[str]
+) -> invariants.InvariantResult:
+    """One invariant's result, from what the jobs before it left in ``state``."""
+    match invariant.name:
+        case "public_api_stable":
+            return invariants.public_api_stable(invariant, state.api_breaks, state.api_unread)
+        case "no_new_dependencies":
+            return invariants.no_new_dependencies(invariant, state.dep_changes, state.dep_unread)
+        case "forbidden_paths":
+            return invariants.forbidden_paths(invariant, touched)
+        case "no_network":
+            return invariants.no_network(
+                invariant,
+                state.head_network,
+                network=state.network.get("head"),
+                complete=state.head_network_complete,
+            )
+        case _:  # perf_budget: the schema knows no other
+            return invariants.perf_budget(invariant, state.perf_timed, state.perf_too_fast)
 
 
 def run_jobs(

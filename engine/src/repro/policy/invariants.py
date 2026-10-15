@@ -17,6 +17,14 @@ result is ``invariant`` evidence of its own, citing the evidence it rests on, an
   pattern that matches a directory forbids everything under it (``migrations``,
   ``migrations/``), as ``migrations/**`` does; a pattern ending in ``/`` matches directories
   only.
+- ``no_network`` (F03): no network attempt by head's tests past this machine (the sandbox's
+  detections; loopback and Unix sockets are local). Where the sandbox enforces the network (L3)
+  a pass rests on that; where it only detects (L2), a pass rests on detection, which code that
+  bypasses Python's socket functions escapes: ``network_not_enforced`` says so.
+- ``perf_budget`` (F03): no timed test slower than base past ``max_regression``, by D07's
+  comparison: a test fails when its interval's low end is past the budget and D07 calls it a
+  regression (significant, past this machine's noise). An interval past the budget that D07
+  does not call a regression cannot be decided: not evaluated.
 """
 
 import re
@@ -24,11 +32,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from functools import cache
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, NamedTuple
 
 from repro import __version__
 from repro.ids import new_evidence_id
 from repro.policy.loader import FILE, Invariant
+from repro.sandbox.detect import leaves_host
 
 Result = Literal["pass", "fail", "not_evaluated"]
 STATUS: Final = {"pass": "ok", "fail": "fail", "not_evaluated": "warn"}
@@ -237,8 +246,134 @@ def forbidden_paths(invariant: Invariant, touched: Sequence[str] | None) -> Inva
     )
 
 
-def not_yet(invariant: Invariant, phase: str) -> InvariantResult:
-    """An invariant whose evaluation a later phase brings."""
+# -- no_network ----------------------------------------------------------------------------------
+
+
+class Attempt(NamedTuple):
+    """A network attempt the sandbox detected on head: its audit event, its address or name,
+    and its ``network_attempt`` evidence."""
+
+    event: str
+    detail: str
+    evidence: str
+
+
+def no_network(
+    invariant: Invariant,
+    attempts: Sequence[Attempt] | None,
+    *,
+    network: str | None,
+    complete: bool = True,
+) -> InvariantResult:
+    """``attempts``: what head's test runs were seen to attempt, None if they did not run;
+    ``network``: head's sandbox's ``enforced`` or ``detected-only``; ``complete``: whether every
+    detection was read (a process's log can be cut, or hold lines that are not records)."""
+    name, options = invariant.name, invariant.options
+    if attempts is None:
+        return InvariantResult(name, "not_evaluated", "head's tests did not run", options=options)
+    outside = [a for a in attempts if leaves_host(a.event, a.detail)]
+    if outside:
+        shown = sorted({a.detail for a in outside})
+        return InvariantResult(
+            name,
+            "fail",
+            f"head's tests attempted the network: {_listed(shown)}",
+            tuple(dict.fromkeys(a.evidence for a in outside)),
+            {"attempts": shown, "network": network},
+            options,
+        )
+    if not complete:
+        return InvariantResult(
+            name,
+            "not_evaluated",
+            "head's detections were not all read (a log was cut or held lines that are not "
+            "records)",
+            details={"network": network},
+            options=options,
+        )
+    if network == "enforced":
+        message = "no network attempt by head's tests; the sandbox had no network (enforced)"
+    else:
+        message = (
+            "no network attempt detected by head's tests (detected only: the sandbox does not "
+            "enforce the network)"
+        )
+    return InvariantResult(name, "pass", message, (), {"network": network}, options)
+
+
+def network_not_enforced() -> dict[str, Any]:
+    """The ``missing.recorded`` payload for a ``no_network`` pass that rests on detection."""
+    return {
+        "missing": {
+            "reason": "network_not_enforced",
+            "targets": [{"file": FILE}],
+            "detail": (
+                "no_network passed on detection alone: this sandbox does not enforce the "
+                "network, and code that bypasses Python's socket functions is not seen"
+            ),
+            "resolution": "Run with the Docker sandbox, which runs the tests without a network",
+        }
+    }
+
+
+# -- perf_budget ---------------------------------------------------------------------------------
+
+
+class Timed(NamedTuple):
+    """A timed test's comparison (D07) and its ``perf_diff`` evidence."""
+
+    test: str
+    verdict: str
+    ratio: float
+    ci_low: float
+    ci_high: float
+    evidence: str
+
+
+def perf_budget(
+    invariant: Invariant, timed: Sequence[Timed] | None, too_fast: Sequence[str] = ()
+) -> InvariantResult:
+    """``timed``: each timed test's comparison, None if the tests were not timed;
+    ``too_fast``: the tests under D07's timing floor."""
+    name, options = invariant.name, invariant.options
+    if timed is None:
+        return InvariantResult(name, "not_evaluated", "the tests were not timed", options=options)
+    budget = float(options["max_regression"])
+    limit = 1 + budget
+    within = f"+{budget:.0%}"
+    over = [t for t in timed if t.ci_low > limit and t.verdict == "regression"]
+    if over:
+        shown = [f"{t.test} (x{t.ratio:.2f}, 95% CI from x{t.ci_low:.2f})" for t in over]
+        return InvariantResult(
+            name,
+            "fail",
+            f"{len(over)} tests slower than base past the budget ({within}): {_listed(shown)}",
+            tuple(t.evidence for t in over),
+            {"over": [t.test for t in over], "too_fast": len(too_fast)},
+            options,
+        )
+    if not timed:
+        why = f"{len(too_fast)} too fast to time" if too_fast else "none passes on both sides"
+        return InvariantResult(
+            name, "not_evaluated", f"no selected test could be timed ({why})", options=options
+        )
+    unclear = [t for t in timed if t.ci_low > limit]
+    if unclear:
+        return InvariantResult(
+            name,
+            "not_evaluated",
+            f"{len(unclear)} tests past the budget ({within}) by their interval, within this "
+            f"machine's noise: {_listed([t.test for t in unclear])}",
+            tuple(t.evidence for t in unclear),
+            {"unclear": [t.test for t in unclear]},
+            options,
+        )
+    fast = f"; {len(too_fast)} too fast to time" if too_fast else ""
     return InvariantResult(
-        invariant.name, "not_evaluated", f"evaluated from {phase} on", options=invariant.options
+        name,
+        "pass",
+        f"{len(timed)} timed tests within the budget ({within}){fast}",
+        (),
+        {"timed": len(timed), "too_fast": len(too_fast)},
+        options,
     )
