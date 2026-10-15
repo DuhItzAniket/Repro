@@ -209,3 +209,20 @@ entry. If something turns out wrong, add a correcting entry.
   run at ×16. In the whole-wheel view strands are short and the cap admits 71 of 399. Only 6 of
   the demo's 47 nodes face the stage in the arc view. Where to place nodes is therefore also a
   flash-budget decision, not only a visual one.
+
+## 2026-10-15 · Stage E · Behaviour evidence without failing tests
+- A `sys.monitoring` tracer with a budget of 200 calls per test and function, then switched off,
+  ran the benchmark's three tests at 1.05–1.24× on CPython 3.12–3.15 (BCa 95 % intervals; no
+  interval above 1.20×; `docs/perf/E01-tracer-bench.jsonl`). The cost is in encoding values, not
+  in dispatch: the first full structural encoder put a dictionary-heavy test at 1.35–1.55×, and
+  one walk per value with no flush per record brought it to 1.14–1.18×.
+- A noise control must vary every source of nondeterminism the harness fixes. With A′ differing
+  from A in test order and hash seed only, a function returning a random draw compared equal
+  (the harness seeds `random` per test); with A′'s own seed it is classified unstable. On a
+  fixture with time, random and set-order noise every noisy call was masked and no difference
+  reported, while an output change no test checks was reported as two stable, reproduced
+  differences (Gate E).
+- Type-driven input generation (Hypothesis, derandomized, 40 inputs per function) found a
+  removed zero guard on 7 of 40 inputs, but not a change confined to valid ISO timestamps: short
+  random text does not form structured values. Generated probes complement, not replace, the
+  comparison of the tests' own calls.
