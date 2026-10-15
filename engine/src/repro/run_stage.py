@@ -46,6 +46,7 @@ from repro.analysis import StaticAnalysis
 from repro.analysis.api import api_diff
 from repro.gitops import Git
 from repro.orchestrator import Job, JobContext, OnFailure
+from repro.policy.stage import PolicyRead
 from repro.provision import (
     DockerProvisioner,
     HostProvisioner,
@@ -95,6 +96,8 @@ class RunState:
     timing_runs: list[TimingRun] = field(default_factory=list)
     behaviour: Behaviour | None = None
     probing: probes.Probing | None = None
+    #: The policy read from base (F01); None until the policy job ran.
+    policy: PolicyRead | None = None
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 

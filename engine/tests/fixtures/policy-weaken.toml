@@ -1,0 +1,22 @@
+# Expected Repro outcome for the policy-weaken fixture (F01 asserts the policy change).
+[fixture]
+name = "policy-weaken"
+head = "chore/relax-policy"
+
+[expected]
+status = "FLAGGED"
+claims = ["count() accepts any iterable"]
+# Head drops no_network from repro.yml: the run keeps base's policy, and the edit is a policy
+# change that weakens it.
+evidence = [
+  "policy_change:modified:repro.yml",
+  "test_outcome:P2P:tests/test_count.py::test_count",
+]
+missing = ["perf_not_assessable:tests/test_count.py::test_count"]
+weakened = ["no_network removed"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_count.py::test_count" = ["blast_radius"]

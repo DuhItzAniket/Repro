@@ -1,7 +1,8 @@
 """A run's pipeline: the jobs ``repro run`` hands the orchestrator (C08).
 
-The build stage: both sides' snapshots (``snapshot.ready``) and the static analysis of the
-change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``). Then, unless the
+The build stage: both sides' snapshots (``snapshot.ready``), the static analysis of the
+change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``), and the policy
+(``repro.yml`` from base; head's change to it as ``policy_change`` evidence, F01). Then, unless the
 run only analyses, the run and diff stages (``repro.run_stage``, D06): each side's sandbox and
 environment, the selected tests on both sides, and the evidence of what differs. What could not
 be read or run becomes a ``missing.recorded`` item, never a silent gap.
@@ -16,6 +17,8 @@ from repro.analysis import StaticAnalysis, analyse, graph_payloads
 from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
 from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
+from repro.policy import FILE as POLICY_FILE
+from repro.policy.stage import read_policy
 from repro.run_stage import Backend, RunState, run_jobs
 from repro.store import ArtifactStore
 
@@ -146,14 +149,43 @@ def _analysis_job(git: Git, change: Change, work: Path, state: RunState | None) 
     )
 
 
+def _policy_job(git: Git, change: Change, state: RunState | None) -> Job:
+    def run(ctx: JobContext) -> None:
+        read = read_policy(git, change.base.sha, change.head.sha)
+        if state is not None:
+            state.policy = read
+        if read.policy is None:
+            ctx.log(f"policy: {POLICY_FILE} on base is not valid", level="warning", status="warn")
+        elif not read.found:
+            ctx.log(f"policy: no {POLICY_FILE} on base: the defaults, no invariant enabled")
+        else:
+            names = ", ".join(i.name for i in read.policy.invariants) or "none"
+            ctx.log(f"policy ({POLICY_FILE} on base): invariants {names}")
+        for item in read.missing():
+            ctx.emit("missing.recorded", status="warn", payload=item)
+        if read.change is not None:
+            record = read.change.evidence(ctx.run_id)
+            ctx.emit("evidence.created", status="warn", payload={"evidence": record})
+            ctx.log(read.change.summary(), level="warning", status="warn")
+
+    return Job(
+        "policy",
+        "build",
+        run,
+        OnFailure(reason="unsupported_project", detail=f"{POLICY_FILE} could not be read"),
+    )
+
+
 def build_jobs(
     git: Git, change: Change, work: Path, state: RunState | None = None
 ) -> Sequence[Job]:
-    """The build stage: both snapshots and the static analysis, independent of each other."""
+    """The build stage: both snapshots, the static analysis and the policy, independent of each
+    other."""
     return [
         _snapshot_job(git, "base", change.base.sha, work),
         _snapshot_job(git, "head", change.head.sha, work),
         _analysis_job(git, change, work, state),
+        _policy_job(git, change, state),
     ]
 
 

@@ -29,7 +29,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 RUN_ID = new_run_id()
 FIXTURE_NAMES = [
     "honest-fix", "selection", "untested", "flaky", "test-tamper", "breaks-one", "noisy",
-    "silent-change", "false-claim", "api-break", "new-dep", "probe-only",
+    "silent-change", "false-claim", "api-break", "new-dep", "probe-only", "policy-weaken",
 ]  # fmt: skip
 
 
@@ -89,7 +89,7 @@ def without_timing(items: list[str]) -> list[str]:
     neither times nor compares behaviour)."""
     later = (
         "perf_diff:", "perf_not_assessable:", "behaviour_diff:", "api_diff:", "dep_diff:",
-        "probe_diff:",
+        "probe_diff:", "policy_change:",
     )  # fmt: skip
     return sorted(i for i in items if not i.startswith(later))
 

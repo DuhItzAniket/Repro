@@ -10,8 +10,10 @@ dependencies = [
     "griffelib>=2.3.2,<2.4",
     "grimp>=3.17,<3.18",  # the grimp worker uses its package-finder setting, not public API
     "hypothesis>=6.169.0",
+    "jsonschema>=4.26.0",
     "packaging>=26.3",
     "pydantic>=2.14.1",
+    "pyyaml>=6.0.3",
     "repro-events",
     "typer>=0.27.3",
     "uvicorn>=0.54.0",

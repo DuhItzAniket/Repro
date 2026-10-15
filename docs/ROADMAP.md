@@ -445,7 +445,7 @@ expected deterministic status. `repro replay` regenerates identical cards.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| F01 | `repro.yml` schema & loader | S | A04 | planned |
+| F01 | `repro.yml` schema & loader | S | A04 | done |
 | F02 | Invariants I: API, dependencies, forbidden paths | M | F01, E05 | planned |
 | F03 | Invariants II: network, performance | M | F01, D02, D07 | planned |
 | F04 | Status engine & missing taxonomy | M | F02, F03, E04 | planned |
@@ -712,3 +712,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | E06 | 2026-10-15 | [#51](https://github.com/DuhItzAniket/Repro/pull/51) | Input-replay probes: changed functions with JSON-typed parameters called with 40 derandomized Hypothesis inputs each on base, base again (other seeds) and head inside the sandboxes; inputs on which base disagrees with itself left out; probe_diff (provenance: generated) + diff.probe; probe-only fixture: percent(0, 0) raises on head only; timing now runs after the other runs |
 | E07 | 2026-10-15 | [#52](https://github.com/DuhItzAniket/Repro/pull/52) | The behaviour field and Signals from real runs: A, A2 and H preview each test's first four calls of each traced function, sent as trace.sample events; Gate E's browser test (silent-change: two stable behaviour diffs with reproducers 37.8 -> 38 and 0.0 -> 0, no failing test; noisy: noise unstable, no diff) and its CI job |
 | Gate E | 2026-10-15 | [#53](https://github.com/DuhItzAniket/Repro/pull/53) | Stage E complete; release v0.5.0 ([gate record](phases/E-gate.md)); Gate E's browser test (an output change no test checks shown as two stable behaviour diffs with reproducers; A/A′ noise unstable, never a diff) passes in CI (Linux, containers) and on Windows (Edge) |
+| F01 | 2026-10-15 | [#54](https://github.com/DuhItzAniket/Repro/pull/54) | repro.yml read from base and validated against a JSON Schema (PRODUCT.md's MVP set) with PyYAML's safe loader, bounded, no aliases, each error with line, column and path; an invalid file means no policy, never defaults; head's edit is policy_change evidence naming how it would weaken the policy; policy-weaken fixture |

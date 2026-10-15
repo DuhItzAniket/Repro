@@ -72,7 +72,7 @@ From Stage D on, integration tests assert it end to end. Fixtures are added by t
 first needs them; `honest-fix` exists since A07, `selection` and `untested` since D05,
 `flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D,
 `noisy` since E03, `silent-change` and `false-claim` since E04, `api-break` and `new-dep` since
-E05, `probe-only` since E06. A fixture's `behaviour` list holds
+E05, `probe-only` since E06, `policy-weaken` since F01. A fixture's `behaviour` list holds
 the missing items the behaviour comparison adds (E03), and its evidence lists its
 `behaviour_diff` items (E04), with `[reproducers]` where a test checks them; `test_run_stage.py`
 expects them with the rest.
