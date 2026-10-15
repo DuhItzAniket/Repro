@@ -13,6 +13,11 @@ All notable changes to this project are documented here. The format follows
   says why; head's edit to the file is `policy_change` evidence naming how it would weaken
   the policy. YAML is read with the safe loader, bounded, without aliases. Fixture
   `policy-weaken`. New dependency: PyYAML. [F01]
+- Invariants: `public_api_stable`, `no_new_dependencies` and `forbidden_paths`, when base's
+  `repro.yml` enables them, are decided from the run's own API and dependency evidence and
+  the change's files: `invariant` evidence citing what it rests on, and an
+  `invariant.result` check. Anything they need that was not observed makes them "not
+  evaluated", never a pass. Fixtures `forbidden-path` and `invariants-pass`. [F02]
 
 ## [0.5.0] - 2026-10-15
 

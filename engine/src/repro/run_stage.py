@@ -32,6 +32,9 @@ execution, and its evidence as events.
 ``perf`` waits for every other job that runs the sides (``behaviour``'s reproducers,
 ``probes``): timing beside them would measure their load.
 
+- ``invariants`` (check, F02): each invariant base's ``repro.yml`` enables, evaluated from the
+  run's evidence: ``invariant`` evidence and an ``invariant.result`` each.
+
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
 
@@ -45,7 +48,10 @@ from typing import Any, Final, Literal
 from repro.analysis import StaticAnalysis
 from repro.analysis.api import api_diff
 from repro.gitops import Git
+from repro.gitops import diff as changed_files
 from repro.orchestrator import Job, JobContext, OnFailure
+from repro.policy import FILE as POLICY_FILE
+from repro.policy import invariants
 from repro.policy.stage import PolicyRead
 from repro.provision import (
     DockerProvisioner,
@@ -98,6 +104,11 @@ class RunState:
     probing: probes.Probing | None = None
     #: The policy read from base (F01); None until the policy job ran.
     policy: PolicyRead | None = None
+    #: The API's breaks, (symbol, breakage, evidence ID), and the packages not read (E05; F02).
+    api_breaks: list[tuple[str, str, str]] | None = None
+    api_unread: list[str] = field(default_factory=list)
+    #: The dependency differences, (package, change, source, evidence ID) (E05; F02).
+    dep_changes: list[tuple[str, str, str, str]] | None = None
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
 
@@ -479,11 +490,13 @@ def _behaviour_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
     )
 
 
-def _api_job(git: Git, base: str, head: str, work: Path) -> Job:
+def _api_job(git: Git, base: str, head: str, work: Path, state: RunState) -> Job:
     def run(ctx: JobContext) -> None:
         found = api_diff(git, base, head, work / "api")
+        breaks = []
         for item in found.breaks:
             record = item.evidence(ctx.run_id)
+            breaks.append((item.symbol, item.breakage, str(record["id"])))
             ctx.emit("evidence.created", status="ok", payload={"evidence": record})
             target = {"symbol": item.symbol, **({"file": item.file} if item.file else {})}
             payload = item.payload(record["id"])
@@ -492,6 +505,8 @@ def _api_job(git: Git, base: str, head: str, work: Path) -> Job:
             ctx.emit("missing.recorded", status="warn", payload=missing)
         packages = ", ".join(found.packages) or "no packages"
         ctx.log(f"public API ({packages}): {len(found.breaks)} breaking changes")
+        state.api_breaks = breaks
+        state.api_unread = sorted({package for _, package, _ in found.problems})
 
     return Job(
         "api",
@@ -533,12 +548,15 @@ def _deps_job(state: RunState) -> Job:
                 listed[side.name] = found
         if len(listed) == 2:  # noqa: PLR2004 - both sides
             changes += dependencies.compare(listed["base"], listed["head"], "installed", None)
+        cited: list[tuple[str, str, str, str]] = []
         for change in changes:
             record = change.evidence(ctx.run_id)
+            cited.append((change.package, change.change, change.source, str(record["id"])))
             ctx.emit("evidence.created", status="ok", payload={"evidence": record})
             target = {"file": change.file or "."}
             payload = change.payload(record["id"])
             ctx.emit("diff.deps", status="warn", payload=payload, target=target)  # ADR-0015 §2
+        state.dep_changes = cited
         drift = [
             item
             for side in (base, head)
@@ -628,6 +646,47 @@ def _probe_diff_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
     )
 
 
+def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
+    def run(ctx: JobContext) -> None:
+        read = state.policy
+        if read is None or read.policy is None or not read.policy.invariants:
+            ctx.log("no invariants: none enabled by the base policy")
+            return
+        touched = sorted(
+            {p for c in changed_files(git, base, head) for p in (c.old_path, c.new_path) if p}
+        )
+        results = []
+        for invariant in read.policy.invariants:
+            if invariant.name == "public_api_stable":
+                api = invariants.public_api_stable(invariant, state.api_breaks, state.api_unread)
+                results.append(api)
+            elif invariant.name == "no_new_dependencies":
+                results.append(invariants.no_new_dependencies(invariant, state.dep_changes))
+            elif invariant.name == "forbidden_paths":
+                results.append(invariants.forbidden_paths(invariant, touched))
+            else:
+                results.append(invariants.not_yet(invariant, "F03"))
+        for result in results:
+            record = result.evidence(ctx.run_id)
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            ctx.emit(
+                "invariant.result",
+                status=result.status,  # ADR-0015 §2
+                payload=result.payload(record["id"]),
+                target={"file": POLICY_FILE},
+            )
+        summary = ", ".join(f"{r.invariant} {r.result}" for r in results)
+        ctx.log(f"invariants: {summary}")
+
+    return Job(
+        "invariants",
+        "check",
+        run,
+        OnFailure(reason="unsupported_project", detail="the invariants could not be evaluated"),
+        needs=("policy", "api", "deps"),
+    )
+
+
 def run_jobs(
     git: Git,
     base: str,
@@ -647,10 +706,11 @@ def run_jobs(
         _tests_job(git, base, head, state, cache=cache),
         _outcomes_job(state),
         _behaviour_job(state, artifacts),
-        _api_job(git, base, head, work),
+        _api_job(git, base, head, work, state),
         _deps_job(state),
         _probes_job(git, base, head, state),
         _probe_diff_job(state, artifacts),
         _perf_job(state),
         _perf_diff_job(state),
+        _invariants_job(git, base, head, state),
     ]

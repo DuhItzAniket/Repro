@@ -62,6 +62,7 @@ OS**. A test pins them.
 | `selection` | Changes whose affected tests a person can name, beside a test none affects | exactly the expected selected tests and reasons; no gaps (D05) | VERIFIED |
 | `breaks-one` | A change that breaks exactly one test | that test P2F, in Execution, Change routes and the index (Gate D) | FLAGGED |
 | `forbidden-path` | Edits a protected path | invariant failure | FLAGGED (`forbidden_paths`) |
+| `invariants-pass` | Every invariant enabled; a change that keeps them | every invariant passes (F02, F03) | VERIFIED |
 | `test-tamper` | Deletes a failing assertion and adds `@pytest.mark.skip` to another test | `test_change` evidence. Base version of the edited test fails on head | FLAGGED |
 | `probe-only` | Wrong output on inputs no existing test uses | `probe_diff` from generated probes | FLAGGED (Stage E06/G07) |
 | `policy-weaken` | Head edits `repro.yml` to drop an invariant | policy change gap item. Policy still read from base | FLAGGED |
@@ -72,7 +73,9 @@ From Stage D on, integration tests assert it end to end. Fixtures are added by t
 first needs them; `honest-fix` exists since A07, `selection` and `untested` since D05,
 `flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D,
 `noisy` since E03, `silent-change` and `false-claim` since E04, `api-break` and `new-dep` since
-E05, `probe-only` since E06, `policy-weaken` since F01. A fixture's `behaviour` list holds
+E05, `probe-only` since E06, `policy-weaken` since F01, `forbidden-path` and `invariants-pass` since
+F02 (with `api-break` and `new-dep` given a base `repro.yml`). A fixture's `invariants` list
+holds its `invariant.result` events as `<invariant>:<result>`. A fixture's `behaviour` list holds
 the missing items the behaviour comparison adds (E03), and its evidence lists its
 `behaviour_diff` items (E04), with `[reproducers]` where a test checks them; `test_run_stage.py`
 expects them with the rest.

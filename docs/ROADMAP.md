@@ -446,7 +446,7 @@ expected deterministic status. `repro replay` regenerates identical cards.
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | F01 | `repro.yml` schema & loader | S | A04 | done |
-| F02 | Invariants I: API, dependencies, forbidden paths | M | F01, E05 | planned |
+| F02 | Invariants I: API, dependencies, forbidden paths | M | F01, E05 | in progress |
 | F03 | Invariants II: network, performance | M | F01, D02, D07 | planned |
 | F04 | Status engine & missing taxonomy | M | F02, F03, E04 | planned |
 | F05 | Deterministic card & exports (MD/JSON) + card view | M | F04 | planned |

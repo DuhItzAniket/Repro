@@ -139,13 +139,25 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
                 missing.append(f"{item['reason']}:{name}")
     behaviour = expected["expected"].get("behaviour", [])  # E03's comparison adds these
     assert sorted(missing) == sorted(expected["expected"]["missing"] + behaviour), log
+    results = [
+        f"{e['payload']['invariant']}:{e['payload']['result']}"
+        for e in events
+        if e["kind"] == "invariant.result"
+    ]
+    assert sorted(results) == sorted(expected["expected"].get("invariants", [])), log
+    for event in events:
+        if event["kind"] == "invariant.result":  # ADR-0015 §2; it cites its own evidence first
+            status = {"pass": "ok", "fail": "fail", "not_evaluated": "warn"}
+            assert event["status"] == status[event["payload"]["result"]]
+            assert event["payload"]["evidence_ids"][0] in evidence
 
 
 @pytest.mark.parametrize(
     "name",
     [
         "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
-        "api-break", "new-dep", "probe-only", "policy-weaken",
+        "api-break", "new-dep", "probe-only", "policy-weaken", "forbidden-path",
+        "invariants-pass",
     ],
 )  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
@@ -174,7 +186,7 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
         samples = Counter(e["payload"]["side"] for e in events if e["kind"] == "perf.sample")
         assert samples == {"base": 30, "head": 30}
     stages = [e["stage"] for e in events if e["kind"] == "stage.started"]
-    assert stages == ["build", "run", "diff"]  # claims (read) arrive in Stage G
+    assert stages == ["build", "run", "diff", "check"]  # claims (read) arrive in Stage G
     assert events[-1]["kind"] == "run.finished"
     assert events[-1]["status"] == "ok"
 

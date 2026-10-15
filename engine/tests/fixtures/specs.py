@@ -652,6 +652,7 @@ API_BREAK = RepoSpec(
     description="A public function loses a parameter; another changes its return annotation.",
     base={
         "pyproject.toml": '[project]\nname = "greeting-fixture"\nversion = "0.1.0"\n',
+        "repro.yml": "invariants:\n  - public_api_stable: true\n",
         "greeting/__init__.py": "",
         "greeting/hello.py": _HELLO,
         "tests/test_hello.py": _TEST_HELLO,
@@ -691,6 +692,7 @@ NEW_DEP = RepoSpec(
     description="A change that adds a dependency.",
     base={
         "pyproject.toml": '[project]\nname = "clock-fixture"\nversion = "0.1.0"\n',
+        "repro.yml": "invariants:\n  - no_new_dependencies: true\n",
         "clock/__init__.py": "",
         "clock/core.py": _CLOCK,
         "tests/test_clock.py": _TEST_CLOCK,
@@ -788,6 +790,87 @@ POLICY_WEAKEN = RepoSpec(
     },
 )
 
+_SCORE = """\"\"\"Scores.\"\"\"
+
+
+def best(scores: list[int]) -> int:
+    return max(scores) if scores else 0
+"""
+
+_TEST_SCORE = """from game.score import best
+
+
+def test_best():
+    assert best([3, 9, 4]) == 9
+
+
+def test_best_of_none():
+    assert best([]) == 0
+"""
+
+_MIGRATION = """-- The first schema.
+CREATE TABLE scores (player TEXT, points INTEGER);
+"""
+
+_ALL_INVARIANTS = """invariants:
+  - public_api_stable: true
+  - no_new_dependencies: true
+  - no_network: true
+  - perf_budget: { max_regression: 0.5 }
+  - forbidden_paths: ["migrations/**"]
+"""
+
+# One package: setuptools' flat layout would take migrations/ for a second one.
+_GAME_PYPROJECT = (
+    '[project]\nname = "game-fixture"\nversion = "0.1.0"\n\n'
+    '[tool.setuptools]\npackages = ["game"]\n'
+)
+
+# Head edits a migration a policy forbids touching (F02: forbidden_paths fails).
+FORBIDDEN_PATH = RepoSpec(
+    name="forbidden-path",
+    description="A change that edits a protected path.",
+    base={
+        "pyproject.toml": _GAME_PYPROJECT,
+        "repro.yml": 'invariants:\n  - forbidden_paths: ["migrations/**"]\n',
+        "game/__init__.py": "",
+        "game/score.py": _SCORE,
+        "migrations/0001_initial.sql": _MIGRATION,
+        "tests/test_score.py": _TEST_SCORE,
+    },
+    heads={
+        "change/rename-table": {
+            "migrations/0001_initial.sql": _MIGRATION.replace("scores", "high_scores"),
+            "game/score.py": _SCORE.replace(
+                "return max(scores) if scores else 0", "return max(scores, default=0)"
+            ),
+        }
+    },
+    pr_description={"change/rename-table": "Rename the scores table\n\nAnd simplify best()."},
+)
+
+# Every invariant enabled, and a change that keeps them all (F02, F03: their passing fixture).
+INVARIANTS_PASS = RepoSpec(
+    name="invariants-pass",
+    description="A change that keeps every declared invariant.",
+    base={
+        "pyproject.toml": _GAME_PYPROJECT,
+        "repro.yml": _ALL_INVARIANTS,
+        "game/__init__.py": "",
+        "game/score.py": _SCORE,
+        "migrations/0001_initial.sql": _MIGRATION,
+        "tests/test_score.py": _TEST_SCORE,
+    },
+    heads={
+        "change/tidy-best": {
+            "game/score.py": _SCORE.replace(
+                "return max(scores) if scores else 0", "return max(scores, default=0)"
+            ),
+        }
+    },
+    pr_description={"change/tidy-best": "Simplify best()\n\nNo behaviour change."},
+)
+
 ALL_SPECS = {
     spec.name: spec
     for spec in (
@@ -805,5 +888,7 @@ ALL_SPECS = {
         NEW_DEP,
         PROBE_ONLY,
         POLICY_WEAKEN,
+        FORBIDDEN_PATH,
+        INVARIANTS_PASS,
     )
 }
