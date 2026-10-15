@@ -97,7 +97,7 @@ it adds, removes or moves, as declared or locked and as actually installed on ea
   attribute's value changed, an object removed, a parameter removed, a default turned into a
   required keyword (griffe), two attribute annotations and a return annotation changed
   (Repro); a private function's change, the tests, `conftest.py` and `setup.py` give none.
-- AC3: the other eight fixtures, run end to end, gain no `api_diff` or `dep_diff` evidence
+- AC3: the six other fixtures run through `repro run` gain no `api_diff` or `dep_diff` evidence
   (their expectations unchanged and met); the evidence and payloads validate against the
   schema.
 - The installed listing, run against Repro's own environment, finds `griffelib` and
