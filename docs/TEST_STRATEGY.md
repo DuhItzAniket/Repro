@@ -57,6 +57,7 @@ OS**. A test pins them.
 | `net-call` | Code under test opens a socket | network attempt recorded | FLAGGED (`no_network`) |
 | `perf-regress` | Quadratic loop in hot path | perf diff over budget | FLAGGED (`perf_budget`) |
 | `flaky` | Test with random outcome | observation marked `unstable` | not diffed; listed under *missing* |
+| `noisy` | Refactors functions whose results or arguments carry time, random and set-order noise | every noisy call `unstable`, no behaviour difference (E03) | not diffed; listed under *missing* |
 | `untested` | Change no test reaches | blast radius with no covering tests | UNVERIFIABLE / *missing* |
 | `selection` | Changes whose affected tests a person can name, beside a test none affects | exactly the expected selected tests and reasons; no gaps (D05) | VERIFIED |
 | `breaks-one` | A change that breaks exactly one test | that test P2F, in Execution, Change routes and the index (Gate D) | FLAGGED |
@@ -69,7 +70,9 @@ OS**. A test pins them.
 Each fixture's expected outcome lives next to the specs as `<name>.toml` (stdlib `tomllib`).
 From Stage D on, integration tests assert it end to end. Fixtures are added by the phase that
 first needs them; `honest-fix` exists since A07, `selection` and `untested` since D05,
-`flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D.
+`flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D,
+`noisy` since E03. A fixture's `behaviour` list holds the missing items the behaviour comparison
+adds (E03); `test_run_stage.py` expects them with the rest.
 
 ### Golden files and property tests
 

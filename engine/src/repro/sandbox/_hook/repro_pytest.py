@@ -21,8 +21,11 @@ nothing more in that test. Repro takes tool ID 4, 3, 2 or 5, whichever is free f
 reported unavailable.
 
 With ``REPRO_TRACE_TARGETS`` (E01, a JSON file of targets), the same tool traces the change's
-target functions call by call (``repro_trace``, beside this file): ``{"kind": "call", ...}``
-per call and ``{"kind": "truncated", ...}`` when a target's budget for a test is spent.
+target functions call by call (``repro_trace``, beside this file), into a file of their own
+(E03), so a large trace never crowds out the results: ``calls.jsonl`` holds
+``{"kind": "call", ...}`` per call and ``{"kind": "truncated", ...}`` when a target's budget for
+a test is spent. It is written once per test, and stops at ``MAX_TRACE_BYTES``: then
+``{"kind": "trace_cut", ...}`` in ``results.jsonl`` says how much was written.
 
 Determinism: before each test, ``random`` is seeded from ``REPRO_SEED`` and the test's node ID,
 so a test's random draws do not depend on which tests ran before it. With ``REPRO_NET_GUARD=1``
@@ -54,7 +57,11 @@ _SEED = int(os.environ.get("REPRO_SEED", "0") or 0)
 _LONGREPR = 2000
 #: sys.monitoring tool IDs tried in turn: 0 (debuggers) and 1 (coverage) are left alone.
 _TOOL_IDS = (4, 3, 2, 5)
-_STATE: dict[str, Any] = {"file": None, "tests": {}, "places": None, "monitor": None}
+#: The trace file's size at most (the engine reads no more than this).
+MAX_TRACE_BYTES = 64 * 1024 * 1024
+_STATE: dict[str, Any] = {
+    "file": None, "calls": None, "traced": 0, "tests": {}, "places": None, "monitor": None,
+}  # fmt: skip
 
 Place = tuple[str, str, int]
 
@@ -63,11 +70,29 @@ def _write(record: dict[str, Any]) -> None:
     handle = _STATE["file"]
     if handle is not None:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
-        # Call records go out with the next other record (a test's own ends it): a flush per
+        handle.flush()
+    calls = _STATE["calls"]
+    if calls is not None:
+        # The trace goes out with the results' records (a test's own ends it): a flush per
         # traced call cost about 2.3 us on Windows (E02). A process killed mid-test loses at
         # most that test's calls, and a cut last line is counted as malformed.
-        if record["kind"] != "call":
-            handle.flush()
+        calls.flush()
+
+
+def _trace(record: dict[str, Any]) -> None:
+    """A tracer record, to the trace file, until it holds ``MAX_TRACE_BYTES``."""
+    handle = _STATE["calls"]
+    if handle is None:
+        return
+    line = json.dumps(record, sort_keys=True) + "\n"
+    written = _STATE["traced"] + len(line)
+    if written > MAX_TRACE_BYTES:
+        handle.close()
+        _STATE["calls"] = None
+        _write({"kind": "trace_cut", "bytes": _STATE["traced"], "limit": MAX_TRACE_BYTES})
+        return
+    handle.write(line)
+    _STATE["traced"] = written
 
 
 def _seed_for(nodeid: str) -> int:
@@ -265,7 +290,9 @@ def pytest_configure() -> None:
         import repro_trace  # noqa: PLC0415 - only when tracing
 
         listed = Path(targets).read_text(encoding="utf-8")
-        tracer = repro_trace.Tracer(repro_trace.parse_targets(listed), _write)
+        if _OUT:
+            _STATE["calls"] = (Path(_OUT) / "calls.jsonl").open("w", encoding="utf-8")
+        tracer = repro_trace.Tracer(repro_trace.parse_targets(listed), _trace)
     if mapping or tracer is not None:
         monitor = _start_monitor(places, mapping=mapping, tracer=tracer)
         _STATE["monitor"] = monitor
@@ -401,7 +428,8 @@ def pytest_sessionfinish(session: Any, exitstatus: Any) -> None:
             "seed": _SEED,
         }
     )
-    handle = _STATE["file"]
-    if handle is not None:
-        handle.close()
-        _STATE["file"] = None
+    for name in ("calls", "file"):
+        handle = _STATE[name]
+        if handle is not None:
+            handle.close()
+            _STATE[name] = None

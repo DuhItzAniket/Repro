@@ -17,6 +17,7 @@ from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
 from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
 from repro.run_stage import Backend, RunState, run_jobs
+from repro.store import ArtifactStore
 
 #: A run's log lists at most this many skipped entries or problems one by one.
 LIST_AT_MOST: Final = 20
@@ -157,14 +158,23 @@ def build_jobs(
 
 
 def pipeline_jobs(
-    git: Git, change: Change, work: Path, *, backend: Backend, cache: Path, analyse_only: bool
+    git: Git,
+    change: Change,
+    work: Path,
+    *,
+    backend: Backend,
+    cache: Path,
+    analyse_only: bool,
+    artifacts: ArtifactStore | None = None,
 ) -> tuple[Sequence[Job], RunState]:
     """Every job of a run, and the state they share (close it when the run is over)."""
     state = RunState()
     jobs = list(build_jobs(git, change, work, state))
     if not analyse_only:
         base, head = change.base.sha, change.head.sha
-        jobs += run_jobs(git, base, head, work, state, backend=backend, cache=cache)
+        jobs += run_jobs(
+            git, base, head, work, state, backend=backend, cache=cache, artifacts=artifacts
+        )
     return jobs, state
 
 

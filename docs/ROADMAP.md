@@ -399,7 +399,7 @@ control.
 |---|---|---|---|---|
 | E01 | Tracer core & overhead benchmark | L | D04, A08 | done |
 | E02 | Canonical value encoder | L | E01 | done |
-| E03 | Observation store & stability analysis | M | E02 | planned |
+| E03 | Observation store & stability analysis | M | E02 | done |
 | E04 | Behaviour diff engine & reproducers | M | E03 | planned |
 | E05 | API & dependency diff | M | C06, D03 | planned |
 | E06 | Deterministic input-replay probes | M | E04 | planned |
@@ -706,3 +706,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Gate D | 2026-10-15 | [#45](https://github.com/DuhItzAniket/Repro/pull/45) | Stage D complete; release v0.4.0 ([gate record](phases/D-gate.md)); Gate D's browser test (a test flipping P2F in Execution, Change routes and the index; test tampering flagged) passes in CI (Linux) and on Windows (Edge, containers) |
 | E01 | 2026-10-15 | [#46](https://github.com/DuhItzAniket/Repro/pull/46) | Tracer core: every call of a change's target functions per test (arguments at PY_START, results, exceptions, yields) as stable digests; one sys.monitoring tool for map and tracer; 200 calls per test and target, then switched off completely; beside coverage.py; benchmark harness with BCa intervals, no interval above 1.20x on 3.12–3.15 |
 | E02 | 2026-10-15 | [#47](https://github.com/DuhItzAniket/Repro/pull/47) | Canonical encoder: objects, builtin subclasses, exceptions and standard-library values read through the interpreter's own descriptors (no target code runs); paths and addresses normalised; guards; previews; for results an order-insensitive digest from the same walk; Hypothesis properties and an 18-kind hostile corpus; tracer benchmark 1.01–1.18x on 3.12–3.15 |
+| E03 | 2026-10-15 | [#48](https://github.com/DuhItzAniket/Repro/pull/48) | Observations: A, A2 (now with its own random seed) and H trace the changed functions on both sides; calls joined by test, phase, symbol, arguments and occurrence; A vs A2 differences masked per call and field and per call set; incomplete or budget-cut calls never compared; deterministic CBOR artifacts (RFC 8949) read back strictly; noisy fixture: all noise unstable, 0 differences |

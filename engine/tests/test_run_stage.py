@@ -7,6 +7,7 @@ The fixtures' expectation files name the evidence and missing items; here they m
 container case needs Docker with Linux containers (required on CI's Ubuntu job).
 """
 
+import hashlib
 import json
 import os
 import tomllib
@@ -104,10 +105,11 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             for target in item["targets"] or [{}]:
                 name = target.get("symbol") or target.get("test") or ""
                 missing.append(f"{item['reason']}:{name}")
-    assert sorted(missing) == sorted(expected["expected"]["missing"]), log
+    behaviour = expected["expected"].get("behaviour", [])  # E03's comparison adds these
+    assert sorted(missing) == sorted(expected["expected"]["missing"] + behaviour), log
 
 
-@pytest.mark.parametrize("name", ["honest-fix", "test-tamper", "perf-regress"])
+@pytest.mark.parametrize("name", ["honest-fix", "test-tamper", "perf-regress", "noisy"])
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     events = run_fixture(name, tmp_path, "process")
     check_against_expectation(name, events)
@@ -117,6 +119,8 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
     assert {r["backend"] for r in ready} == {"process"}
     assert {r["network"] for r in ready} == {"detected-only"}
+    if name == "noisy":  # E03: each traced run's observations and the comparison, stored
+        assert_observations_stored(tmp_path)
     if name == "perf-regress":  # ABBA: ten timing runs on each side, three tests timed
         samples = Counter(e["payload"]["side"] for e in events if e["kind"] == "perf.sample")
         assert samples == {"base": 30, "head": 30}
@@ -124,6 +128,32 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     assert stages == ["build", "run", "diff"]  # claims (read) arrive in Stage G
     assert events[-1]["kind"] == "run.finished"
     assert events[-1]["status"] == "ok"
+
+
+def assert_observations_stored(tmp_path: Path) -> None:
+    from repro.runner.observations import load_observations  # noqa: PLC0415
+    from repro.store.cbor import decode  # noqa: PLC0415
+
+    env = clean_env(tmp_path, REPRO_SANDBOX="process", REPRO_RUN_ROOT=str(tmp_path / "scratch"))
+    paths = load_settings(env=env).paths
+    with StoreReader(paths.database) as reader:
+        (run,) = reader.runs(10)
+    folder = paths.runs / run.id / "obs"
+    assert sorted(p.name for p in folder.iterdir()) == [
+        "A.cbor",
+        "A2.cbor",
+        "H.cbor",
+        "behaviour.cbor",
+    ]
+    behaviour = decode((folder / "behaviour.cbor").read_bytes())
+    assert behaviour["counts"]["differences"] == 0
+    for label, ref in behaviour["observations"].items():
+        data = (paths.runs / run.id / ref["path"]).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == ref["sha256"]
+        assert load_observations(data).label == label
+        with StoreReader(paths.database) as reader:
+            row = reader.artifact(run.id, ref["sha256"])
+        assert row is not None
 
 
 def test_test_events_count_attempts(tmp_path: Path) -> None:

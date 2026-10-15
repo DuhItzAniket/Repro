@@ -1,0 +1,48 @@
+# Expected Repro outcome for the noisy fixture (E03 asserts the behaviour comparison).
+[fixture]
+name = "noisy"
+head = "change/tidy"
+
+[expected]
+status = "UNVERIFIABLE"
+claims = ["A refactor: no behaviour change"]
+# Every test passes on both sides, and head changes no behaviour.
+evidence = [
+  "test_outcome:P2P:tests/test_values.py::test_fruit",
+  "test_outcome:P2P:tests/test_values.py::test_roll",
+  "test_outcome:P2P:tests/test_values.py::test_since",
+  "test_outcome:P2P:tests/test_values.py::test_stamp",
+  "test_outcome:P2P:tests/test_values.py::test_total",
+]
+missing = [
+  "perf_not_assessable:tests/test_values.py::test_fruit",
+  "perf_not_assessable:tests/test_values.py::test_roll",
+  "perf_not_assessable:tests/test_values.py::test_since",
+  "perf_not_assessable:tests/test_values.py::test_stamp",
+  "perf_not_assessable:tests/test_values.py::test_total",
+]
+# The behaviour comparison: stamp() returns the time, roll() a random draw, fruit() a set's
+# order, and since() is called with the time; all four differ between A and A2 (another hash
+# seed and random seed), so they are masked as unstable and none becomes a difference. total()
+# is stable and the same on both sides.
+behaviour = [
+  "unstable_observation:noise.values:fruit#0",
+  "unstable_observation:noise.values:roll#0",
+  "unstable_observation:noise.values:since#0",
+  "unstable_observation:noise.values:stamp#0",
+  "unstable_observation:tests/test_values.py::test_fruit",
+  "unstable_observation:tests/test_values.py::test_roll",
+  "unstable_observation:tests/test_values.py::test_since",
+  "unstable_observation:tests/test_values.py::test_stamp",
+]
+differences = 0
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_values.py::test_fruit" = ["blast_radius"]
+"tests/test_values.py::test_roll" = ["blast_radius"]
+"tests/test_values.py::test_since" = ["blast_radius"]
+"tests/test_values.py::test_stamp" = ["blast_radius"]
+"tests/test_values.py::test_total" = ["blast_radius"]
