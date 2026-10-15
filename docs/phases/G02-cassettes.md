@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G01 |
-| **Branch / PR** | `phase/G02-cassettes` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/G02-cassettes` · [#61](https://github.com/DuhItzAniket/Repro/pull/61) |
+| **Started / finished** | 2026-10-15 / 2026-10-16 |
 
 ## Objective
 Make every agent call reproducible without a model: record a call once, replay it offline
@@ -61,11 +61,11 @@ what calls cost, per model and per run.
   instead of presenting it as spending.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): cassettes keyed by (prompt version, model, input digest), with a missing
+- [x] AC1 (roadmap): cassettes keyed by (prompt version, model, input digest), with a missing
   cassette failing the test.
-- [ ] AC2 (roadmap): prompt files versioned.
-- [ ] AC3 (roadmap): `cost.estimate` events.
-- [ ] AC4 (roadmap): the full agent test suite runs offline in CI.
+- [x] AC2 (roadmap): prompt files versioned.
+- [x] AC3 (roadmap): `cost.estimate` events.
+- [x] AC4 (roadmap): the full agent test suite runs offline in CI.
 
 ## Test plan
 | Criterion | Check |
@@ -100,7 +100,8 @@ what calls cost, per model and per run.
   as the lockdown and now every test set it, no CLI test tried to connect past loopback.
   Removing the switch from the guard failed the three unlocked control tests with those
   attempts.
-- CI run: linked in the PR.
+- Full suite (Windows, Docker stopped): 1559 passed, 13 skipped (Docker and POSIX-only).
+- CI run: linked in the PR (#61).
 
 ## Deviations from spec
 - ARCHITECTURE §10.5 keyed cassettes by the input digest; the digest is taken with run-specific
