@@ -621,6 +621,94 @@ FALSE_CLAIM = RepoSpec(
     },
 )
 
+_HELLO = """\"\"\"Greetings.\"\"\"
+
+LANGUAGE: str = "en"
+
+
+def greet(name, punctuation="!"):
+    return f"Hello, {name}{punctuation}"
+
+
+def shout(name: str) -> str:
+    return greet(name).upper()
+"""
+
+_TEST_HELLO = """from greeting.hello import greet, shout
+
+
+def test_greet():
+    assert greet("Ada") == "Hello, Ada!"
+
+
+def test_shout():
+    assert shout("Ada") == "HELLO, ADA!"
+"""
+
+# Head drops a public function's parameter and changes another's declared return type: the
+# tests still pass (they use neither), and only the API comparison shows the break (E05).
+API_BREAK = RepoSpec(
+    name="api-break",
+    description="A public function loses a parameter; another changes its return annotation.",
+    base={
+        "pyproject.toml": '[project]\nname = "greeting-fixture"\nversion = "0.1.0"\n',
+        "greeting/__init__.py": "",
+        "greeting/hello.py": _HELLO,
+        "tests/test_hello.py": _TEST_HELLO,
+    },
+    heads={
+        "change/fixed-punctuation": {
+            "greeting/hello.py": _HELLO.replace(
+                'def greet(name, punctuation="!"):\n    return f"Hello, {name}{punctuation}"',
+                'def greet(name):\n    return f"Hello, {name}!"',
+            ).replace("def shout(name: str) -> str:", "def shout(name: str) -> str | None:")
+        }
+    },
+    pr_description={
+        "change/fixed-punctuation": "Always end greetings with '!'\n\ngreet() no longer "
+        "takes a punctuation argument.",
+    },
+)
+
+_CLOCK = """\"\"\"Durations.\"\"\"
+
+
+def label(seconds):
+    return f"{seconds}s"
+"""
+
+_TEST_CLOCK = """from clock.core import label
+
+
+def test_label():
+    assert label(5) == "5s"
+"""
+
+# Head adds a dependency (six, pinned) and uses it: the same behaviour, one more package
+# declared and installed (E05).
+NEW_DEP = RepoSpec(
+    name="new-dep",
+    description="A change that adds a dependency.",
+    base={
+        "pyproject.toml": '[project]\nname = "clock-fixture"\nversion = "0.1.0"\n',
+        "clock/__init__.py": "",
+        "clock/core.py": _CLOCK,
+        "tests/test_clock.py": _TEST_CLOCK,
+    },
+    heads={
+        "feat/six": {
+            "pyproject.toml": (
+                '[project]\nname = "clock-fixture"\nversion = "0.1.0"\n'
+                'dependencies = ["six==1.17.0"]\n'
+            ),
+            "clock/core.py": _CLOCK.replace(
+                '"""Durations."""\n', '"""Durations."""\n\nimport six\n'
+            ).replace('return f"{seconds}s"', 'return six.text_type(seconds) + "s"'),
+        }
+    },
+    pr_description={"feat/six": "Use six for text\n\nlabel() builds its text with six."},
+)
+
 ALL_SPECS = {
     spec.name: spec
     for spec in (
@@ -634,5 +722,7 @@ ALL_SPECS = {
         NOISY,
         SILENT_CHANGE,
         FALSE_CLAIM,
+        API_BREAK,
+        NEW_DEP,
     )
 }

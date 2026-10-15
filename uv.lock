@@ -154,6 +154,15 @@ wheels = [
 ]
 
 [[package]]
+name = "griffelib"
+version = "2.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/27/b55f1a5278918be765fb2fd8b20966bc72bbdd3f789f031937cceea7834a/griffelib-2.3.2.tar.gz", hash = "sha256:df00c7a0dee3d86268d76788997a1859272cb1fb7b865658e043d2c0c3d52e60", size = 234729, upload-time = "2026-10-06T09:54:37.222Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/e5/0ae74c83c1cab2c14daadf28bd0143eb14bb81503834af987b66badc7b61/griffelib-2.3.2-py3-none-any.whl", hash = "sha256:8e710afededd5607f95bf3c8ccc175ee306e7084459faf27b9f9f44ef2a7a274", size = 169420, upload-time = "2026-10-06T09:54:32.038Z" },
+]
+
+[[package]]
 name = "grimp"
 version = "3.17"
 source = { registry = "https://pypi.org/simple" }
@@ -803,7 +812,9 @@ version = "0.4.0"
 source = { editable = "engine" }
 dependencies = [
     { name = "fastapi" },
+    { name = "griffelib" },
     { name = "grimp" },
+    { name = "packaging" },
     { name = "pydantic" },
     { name = "repro-events" },
     { name = "typer" },
@@ -814,7 +825,9 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.143.0" },
+    { name = "griffelib", specifier = ">=2.3.2,<2.4" },
     { name = "grimp", specifier = ">=3.17,<3.18" },
+    { name = "packaging", specifier = ">=26.3" },
     { name = "pydantic", specifier = ">=2.14.1" },
     { name = "repro-events", editable = "packages/events/python" },
     { name = "typer", specifier = ">=0.27.3" },

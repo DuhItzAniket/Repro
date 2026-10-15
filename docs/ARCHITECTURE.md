@@ -245,7 +245,7 @@ evidence derived from existing tests. The card always shows which kind supports 
 | Outcome | per-test outcomes A, A′, H, reruns | `test_outcome` (F2P / P2F / flaky …) |
 | Behaviour | observations joined on `(test, function, args_hash)` | `behaviour_diff`: different result, new or changed exception, input mutation, order-only. Each item has a minimal reproducer (test node ID plus encoded args preview) |
 | API | griffe `find_breaking_changes(base, head)` plus Repro's annotation-string comparison of return and attribute types (griffe does not check these yet) | `api_diff` |
-| Dependencies | lockfiles (uv.lock, poetry.lock, pdm.lock, requirements) **and** installed sets (`uv pip list --format json`) on both sides | `dep_diff`, `lock_drift` |
+| Dependencies | lockfiles (uv.lock, poetry.lock, pdm.lock, requirements) **and** installed sets (`uv pip list --format json`) on both sides | `dep_diff`, `lock_drift`. As built (E05, `provision/deps.py`): the requirements D03 read (a lock's pins: `lockfile`; otherwise `declared`) and the installed distributions, listed in each side's sandbox by its own interpreter with `-I -S` (metadata only; the project's editable install left out); PEP 440 order for `upgraded` / `downgraded`; lock drift for installed packages off their pin. `diff.deps` is `warn` |
 | Behaviour (as built, E04) | E03's comparison of A and H, noise masked | `behaviour_diff` per (test, function, class): `result_changed`, `exception_added` / `_removed` / `_changed`, `order_only`, `input_mutated` (the arguments, kept from PY_START, encoded again when the call ends), `calls_changed` (other arguments on one side). The tests with differences run again on both sides with previews of each group's first call: the reproducer is that run's call and results, and a difference that does not come back is `unstable`. `diff.behaviour` is `warn` (ADR-0015) |
 | Perf | untraced interleaved runs with an A/A noise floor | `perf_diff` with ratio of medians, BCa bootstrap 95 % CI and noise floor. Tests below the timing floor are `perf_not_assessable`. As built (D07, `runner/perf.py`): the `P2P` tests, ABBA until 10 runs a side, call-phase times; a regression needs the CI above 1, the ratio past max(10 %, the A/A spread of base's own ABBA samples), and Mann-Whitney significant after Benjamini-Hochberg; 5 ms timing floor |
 
@@ -429,7 +429,11 @@ Rules:
   later (C07).
 - **Public API:** `griffe` with `allow_inspection=False`, so target modules are never imported
   on the host. "Public" follows griffe's conventions, and false positives are possible and
-  documented.
+  documented. As built (E05, `analysis/api.py`): the project's packages (import-root
+  directories with `__init__.py`, test packages left out), their files written from git to a
+  scratch tree by module name; `find_breaking_changes` plus a text comparison of return and
+  attribute annotations, which griffe 2.3.2 leaves as TODOs; explanations are Repro's own (no
+  host paths). `diff.api` is `warn`.
 - **Blast radius:** changed symbols ∪ their reverse dependents (dynamic map ∪ grimp
   downstream modules), with distance kept for UI weighting. Statically, it walks the imports of
   both sides from the changed symbols' modules; an affected module is its `<module>` symbol.

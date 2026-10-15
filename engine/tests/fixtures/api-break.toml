@@ -1,0 +1,30 @@
+# Expected Repro outcome for the api-break fixture (E05 asserts the API diff).
+[fixture]
+name = "api-break"
+head = "change/fixed-punctuation"
+
+[expected]
+status = "FLAGGED"
+claims = ["greet() no longer takes a punctuation argument"]
+# greet() loses a parameter (griffe) and shout() declares another return type (Repro's
+# annotation comparison). The tests pass on both sides; greet() is called with other
+# arguments, its parameters being fewer.
+evidence = [
+  "api_diff:parameter_removed:greeting.hello:greet#0",
+  "api_diff:return_changed_type:greeting.hello:shout#0",
+  "behaviour_diff:calls_changed:tests/test_hello.py::test_greet",
+  "behaviour_diff:calls_changed:tests/test_hello.py::test_shout",
+  "test_outcome:P2P:tests/test_hello.py::test_greet",
+  "test_outcome:P2P:tests/test_hello.py::test_shout",
+]
+missing = [
+  "perf_not_assessable:tests/test_hello.py::test_greet",
+  "perf_not_assessable:tests/test_hello.py::test_shout",
+]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_hello.py::test_greet" = ["blast_radius"]
+"tests/test_hello.py::test_shout" = ["blast_radius"]

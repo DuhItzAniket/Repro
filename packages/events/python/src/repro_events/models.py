@@ -621,7 +621,7 @@ class DiffDepsPayload(ReproModel):
     change: Literal['added', 'removed', 'upgraded', 'downgraded', 'changed']
     base_version: Annotated[str, Field(max_length=100)] | None
     head_version: Annotated[str, Field(max_length=100)] | None
-    source: Literal['lockfile', 'installed']
+    source: Literal['lockfile', 'declared', 'installed']
 
 
 

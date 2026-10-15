@@ -1,0 +1,21 @@
+# Expected Repro outcome for the new-dep fixture (E05 asserts the dependency diff).
+[fixture]
+name = "new-dep"
+head = "feat/six"
+
+[expected]
+status = "FLAGGED"
+claims = ["label() builds its text with six"]
+# six is declared on head and installed there; label() behaves the same.
+evidence = [
+  "dep_diff:added/declared:six",
+  "dep_diff:added/installed:six",
+  "test_outcome:P2P:tests/test_clock.py::test_label",
+]
+missing = ["perf_not_assessable:tests/test_clock.py::test_label"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_clock.py::test_label" = ["blast_radius", "module_import"]

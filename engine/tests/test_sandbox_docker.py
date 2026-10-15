@@ -163,8 +163,13 @@ def test_a_timeout_kills_the_container(box: DockerSandbox) -> None:
 
 def test_a_memory_hog_is_killed(box: DockerSandbox) -> None:
     run = box.run(["python", "-c", "x = bytearray(2 * 1024 ** 3)"])  # 2 GiB against 512 MiB
+    assert run.outcome == "exited"
     assert run.returncode != 0
-    assert run.oom_killed or b"MemoryError" in run.stderr
+    # The allocation fails (MemoryError) or the kernel kills the process (SIGKILL: 128 + 9).
+    # Docker's OOMKilled flag says so too, but not every time: E05's CI run had exit 137
+    # with the flag false. The sandbox itself kills only on a timeout or a stop, which are
+    # other outcomes, so an exited run's 137 is the kernel's.
+    assert run.oom_killed or run.returncode == 137 or b"MemoryError" in run.stderr
 
 
 def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:

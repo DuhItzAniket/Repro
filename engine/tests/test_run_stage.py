@@ -52,17 +52,22 @@ def run_fixture(name: str, tmp_path: Path, sandbox: str) -> list[dict[str, Any]]
 
 
 def evidence_name(item: dict[str, Any]) -> str | None:
-    """An evidence item as the expectation files name it: ``<type>:<detail>:<target>``."""
+    """An evidence item as the expectation files name it: ``<type>:<detail>:<target>``
+    (a dependency's: ``dep_diff:<change>/<source>:<package>``)."""
     data, target = item["data"], item["targets"][0]
+    if item["type"] == "dep_diff":
+        return f"dep_diff:{data['change']}/{data['source']}:{data['package']}"
     detail = {
         "test_outcome": "class",
         "test_change": "change",
         "perf_diff": "verdict",
         "behaviour_diff": "change",
+        "api_diff": "breakage",
     }.get(item["type"])
     if detail is None:
         return None
-    return f"{item['type']}:{data[detail]}:{target.get('test') or target['file']}"
+    where = target.get("test") or target.get("symbol") or target["file"]
+    return f"{item['type']}:{data[detail]}:{where}"
 
 
 def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
@@ -81,9 +86,16 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     }
     found = [named for item in evidence.values() if (named := evidence_name(item)) is not None]
     assert sorted(found) == sorted(expected["expected"]["evidence"]), log
-    diffs = ("diff.outcome", "diff.tests", "diff.perf", "diff.behaviour")
+    diffs = ("diff.outcome", "diff.tests", "diff.perf", "diff.behaviour", "diff.api", "diff.deps")
     cited = [e["payload"]["evidence_id"] for e in events if e["kind"] in diffs]
-    compared = ("test_outcome", "test_change", "perf_diff", "behaviour_diff")
+    compared = (
+        "test_outcome",
+        "test_change",
+        "perf_diff",
+        "behaviour_diff",
+        "api_diff",
+        "dep_diff",
+    )
     assert sorted(cited) == sorted(i for i, item in evidence.items() if item["type"] in compared)
     for event in events:  # ADR-0015 §2: what each check's status means without claims
         payload = event["payload"]
@@ -101,7 +113,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             expected_status = "warn" if payload["change"] == "test_modified" else "fail"
         elif event["kind"] == "diff.perf":
             expected_status = "ok" if payload["verdict"] in ("improvement", "no_change") else "warn"
-        elif event["kind"] == "diff.behaviour":
+        elif event["kind"] in ("diff.behaviour", "diff.api", "diff.deps"):
             expected_status = "warn"  # every difference needs a claim to explain it
         else:
             continue
@@ -118,8 +130,12 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
 
 
 @pytest.mark.parametrize(
-    "name", ["honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim"]
-)
+    "name",
+    [
+        "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
+        "api-break", "new-dep",
+    ],
+)  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
     events = run_fixture(name, tmp_path, "process")
     check_against_expectation(name, events)

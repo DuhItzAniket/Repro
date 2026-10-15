@@ -39,7 +39,8 @@
       ]
     },
     "source": {
-      "enum": ["lockfile", "installed"]
+      "description": "lockfile: a lock's pins; declared: the project's own requirements (no lock, E05); installed: the side's environment.",
+      "enum": ["lockfile", "declared", "installed"]
     }
   },
   "additionalProperties": false
