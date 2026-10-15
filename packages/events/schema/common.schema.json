@@ -149,7 +149,8 @@
         "file_attempt",
         "environment",
         "static_change",
-        "policy_change"
+        "policy_change",
+        "policy"
       ]
     },
     "MissingReason": {

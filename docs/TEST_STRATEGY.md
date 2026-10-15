@@ -81,7 +81,10 @@ nothing answers it even outside a sandbox. A fixture's `invariants` list
 holds its `invariant.result` events as `<invariant>:<result>`. A fixture's `behaviour` list holds
 the missing items the behaviour comparison adds (E03), and its evidence lists its
 `behaviour_diff` items (E04), with `[reproducers]` where a test checks them; `test_run_stage.py`
-expects them with the rest.
+expects them with the rest. Its `status` is the status with claims judged (Stage G); since F04,
+`test_run_stage.py` also decides each fixture's status from its log without claims, and a
+fixture whose differences only a claim explains (`honest-fix`, `selection`) says so with a
+`deterministic_status` (FLAGGED).
 
 ### Golden files and property tests
 
@@ -93,6 +96,9 @@ expects them with the rest.
   schema-valid.
 - Hypothesis profiles: `dev` (default, explores new examples) and `ci` (derandomised,
   `HYPOTHESIS_PROFILE=ci` in CI, so failures reproduce). fast-check covers the TypeScript side.
+- The status engine (F04): never VERIFIED while an unexplained stable gap or a failed
+  invariant exists, over 2000 generated inputs per run (`test_status.py`), beside a table of
+  every rule.
 
 ## 4. Cross-platform
 

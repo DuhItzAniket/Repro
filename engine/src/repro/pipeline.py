@@ -161,6 +161,8 @@ def _policy_job(git: Git, change: Change, state: RunState | None) -> Job:
         else:
             names = ", ".join(i.name for i in read.policy.invariants) or "none"
             ctx.log(f"policy ({POLICY_FILE} on base): invariants {names}")
+        status = "ok" if read.policy is not None else "warn"
+        ctx.emit("evidence.created", status=status, payload={"evidence": read.evidence(ctx.run_id)})
         for item in read.missing():
             ctx.emit("missing.recorded", status="warn", payload=item)
         if read.change is not None:

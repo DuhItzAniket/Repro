@@ -276,6 +276,20 @@ outweighs incompleteness. Every gap item also carries an **origin**: *introduced
 base) or *pre-existing* (present on base, e.g. F2F). Repro can determine origin rigorously
 because it actually ran base.
 
+As built (F04, `repro/policy/status.py`, `repro/policy/gap.py`): the inputs are read from the
+event log alone, so a replay decides the same status. Gap items are the `diff.*` checks other
+than plain passes, plus head's `policy_change`; each resolves to pre-existing, unassessed
+(unstable, flaky, modified, removed), passed (`ok` on its own), explained (a supported verdict
+cites it) or flagged. A P2F, a new test failing on head, a base test failing on head and head's
+policy edit flag whatever the claims say; any other difference flags unless a supported claim
+explains it, so without a review stage every difference flags (ADR-0015 §3). VERIFIED needs
+everything checked: an invariant not evaluated, a claim not supported, a job that failed or was
+skipped, a side without an environment, an unanalysed change, tests that did not run, or more
+changed symbols unverified than `max_uncovered_changed_symbols` allows each give UNVERIFIABLE.
+A changed symbol is unverified when a `no_covering_test`, `unstable_observation`,
+`encoding_failed` or `trace_unavailable` item names it (or names no symbol at all). The policy
+in force is `policy` evidence on every run.
+
 ## 5. Event model — see ADR-0002 and ADR-0003
 
 ### 5.1 Envelope
@@ -347,7 +361,7 @@ target code runs from snapshots, not worktrees. Adding kinds does not change cor
 {
   "id": "ev_01J…",
   "run_id": "run_01J…",
-  "type": "test_outcome|test_change|behaviour_diff|probe_diff|api_diff|dep_diff|lock_drift|perf_diff|invariant|selection|network_attempt|environment|static_change|policy_change",
+  "type": "test_outcome|test_change|behaviour_diff|probe_diff|api_diff|dep_diff|lock_drift|perf_diff|invariant|selection|network_attempt|subprocess_attempt|file_attempt|environment|static_change|policy_change|policy",
   "targets": [{ "file": "...", "symbol": "...", "test": "..." }],
   "summary": "parse_date('2026-03-29T02:30', tz='Europe/Berlin'): base → 2026-03-29T01:30Z, head → raises NonExistentTimeError",
   "data": { },                         // type-specific, schema'd
@@ -367,7 +381,11 @@ rendered evidence (§10.3).
 `unstable_observation` · `trace_unavailable` · `trace_truncated` · `subprocess_untraced` ·
 `encoding_failed` · `network_not_enforced` · `perf_not_assessable` · `unsupported_project` ·
 `verdict_rejected` · `claim_unverifiable`. Every item has a reason, the affected targets, and
-where possible what would resolve it.
+where possible what would resolve it. For the status (F04), `no_covering_test`,
+`unstable_observation`, `encoding_failed` and `trace_unavailable` leave the symbols they name
+unverified (every changed symbol when they name none); the others are listed on the card and
+counted, and what they stand for reaches the status through its own rule (a missing
+environment, a job that did not complete, an invariant not evaluated).
 
 ## 7. Reproduction Card
 

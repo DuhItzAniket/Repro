@@ -23,6 +23,8 @@ from fixtures.repo_builder import build_repo
 from fixtures.specs import ALL_SPECS
 from repro.cli import app
 from repro.config import load_settings
+from repro.policy.gap import inputs_from_events
+from repro.policy.status import decide
 from repro.sandbox import docker_available
 from repro.store import StoreReader
 from repro_events.log import read_log, validate_log
@@ -150,6 +152,10 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
             status = {"pass": "ok", "fail": "fail", "not_evaluated": "warn"}
             assert event["status"] == status[event["payload"]["result"]]
             assert event["payload"]["evidence_ids"][0] in evidence
+    # F04: the status the rules give without claims (no review stage yet), from the log alone.
+    decision = decide(inputs_from_events(events))
+    wanted = expected["expected"].get("deterministic_status", expected["expected"]["status"])
+    assert decision.status == wanted, (decision, log)
 
 
 @pytest.mark.parametrize(
@@ -157,7 +163,7 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
     [
         "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
         "api-break", "new-dep", "probe-only", "policy-weaken", "forbidden-path",
-        "invariants-pass", "net-call",
+        "invariants-pass", "net-call", "selection", "untested", "flaky", "breaks-one",
     ],
 )  # fmt: skip
 def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path) -> None:
@@ -268,7 +274,12 @@ def test_an_environment_that_cannot_be_built_is_unverifiable(tmp_path: Path) -> 
     assert sorted(m["detail"].split(":", 1)[0] for m in missing) == ["base", "head"]
     assert {m["reason"] for m in missing} == {"environment_failed"}
     assert all("repro-fixture-package-that-does-not-exist" in m["detail"] for m in missing)
-    assert not [e for e in events if e["kind"] in ("evidence.created", "test.selected")]
+    assert not [e for e in events if e["kind"] == "test.selected"]
+    found = [e["payload"]["evidence"]["type"] for e in events if e["kind"] == "evidence.created"]
+    assert found == ["policy"]  # the policy in force (F04), and nothing observed
+    decision = decide(inputs_from_events(events))
+    assert decision.status == "UNVERIFIABLE"
+    assert [r.rule for r in decision.reasons] == ["environment_failed"]
     assert events[-1]["kind"] == "run.finished"
 
 

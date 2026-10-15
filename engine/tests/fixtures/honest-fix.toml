@@ -5,6 +5,9 @@ head = "fix/parse-date-utc"
 
 [expected]
 status = "VERIFIED"
+# Without a review stage nothing explains parse_date()'s new results: the rules flag them
+# (F04; ADR-0015 §3). The claim explains them once Stage G judges it.
+deterministic_status = "FLAGGED"
 claims = ["parse_date returns timezone-aware datetimes normalised to UTC"]
 
 # Evidence the card must contain: <evidence type>:<detail>:<target>
