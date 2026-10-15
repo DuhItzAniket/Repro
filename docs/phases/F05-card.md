@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | F — Policy & deterministic card |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | F04 |
-| **Branch / PR** | `phase/F05-card` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/F05-card` · [#58](https://github.com/DuhItzAniket/Repro/pull/58) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Give every run its Reproduction Card: assembled by the engine from the run's own log, published
@@ -50,9 +50,9 @@ byte for byte from the log whenever it is replayed or exported.
   is refused; a replay shows the log as it is and says whether its card matches.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): golden cards for every fixture.
-- [ ] AC2 (roadmap): byte-identical cards from replay.
-- [ ] AC3: Markdown and canonical JSON exports; the card view in the cockpit.
+- [x] AC1 (roadmap): golden cards for every fixture.
+- [x] AC2 (roadmap): byte-identical cards from replay.
+- [x] AC3: Markdown and canonical JSON exports; the card view in the cockpit.
 
 ## Test plan
 | Criterion | Check |
@@ -65,12 +65,63 @@ byte for byte from the log whenever it is replayed or exported.
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.card`: `assemble`, `canonical`, `digest`, `before_card`, `log_digest`, `counts`,
+  `published`, `regenerate` (`Regenerated`), `render` (Markdown); `repro.card.job`:
+  `card_job`, `CardStore`, `StoreCards`.
+- `StoreWriter.put_card`; `pipeline_jobs(cards=...)`; `run.finished`'s `card_status` from
+  `card.published`; `repro export` (md, json, `-o`) and the card check in `repro replay`.
+- `repro.sandbox.process.HASH_SEED` (both sandboxes); the tests job's `environment` evidence.
+- Schema and examples: `card.published.card`; the card model's `status_reasons`, gap `check`,
+  `kind`, `resolution`, invariant `message`, nullable conditions.
+- Cockpit: the `card` focus, `focus/card.ts` (`cardView`), the header's card button; drawer
+  tables keep their first column's words whole.
+- Golden cards for the 17 fixtures (`engine/tests/golden/cards/`, `card_support.normalised`),
+  `check_card` on every end-to-end run, `test_card.py` (8); web `card.test.ts` (4) and two
+  `a11y.test.tsx` cases.
 
 ## Evidence
+Each fixture's card through `repro run` (Windows, process sandbox), as its golden file holds
+it ("*": a reason that does not decide the status, listed as also incomplete):
+
+| Fixture | Status | Gap | Reasons |
+|---|---|---|---|
+| `invariants-pass` | VERIFIED | 0 | none |
+| `flaky`, `noisy`, `untested` | UNVERIFIABLE | 1, 0, 0 | coverage |
+| `api-break` | FLAGGED | 4 | gap (API, behaviour), invariant failed |
+| `breaks-one`, `selection`, `test-tamper` | FLAGGED | 2, 4, 10 | gap (two kinds of check) |
+| `false-claim`, `honest-fix`, `policy-weaken`, `probe-only`, `silent-change` | FLAGGED | 1, 4, 1, 1, 2 | gap |
+| `forbidden-path`, `net-call` | FLAGGED | 0 | invariant failed |
+| `new-dep` | FLAGGED | 2 | gap, invariant failed |
+| `perf-regress` | FLAGGED | 1 | gap, invariant failed, coverage* |
+
+- Byte for byte: every end-to-end run (the 17 fixtures and the two broken-environment runs)
+  assembled its card again from the stored log and got the published bytes, with the same
+  digest in `card.published`, the `cards` row and `run.finished`'s status.
+- Stability: a second full run matched 16 golden cards; `perf-regress` matched when run alone
+  (in the full run its `test_report_is_sorted` timed as a regression while a type check and a
+  lint ran beside it, a D07 timing effect, not the card).
+- In a browser (headless Edge, a real `api-break` run replayed by `repro replay`): the header's
+  "card FLAGGED" button opens the drawer with the four flagged differences linked to their
+  checks, `public_api_stable` failed, the missing item and the conditions; Escape closes it and
+  returns focus to the button. A first version's five-column gap table wrapped words a letter
+  a line in the 380 px drawer; the tables now have two columns.
+- CI run: linked in the PR (#58).
 
 ## Deviations from spec
+- ARCHITECTURE §5 gave `card.published` only a status, a digest and counts: it now carries the
+  card too (optional, so additive), so the cockpit and a log file hold the card itself.
+- The card model is completed in place at `card_version` 1, since no card was produced before.
+- The seeds are evidence (`environment`), so the card reads them from the log.
+- `repro replay` reports a card that differs from its log instead of refusing to serve it;
+  `repro export` refuses.
 
 ## Known gaps
+- The synthetic demo log's `card.published` has the status and counts but no card (building
+  one would duplicate the status rules in TypeScript); the drawer says so. Real runs carry it.
+- `generated_at` is the last logged event's time, not when the card was assembled, so that a
+  replay gives the same bytes.
+- The cockpit shows the card as published; it does not check `card_sha256` itself.
+- The in-toto, SARIF and JUnit exports and the PR comment are H04's.
 
 ## Dependencies added
 None.
