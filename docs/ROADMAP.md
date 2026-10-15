@@ -401,7 +401,7 @@ control.
 | E02 | Canonical value encoder | L | E01 | done |
 | E03 | Observation store & stability analysis | M | E02 | done |
 | E04 | Behaviour diff engine & reproducers | M | E03 | done |
-| E05 | API & dependency diff | M | C06, D03 | in progress |
+| E05 | API & dependency diff | M | C06, D03 | done |
 | E06 | Deterministic input-replay probes | M | E04 | planned |
 | E07 | Real-data panels & Gate E scenario | M | E04, E05 | planned |
 
@@ -708,3 +708,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | E02 | 2026-10-15 | [#47](https://github.com/DuhItzAniket/Repro/pull/47) | Canonical encoder: objects, builtin subclasses, exceptions and standard-library values read through the interpreter's own descriptors (no target code runs); paths and addresses normalised; guards; previews; for results an order-insensitive digest from the same walk; Hypothesis properties and an 18-kind hostile corpus; tracer benchmark 1.01–1.18x on 3.12–3.15 |
 | E03 | 2026-10-15 | [#48](https://github.com/DuhItzAniket/Repro/pull/48) | Observations: A, A2 (now with its own random seed) and H trace the changed functions on both sides; calls joined by test, phase, symbol, arguments and occurrence; A vs A2 differences masked per call and field and per call set; incomplete or budget-cut calls never compared; deterministic CBOR artifacts (RFC 8949) read back strictly; noisy fixture: all noise unstable, 0 differences |
 | E04 | 2026-10-15 | [#49](https://github.com/DuhItzAniket/Repro/pull/49) | Behaviour differences as evidence: classified (result, exception added/removed/changed, order only, input mutated, calls changed), grouped per test, function and class, run again on both sides for a reproducer with previews, behaviour_diff evidence and a warn diff.behaviour each; tracer encodes mutable arguments again at the end of a call; silent-change and false-claim fixtures give stable, reproduced diffs |
+| E05 | 2026-10-15 | [#50](https://github.com/DuhItzAniket/Repro/pull/50) | API and dependency differences: griffe (griffelib 2.3.2, allow_inspection=False, files from git) breaking changes plus Repro's return/attribute annotation comparison as api_diff + diff.api; requirements (lock or declared) and installed sets listed in each sandbox with -I -S as dep_diff + diff.deps; lock drift; api-break and new-dep fixtures; a trap module proves griffe imports nothing |

@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | E — Behaviour evidence |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | C06, D03 |
-| **Branch / PR** | `phase/E05-api-deps` · PR pending |
-| **Started / finished** | 2026-10-15 / — |
+| **Branch / PR** | `phase/E05-api-deps` · [#50](https://github.com/DuhItzAniket/Repro/pull/50) |
+| **Started / finished** | 2026-10-15 / 2026-10-15 |
 
 ## Objective
 Show what a change does to the project's contract with its users and to what it brings in: the
@@ -102,7 +102,7 @@ it adds, removes or moves, as declared or locked and as actually installed on ea
   schema.
 - The installed listing, run against Repro's own environment, finds `griffelib` and
   `packaging` and leaves out the workspace's editable `repro-engine`.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#50).
 
 ## Deviations from spec
 - The schema's `diff.deps` `source` gains `declared` (additive): requirements without a lock
