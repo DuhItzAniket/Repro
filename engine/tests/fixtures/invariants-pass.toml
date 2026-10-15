@@ -6,20 +6,25 @@ head = "change/tidy-best"
 [expected]
 status = "VERIFIED"
 claims = ["Simplify best()"]
-# Every invariant enabled on base; the change keeps them all.
+# Every invariant enabled on base; the change keeps them all. test_best_of_many_rounds is slow
+# enough to time, so perf_budget has a test to judge.
 evidence = [
+  "perf_diff:no_change:tests/test_score.py::test_best_of_many_rounds",
   "test_outcome:P2P:tests/test_score.py::test_best",
+  "test_outcome:P2P:tests/test_score.py::test_best_of_many_rounds",
   "test_outcome:P2P:tests/test_score.py::test_best_of_none",
 ]
+# The process sandbox only detects network use: no_network's pass says so (F03).
 missing = [
+  "network_not_enforced:",
   "perf_not_assessable:tests/test_score.py::test_best",
   "perf_not_assessable:tests/test_score.py::test_best_of_none",
 ]
 invariants = [
   "forbidden_paths:pass",
-  "no_network:not_evaluated",
+  "no_network:pass",
   "no_new_dependencies:pass",
-  "perf_budget:not_evaluated",
+  "perf_budget:pass",
   "public_api_stable:pass",
 ]
 
@@ -28,4 +33,5 @@ uncovered = []
 
 [selection.selected]
 "tests/test_score.py::test_best" = ["blast_radius"]
+"tests/test_score.py::test_best_of_many_rounds" = ["blast_radius"]
 "tests/test_score.py::test_best_of_none" = ["blast_radius"]

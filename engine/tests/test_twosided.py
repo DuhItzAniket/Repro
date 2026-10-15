@@ -30,7 +30,7 @@ RUN_ID = new_run_id()
 FIXTURE_NAMES = [
     "honest-fix", "selection", "untested", "flaky", "test-tamper", "breaks-one", "noisy",
     "silent-change", "false-claim", "api-break", "new-dep", "probe-only", "policy-weaken",
-    "forbidden-path", "invariants-pass",
+    "forbidden-path", "invariants-pass", "net-call",
 ]  # fmt: skip
 
 
@@ -86,11 +86,11 @@ def missing_of(result: twosided.TwoSided) -> list[str]:
 
 
 def without_timing(items: list[str]) -> list[str]:
-    """An expectation without what the performance and behaviour passes add (``reproduce``
-    neither times nor compares behaviour)."""
+    """An expectation without what the later passes add (``reproduce`` neither times, compares
+    behaviour, APIs and dependencies, probes, reads the policy nor evaluates invariants)."""
     later = (
         "perf_diff:", "perf_not_assessable:", "behaviour_diff:", "api_diff:", "dep_diff:",
-        "probe_diff:", "policy_change:",
+        "probe_diff:", "policy_change:", "network_not_enforced:",
     )  # fmt: skip
     return sorted(i for i in items if not i.startswith(later))
 

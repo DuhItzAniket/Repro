@@ -6,6 +6,7 @@ skipped, never trusted. A detection says a Python-level attempt was made; its ab
 nothing, because code that bypasses Python's audited functions is not seen.
 """
 
+import ipaddress
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +38,31 @@ class Detections:
     dropped: int
     #: Whether a process reported more attempts than its hook records.
     truncated: bool
+
+
+_LOCAL_NAMES: Final = frozenset({"", "localhost", "None"})  # "None": getaddrinfo(None, port)
+
+
+def leaves_host(event: str, detail: str) -> bool:
+    """Whether a network detection reaches past this machine: not loopback, an unspecified
+    address, ``localhost`` or a Unix socket (asyncio's self-pipe on Windows is a loopback
+    connection, for one). A name other than ``localhost`` needs a resolver, so it counts."""
+    if event == "socket.gethostbyname":
+        host = detail
+    else:
+        host, colon, port = detail.rpartition(":")
+        if not colon or not port.isdigit():
+            return False  # a Unix socket's path: no address and port
+    host = host.strip("[]").split("%", 1)[0]
+    if host in _LOCAL_NAMES:
+        return False
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return True  # a name to resolve
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        address = address.ipv4_mapped
+    return not (address.is_loopback or address.is_unspecified)
 
 
 def _test_id(raw: object) -> str | None:

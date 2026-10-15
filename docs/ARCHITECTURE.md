@@ -580,6 +580,13 @@ could not be produced is `not_evaluated`, never skipped or passed. `forbidden_pa
 are paths (`*`, `**`, `?`; a pattern matching a directory forbids what is under it); one that
 could never match a repository path is a policy error.
 
+As built (F03): `no_network` fails on any network attempt head's test runs made past this
+machine (the sandbox's `network_attempt` evidence; loopback, unspecified addresses,
+`localhost` and Unix sockets are local), and its pass states head's network, `enforced` (L3)
+or `detected-only`; a `detected-only` pass adds a `network_not_enforced` item. `perf_budget`
+fails a timed test whose D07 verdict is `regression` with its interval's low end past
+`1 + max_regression`; past the budget without that verdict is not evaluated.
+
 ## 13. Web cockpit — see ADR-0008, ADR-0009, ADR-0011, DESIGN.md
 
 ```

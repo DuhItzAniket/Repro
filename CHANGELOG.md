@@ -27,6 +27,12 @@ All notable changes to this project are documented here. The format follows
 - `forbidden_paths`: a pattern that matches a directory forbids everything under it
   (`migrations`, `migrations/`); a pattern that could never match (a leading `/`, a backslash,
   a `..` segment) is a `repro.yml` error with its line. [F02]
+- Invariants `no_network` and `perf_budget`: head's network attempts past this machine (the
+  sandbox's detections; loopback and Unix sockets are local) fail `no_network`, and a pass
+  states whether the network was enforced (Docker) or only watched, with a
+  `network_not_enforced` item for the latter. A timed test that D07 calls a regression with
+  its interval past `max_regression` fails `perf_budget`. Fixture `net-call`; `perf-regress`
+  and `invariants-pass` enable them. [F03]
 
 ## [0.5.0] - 2026-10-15
 

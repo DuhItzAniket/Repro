@@ -74,7 +74,10 @@ first needs them; `honest-fix` exists since A07, `selection` and `untested` sinc
 `flaky` and `test-tamper` since D06, `perf-regress` since D07, `breaks-one` since Gate D,
 `noisy` since E03, `silent-change` and `false-claim` since E04, `api-break` and `new-dep` since
 E05, `probe-only` since E06, `policy-weaken` since F01, `forbidden-path` and `invariants-pass` since
-F02 (with `api-break` and `new-dep` given a base `repro.yml`). A fixture's `invariants` list
+F02 (with `api-break` and `new-dep` given a base `repro.yml`), `net-call` since F03 (with
+`perf-regress` given a 20 % `perf_budget`, and `invariants-pass` a test slow enough to time).
+`net-call` connects to 192.0.2.1, in TEST-NET-1, which RFC 5737 reserves for documentation, so
+nothing answers it even outside a sandbox. A fixture's `invariants` list
 holds its `invariant.result` events as `<invariant>:<result>`. A fixture's `behaviour` list holds
 the missing items the behaviour comparison adds (E03), and its evidence lists its
 `behaviour_diff` items (E04), with `[reproducers]` where a test checks them; `test_run_stage.py`

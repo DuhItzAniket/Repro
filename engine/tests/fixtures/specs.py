@@ -390,6 +390,7 @@ PERF_REGRESS = RepoSpec(
     description="A quadratic loop in a hot path, and a test whose time it does not change.",
     base={
         "pyproject.toml": '[project]\nname = "tags-fixture"\nversion = "0.1.0"\n',
+        "repro.yml": "invariants:\n  - perf_budget: { max_regression: 0.2 }\n",  # F03
         "tags/__init__.py": "",
         "tags/core.py": _TAGS,
         "tests/test_tags.py": _TEST_TAGS,
@@ -849,6 +850,18 @@ FORBIDDEN_PATH = RepoSpec(
     pr_description={"change/rename-table": "Rename the scores table\n\nAnd simplify best()."},
 )
 
+# A test slow enough to time (D07's floor is 5 ms), with few enough calls of best() to trace
+# them all (E01's budget is 200 a test) and lists small enough to encode (E02).
+_TEST_SCORE_TIMED = (
+    _TEST_SCORE
+    + """
+
+def test_best_of_many_rounds():
+    rounds = [[(i * 7919) % 1009 for i in range(3000)] for _ in range(150)]
+    assert best([best(scores) for scores in rounds]) == 1008
+"""
+)
+
 # Every invariant enabled, and a change that keeps them all (F02, F03: their passing fixture).
 INVARIANTS_PASS = RepoSpec(
     name="invariants-pass",
@@ -859,7 +872,7 @@ INVARIANTS_PASS = RepoSpec(
         "game/__init__.py": "",
         "game/score.py": _SCORE,
         "migrations/0001_initial.sql": _MIGRATION,
-        "tests/test_score.py": _TEST_SCORE,
+        "tests/test_score.py": _TEST_SCORE_TIMED,
     },
     heads={
         "change/tidy-best": {
@@ -869,6 +882,57 @@ INVARIANTS_PASS = RepoSpec(
         }
     },
     pr_description={"change/tidy-best": "Simplify best()\n\nNo behaviour change."},
+)
+
+_REPORT = """\"\"\"Weather reports.\"\"\"
+
+
+def summary(temps):
+    return f"{min(temps)}..{max(temps)}"
+"""
+
+# Head pings a host on every call. 192.0.2.1 is in TEST-NET-1, reserved for documentation
+# (RFC 5737), so nothing answers it; the sandbox refuses the connection either way.
+_REPORT_PING = """\"\"\"Weather reports.\"\"\"
+
+import socket
+
+
+def _ping():
+    try:
+        with socket.create_connection(("192.0.2.1", 80), timeout=0.5):
+            pass
+    except OSError:
+        pass
+
+
+def summary(temps):
+    _ping()
+    return f"{min(temps)}..{max(temps)}"
+"""
+
+_TEST_REPORT = """from weather.report import summary
+
+
+def test_summary():
+    assert summary([3, 9, 4]) == "3..9"
+"""
+
+# Head's code under test opens a socket; base's policy forbids it (F03: no_network fails).
+NET_CALL = RepoSpec(
+    name="net-call",
+    description="A change whose code under test opens a socket.",
+    base={
+        "pyproject.toml": '[project]\nname = "weather-fixture"\nversion = "0.1.0"\n',
+        "repro.yml": "invariants:\n  - no_network: true\n",
+        "weather/__init__.py": "",
+        "weather/report.py": _REPORT,
+        "tests/test_report.py": _TEST_REPORT,
+    },
+    heads={"feature/usage-ping": {"weather/report.py": _REPORT_PING}},
+    pr_description={
+        "feature/usage-ping": "Count summary() calls\n\nEach call is reported for usage numbers."
+    },
 )
 
 ALL_SPECS = {
@@ -890,5 +954,6 @@ ALL_SPECS = {
         POLICY_WEAKEN,
         FORBIDDEN_PATH,
         INVARIANTS_PASS,
+        NET_CALL,
     )
 }

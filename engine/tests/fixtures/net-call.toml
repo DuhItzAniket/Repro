@@ -1,0 +1,19 @@
+# Expected Repro outcome for the net-call fixture (F03 asserts the invariant).
+[fixture]
+name = "net-call"
+head = "feature/usage-ping"
+
+[expected]
+status = "FLAGGED"
+claims = ["Count summary() calls"]
+# Head's summary() connects to 192.0.2.1 (TEST-NET-1): the sandbox refuses it and records the
+# lookup and the connection as network_attempt evidence, which no_network cites.
+evidence = ["test_outcome:P2P:tests/test_report.py::test_summary"]
+missing = ["perf_not_assessable:tests/test_report.py::test_summary"]
+invariants = ["no_network:fail"]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+"tests/test_report.py::test_summary" = ["blast_radius", "module_import"]
