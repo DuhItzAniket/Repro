@@ -5,6 +5,9 @@ the card then lists as ``agent_failed`` (ground rule 3: never unverified silentl
 - ``claims`` (stage ``read``, G04): the reader agent on the PR's text and the change's files,
   then one ``claim.extracted`` per claim. It needs nothing else from the run, so it runs while
   the build and run stages do.
+- ``review`` (G05): after every other job, each claim's reviewer, its verdict checked.
+- ``gap`` (G06): after the review, the differences no verdict accounts for mapped to the
+  supported claims that explain them.
 """
 
 import asyncio
@@ -15,6 +18,8 @@ from typing import Any, Final
 from repro.agents.backend import AgentResult, ReproTool
 from repro.agents.events import run_agent
 from repro.agents.evidence import EvidenceView
+from repro.agents.gap import MAX_ITEMS as GAP_MAX_ITEMS
+from repro.agents.gap import candidates, check_mapping, explainers, gap_request, verdicts
 from repro.agents.prompts import Prompt, load_prompt
 from repro.agents.reader import PrText, read_claims, reader_request
 from repro.agents.reviewer import MAX_INLINE_ITEMS, relevant, reviewer_request
@@ -252,4 +257,68 @@ def review_job(
             resolution="check the agent settings, the API or the cassettes, then run again",
         ),
         after=tuple(others),
+    )
+
+
+GAP_PROMPT: Final = "gap"
+
+
+def gap_job(
+    log: Callable[[str], list[dict[str, Any]]],
+    *,
+    setup: AgentSetup,
+    after: Sequence[str],
+) -> Job:
+    """The ``gap`` job (G06): after the review, each difference no verdict accounts for mapped
+    to the supported claims that explain it, or left unexplained."""
+
+    def run(ctx: JobContext) -> None:
+        stored = ctx.emit(
+            "log.line",
+            status="progress",
+            payload={"level": "info", "verb": "review", "message": "explaining the gap"},
+        )
+        stored.result(COMMIT_WAIT_S)
+        events = log(ctx.run_id)
+        view = EvidenceView.from_events(events)
+        items = candidates(events, view)
+        claims = explainers(events)
+        if not items:
+            ctx.log("every difference is accounted for, or flags on its own")
+            return
+        if not claims:
+            ctx.log(f"{len(items)} unexplained: no supported claim describes a change")
+            return
+        sent = items[:GAP_MAX_ITEMS]
+        if len(items) > len(sent):
+            beyond = len(items) - len(sent)
+            ctx.log(f"{beyond} differences beyond the first {len(sent)} stay unexplained")
+        prompt = load_prompt(GAP_PROMPT)
+        request = gap_request(claims, sent, prompt, setup.model("gap"))
+        agent = setup.dispatch.agent_id()
+        result = asyncio.run(
+            run_agent(ctx, setup.backend, setup.dispatch, request, agent=agent, ledger=setup.ledger)
+        )
+        if result.outcome != "ok":
+            raise AgentFailedError(
+                f"the gap reviewer ended {result.outcome}: {result.detail}"[:500]
+            )
+        explained = check_mapping(result.structured, claims, sent, view)
+        for problem in explained.dropped:
+            ctx.log(f"gap: dropped {problem}", level="warning")
+        for verdict in verdicts(explained, request.model):
+            ctx.emit("verdict.issued", status="ok", payload={"verdict": verdict}, agent=agent)
+        count = sum(len(v) for v in explained.by_claim.values())
+        ctx.log(f"gap: {count} of {len(sent)} differences explained by the claims")
+
+    return Job(
+        "gap",
+        "review",
+        run,
+        OnFailure(
+            reason="agent_failed",
+            detail="the differences no verdict accounts for could not be mapped to the claims",
+            resolution="check the agent settings, the API or the cassettes, then run again",
+        ),
+        after=tuple(after),
     )

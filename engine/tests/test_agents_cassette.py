@@ -418,3 +418,13 @@ def test_control_the_offline_check_sees_the_cli_leave_the_machine(
     assert len(api.messages()) == 1
     assert proxy.attempts
     assert {attempt.split(":")[0] for attempt in proxy.attempts} == {"api.anthropic.com"}
+
+
+def test_recording_again_calls_only_for_what_has_no_cassette(tmp_path: Path) -> None:
+    reviewer = Reviewer()
+    record(tmp_path, Run(), reviewer)
+    again = record(tmp_path, Run(), reviewer)  # the same call in another run
+    assert reviewer.calls == 1
+    assert again.replayed
+    record(tmp_path, Run(related_text="0.5 -> 0"), reviewer)  # stale: recorded again
+    assert reviewer.calls == 2

@@ -63,6 +63,14 @@ All notable changes to this project are documented here. The format follows
   once, then recorded as `verdict.rejected` and a missing item. On Groq's gpt-oss-120b, from
   cassettes replayed in CI: honest-fix and its injection twin VERIFIED with the same verdicts,
   silent-change and false-claim FLAGGED. [G05]
+- The gap reviewer: after the review, each difference no verdict accounts for is mapped to the
+  supported claims that describe it, or left unexplained. The mapping is checked like a
+  verdict (given differences and claims only, about the difference's files, exact quotes) and
+  becomes supporting verdicts that cite what they explain; unexplained differences flag. No
+  call is made when nothing needs explaining or no claim could explain it. [G06]
+- Evidence relevance follows test selection: a test is evidence about the code it was selected
+  for. Groq's "Failed to validate JSON" is an invalid answer, asked again. Recording keeps
+  existing cassettes and calls the model only for new or changed calls. [G06]
 
 ## [0.6.0] - 2026-10-15
 

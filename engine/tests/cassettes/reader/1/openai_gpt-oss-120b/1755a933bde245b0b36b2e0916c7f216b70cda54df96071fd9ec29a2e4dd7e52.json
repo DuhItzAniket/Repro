@@ -100,7 +100,7 @@
           ],
           "kind": "feature",
           "source": "title",
-          "text": "Show the cart total in the summary."
+          "text": "The cart total is shown in the summary."
         },
         {
           "files": [
@@ -116,11 +116,11 @@
           ],
           "kind": "feature",
           "source": "description",
-          "text": "Adds a rounding helper."
+          "text": "A rounding helper is added."
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"Show the cart total in the summary.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"shop/report.py\"]\n    },\n    {\n      \"text\": \"summary() now includes the total in euros.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"shop/report.py\"]\n    },\n    {\n      \"text\": \"Adds a rounding helper.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"shop/prices.py\"]\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"The cart total is shown in the summary.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"shop/report.py\"]\n    },\n    {\n      \"text\": \"summary() now includes the total in euros.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"shop/report.py\"]\n    },\n    {\n      \"text\": \"A rounding helper is added.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"shop/prices.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
@@ -134,7 +134,7 @@
   "transcript": [
     {
       "progress": {
-        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"Show the cart total in the summary.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"shop/report.py\"]\n    },\n    {\n      \"text\": \"summary() now",
+        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"The cart total is shown in the summary.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"shop/report.py\"]\n    },\n    {\n      \"text\": \"summary()",
         "state": "thinking",
         "tool": null,
         "turn": 1

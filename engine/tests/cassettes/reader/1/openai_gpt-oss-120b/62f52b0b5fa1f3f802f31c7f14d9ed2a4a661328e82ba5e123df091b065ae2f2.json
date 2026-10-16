@@ -83,9 +83,9 @@
     "by_model": {
       "openai/gpt-oss-120b": {
         "cache_read_tokens": 0,
-        "cost_usd": 0.00032235,
+        "cost_usd": 0.00034455,
         "input_tokens": 693,
-        "output_tokens": 364,
+        "output_tokens": 401,
         "priced": true
       }
     },
@@ -99,7 +99,23 @@
           ],
           "kind": "no-change",
           "source": "description",
-          "text": "No behaviour change: unique_skus() and restock() are shorter and restock() no longer copies the levels."
+          "text": "There is no behaviour change for unique_skus() and restock()."
+        },
+        {
+          "files": [
+            "inventory/stock.py"
+          ],
+          "kind": "refactor",
+          "source": "description",
+          "text": "unique_skus() is shorter after the change."
+        },
+        {
+          "files": [
+            "inventory/stock.py"
+          ],
+          "kind": "refactor",
+          "source": "description",
+          "text": "restock() is shorter after the change."
         },
         {
           "files": [
@@ -114,26 +130,26 @@
             "inventory/stock.py"
           ],
           "kind": "refactor",
-          "source": "description",
-          "text": "unique_skus() and restock() are shorter."
+          "source": "title",
+          "text": "The stock helpers are simplified."
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"No behaviour change: unique_skus() and restock() are shorter and restock() no longer copies the levels.\",\n      \"kind\": \"no-change\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    },\n    {\n      \"text\": \"restock() no longer copies the levels.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    },\n    {\n      \"text\": \"unique_skus() and restock() are shorter.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"There is no behaviour change for unique_skus() and restock().\",\n      \"kind\": \"no-change\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    },\n    {\n      \"text\": \"unique_skus() is shorter after the change.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    },\n    {\n      \"text\": \"restock() is shorter after the change.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    },\n    {\n      \"text\": \"restock() no longer copies the levels.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n    },\n    {\n      \"text\": \"The stock helpers are simplified.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"inventory/stock.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
       "cache_read_tokens": 0,
-      "cost_usd": 0.00032235,
+      "cost_usd": 0.00034455,
       "input_tokens": 693,
-      "output_tokens": 364,
+      "output_tokens": 401,
       "priced": true
     }
   },
   "transcript": [
     {
       "progress": {
-        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"No behaviour change: unique_skus() and restock() are shorter and restock() no longer copies the levels.\",\n      \"kind\": \"no-change\",\n      \"source\": \"description\",",
+        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"There is no behaviour change for unique_skus() and restock().\",\n      \"kind\": \"no-change\",\n      \"source\": \"description\",\n      \"files\": [\"inventory/stock.py\"]\n   ",
         "state": "thinking",
         "tool": null,
         "turn": 1

@@ -336,3 +336,19 @@ entry. If something turns out wrong, add a correcting entry.
   evidence line (a test ID with its file dropped). Those claims ended without a verdict and
   were listed as such; none of 300 generated adversarial answers passed validation.
 
+## 2026-10-16 · G06 · Explanations as citations, and what counts as evidence about code
+- The gap reviewer maps each difference no verdict accounts for to the supported claims that
+  describe it; its mapping is checked like a verdict and becomes supporting verdicts that cite
+  what they explain, so the deterministic rules need nothing new. Only claims that describe a
+  change may explain one: a "no behaviour change" claim never explains the change it denies.
+  In a live run of `api-break` it attributed one of two remaining differences to the claim
+  that greet() lost its punctuation argument and left the other unexplained
+  ([phase record](../phases/G06-gap-reviewer.md)).
+- Recording `selection` showed a measurement artefact worth stating: a reviewer told that
+  "discount() clamps its percentage" had no evidence, while a new test asserting exactly that
+  had passed on head. The test lived in another file. Relating a test to the code it was
+  selected for fixed the case of existing tests; a new test, selected for itself, is still
+  not linked to the code it calls. Re-recorded with the wider relevance, honest-fix's fix
+  claims cite the tests that now pass alongside the behaviour differences, and the four
+  Gate G fixtures keep their outcomes (VERIFIED, VERIFIED, FLAGGED, FLAGGED).
+

@@ -93,10 +93,26 @@ class Endpoint:
 
 
 class _HttpError(Exception):
-    def __init__(self, status: int, message: str, retry_after: float | None = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        message: str,
+        retry_after: float | None = None,
+        code: str | None = None,
+    ) -> None:
         super().__init__(f"HTTP {status}: {message}")
         self.status = status
         self.retry_after = retry_after
+        self.code = code
+
+    @property
+    def answer_off_schema(self) -> bool:
+        """A strict-mode answer the API itself refused as not matching the schema (observed
+        on Groq, 2026-10-16: a 400 "Failed to validate JSON"): an invalid answer, not an
+        outage, so it is asked again like one."""
+        return self.status == 400 and (  # noqa: PLR2004 - an HTTP status
+            self.code == "json_validate_failed" or "validate JSON" in str(self)
+        )
 
 
 def _post(url: str, body: Mapping[str, Any], key: str | None, timeout: float) -> dict[str, Any]:
@@ -112,16 +128,19 @@ def _post(url: str, body: Mapping[str, Any], key: str | None, timeout: float) ->
             return data
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", "replace")
+        code = None
         try:
-            message = str(json.loads(raw)["error"]["message"])
-        except (ValueError, KeyError, TypeError):
+            error = json.loads(raw)["error"]
+            message = str(error["message"])
+            code = str(error["code"]) if error.get("code") else None
+        except (ValueError, KeyError, TypeError, AttributeError):
             message = raw[:300] or exc.reason
         after = exc.headers.get("retry-after") if exc.headers else None
         try:
             retry_after = float(after) if after is not None else None
         except ValueError:
             retry_after = None
-        raise _HttpError(exc.code, message[:300], retry_after) from None
+        raise _HttpError(exc.code, message[:300], retry_after, code) from None
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise _HttpError(0, f"cannot reach the API: {exc}") from None
 
@@ -356,7 +375,14 @@ class OpenAICompatibleBackend:
             if session.turn == request.budget.max_turns:
                 return session.result("max_turns", detail="error_max_turns")
             session.messages.append({"role": "user", "content": ANSWER_NOW + problem})
-            message = await session.ask({"response_format": response_format})
+            try:
+                message = await session.ask({"response_format": response_format})
+            except _HttpError as exc:
+                if not exc.answer_off_schema:
+                    raise
+                session.messages.pop()
+                problem = " The last answer did not match the schema."
+                continue
             if session.over_budget():
                 return session.result("max_budget", detail="error_max_budget_usd")
             content = str(message.get("content") or "")
