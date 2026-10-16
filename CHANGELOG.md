@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The LLM backend: every model call goes through an `LLMBackend` protocol, whose result says
+  how the call ended (`ok`, `max_turns`, `max_budget`, `timeout`, `invalid_output`, `error`)
+  instead of raising. The default runs the Claude Agent SDK under the lockdown of ADR-0007:
+  no built-in tools, only the call's own read-only `mcp__repro__*` tools (and
+  `StructuredOutput` for a structured answer), a hook that denies every other tool, no
+  settings, CLAUDE.md, memory, plugins, skills or other MCP servers, an empty working
+  directory and configuration directory per call, and a turn, dollar and time budget on every
+  call. Tests run the bundled CLI against a local stand-in for the Messages API: files planted
+  in the target repository or a configuration directory, shown to load on an unlocked CLI,
+  never load under the lockdown. New dependency: `claude-agent-sdk` 0.2.167. [G01]
+- Agent dispatch: at most `min(12, free RAM in GiB)` agents at once, in the cockpit's 12
+  dispatch slots, reported as `agent.spawned`, `agent.state` (`waiting` when queued, then
+  `thinking` and `tool_call` with the share of the turn budget used, then `done` or `failed`)
+  and `cost.estimate`; cancelling a run cancels its agents' calls. [G01]
+
 ## [0.6.0] - 2026-10-15
 
 Stage F — Policy & deterministic card. Gate record: `docs/phases/F-gate.md`.

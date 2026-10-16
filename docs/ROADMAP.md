@@ -479,7 +479,7 @@ agent eval set meets the thresholds set in G09.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| G01 | LLM backend & locked-down runtime | M | C03 | planned |
+| G01 | LLM backend & locked-down runtime | M | C03 | done |
 | G02 | Cassettes, prompt versioning & cost accounting | M | G01 | planned |
 | G03 | Read-only evidence tools | M | G01, F04 | planned |
 | G04 | Reader agent (claim extraction) | M | G02, G03 | planned |
@@ -718,3 +718,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | F04 | 2026-10-15 | [#57](https://github.com/DuhItzAniket/Repro/pull/57) | VERIFIED, FLAGGED or UNVERIFIABLE by deterministic rules over a run's event log, each reason citing evidence or targets: a difference no supported claim explains flags (all of them without a review stage), anything not checked leaves the change unverifiable, including changed symbols masked as noise; policy evidence on every run so a replay decides the same; property test and a table of every rule; every fixture's status asserted from its log |
 | F05 | 2026-10-15 | [#58](https://github.com/DuhItzAniket/Repro/pull/58) | every run ends with its Reproduction Card, assembled from the run's own log (F04 status and reasons, conditions, gap with resolutions, invariants, missing items, replay digest), published in card.published with the card and stored; repro export (md, json) refuses a card that differs from its log and repro replay reports it; the cockpit's header button opens the card in the drawer; golden cards for every fixture, byte-identical when assembled again |
 | Gate F | 2026-10-15 | [#59](https://github.com/DuhItzAniket/Repro/pull/59) | Stage F complete; release v0.6.0 ([gate record](phases/F-gate.md)); each of the five invariants passes on one fixture and fails on another, all 17 fixtures get their expected deterministic status from their own logs, and every card assembled again from its stored log is byte-identical, in CI on Ubuntu and Windows |
+| G01 | 2026-10-15 | [#60](https://github.com/DuhItzAniket/Repro/pull/60) | LLMBackend protocol with outcomes instead of exceptions; Claude Agent SDK 0.2.167 under ADR-0007's lockdown (no built-in tools, a gate permitting only the call's own mcp__repro__ tools and StructuredOutput, no settings, CLAUDE.md, memory, plugins, skills or other MCP servers, empty per-call cwd and config dir, turn/dollar/time budgets); tested against the bundled CLI with a local Messages API stand-in: planted CLAUDE.md, hooks and more load on an unlocked CLI and never under the lockdown, foreign tools denied with no effect; dispatch min(12, free GiB) in 12 slots with agent.spawned/agent.state/cost.estimate |

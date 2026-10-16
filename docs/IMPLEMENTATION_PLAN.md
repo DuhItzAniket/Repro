@@ -45,7 +45,7 @@ to Python 3.15, which was released only on 2026-10-09.
 | Docker | Desktop (WSL2) on Windows; Engine on Linux | Default L3 sandbox (ADR-0004) |
 | fastapi / uvicorn | 0.143.0 / 0.54.0 | |
 | pydantic | 2.14.1 | |
-| claude-agent-sdk | 0.2.165 (bundles CLI 2.1.294) | Pin exactly. Releases arrive every few days |
+| claude-agent-sdk | 0.2.167 (bundles CLI 2.1.300) | Pin exactly. Releases arrive every few days. G01 moved the pin from 0.2.165: PyPI and the CHANGELOG [V, 2026-10-15] show only bundled-CLI updates and hook types since |
 | Schema codegen | in-house `repro-events-codegen` (ADR-0014) | json-schema-to-typescript 16.0.0 / datamodel-code-generator 0.83.0 evaluated and not used |
 | ajv / ajv-formats | 8.20.0 / 3.0.1 | Draft 2020-12 validation in TypeScript tests |
 | pytest / hypothesis | 9.1.1 / 6.169.0 | |
@@ -118,7 +118,8 @@ class Invariant(Protocol):                            # F02/F03
     def evaluate(self, ctx: PolicyContext, cfg: Mapping[str, Any]) -> InvariantResult: ...
 
 class LLMBackend(Protocol):                           # G01
-    async def run(self, req: AgentRequest) -> AgentResult: ...   # structured output + usage
+    async def run(self, req: AgentRequest,
+                  on_progress: OnProgress | None = None) -> AgentResult: ...  # output + usage
 
 class Exporter(Protocol):                             # F05, H04
     media_type: str

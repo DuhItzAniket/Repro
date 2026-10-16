@@ -46,3 +46,15 @@ API would be a stack change and needs approval.
 ## Consequences
 Agent concurrency defaults to `min(12, free RAM in GiB)` on the SDK backend. The dispatch panel
 still shows 12 slots and marks queued agents as `waiting`.
+
+## Implementation notes (G01, 2026-10-15)
+- Built on `claude-agent-sdk` 0.2.167 (CLI 2.1.300) in `repro.agents.lockdown` and
+  `repro.agents.sdk`, with every point of decision 2 in place, plus `strict_mcp_config`, no
+  plugins or skills, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` and a wall-clock timeout per call.
+- The deny hook permits exactly a call's own tools, not any `mcp__repro__*` name, and
+  `StructuredOutput` when the call has an output schema: the CLI delivers `output_format`
+  through that tool, and denying it left the run looping to its turn limit.
+- Tested against the bundled CLI with a local stand-in for the Messages API. Each planted
+  `CLAUDE.md`, hook, skill, subagent, command and `.mcp.json` is first shown to load on an
+  unlocked CLI, then not to load under the lockdown (`engine/tests/test_agents_cli.py`; the
+  phase record `docs/phases/G01-llm-backend.md` has the evidence).
