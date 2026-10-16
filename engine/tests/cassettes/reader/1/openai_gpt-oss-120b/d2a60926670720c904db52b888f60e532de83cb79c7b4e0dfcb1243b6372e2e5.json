@@ -83,9 +83,9 @@
     "by_model": {
       "openai/gpt-oss-120b": {
         "cache_read_tokens": 0,
-        "cost_usd": 0.00021945,
+        "cost_usd": 0.00020985,
         "input_tokens": 675,
-        "output_tokens": 197,
+        "output_tokens": 181,
         "priced": true
       }
     },
@@ -107,25 +107,25 @@
           ],
           "kind": "refactor",
           "source": "description",
-          "text": "to_celsius() is simplified."
+          "text": "The to_celsius() function is simplified."
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"The conversion helpers are tidied.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"to_celsius() is simplified.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"units/convert.py\"]\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"The conversion helpers are tidied.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"The to_celsius() function is simplified.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"units/convert.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
       "cache_read_tokens": 0,
-      "cost_usd": 0.00021945,
+      "cost_usd": 0.00020985,
       "input_tokens": 675,
-      "output_tokens": 197,
+      "output_tokens": 181,
       "priced": true
     }
   },
   "transcript": [
     {
       "progress": {
-        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"The conversion helpers are tidied.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"to_celsius(",
+        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"The conversion helpers are tidied.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"The to_cels",
         "state": "thinking",
         "tool": null,
         "turn": 1

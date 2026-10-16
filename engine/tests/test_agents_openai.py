@@ -351,3 +351,25 @@ def test_a_call_with_a_schema_and_no_tools_asks_for_the_answer_at_once(
     [body] = api.requests
     assert "response_format" in body
     assert "tools" not in body
+
+
+def test_an_answer_the_api_refuses_as_off_schema_is_asked_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Groq's strict mode answers a 400 "Failed to validate JSON" when the model's output does
+    not fit: that is an invalid answer, asked again, not an outage."""
+    replies: list[dict[str, Any] | Failure] = [
+        Failure(400, "Failed to validate JSON. Please adjust your prompt."),
+        say('{"verdict": "supported"}'),
+    ]
+    result, api = run(lambda body: replies.pop(0), monkeypatch, output_schema=STRICT)
+    assert (result.outcome, result.structured) == ("ok", {"verdict": "supported"})
+    assert len(api.requests) == 2
+    assert "did not match the schema" in api.requests[1]["messages"][-1]["content"]
+
+
+def test_two_answers_off_schema_are_an_invalid_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    result, _ = run(
+        lambda body: Failure(400, "Failed to validate JSON."), monkeypatch, output_schema=STRICT
+    )
+    assert result.outcome == "invalid_output"

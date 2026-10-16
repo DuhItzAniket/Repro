@@ -1,0 +1,29 @@
+# Expected Repro outcome for the probe-semantic fixture (G07): a change only realistic inputs
+# reach, which the probe writer's inputs find and Hypothesis's do not.
+[fixture]
+name = "probe-semantic"
+head = "refactor/to-utc"
+
+[expected]
+status = "FLAGGED"
+# Without the probe writer nothing differs: both tests use whole-hour offsets, and random text
+# is not a timestamp with a half-hour one. With it, an input such as +05:30 differs, and the
+# claim of no behaviour change is contradicted.
+deterministic_status = "VERIFIED"
+claims = ["to_utc() subtracts the offset itself", "No behaviour change"]
+evidence = [
+  "test_outcome:P2P:tests/test_utc.py::test_to_utc_from_an_offset",
+  "test_outcome:P2P:tests/test_utc.py::test_to_utc_without_an_offset_is_utc",
+]
+missing = [
+  "perf_not_assessable:tests/test_utc.py::test_to_utc_from_an_offset",
+  "perf_not_assessable:tests/test_utc.py::test_to_utc_without_an_offset_is_utc",
+]
+
+[selection]
+uncovered = []
+
+[selection.selected]
+# Both tests ran to_utc; the change also changed the module's imports, which they import.
+"tests/test_utc.py::test_to_utc_from_an_offset" = ["blast_radius", "module_import"]
+"tests/test_utc.py::test_to_utc_without_an_offset_is_utc" = ["blast_radius", "module_import"]

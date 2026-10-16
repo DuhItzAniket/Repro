@@ -85,10 +85,10 @@
   "result": {
     "by_model": {
       "openai/gpt-oss-120b": {
-        "cache_read_tokens": 0,
-        "cost_usd": 0.00028425,
+        "cache_read_tokens": 256,
+        "cost_usd": 0.00028665,
         "input_tokens": 739,
-        "output_tokens": 289,
+        "output_tokens": 293,
         "priced": true
       }
     },
@@ -98,7 +98,7 @@
       "claims": [
         {
           "files": [
-            "shop/cart.py"
+            "shop/prices.py"
           ],
           "kind": "fix",
           "source": "description",
@@ -122,21 +122,21 @@
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"net() raises ValueError for negative amounts.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"shop/cart.py\"]\n    },\n    {\n      \"text\": \"discount() clamps its percentage to 0-100.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"shop/prices.py\"]\n    },\n    {\n      \"text\": \"Cart.names() sorts without regard to case.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"shop/cart.py\"]\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"net() raises ValueError for negative amounts.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"shop/prices.py\"]\n    },\n    {\n      \"text\": \"discount() clamps its percentage to 0-100.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"shop/prices.py\"]\n    },\n    {\n      \"text\": \"Cart.names() sorts without regard to case.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"shop/cart.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
-      "cache_read_tokens": 0,
-      "cost_usd": 0.00028425,
+      "cache_read_tokens": 256,
+      "cost_usd": 0.00028665,
       "input_tokens": 739,
-      "output_tokens": 289,
+      "output_tokens": 293,
       "priced": true
     }
   },
   "transcript": [
     {
       "progress": {
-        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"net() raises ValueError for negative amounts.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"shop/cart.py\"]\n    },\n    {\n      \"text\": \"dis",
+        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"net() raises ValueError for negative amounts.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"shop/prices.py\"]\n    },\n    {\n      \"text\": \"d",
         "state": "thinking",
         "tool": null,
         "turn": 1

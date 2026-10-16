@@ -1,8 +1,8 @@
 """Fixture repository specs. Expected outcomes live next to them as ``<name>.toml``.
 
 ``honest-fix`` (A07), ``selection`` and ``untested`` (D05), ``flaky`` and ``test-tamper``
-(D06), ``perf-regress`` (D07), ``breaks-one`` (Gate D), ``injection`` (G03). The other fixtures
-in TEST_STRATEGY §3 are added by the phases that need them.
+(D06), ``perf-regress`` (D07), ``breaks-one`` (Gate D), ``injection`` (G03), ``probe-semantic``
+(G07). The other fixtures in TEST_STRATEGY §3 are added by the phases that need them.
 """
 
 from fixtures.repo_builder import RepoSpec
@@ -777,6 +777,64 @@ PROBE_ONLY = RepoSpec(
     },
 )
 
+_TIMES = """\"\"\"Timestamps.\"\"\"
+
+from datetime import UTC, datetime
+
+
+def to_utc(text: str) -> str:
+    \"\"\"An ISO 8601 timestamp as the same instant in UTC; without an offset it is UTC.\"\"\"
+    moment = datetime.fromisoformat(text)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC).isoformat()
+"""
+
+_TIMES_WHOLE_HOURS = """\"\"\"Timestamps.\"\"\"
+
+from datetime import UTC, datetime, timedelta
+
+
+def to_utc(text: str) -> str:
+    \"\"\"An ISO 8601 timestamp as the same instant in UTC; without an offset it is UTC.\"\"\"
+    moment = datetime.fromisoformat(text)
+    offset = moment.utcoffset() or timedelta()
+    hours = int(offset.total_seconds() // 3600)
+    return (moment.replace(tzinfo=None) - timedelta(hours=hours)).replace(tzinfo=UTC).isoformat()
+"""
+
+_TEST_TIMES = """from stamps.utc import to_utc
+
+
+def test_to_utc_from_an_offset():
+    assert to_utc("2026-03-01T09:00:00+01:00") == "2026-03-01T08:00:00+00:00"
+
+
+def test_to_utc_without_an_offset_is_utc():
+    assert to_utc("2026-03-01T09:00:00") == "2026-03-01T09:00:00+00:00"
+"""
+
+# Head subtracts the offset in whole hours: right for +01:00, the only offset the tests use, and
+# 30 minutes off for +05:30. Random text is almost never a valid timestamp, let alone one with a
+# half-hour offset, so Hypothesis's inputs find nothing; a realistic one does (G07).
+PROBE_SEMANTIC = RepoSpec(
+    name="probe-semantic",
+    description="Wrong behaviour that only realistic inputs reach.",
+    base={
+        "pyproject.toml": '[project]\nname = "stamps-fixture"\nversion = "0.1.0"\n',
+        "stamps/__init__.py": "",
+        "stamps/utc.py": _TIMES,
+        "tests/test_utc.py": _TEST_TIMES,
+    },
+    heads={"refactor/to-utc": {"stamps/utc.py": _TIMES_WHOLE_HOURS}},
+    pr_description={
+        "refactor/to-utc": (
+            "Simplify to_utc()\n\nto_utc() subtracts the offset itself instead of calling "
+            "astimezone(). No behaviour change."
+        ),
+    },
+)
+
 _COUNT = """\"\"\"Counting.\"\"\"
 
 
@@ -980,6 +1038,7 @@ ALL_SPECS = {
         API_BREAK,
         NEW_DEP,
         PROBE_ONLY,
+        PROBE_SEMANTIC,
         POLICY_WEAKEN,
         FORBIDDEN_PATH,
         INVARIANTS_PASS,

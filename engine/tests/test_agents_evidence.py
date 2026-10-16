@@ -169,3 +169,22 @@ def test_a_listing_line_is_short_and_one_line() -> None:
     assert "\n" not in line.replace("\\n", "")
     assert len(line) < 300
     assert json.dumps(line)  # a plain string
+
+
+def test_a_test_is_evidence_about_the_code_it_was_selected_for() -> None:
+    """A new test in tests/test_prices.py that exercises shop.prices.discount is evidence about
+    shop/prices.py (G06), as test.selected records."""
+    clamped = "tests/test_prices.py::test_discount_is_clamped"
+    events = [
+        changed("shop.prices:discount#0", "shop/prices.py"),
+        {
+            "kind": "test.selected",
+            "target": {"test": clamped},
+            "payload": {"reasons": ["new_test"], "symbols": ["shop.prices:discount#0"]},
+        },
+        evidence("test_outcome", [{"test": clamped}], f"new: {clamped} (base absent, head passed)"),
+        evidence("test_outcome", [{"test": "tests/test_cart.py::test_total"}], "P2P: test_total"),
+    ]
+    view = EvidenceView.from_events(events)
+    about = view.relevant([{"file": "shop/prices.py"}])
+    assert [item.summary for item in about] == [f"new: {clamped} (base absent, head passed)"]
