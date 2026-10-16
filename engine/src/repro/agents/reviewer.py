@@ -12,6 +12,9 @@ they do not describe.
 Evidence is about a claim when it concerns the claim's files (G03's relevance rule); a claim
 that names no file is about the whole change. A claim with no such evidence is not sent to a
 reviewer: nothing could support it.
+
+``reverse`` gives the same request with the evidence, the other claims and the evidence-ID enum
+in the opposite order: G08's order-swap pass, against position bias (ARCHITECTURE §10.4).
 """
 
 from collections.abc import Mapping, Sequence
@@ -86,6 +89,7 @@ def reviewer_prompt(
     claims: Sequence[Mapping[str, Any]] = (),
     feedback: str = "",
 ) -> str:
+    """The reviewer's prompt, the evidence and the other claims in the order given."""
     inline = items[:MAX_INLINE_ITEMS]
     more = len(items) - len(inline)
     listed = (
@@ -116,7 +120,12 @@ def reviewer_request(
     model: str,
     claims: Sequence[Mapping[str, Any]] = (),
     feedback: str = "",
+    reverse: bool = False,
 ) -> AgentRequest:
+    """One reviewer's call; ``reverse``: everything listed in the opposite order (G08)."""
+    if reverse:  # the same items given in full, in the opposite order
+        items = [*items[:MAX_INLINE_ITEMS][::-1], *items[MAX_INLINE_ITEMS:]]
+        claims = claims[::-1]
     return AgentRequest(
         role="review",
         system_prompt=prompt.text,

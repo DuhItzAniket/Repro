@@ -18,7 +18,7 @@ reach a model, and a call without its cassette fails.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from repro.agents.backend import LLMBackend, Role
 from repro.agents.cassette import CassetteBackend
@@ -27,6 +27,7 @@ from repro.agents.dispatch import Dispatch, default_concurrency
 from repro.agents.openai_compat import Endpoint, OpenAICompatibleBackend
 from repro.agents.sdk import AgentSdkBackend
 from repro.config import Settings
+from repro.config.settings import OrderSwap
 
 #: Each role's model on the Claude backend (ARCHITECTURE §10.1).
 CLAUDE_MODELS: Final[Mapping[Role, str]] = {
@@ -54,6 +55,9 @@ class AgentSetup:
     label: str
     #: Whether the probe writer runs (G07).
     probes: bool = True
+    #: Which verdicts are judged again in the opposite order, and the panel's models (G08).
+    swap: OrderSwap = "contradicted"
+    panel: tuple[str, ...] = ()
 
     def model(self, role: Role) -> str:
         return self.models[role]
@@ -96,12 +100,18 @@ def agent_setup(settings: Settings, scratch: Path) -> AgentSetup | None:
             Dispatch(concurrency),
             ledger,
             label,
-            probes=settings.agent_probes,
+            **_bias(settings),
         )
     live, concurrency = _live(settings, scratch)
     if settings.agent_mode == "record":
         assert cassettes is not None  # noqa: S101 - the settings require it
         live = CassetteBackend(cassettes, "record", live)
-    return AgentSetup(
-        live, models, Dispatch(concurrency), ledger, label, probes=settings.agent_probes
-    )
+    return AgentSetup(live, models, Dispatch(concurrency), ledger, label, **_bias(settings))
+
+
+def _bias(settings: Settings) -> dict[str, Any]:
+    return {
+        "probes": settings.agent_probes,
+        "swap": settings.agent_order_swap,
+        "panel": settings.agent_panel,
+    }

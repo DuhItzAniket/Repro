@@ -81,6 +81,19 @@ All notable changes to this project are documented here. The format follows
   `probe-semantic`: a change wrong only for half-hour UTC offsets, which random inputs never
   reach. [G07]
 - An agent whose cassette is missing or stale is shown as failed. [G07]
+- Bias controls for the verdicts:
+  - a `contradicted` verdict is judged again with the evidence and the other claims in the
+    opposite order, and is kept only if that order gives it too (otherwise `unverifiable`,
+    with `order_swap_disagreement`);
+  - every verdict records how many judgements it rests on and how many agreed;
+  - an optional panel of three models, two of which must agree (`agent_panel`);
+  - the card says when the reviewers share the model family the change's commits name as
+    an author (`judge_is_author`).
+
+  `agent_order_swap` asks for the second order on every verdict, or on none. [G08]
+- The QA agent: after the review, every claim's verdicts are read together. A supported
+  verdict that cannot hold with another is withheld as `unverifiable`, which can make a card
+  UNVERIFIABLE, never FLAGGED. [G08]
 
 ## [0.6.0] - 2026-10-15
 

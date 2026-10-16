@@ -298,7 +298,11 @@ class Answers:
 
 
 def run_review(
-    tmp_path: Path, repo: tuple[Git, str, str], backend: Any, claims: list[dict[str, Any]]
+    tmp_path: Path,
+    repo: tuple[Git, str, str],
+    backend: Any,
+    claims: list[dict[str, Any]],
+    **fields: Any,
 ) -> list[dict[str, Any]]:
     git, base, head = repo
     found = records()
@@ -313,7 +317,7 @@ def run_review(
         for claim in claims:
             ctx.emit("claim.extracted", status="ok", payload={"claim": claim}, stage="read")
 
-    setup = AgentSetup(backend, {"review": "m"}, Dispatch(2), RunLedger(), "test (live)")
+    setup = AgentSetup(backend, {"review": "m"}, Dispatch(2), RunLedger(), "test (live)", **fields)
     with started_writer(tmp_path / "repro.db") as writer:
 
         def log(run_id: str) -> list[dict[str, Any]]:
@@ -351,7 +355,14 @@ def test_the_job_issues_checked_verdicts(
     assert sorted(e["payload"]["verdict"]["claim_id"] for e in issued) == ["C1", "C2"]
     assert {e["status"] for e in issued} == {"fail"}
     assert {e["stage"] for e in issued} == {"review"}
-    assert Contradicting.calls == 2
+    assert Contradicting.calls == 4  # each contradiction judged again in the opposite order (G08)
+    assert {
+        (
+            e["payload"]["verdict"]["agreement"]["runs"],
+            e["payload"]["verdict"]["agreement"]["agreeing"],
+        )
+        for e in issued
+    } == {(2, 2)}
 
 
 def test_a_rejected_verdict_is_retried_once_then_recorded(
@@ -471,3 +482,155 @@ def test_a_reviewer_sees_the_other_claims(view: EvidenceView, repo: tuple[Git, s
         '<untrusted_content kind="claims">\nC1 (fix): parse_date returns 2\n</untrusted_content>'
     )
     assert f"The pull request's other claims:\n{others}" in request.prompt
+
+
+# -- bias controls (G08) ---------------------------------------------------------------------
+
+
+def test_the_swapped_request_lists_everything_in_the_opposite_order(
+    view: EvidenceView, repo: tuple[Git, str, str]
+) -> None:
+    git, base, head = repo
+    third = {**FIX, "id": "C3", "text": "parse_date is faster", "kind": "perf"}
+    made = {
+        reverse: reviewer_request(
+            SAME,
+            relevant(view, SAME),
+            RepoSources(git, base, head),
+            tools=(),
+            prompt=load_prompt("reviewer"),
+            model="m",
+            claims=[FIX, SAME, third],
+            reverse=reverse,
+        )
+        for reverse in (False, True)
+    }
+    order = {
+        reverse: [line.split()[1] for line in r.prompt.split("\n") if line.startswith("evidence ")]
+        for reverse, r in made.items()
+    }
+    assert len(order[False]) > 1
+    assert order[True] == order[False][::-1]
+    enums = {
+        reverse: (r.output_schema or {})["properties"]["cited_evidence"]["items"]["enum"]
+        for reverse, r in made.items()
+    }
+    assert enums[True] == enums[False][::-1]
+    assert made[True].prompt.index("C3 (perf)") < made[True].prompt.index("C1 (fix)")
+    assert made[False].prompt.index("C1 (fix)") < made[False].prompt.index("C3 (perf)")
+
+
+class Scripted:
+    """A backend giving each call the verdict its function picks, citing the first ID offered."""
+
+    def __init__(self, pick: Callable[[int, Any], str]) -> None:
+        self.pick = pick
+        self.requests: list[Any] = []
+        self._lock = threading.Lock()
+
+    async def run(self, request: Any, on_progress: Any = None) -> AgentResult:
+        with self._lock:
+            number = len(self.requests)
+            self.requests.append(request)
+        return AgentResult("ok", structured=answer(self.pick(number, request), stable(request)))
+
+
+def stable(request: Any) -> list[str]:
+    """The first stable evidence item the prompt shows: what any verdict may rest on."""
+    current = ""
+    for line in request.prompt.split(chr(10)):
+        if line.startswith("evidence "):
+            current = line.split()[1]
+        elif line == "stability: stable" and current:
+            return [current]
+    raise AssertionError("no stable evidence shown")
+
+
+def verdicts_issued(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [e["payload"]["verdict"] for e in ids_in(events, "verdict.issued")]
+
+
+def test_a_contradiction_both_orders_give_stands(
+    tmp_path: Path, repo: tuple[Git, str, str]
+) -> None:
+    backend = Scripted(lambda number, request: "contradicted")
+    events = run_review(tmp_path, repo, backend, [FIX])
+    assert len(backend.requests) == 2
+    (verdict,) = verdicts_issued(events)
+    assert (verdict["verdict"], verdict["agreement"]) == (
+        "contradicted",
+        {"runs": 2, "agreeing": 2},
+    )
+    assert ids_in(events, "verdict.rejected") == []
+
+
+def test_a_contradiction_the_other_order_does_not_give_is_unverifiable(
+    tmp_path: Path, repo: tuple[Git, str, str], schema_set: SchemaSet
+) -> None:
+    backend = Scripted(lambda number, request: "contradicted" if number == 0 else "supported")
+    events = run_review(tmp_path, repo, backend, [FIX])
+    assert validate_log(schema_set, [LogLine(i + 1, e) for i, e in enumerate(events)]) == []
+    (verdict,) = verdicts_issued(events)
+    assert verdict["verdict"] == "unverifiable"
+    assert verdict["agreement"] == {"runs": 2, "agreeing": 0}
+    assert verdict["rationale"].startswith(
+        "Not kept as contradicted: with the evidence in the opposite order the reviewer "
+        "answered supported."
+    )
+    assert verdict["cited_evidence"]  # what the first judgement cited
+    (rejected,) = [e["payload"] for e in ids_in(events, "verdict.rejected")]
+    assert rejected == {
+        "claim_id": "C1",
+        "reason": "order_swap_disagreement",
+        "detail": "contradicted with the evidence in one order, supported in the other",
+    }
+    (issued,) = ids_in(events, "verdict.issued")
+    assert issued["status"] == "warn"
+
+
+def test_only_contradictions_are_judged_again_unless_asked(
+    tmp_path: Path, repo: tuple[Git, str, str]
+) -> None:
+    supported = Scripted(lambda number, request: "supported")
+    run_review(tmp_path / "default", repo, supported, [FIX])
+    assert len(supported.requests) == 1
+    every = Scripted(lambda number, request: "supported" if number == 0 else "unverifiable")
+    events = run_review(tmp_path / "all", repo, every, [FIX], swap="all")
+    assert len(every.requests) == 2
+    (verdict,) = verdicts_issued(events)
+    assert (verdict["verdict"], verdict["agreement"]) == (
+        "unverifiable",
+        {"runs": 2, "agreeing": 1},
+    )
+    off = Scripted(lambda number, request: "contradicted")
+    events = run_review(tmp_path / "off", repo, off, [FIX], swap="off")
+    assert len(off.requests) == 1
+    (verdict,) = verdicts_issued(events)
+    assert (verdict["verdict"], verdict["agreement"]) == ("contradicted", None)
+
+
+def test_a_panel_verdict_needs_two_of_three(tmp_path: Path, repo: tuple[Git, str, str]) -> None:
+    panel = ("m1", "m2", "m3")
+    by_model = {"m1": "supported", "m2": "supported", "m3": "contradicted"}
+    backend = Scripted(lambda number, request: by_model[request.model])
+    events = run_review(tmp_path / "two", repo, backend, [FIX], panel=panel)
+    assert sorted(r.model for r in backend.requests) == ["m1", "m2", "m3"]
+    reversed_ = [r for r in backend.requests if r.model == "m2"]
+    normal = [r for r in backend.requests if r.model == "m1"]
+    enum = "cited_evidence"
+    assert (
+        reversed_[0].output_schema["properties"][enum]["items"]["enum"]
+        == normal[0].output_schema["properties"][enum]["items"]["enum"][::-1]
+    )
+    (verdict,) = verdicts_issued(events)
+    assert (verdict["verdict"], verdict["agreement"]) == ("supported", {"runs": 3, "agreeing": 2})
+    split = {"m1": "supported", "m2": "contradicted", "m3": "unverifiable"}
+    events = run_review(
+        tmp_path / "none", repo, Scripted(lambda n, r: split[r.model]), [FIX], panel=panel
+    )
+    (verdict,) = verdicts_issued(events)
+    assert (verdict["verdict"], verdict["agreement"]) == (
+        "unverifiable",
+        {"runs": 3, "agreeing": 1},
+    )
+    assert "m1: supported; m2: contradicted; m3: unverifiable" in verdict["rationale"]
