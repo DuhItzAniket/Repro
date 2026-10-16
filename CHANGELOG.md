@@ -71,6 +71,16 @@ All notable changes to this project are documented here. The format follows
 - Evidence relevance follows test selection: a test is evidence about the code it was selected
   for. Groq's "Failed to validate JSON" is an invalid answer, asked again. Recording keeps
   existing cassettes and calls the model only for new or changed calls. [G06]
+- The probe writer: with agents on, an agent shown each changed function E06 can probe (its
+  definition, its parameters' types and the change to its file, never the PR's claims)
+  proposes realistic inputs for it as data. Inputs that do not name exactly the function's
+  parameters with values of their types are dropped and counted; the rest run beside
+  Hypothesis's on base, base again and head, and a difference says which inputs found it
+  (`found_by`). If the agent fails, the card lists it and Hypothesis's inputs run anyway.
+  The new `agent_probes` setting switches the probe writer off. New fixture
+  `probe-semantic`: a change wrong only for half-hour UTC offsets, which random inputs never
+  reach. [G07]
+- An agent whose cassette is missing or stale is shown as failed. [G07]
 
 ## [0.6.0] - 2026-10-15
 

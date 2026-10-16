@@ -352,3 +352,17 @@ entry. If something turns out wrong, add a correcting entry.
   claims cite the tests that now pass alongside the behaviour differences, and the four
   Gate G fixtures keep their outcomes (VERIFIED, VERIFIED, FLAGGED, FLAGGED).
 
+
+## 2026-10-16 · G07 · Realistic inputs from a claim-blind agent
+- On `probe-semantic`, a change wrong only for UTC offsets that are not whole hours, 40
+  Hypothesis inputs found no difference: random text is almost never a valid timestamp. The
+  probe writer (gpt-oss-120b on Groq, one call, 2,672 tokens) was shown the function and its
+  diff but not the PR's claim of "no behaviour change". It proposed 8 timestamps. All 8 fit the
+  signature and were stable on base. The 3 with half- or quarter-hour offsets (`+05:30`,
+  `-04:45`, `+02:15`) differ on head; the 5 whole-hour or naive ones do not
+  ([phase record](../phases/G07-probe-writer.md)).
+- The rejection rate depends on the prompt as much as on the model. The draft prompt said
+  "a JSON object naming every parameter", and the model's first answer named the right cases
+  but gave bare strings. All 8 were dropped. Showing each function's argument shape took the
+  rate to 0 of 8. One fixture and one call are not a measurement of either rate. G09's eval
+  set is where it should be measured.

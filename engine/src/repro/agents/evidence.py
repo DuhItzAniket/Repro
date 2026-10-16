@@ -57,6 +57,7 @@ FIELDS: Final[Mapping[str, tuple[str, ...]]] = {
         "change",
         "inputs_differing",
         "inputs_tried",
+        "found_by",
         "reproducer.call",
         "reproducer.base",
         "reproducer.head",

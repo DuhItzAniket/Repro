@@ -83,6 +83,8 @@ class Settings(BaseModel):
     agent_cassettes: Path | None = None
     #: The most a run's agent calls may cost together, in estimated US dollars.
     agent_budget_usd: float = Field(default=2.0, gt=0)
+    #: Whether the probe writer proposes inputs for the probes (G07) when the agents are on.
+    agent_probes: bool = True
 
     @field_validator("log_level", "log_format", "sandbox", "agents", "agent_mode", mode="before")
     @classmethod
