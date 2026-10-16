@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G04 |
-| **Branch / PR** | `phase/G05-reviewers` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G05-reviewers` · [#65](https://github.com/DuhItzAniket/Repro/pull/65) |
+| **Started / finished** | 2026-10-16 / 2026-10-16 |
 
 ## Objective
 Judge each claim against the run's own evidence, with a verdict that cites that evidence and
@@ -50,11 +50,11 @@ or evidence-contradicting verdict reaches the card.
   `warn`.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): per-claim schema with an evidence-ID enum, quote substring validation,
+- [x] AC1 (roadmap): per-claim schema with an evidence-ID enum, quote substring validation,
   consistency-with-evidence check, `verdict.rejected` path.
-- [ ] AC2 (roadmap): zero uncited verdicts reach the card (property test with adversarial
+- [x] AC2 (roadmap): zero uncited verdicts reach the card (property test with adversarial
   cassettes).
-- [ ] AC3 (G03's verdict half): the injection fixture's verdicts equal its clean twin's.
+- [x] AC3 (G03's verdict half): the injection fixture's verdicts equal its clean twin's.
 
 ## Test plan
 | Criterion | Check |
@@ -86,7 +86,7 @@ fixture run in full, then replayed offline with fresh run IDs and identical outc
 - Before the other-claims fix, honest-fix's live run gave C4 contradicted and the card FLAGGED
   (5 calls, $0.0054); that recording was discarded.
 - Groq's strict mode accepted `minItems: 1` in the schema (a live call, $0.000066).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#65).
 
 ## Deviations from spec
 - ARCHITECTURE §10.3 named a consistency check "e.g. `supported` while a stable contradicting
