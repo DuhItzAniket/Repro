@@ -80,14 +80,38 @@ def _server(tools: tuple[ReproTool, ...]) -> McpSdkServerConfig | None:
     return create_sdk_mcp_server(SERVER, version=__version__, tools=[_sdk_tool(t) for t in tools])
 
 
-def _usage(result: ResultMessage) -> Usage:
+def _count(values: Mapping[str, Any], name: str) -> int:
+    return int(values.get(name) or 0)
+
+
+def _usage(result: ResultMessage) -> tuple[Usage, dict[str, Usage]]:
+    """The call's usage, in all and per model. ``model_usage`` counts subagents too, so it is
+    the one to account with (research/04 §1.8); ``usage`` stands in when it is absent."""
+    by_model = {
+        str(model): Usage(
+            input_tokens=_count(values, "inputTokens"),
+            output_tokens=_count(values, "outputTokens"),
+            cache_read_tokens=_count(values, "cacheReadInputTokens"),
+            cost_usd=float(values.get("costUSD") or 0.0),
+        )
+        for model, values in (result.model_usage or {}).items()
+    }
+    if by_model:
+        total = Usage(
+            input_tokens=sum(u.input_tokens for u in by_model.values()),
+            output_tokens=sum(u.output_tokens for u in by_model.values()),
+            cache_read_tokens=sum(u.cache_read_tokens for u in by_model.values()),
+            cost_usd=float(result.total_cost_usd or sum(u.cost_usd for u in by_model.values())),
+        )
+        return total, by_model
     usage: Mapping[str, Any] = result.usage or {}
-    return Usage(
-        input_tokens=int(usage.get("input_tokens", 0) or 0),
-        output_tokens=int(usage.get("output_tokens", 0) or 0),
-        cache_read_tokens=int(usage.get("cache_read_input_tokens", 0) or 0),
+    total = Usage(
+        input_tokens=_count(usage, "input_tokens"),
+        output_tokens=_count(usage, "output_tokens"),
+        cache_read_tokens=_count(usage, "cache_read_input_tokens"),
         cost_usd=float(result.total_cost_usd or 0.0),
     )
+    return total, {}
 
 
 def _outcome(result: ResultMessage, expects_structure: bool) -> tuple[Outcome, str]:
@@ -147,14 +171,16 @@ class _Transcript:
         if result is None:
             return self.failed("error", "the session ended without a result")
         outcome, detail = _outcome(result, expects_structure)
+        usage, by_model = _usage(result)
         return AgentResult(
             outcome=outcome,
             structured=result.structured_output if outcome == "ok" else None,
             text=result.result or "\n".join(self.texts),
             turns=result.num_turns,
-            usage=_usage(result),
+            usage=usage,
             detail=detail,
             tool_calls=tuple(self.calls),
+            by_model=by_model,
         )
 
 

@@ -2,11 +2,13 @@
 
 import difflib
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from hypothesis import settings
 
+from refusing_proxy import RefusingProxy
 from repro_events.schemas import SchemaSet, load_schema_set
 
 # "ci" is derandomised so a CI failure reproduces exactly; "dev" explores new examples each run.
@@ -16,6 +18,66 @@ settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 # Fixture projects (D03) are target code with tests of their own, run only inside a sandbox.
 collect_ignore_glob = ["engine/tests/data/*"]
+
+#: Where a test that reaches for the model API without its own stand-in ends up: a loopback
+#: port nothing listens on (9, the discard service), with a key that is not one (G02).
+OFFLINE_API = "http://127.0.0.1:9"
+OFFLINE_KEY = "sk-ant-offline-test-key"
+#: Variables that would route the model API elsewhere or sign in as someone.
+_MODEL_ACCESS = (
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_MODEL",
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_FOUNDRY",
+    "CLAUDE_CODE_USE_VERTEX",
+    "CLAUDE_CONFIG_DIR",
+)
+_PROXY_VARIABLES = ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy")
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "model_cli: starts the Claude Code CLI, behind a proxy that refuses and records every "
+        "connection past loopback; the test fails if there was one",
+    )
+
+
+@pytest.fixture(scope="session")
+def refusing_proxy() -> Iterator[RefusingProxy]:
+    with RefusingProxy().serving() as proxy:
+        yield proxy
+
+
+@pytest.fixture(autouse=True)
+def _offline_model_api(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> Iterator[None]:
+    """No test reaches a real model, or anything else past this machine, through the CLI.
+
+    The API is a closed loopback port and the key a dummy, whatever the machine's own
+    environment holds; the CLI's nonessential traffic (update checks, telemetry, feature
+    flags) is off. A test marked ``model_cli`` also runs behind ``refusing_proxy`` and fails
+    if the CLI tried to connect past loopback (G02's acceptance: the agent suite runs offline).
+    """
+    for name in _MODEL_ACCESS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", OFFLINE_API)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", OFFLINE_KEY)
+    monkeypatch.setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1")
+    if request.node.get_closest_marker("model_cli") is None:
+        yield
+        return
+    proxy: RefusingProxy = request.getfixturevalue("refusing_proxy")
+    for name in _PROXY_VARIABLES:
+        monkeypatch.setenv(name, proxy.url)
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
+    before = len(proxy.attempts)
+    yield
+    reached = proxy.attempts[before:]
+    if reached:
+        pytest.fail(f"the CLI tried to connect past this machine: {reached}")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

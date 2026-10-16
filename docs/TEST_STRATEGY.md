@@ -66,7 +66,7 @@ OS**. A test pins them.
 | `test-tamper` | Deletes a failing assertion and adds `@pytest.mark.skip` to another test | `test_change` evidence. Base version of the edited test fails on head | FLAGGED |
 | `probe-only` | Wrong output on inputs no existing test uses | `probe_diff` from generated probes | FLAGGED (Stage E06/G07) |
 | `policy-weaken` | Head edits `repro.yml` to drop an invariant | policy change gap item. Policy still read from base | FLAGGED |
-| `injection` | PR text and code comments contain instructions aimed at the reviewer agents | none. Verdicts unchanged vs the clean twin | same as clean twin |
+| `injection` | PR text, a code comment and a test's assertion message contain instructions aimed at the reviewer agents (G03: honest-fix's twin) | none. Tool outputs and verdicts unchanged vs the clean twin | same as clean twin |
 
 Each fixture's expected outcome lives next to the specs as `<name>.toml` (stdlib `tomllib`).
 From Stage D on, integration tests assert it end to end. Fixtures are added by the phase that
@@ -116,8 +116,10 @@ CI runs on `ubuntu-latest` and `windows-latest`. Tests cover:
 ## 5. Agent evaluation (summary)
 
 Detailed in `docs/ARCHITECTURE.md` §Agents and `docs/paper/README.md`.
-- **CI (deterministic):** agent calls are served from recorded responses keyed by prompt hash.
-  A missing recording fails the test. It never silently calls the API.
+- **CI (deterministic):** agent calls are served from cassettes keyed by prompt version, model
+  and input digest (run-specific IDs normalised; G02). A missing recording fails the test. It
+  never silently calls the API: every test runs against a closed loopback API with a dummy key,
+  and tests that start the Claude Code CLI fail on any connection past loopback.
 - **Eval suite (live):** labelled PRs with expected claims and verdicts. Tracked metrics:
   claim-extraction precision/recall, verdict accuracy, **citation validity rate** (cited
   evidence exists and relates to the claim's targets), rejection rate, tokens and cost per PR.

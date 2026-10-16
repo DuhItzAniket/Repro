@@ -515,6 +515,17 @@ file is first shown to load on an unlocked CLI (`test_agents_cli.py`).
 PR text is wrapped in delimited `<untrusted_pr_description>` blocks and described to the model
 as *claims to check, not instructions*.
 
+As built (G03, `agents/tools.py`, `agents/evidence.py`, `agents/sources.py`,
+`agents/untrusted.py`): the tools are `list_evidence` (optionally about a file, symbol or
+test), `get_evidence`, `read_snippet` (80 lines at most) and `get_diff` (160 lines at most).
+Evidence comes from the run's own log, rendered per type with only the fields that describe
+the finding, in content order, and without what varies between runs of the same change
+(timings, process IDs, digests). Files and diffs are read from the commits' git objects, never
+the snapshots the target's tests ran in, by paths checked before git sees them, with
+`--no-ext-diff --no-textconv`. The target's text sits in `<untrusted_content kind=…>` blocks
+whose delimiters it cannot write, made portable (LF, `~` for the home directory, `/` in
+pytest's file locations).
+
 ### 10.3 Evidence-constrained verdicts
 - The reviewer output schema is generated **per claim**. `cited_evidence` is an array with
   `minItems: 1` whose items are an **enum of the evidence IDs relevant to that claim**, so the
@@ -528,8 +539,10 @@ as *claims to check, not instructions*.
   `verdict_rejected` missing item. It never falls back to an uncited verdict.
 
 ### 10.4 Bias controls
-Evidence is rendered in fixed, ID-sorted order, with sides labelled neutrally (A/B plus a
-legend). Prompts are reference-guided: the deterministic diff is given and the model judges
+Evidence is rendered in a fixed order, with sides labelled neutrally (A/B plus a legend). As
+built (G03): the order is by content (type, targets, summary), since IDs follow creation time,
+which varies with how a run's jobs interleave; the sides keep the engine's names, `base` and
+`head`, which its evidence summaries use, and position bias is left to the order-swap pass. Prompts are reference-guided: the deterministic diff is given and the model judges
 only whether the claim's wording is supported. PR text fed to judges is capped and judged per
 atomic claim. For `contradicted` verdicts, a second pass with the order swapped must agree, or
 the verdict degrades to `unverifiable`. An optional 2-of-3 panel uses different models or
@@ -539,10 +552,28 @@ effort levels. Agreement is logged per run.
 `agents/backend.py` defines an `LLMBackend` protocol: `run(request, on_progress)` gives an
 `AgentResult` whose outcome is `ok`, `max_turns`, `max_budget`, `timeout`, `invalid_output` or
 `error`, and never raises for what the model does. The default implementation is the Agent
-SDK (`agents/sdk.py`). A direct Anthropic Messages API backend, which gives constrained decoding and no
-per-agent CLI subprocess, is an open option (ADR-0007). In CI, calls are served from
-**cassettes** keyed by `(prompt version, model, input digest)`. A missing cassette fails the
-test and never silently calls the API. Concurrency defaults to `min(12, free RAM in GiB)`
+SDK (`agents/sdk.py`). A direct Anthropic Messages API backend, which gives constrained
+decoding and no per-agent CLI subprocess, is an open option (ADR-0007). In CI, calls are served
+from **cassettes** keyed by `(prompt version, model, input digest)`. A missing cassette fails the
+test and never silently calls the API.
+
+As built (G02, `agents/cassette.py`): the digest is the SHA-256 of what the model is given (role,
+prompts, tools, output schema, effort; not the budget, which a run's ledger may lower) with its
+run-specific IDs (`ev_`, `evt_`, `run_`) replaced by kind and first-seen order, so the same call
+in another run has the same digest. A cassette holds the request, the transcript (progress and
+Repro tool calls with their outputs, in order) and the result, as canonical, scrubbed JSON at
+`<root>/<prompt>/<version>/<model>/<digest>.json`. Replay has no backend to call; it maps the
+recording's IDs to the current run's by the same order, makes the recorded tool calls again and
+fails as stale if one returns something else. `timeout` and `error` outcomes are never recorded.
+Prompts are versioned files (`agents/prompts/<name>.md`, `version:` front matter) whose texts are
+locked by SHA-256 per version (`lock.json`, only added to); a call names its prompt as
+`<name>/<version>`. Costs come from the CLI's per-model `model_usage`, one `cost.estimate` per
+model with `source` `live` or `cassette`; a run's `RunLedger` totals them and, with a limit,
+reserves each call's dollar budget from what is left. Tests never reach a model: the conftest
+points the API at a closed loopback port, and tests that start the CLI run behind a proxy that
+fails them on any connection past loopback.
+
+Concurrency defaults to `min(12, free RAM in GiB)`
 (research/04 §1.10: about 1 GiB per SDK subprocess). The UI always shows 12 dispatch slots, with
 queued agents shown as `waiting`. As built (G01, `agents/dispatch.py`, `agents/events.py`): an
 agent takes the lowest free slot (`agent.spawned`), shows `waiting` only if the run's

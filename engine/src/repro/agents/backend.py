@@ -1,10 +1,11 @@
 """The interface every LLM call goes through (G01; ADR-0007, ARCHITECTURE §10.5).
 
 An agent call is a request (a role, a system prompt, the user's text, the read-only tools it
-may call, an optional output schema, a model and its budget) and a result (the structured
-output or text, how the run ended, its usage). The default implementation is the Claude Agent
-SDK (``repro.agents.sdk``); recorded cassettes (G02) and tests implement the same protocol, so
-the stages that use agents never depend on how the model is reached.
+may call, an optional output schema, a model, the prompt's version and a budget) and a result
+(the structured output or text, how the run ended, its usage). The default implementation is
+the Claude Agent SDK (``repro.agents.sdk``); cassettes (``repro.agents.cassette``) and tests
+implement the same protocol, so the stages that use agents never depend on how the model is
+reached.
 
 ``on_progress`` reports what the agent is doing while it runs (thinking, a tool call): the
 ``agent.state`` events the cockpit's dispatch and workspace panels draw (``repro.agents.events``).
@@ -35,6 +36,8 @@ class Budget:
 
 #: A tool's name: words of lowercase letters and digits joined by single underscores.
 TOOL_NAME: Final = re.compile(r"(?=.{1,48}$)[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
+#: A prompt's version: its file's name and version number, as ``reviewer/3`` (G02).
+PROMPT_VERSION: Final = re.compile(r"[a-z][a-z0-9_-]{0,47}/[1-9][0-9]{0,5}")
 #: A tool handler: its validated input, then the text it returns to the model.
 ToolHandler = Callable[[Mapping[str, Any]], Awaitable[str]]
 
@@ -59,11 +62,17 @@ class AgentRequest:
     system_prompt: str
     prompt: str
     model: str
+    #: The version of the prompt the call was built from (``repro.agents.prompts``).
+    prompt_version: str
     budget: Budget = field(default_factory=Budget)
     tools: Sequence[ReproTool] = ()
     #: JSON Schema (draft-07, ``$ref``-free) the final answer must satisfy, or None for text.
     output_schema: Mapping[str, Any] | None = None
     effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+
+    def __post_init__(self) -> None:
+        if not PROMPT_VERSION.fullmatch(self.prompt_version):
+            raise ValueError(f"a prompt version is name/number: {self.prompt_version!r}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +97,10 @@ class AgentResult:
     detail: str = ""
     #: Tool calls the model made, in order: (tool name, whether it was allowed to run).
     tool_calls: tuple[tuple[str, bool], ...] = ()
+    #: ``usage`` per model the call used (subagents included, research/04 §1.8).
+    by_model: Mapping[str, Usage] = field(default_factory=dict)
+    #: Served from a cassette: ``usage`` is what the call cost when it was recorded.
+    replayed: bool = False
 
 
 @dataclass(frozen=True, slots=True)
