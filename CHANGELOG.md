@@ -34,6 +34,12 @@ All notable changes to this project are documented here. The format follows
 - Tests never reach a model or the internet through the CLI: every test runs against a closed
   loopback API with a dummy key, and tests that start the CLI fail on any connection past
   loopback. [G02]
+- Evidence tools for agents: `list_evidence`, `get_evidence`, `read_snippet` and `get_diff`,
+  reading only the run's evidence and the commits' git objects (never the snapshots the
+  target's tests ran in), by checked paths, with size caps. Evidence is rendered the same in
+  every run and on every machine, and everything from the target is delimited as data it
+  cannot step out of. Fixture `injection`: honest-fix with instructions to the reviewers
+  planted in its text; its tool outputs and card equal honest-fix's. [G03]
 
 ## [0.6.0] - 2026-10-15
 

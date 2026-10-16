@@ -4,6 +4,7 @@
 the Claude Agent SDK under the lockdown in ``lockdown``, and ``CassetteBackend`` records calls
 and replays them offline. Prompts are versioned files (``prompts``). ``run_agent`` runs a call
 in one of a run's dispatch slots, within its ``RunLedger``, and reports it as events.
+``EvidenceTools`` are what agents read: the run's evidence and the change's files (G03).
 """
 
 from repro.agents.backend import (
@@ -27,7 +28,10 @@ from repro.agents.cassette import (
 from repro.agents.cost import RunLedger
 from repro.agents.dispatch import SLOTS, Dispatch, concurrency_for, default_concurrency
 from repro.agents.events import run_agent
+from repro.agents.evidence import EvidenceView
 from repro.agents.sdk import AgentSdkBackend
+from repro.agents.sources import RepoSources, SourceError
+from repro.agents.tools import EvidenceTools, ToolInputError
 
 __all__ = [
     "SLOTS",
@@ -38,15 +42,20 @@ __all__ = [
     "CassetteBackend",
     "CassetteError",
     "Dispatch",
+    "EvidenceTools",
+    "EvidenceView",
     "LLMBackend",
     "MissingCassetteError",
     "OnProgress",
     "Outcome",
     "Progress",
+    "RepoSources",
     "ReproTool",
     "Role",
     "RunLedger",
+    "SourceError",
     "StaleCassetteError",
+    "ToolInputError",
     "Usage",
     "concurrency_for",
     "default_concurrency",

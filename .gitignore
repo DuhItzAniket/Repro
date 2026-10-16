@@ -17,6 +17,8 @@ reference/panels/
 *.pfx
 secrets/
 .secrets/
+*_API_KEY
+*_API_KEY.txt
 
 # Repro runtime data (runs, event DBs, worktrees, traces)
 .repro/

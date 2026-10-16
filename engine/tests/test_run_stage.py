@@ -186,8 +186,8 @@ def check_against_expectation(name: str, events: list[dict[str, Any]]) -> None:
 @pytest.mark.parametrize(
     "name",
     [
-        "honest-fix", "test-tamper", "perf-regress", "noisy", "silent-change", "false-claim",
-        "api-break", "new-dep", "probe-only", "policy-weaken", "forbidden-path",
+        "honest-fix", "injection", "test-tamper", "perf-regress", "noisy", "silent-change",
+        "false-claim", "api-break", "new-dep", "probe-only", "policy-weaken", "forbidden-path",
         "invariants-pass", "net-call", "selection", "untested", "flaky", "breaks-one",
     ],
 )  # fmt: skip
