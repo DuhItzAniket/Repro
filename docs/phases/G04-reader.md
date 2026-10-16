@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G02, G03, G10 |
-| **Branch / PR** | `phase/G04-reader` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G04-reader` · [#64](https://github.com/DuhItzAniket/Repro/pull/64) |
+| **Started / finished** | 2026-10-16 / 2026-10-16 |
 
 ## Objective
 Read a pull request's own words as atomic, checkable claims (text, kind, the files they are
@@ -55,8 +55,8 @@ and measure how well that works on a labelled set, with thresholds.
   were written to do and which the measured texts show.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): atomic claim extraction (text, targets, kind) with schema validation.
-- [ ] AC2 (roadmap): precision and recall on the labelled claim set are recorded; thresholds
+- [x] AC1 (roadmap): atomic claim extraction (text, targets, kind) with schema validation.
+- [x] AC2 (roadmap): precision and recall on the labelled claim set are recorded; thresholds
   are set and met.
 
 ## Test plan
@@ -96,7 +96,8 @@ Recorded live on 2026-10-16 (Groq, `openai/gpt-oss-120b`, `reader/1`), replayed 
 - `injection`: the same four claims as honest-fix, nothing from the planted instructions.
 - End to end: `repro run` on honest-fix with `agents = groq` in replay mode read C1–C4, emitted
   one `cost.estimate` with `source: cassette`, and its card lists the claims and the model.
-- CI run: linked in the PR.
+- Full suite (Windows, Docker stopped): 1703 passed, 13 skipped.
+- CI run: linked in the PR (#64).
 
 ## Deviations from spec
 - Claims carry file targets, not symbols (see Design notes).
