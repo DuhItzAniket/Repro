@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G05 |
-| **Branch / PR** | `phase/G06-gap-reviewer` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G06-gap-reviewer` · [#66](https://github.com/DuhItzAniket/Repro/pull/66) |
+| **Started / finished** | 2026-10-16 / 2026-10-16 |
 
 ## Objective
 Account for every difference a run found: each one a supported claim describes is mapped to
@@ -45,9 +45,9 @@ it, with the evidence cited; each one no claim describes stays unexplained and f
   explained one is not.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): explained-by mapping for every gap item, citing evidence; unexplained
+- [x] AC1 (roadmap): explained-by mapping for every gap item, citing evidence; unexplained
   items flag.
-- [ ] AC2 (roadmap): the `silent-change` fixture with a claim that does not cover it is flagged
+- [x] AC2 (roadmap): the `silent-change` fixture with a claim that does not cover it is flagged
   as unexplained.
 
 ## Test plan
@@ -93,7 +93,7 @@ Recorded live on 2026-10-16 (Groq, `openai/gpt-oss-120b`), each run in full, rep
   precision 0.956 (43/45), recall 1.000 (43/43), the second row of
   `bench/results/agent-evals.csv`. Record mode now keeps existing cassettes, so this does not
   happen again.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#66).
 
 ## Deviations from spec
 - G03's relevance rule is extended: a test is about the files of the changed symbols it was
