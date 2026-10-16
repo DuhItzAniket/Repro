@@ -252,6 +252,21 @@ base runs disagree are left out; differences are classed as E04's and grouped pe
 `probe_diff` with `provenance: generated`, `diff.probe` `warn`, the probes in
 `obs/probes.cbor`. Timing (D07) runs after the probes and E04's reproducers.
 
+As built (G07, `agents/prober.py`, prompt `probe/1`): the probe writer proposes **inputs, not
+code**, for the functions E06 can probe. It is shown each one's definition on head, its
+parameters' types, the shape its arguments must take and the change to its file, never the PR's
+text or claims, and answers with up to 8 inputs per function (6 functions per call) as JSON
+text. The filters, counted and logged: a proposal must name a probed function and exactly its
+parameters, each value of its annotated JSON type within E06's bounds (`probes.fits`), or it is
+dropped on the host; the rest, without repeats of Hypothesis's inputs, run after them in the
+same three sandboxed runs, where an input the base runs disagree on is left out. Each
+`probe_diff` says which generator's inputs differ (`found_by`: `hypothesis`, `agent` or both)
+and how many inputs were proposed; its reproducer is a call, as for E06. Proposing data rather
+than writing pytest probes keeps every agent-written byte out of the interpreter (T15) and
+reuses E06's determinism and reproducers; functions E06 cannot probe (methods, objects, fixtures)
+get no probes yet. A probe writer that fails is an `agent_failed` item; Hypothesis's inputs run
+regardless.
+
 ### 4.5 Diffs (`diff/`)
 | Differ | Input | Evidence produced |
 |---|---|---|

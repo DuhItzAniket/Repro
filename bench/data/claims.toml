@@ -164,6 +164,17 @@ claims = [
 ]
 
 [[pr]]
+name = "probe-semantic"
+title = "Simplify to_utc()"
+description = "to_utc() subtracts the offset itself instead of calling astimezone(). No behaviour change."
+files = ["stamps/utc.py"]
+claims = [
+  { text = "to_utc() is simplified", kind = "refactor", match = ["to_utc", "simpl"] },
+  { text = "to_utc() subtracts the offset itself instead of calling astimezone()", kind = "refactor", match = ["offset|astimezone"] },
+  { text = "no behaviour change", kind = "no-change", match = ["no behaviou?r|unchanged|same behaviou?r|behaviou?r is preserved"] },
+]
+
+[[pr]]
 name = "policy-weaken"
 title = "Count any iterable"
 description = "count() accepts any iterable."

@@ -485,7 +485,7 @@ agent eval set meets the thresholds set in G09.
 | G04 | Reader agent (claim extraction) | M | G02, G03, G10 | done |
 | G05 | Reviewer agents (evidence-constrained verdicts) | L | G04 | done |
 | G06 | Gap reviewer (explained-by mapping) | M | G05 | done |
-| G07 | Probe-writer agent | L | G03, E06 | planned |
+| G07 | Probe-writer agent | L | G03, E06 | in progress |
 | G08 | Bias controls & QA agent | M | G05, G06 | planned |
 | G09 | Agent evaluation harness | M | G04–G08 | planned |
 | G10 | OpenAI-compatible backend (Groq, local models) | M | G01, G02 | done |

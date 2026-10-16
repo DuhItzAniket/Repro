@@ -238,7 +238,15 @@ def pipeline_jobs(
     if not analyse_only:
         base, head = change.base.sha, change.head.sha
         jobs += run_jobs(
-            git, base, head, work, state, backend=backend, cache=cache, artifacts=artifacts
+            git,
+            base,
+            head,
+            work,
+            state,
+            backend=backend,
+            cache=cache,
+            artifacts=artifacts,
+            agents=agents,
         )
     if agents is not None and cards is not None:
         others = [job.name for job in jobs]

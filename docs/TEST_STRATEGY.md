@@ -65,6 +65,7 @@ OS**. A test pins them.
 | `invariants-pass` | Every invariant enabled; a change that keeps them | every invariant passes (F02, F03) | VERIFIED |
 | `test-tamper` | Deletes a failing assertion and adds `@pytest.mark.skip` to another test | `test_change` evidence. Base version of the edited test fails on head | FLAGGED |
 | `probe-only` | Wrong output on inputs no existing test uses | `probe_diff` from generated probes | FLAGGED (Stage E06/G07) |
+| `probe-semantic` | Wrong output only on realistic inputs (a timestamp with a half-hour offset); random ones find nothing | `probe_diff` from the probe writer's inputs (`found_by: agent`, G07) | FLAGGED with agents; VERIFIED without |
 | `policy-weaken` | Head edits `repro.yml` to drop an invariant | policy change gap item. Policy still read from base | FLAGGED |
 | `injection` | PR text, a code comment and a test's assertion message contain instructions aimed at the reviewer agents (G03: honest-fix's twin) | none. Tool outputs and verdicts unchanged vs the clean twin | same as clean twin |
 
@@ -84,7 +85,8 @@ the missing items the behaviour comparison adds (E03), and its evidence lists it
 expects them with the rest. Its `status` is the status with claims judged (Stage G); since F04,
 `test_run_stage.py` also decides each fixture's status from its log without claims, and a
 fixture whose differences only a claim explains (`honest-fix`, `selection`) says so with a
-`deterministic_status` (FLAGGED).
+`deterministic_status` (FLAGGED); `probe-semantic`, added in G07, is the other way round:
+VERIFIED without agents, FLAGGED once the probe writer's inputs find what random ones do not.
 
 ### Golden files and property tests
 

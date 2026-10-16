@@ -114,10 +114,11 @@ def every_verdict_is_cited(events: list[dict[str, Any]]) -> None:
 @pytest.fixture(scope="module")
 def reviewed(tmp_path_factory: pytest.TempPathFactory) -> dict[str, list[dict[str, Any]]]:
     """Gate G's three pull requests and the injection twin, run in full, reviewed from the
-    cassettes recorded live (Groq, gpt-oss-120b)."""
+    cassettes recorded live (Groq, gpt-oss-120b). They were recorded before the probe writer
+    (G07), which is off here: its inputs would add evidence the recorded reviewers never saw."""
     runs = {}
     for name in ("honest-fix", "injection", "silent-change", "false-claim"):
-        runs[name] = run_with_agents(name, tmp_path_factory.mktemp(name))
+        runs[name] = run_with_agents(name, tmp_path_factory.mktemp(name), REPRO_AGENT_PROBES="off")
     return runs
 
 
@@ -136,6 +137,7 @@ def test_the_reviewed_card_of_each_pull_request(
     events = reviewed[name]
     (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
     assert card["status"] == status, card["status_reasons"]
+    assert "agent_failed" not in [m["reason"] for m in card["missing"]]
     every_verdict_is_cited(events)
     assert {
         c["source"] for c in (e["payload"] for e in events if e["kind"] == "cost.estimate")
