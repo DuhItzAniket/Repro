@@ -55,6 +55,14 @@ All notable changes to this project are documented here. The format follows
   evaluation (`python -m repro_bench.claims`). The reader on gpt-oss-120b: precision 0.955,
   recall 0.977, replayed in CI from its cassettes against proposed thresholds of 0.90; the
   results in `bench/results/agent-evals.csv`. [G04]
+- Reviewer agents: after every other job, each claim is judged against the evidence about its
+  files, shown in full with their diffs and the PR's other claims. A verdict must cite that
+  evidence (an enum of its IDs, at least one) and quote it exactly, and is checked before it
+  counts: unknown or unrelated citations, misquotes, support resting on unstable evidence, or
+  "no change" supported by a change the other claims do not describe are rejected, retried
+  once, then recorded as `verdict.rejected` and a missing item. On Groq's gpt-oss-120b, from
+  cassettes replayed in CI: honest-fix and its injection twin VERIFIED with the same verdicts,
+  silent-change and false-claim FLAGGED. [G05]
 
 ## [0.6.0] - 2026-10-15
 

@@ -6,7 +6,8 @@ change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``),
 run only analyses, the run and diff stages (``repro.run_stage``, D06): each side's sandbox and
 environment, the selected tests on both sides, and the evidence of what differs. What could not
 be read or run becomes a ``missing.recorded`` item, never a silent gap. With agents (G04), the
-read stage first: the reader agent's claims (``repro.agents.stages``). Last, the card stage
+read stage first: the reader agent's claims; after every other job, the review stage: each
+claim judged against the run's evidence (``repro.agents.stages``, G05). Last, the card stage
 (``repro.card.job``, F05) assembles the card from the run's own log.
 """
 
@@ -17,7 +18,7 @@ from typing import Any, Final
 
 from repro.agents.reader import PrText
 from repro.agents.setup import AgentSetup
-from repro.agents.stages import claims_job
+from repro.agents.stages import claims_job, review_job
 from repro.analysis import StaticAnalysis, analyse, graph_payloads
 from repro.card.job import CardStore, card_job
 from repro.gitops import Git, Snapshot, snapshot
@@ -238,6 +239,18 @@ def pipeline_jobs(
         base, head = change.base.sha, change.head.sha
         jobs += run_jobs(
             git, base, head, work, state, backend=backend, cache=cache, artifacts=artifacts
+        )
+    if agents is not None and cards is not None:
+        others = [job.name for job in jobs]
+        jobs.append(
+            review_job(
+                cards.events,
+                git,
+                base=change.base.sha,
+                head=change.head.sha,
+                setup=agents,
+                others=others,
+            )
         )
     if cards is not None:
         jobs.append(card_job(cards, [job.name for job in jobs]))

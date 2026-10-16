@@ -78,13 +78,17 @@ class Endpoint:
     @classmethod
     def groq(cls) -> "Endpoint":
         """Groq: gpt-oss's reasoning controls, temperature 0.5 (the low end of the range Groq
-        recommends for reasoning models, for the most consistent answers; docs/reasoning)."""
+        recommends for reasoning models, for the most consistent answers; docs/reasoning), an
+        output cap of 3,000 tokens so that a call's prompt and its cap fit the free plan's
+        8,000 tokens a minute, and retries enough to wait out that limit a few times."""
         return cls(
             GROQ_BASE_URL,
             "GROQ_API_KEY",
             GROQ_PRICES,
             temperature=0.5,
+            max_output_tokens=3000,
             reasoning_controls=True,
+            retries=6,
         )
 
 

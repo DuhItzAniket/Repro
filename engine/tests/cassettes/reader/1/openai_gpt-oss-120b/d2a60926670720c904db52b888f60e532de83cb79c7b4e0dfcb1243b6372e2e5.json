@@ -83,9 +83,9 @@
     "by_model": {
       "openai/gpt-oss-120b": {
         "cache_read_tokens": 0,
-        "cost_usd": 0.00021945,
+        "cost_usd": 0.00021644999999999998,
         "input_tokens": 675,
-        "output_tokens": 197,
+        "output_tokens": 192,
         "priced": true
       }
     },
@@ -99,7 +99,7 @@
           ],
           "kind": "refactor",
           "source": "title",
-          "text": "The conversion helpers are tidied."
+          "text": "Tidy the conversion helpers."
         },
         {
           "files": [
@@ -107,25 +107,25 @@
           ],
           "kind": "refactor",
           "source": "description",
-          "text": "to_celsius() is simplified."
+          "text": "Simplify to_celsius()."
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"The conversion helpers are tidied.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"to_celsius() is simplified.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"units/convert.py\"]\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"Tidy the conversion helpers.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"Simplify to_celsius().\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"units/convert.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
       "cache_read_tokens": 0,
-      "cost_usd": 0.00021945,
+      "cost_usd": 0.00021644999999999998,
       "input_tokens": 675,
-      "output_tokens": 197,
+      "output_tokens": 192,
       "priced": true
     }
   },
   "transcript": [
     {
       "progress": {
-        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"The conversion helpers are tidied.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"to_celsius(",
+        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"Tidy the conversion helpers.\",\n      \"kind\": \"refactor\",\n      \"source\": \"title\",\n      \"files\": [\"units/convert.py\"]\n    },\n    {\n      \"text\": \"Simplify to_celsi",
         "state": "thinking",
         "tool": null,
         "turn": 1

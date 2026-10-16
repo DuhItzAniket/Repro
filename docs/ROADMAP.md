@@ -483,7 +483,7 @@ agent eval set meets the thresholds set in G09.
 | G02 | Cassettes, prompt versioning & cost accounting | M | G01 | done |
 | G03 | Read-only evidence tools | M | G01, F04 | done |
 | G04 | Reader agent (claim extraction) | M | G02, G03, G10 | done |
-| G05 | Reviewer agents (evidence-constrained verdicts) | L | G04 | planned |
+| G05 | Reviewer agents (evidence-constrained verdicts) | L | G04 | in progress |
 | G06 | Gap reviewer (explained-by mapping) | M | G05 | planned |
 | G07 | Probe-writer agent | L | G03, E06 | planned |
 | G08 | Bias controls & QA agent | M | G05, G06 | planned |

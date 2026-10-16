@@ -83,9 +83,9 @@
     "by_model": {
       "openai/gpt-oss-120b": {
         "cache_read_tokens": 0,
-        "cost_usd": 0.00035459999999999995,
+        "cost_usd": 0.000327,
         "input_tokens": 696,
-        "output_tokens": 417,
+        "output_tokens": 371,
         "priced": true
       }
     },
@@ -105,7 +105,7 @@
           "files": [
             "pkg/dates.py"
           ],
-          "kind": "feature",
+          "kind": "fix",
           "source": "description",
           "text": "parse_date now returns timezone-aware datetimes normalised to UTC."
         },
@@ -113,26 +113,28 @@
           "files": [
             "pkg/dates.py"
           ],
-          "kind": "feature",
+          "kind": "fix",
           "source": "description",
           "text": "Naive input is interpreted as UTC."
         },
         {
-          "files": [],
+          "files": [
+            "pkg/dates.py"
+          ],
           "kind": "no-change",
           "source": "description",
           "text": "No other behaviour changes."
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"Fix parse_date dropping the UTC offset.\",\n      \"kind\": \"fix\",\n      \"source\": \"title\",\n      \"files\": [\"pkg/dates.py\"]\n    },\n    {\n      \"text\": \"parse_date now returns timezone-aware datetimes normalised to UTC.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"pkg/dates.py\"]\n    },\n    {\n      \"text\": \"Naive input is interpreted as UTC.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"pkg/dates.py\"]\n    },\n    {\n      \"text\": \"No other behaviour changes.\",\n      \"kind\": \"no-change\",\n      \"source\": \"description\",\n      \"files\": []\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"Fix parse_date dropping the UTC offset.\",\n      \"kind\": \"fix\",\n      \"source\": \"title\",\n      \"files\": [\"pkg/dates.py\"]\n    },\n    {\n      \"text\": \"parse_date now returns timezone-aware datetimes normalised to UTC.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"pkg/dates.py\"]\n    },\n    {\n      \"text\": \"Naive input is interpreted as UTC.\",\n      \"kind\": \"fix\",\n      \"source\": \"description\",\n      \"files\": [\"pkg/dates.py\"]\n    },\n    {\n      \"text\": \"No other behaviour changes.\",\n      \"kind\": \"no-change\",\n      \"source\": \"description\",\n      \"files\": [\"pkg/dates.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
       "cache_read_tokens": 0,
-      "cost_usd": 0.00035459999999999995,
+      "cost_usd": 0.000327,
       "input_tokens": 696,
-      "output_tokens": 417,
+      "output_tokens": 371,
       "priced": true
     }
   },

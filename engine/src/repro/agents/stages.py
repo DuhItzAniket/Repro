@@ -8,15 +8,20 @@ the card then lists as ``agent_failed`` (ground rule 3: never unverified silentl
 """
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final
 
-from repro.agents.backend import AgentResult
+from repro.agents.backend import AgentResult, ReproTool
 from repro.agents.events import run_agent
-from repro.agents.prompts import load_prompt
+from repro.agents.evidence import EvidenceView
+from repro.agents.prompts import Prompt, load_prompt
 from repro.agents.reader import PrText, read_claims, reader_request
+from repro.agents.reviewer import MAX_INLINE_ITEMS, relevant, reviewer_request
 from repro.agents.setup import AgentSetup
+from repro.agents.sources import RepoSources
+from repro.agents.tools import EvidenceTools
+from repro.agents.validate import Rejection, check
 from repro.gitops import Git
 from repro.gitops.changes import diff
 from repro.orchestrator import Job, JobContext, OnFailure
@@ -92,4 +97,159 @@ def claims_job(
             detail="the pull request's claims could not be read",
             resolution="check the agent settings, the API or the cassettes, then run again",
         ),
+    )
+
+
+#: How long the review job waits for its first event to be stored (as the card job does).
+COMMIT_WAIT_S: Final = 60.0
+REVIEWER_PROMPT: Final = "reviewer"
+#: Attempts per claim: the verdict, and one more after a rejection, told why.
+ATTEMPTS: Final = 2
+SHORT: Final = 1000
+#: ``verdict.issued``'s status for each verdict (ADR-0015's sense).
+VERDICT_STATUS: Final = {"supported": "ok", "contradicted": "fail", "unverifiable": "warn"}
+
+
+def _missing(
+    ctx: JobContext,
+    reason: str,
+    detail: str,
+    claim: Mapping[str, Any],
+    resolution: str,
+) -> None:
+    item = {
+        "reason": reason,
+        "targets": list(claim.get("targets") or []),
+        "detail": detail[:SHORT],
+        "resolution": resolution,
+    }
+    ctx.emit("missing.recorded", status="warn", payload={"missing": item})
+
+
+async def review_claim(
+    ctx: JobContext, setup: AgentSetup, context: "ReviewContext", claim: Mapping[str, Any]
+) -> None:
+    """One claim: a reviewer's verdict, checked; or why there is none."""
+    items = relevant(context.view, claim)
+    if not items:
+        _missing(
+            ctx,
+            "claim_unverifiable",
+            f"{claim['id']}: no evidence about it, so nothing could support it",
+            claim,
+            "a test that exercises what the claim is about",
+        )
+        return
+    ids = [item.id for item in items]
+    feedback, rejection, agent = "", None, ""
+    for _ in range(ATTEMPTS):
+        agent = setup.dispatch.agent_id()
+        request = reviewer_request(
+            claim,
+            items,
+            context.sources,
+            tools=context.tools if len(items) > MAX_INLINE_ITEMS else (),
+            prompt=context.prompt,
+            model=setup.model("review"),
+            claims=context.claims,
+            feedback=feedback,
+        )
+        result = await run_agent(
+            ctx, setup.backend, setup.dispatch, request, agent=agent, ledger=setup.ledger
+        )
+        if result.outcome == "invalid_output":
+            rejection = Rejection("schema_error", result.detail or "no valid structured answer")
+        elif result.outcome != "ok":
+            _missing(
+                ctx,
+                "agent_failed",
+                f"{claim['id']}: its reviewer ended {result.outcome}: {result.detail}",
+                claim,
+                "check the agent settings, the API or the cassettes, then run again",
+            )
+            return
+        else:
+            checked = check(
+                result.structured, claim, context.view, ids, request.model, claims=context.claims
+            )
+            if not isinstance(checked, Rejection):
+                status = VERDICT_STATUS[checked["verdict"]]
+                ctx.emit("verdict.issued", status=status, payload={"verdict": checked}, agent=agent)
+                return
+            rejection = checked
+        feedback = f"{rejection.reason}: {rejection.detail}"
+    assert rejection is not None  # noqa: S101 - the loop ran
+    detail = rejection.detail[:SHORT]
+    rejected = {"claim_id": claim["id"], "reason": rejection.reason, "detail": detail}
+    ctx.emit("verdict.rejected", status="warn", payload=rejected, agent=agent)
+    _missing(
+        ctx,
+        "verdict_rejected",
+        f"{claim['id']}: no verdict passed the checks ({rejection.reason}: {detail})",
+        claim,
+        "run the review again, or with another model",
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewContext:
+    """What every reviewer of a run reads."""
+
+    view: EvidenceView
+    sources: RepoSources
+    tools: tuple[ReproTool, ...]
+    prompt: Prompt
+    #: The PR's claims, each reviewer seeing the others.
+    claims: tuple[Mapping[str, Any], ...] = ()
+
+
+def review_job(
+    log: Callable[[str], list[dict[str, Any]]],
+    git: Git,
+    *,
+    base: str,
+    head: str,
+    setup: AgentSetup,
+    others: Sequence[str],
+) -> Job:
+    """The ``review`` job: after every other job, each claim judged against the run's evidence."""
+
+    def run(ctx: JobContext) -> None:
+        stored = ctx.emit(
+            "log.line",
+            status="progress",
+            payload={"level": "info", "verb": "review", "message": "reviewing the claims"},
+        )
+        stored.result(COMMIT_WAIT_S)  # every event before it is stored too
+        events = log(ctx.run_id)
+        claims = [e["payload"]["claim"] for e in events if e["kind"] == "claim.extracted"]
+        if not claims:
+            ctx.log("no claims to review")
+            return
+        view = EvidenceView.from_events(events)
+        sources = RepoSources(git, base, head)
+        context = ReviewContext(
+            view,
+            sources,
+            EvidenceTools(view, sources).tools(),
+            load_prompt(REVIEWER_PROMPT),
+            tuple(claims),
+        )
+
+        async def every_claim() -> None:
+            await asyncio.gather(*(review_claim(ctx, setup, context, c) for c in claims))
+
+        asyncio.run(every_claim())
+        ctx.log(f"{len(claims)} claim{'s' if len(claims) != 1 else ''} reviewed ({setup.label})")
+
+    return Job(
+        "review",
+        "review",
+        run,
+        OnFailure(
+            reason="agent_failed",
+            detail="the claims could not be reviewed",
+            resolution="check the agent settings, the API or the cassettes, then run again",
+        ),
+        after=tuple(others),
     )

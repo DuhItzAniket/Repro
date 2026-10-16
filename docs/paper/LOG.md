@@ -318,3 +318,21 @@ entry. If something turns out wrong, add a correcting entry.
   The set is the fixture repositories' own texts, written alongside the system: it measures
   the reader on short, plain PR descriptions, not on real-world ones.
 
+## 2026-10-16 · G05 · Verdicts that must cite, quote and agree with the evidence
+- Reviewers (`reviewer/1`, gpt-oss-120b on Groq) judged each claim of four fixture pull
+  requests run in full: honest-fix and its injection twin came out VERIFIED with identical
+  verdicts (all four claims supported), the unclaimed change (silent-change) and the false
+  claim (false-claim) FLAGGED. Each run took five calls and 11.5k–15k tokens, an estimated
+  $0.004–0.006 ([phase record](../phases/G05-reviewers.md)). Replayed from the cassettes with
+  fresh run IDs, every outcome was identical.
+- A claim judged alone can be misread: honest-fix's "No other behaviour changes" was called
+  contradicted by a reviewer who saw the claimed changes but not the claims describing them,
+  and the honest fix was flagged. Showing each reviewer the PR's other claims, and applying
+  the mechanical "no change cannot be supported by a change" rule only when no other claim
+  describes one, fixed it; whether every difference is accounted for stays with deterministic
+  rules.
+- The checks caught real slips in two of the four runs: a reviewer supporting a refactor claim
+  while citing the behaviour change, and, told why, supporting it again with a misquoted
+  evidence line (a test ID with its file dropped). Those claims ended without a verdict and
+  were listed as such; none of 300 generated adversarial answers passed validation.
+

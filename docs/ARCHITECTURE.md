@@ -551,6 +551,20 @@ pytest's file locations).
   contradicting diff on the claim's own target is cited is rejected for QA.
 - When validation fails or retries are exhausted, the engine emits `verdict.rejected` and a
   `verdict_rejected` missing item. It never falls back to an uncited verdict.
+- As built (G05, `agents/reviewer.py`, `agents/validate.py`, the `review` job in
+  `agents/stages.py`): after every other job, one reviewer per claim (prompt `reviewer/1`,
+  effort high) is given its claim and the PR's other claims in untrusted blocks, the evidence
+  about the claim's files rendered in full (at most 10 items; G03's tools offered only when
+  more exist), and those files' diffs. Its schema's `cited_evidence` has `minItems: 1` and an
+  enum of that evidence's IDs; Groq's strict mode accepts it (measured). The answer is checked
+  for shape, citations (existing, about the claim), quotes (exact substrings of the evidence's
+  rendering) and consistency: `supported` resting only on unstable evidence, or a claim that
+  nothing changes supported by a stable introduced difference while no other claim describes
+  a change, is rejected. A rejected verdict gets one more attempt, told why; then
+  `verdict.rejected` and `verdict_rejected`. A claim with no evidence about it is not
+  reviewed: `claim_unverifiable`. A reviewer that ends without an answer: `agent_failed`. A
+  claim that "nothing else" changes is judged beside the PR's other claims, which say what
+  "else" means; whether every difference is accounted for stays with the gap (F04, G06).
 
 ### 10.4 Bias controls
 Evidence is rendered in a fixed order, with sides labelled neutrally (A/B plus a legend). As
