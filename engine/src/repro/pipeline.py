@@ -18,7 +18,7 @@ from typing import Any, Final
 
 from repro.agents.reader import PrText
 from repro.agents.setup import AgentSetup
-from repro.agents.stages import claims_job, review_job
+from repro.agents.stages import claims_job, gap_job, review_job
 from repro.analysis import StaticAnalysis, analyse, graph_payloads
 from repro.card.job import CardStore, card_job
 from repro.gitops import Git, Snapshot, snapshot
@@ -238,7 +238,15 @@ def pipeline_jobs(
     if not analyse_only:
         base, head = change.base.sha, change.head.sha
         jobs += run_jobs(
-            git, base, head, work, state, backend=backend, cache=cache, artifacts=artifacts
+            git,
+            base,
+            head,
+            work,
+            state,
+            backend=backend,
+            cache=cache,
+            artifacts=artifacts,
+            agents=agents,
         )
     if agents is not None and cards is not None:
         others = [job.name for job in jobs]
@@ -252,6 +260,7 @@ def pipeline_jobs(
                 others=others,
             )
         )
+        jobs.append(gap_job(cards.events, setup=agents, after=["review"]))
     if cards is not None:
         jobs.append(card_job(cards, [job.name for job in jobs]))
     return jobs, state

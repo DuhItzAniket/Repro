@@ -190,3 +190,100 @@ def test_the_probe_only_fixture(tmp_path: Path) -> None:
     call, base_shown, head_shown = expected["expected"]["probe"]
     assert difference.candidate.call(difference.first_input) == call
     assert difference.previews() == (base_shown, head_shown)
+    assert difference.found_by == ["hypothesis"]
+
+
+# -- proposed inputs (G07) ------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("annotation", "fitting", "not_fitting"),
+    [
+        ("int", [0, -(2**31), 2**31 - 1], [True, 2**31, 1.0, "1", None]),
+        ("float", [0, 1.5, -2], [True, float("nan"), float("inf"), "1.5"]),
+        ("str", ["", "x" * probes.MAX_PROPOSED], ["x" * (probes.MAX_PROPOSED + 1), 1, None]),
+        ("bool", [True, False], [0, 1, "true"]),
+        ("None", [None], [0, "", False]),
+        ("list[int]", [[], [1, 2]], [[1, "2"], (1,), {"a": 1}, [True]]),
+        ("dict[str, float]", [{}, {"a": 1.5}], [{"a": "x"}, [1.5]]),
+        ("int | None", [3, None], ["3", 1.5]),
+        ("Optional[list[str]]", [None, ["a"]], [[None], "a"]),
+    ],
+)
+def test_fits(annotation: str, fitting: list[Any], not_fitting: list[Any]) -> None:
+    spec = spec_of(annotation)
+    assert [probes.fits(spec, value) for value in fitting] == [True] * len(fitting)
+    assert [probes.fits(spec, value) for value in not_fitting] == [False] * len(not_fitting)
+
+
+def test_a_proposal_names_exactly_the_parameters() -> None:
+    assert probes.arranged(CANDIDATE, {"a": 1, "b": "x"}) == {"args": [1], "kwargs": {"b": "x"}}
+    assert probes.arranged(CANDIDATE, {"b": "x", "a": 1}) == {"args": [1], "kwargs": {"b": "x"}}
+    assert probes.arranged(CANDIDATE, {"a": 1}) is None  # one missing
+    assert probes.arranged(CANDIDATE, {"a": 1, "b": "x", "c": 2}) is None  # one it has not
+    assert probes.arranged(CANDIDATE, {"a": "1", "b": "x"}) is None  # not of its type
+    assert probes.arranged(CANDIDATE, [1, "x"]) is None  # not by name
+    assert probes.arranged(CANDIDATE, None) is None
+
+
+def test_differences_say_which_inputs_found_them() -> None:
+    # Two generated inputs, then two proposed: one the base runs disagree on, one that differs.
+    given = [[{"args": [n], "kwargs": {"b": ""}} for n in range(4)]]
+    runs = {
+        "A": ProbeRun("base", "A", {(0, i): result(digest=str(i)) for i in range(4)}),
+        "A2": ProbeRun("base", "A2", {(0, 0): result(digest="0"), (0, 1): result(digest="1"),
+                                      (0, 2): result(digest="x"), (0, 3): result(digest="3")}),
+        "H": ProbeRun("head", "H", {(0, 0): result(digest="0"), (0, 1): result(digest="y"),
+                                     (0, 2): result(digest="2"), (0, 3): result(digest="z")}),
+    }  # fmt: skip
+    found = probes.compare([CANDIDATE], given, runs, [2])
+    assert found.generated == [2]
+    assert found.proposed == {"ran": 2, "unstable": 1, "differing": 1}
+    (difference,) = found.differences
+    assert (difference.inputs, difference.found_by) == ([1, 3], ["agent", "hypothesis"])
+    record = difference.evidence(RUN_ID, [])
+    assert (record["data"]["inputs_proposed"], record["data"]["found_by"]) == (
+        2,
+        ["agent", "hypothesis"],
+    )
+    # Without proposals, every input is Hypothesis's.
+    assert probes.compare([CANDIDATE], given, runs).proposed == {
+        "ran": 0,
+        "unstable": 0,
+        "differing": 0,
+    }
+
+
+def test_the_probe_semantic_fixture_needs_a_realistic_input(tmp_path: Path) -> None:
+    """G07's acceptance: the tests pass on a wrong change, Hypothesis's inputs find nothing, and
+    a realistic proposed input exposes the divergence; a repeat of a generated input is not run
+    twice."""
+    built = build_repo(ALL_SPECS["probe-semantic"], tmp_path / "repo")
+    git = Git(built.path)
+    base, head = built.base_sha, built.head_shas["refactor/to-utc"]
+    changes = analyse(git, base, head, tmp_path / "analysis").changes.changes
+    found = probes.candidates(changes, selection.side_resolvers(git, base, head))
+    assert [c.symbol for c in found] == ["stamps.utc:to_utc#0"]
+    provisioner = HostProvisioner(tmp_path / "envs")
+    sides = []
+    for side, sha in (("base", base), ("head", head)):
+        tree = snapshot(git, sha, tmp_path / side / "snapshot")
+        box = ProcessSandbox(tmp_path / side / "work", Limits(timeout_s=300))
+        sides.append(Side(side, box, provisioner.provision(side, inspect_project(tree.root), box)))
+    alone = probes.probe((sides[0], sides[1]), found, timeout_s=120)
+    assert alone.differences == []
+    repeat = alone.inputs[0][0]
+    half_hour = {"args": ["2026-03-01T09:00:00+05:30"], "kwargs": {}}
+    whole_hour = {"args": ["2026-03-01T09:00:00-05:00"], "kwargs": {}}
+    probing = probes.probe(
+        (sides[0], sides[1]), found, proposed=[[repeat, half_hour, whole_hour]], timeout_s=120
+    )
+    assert probing.inputs[0][-2:] == [half_hour, whole_hour]
+    assert len(probing.inputs[0]) == len(alone.inputs[0]) + 2
+    assert probing.proposed == {"ran": 2, "unstable": 0, "differing": 1}
+    (difference,) = probing.differences
+    assert (difference.change, difference.found_by) == ("result_changed", ["agent"])
+    assert difference.candidate.call(difference.first_input) == (
+        "to_utc(text='2026-03-01T09:00:00+05:30')"
+    )
+    assert difference.previews() == ("'2026-03-01T03:30:00+00:00'", "'2026-03-01T04:00:00+00:00'")

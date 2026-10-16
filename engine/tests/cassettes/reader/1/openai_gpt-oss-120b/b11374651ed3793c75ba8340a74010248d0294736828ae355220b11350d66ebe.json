@@ -82,10 +82,10 @@
   "result": {
     "by_model": {
       "openai/gpt-oss-120b": {
-        "cache_read_tokens": 256,
-        "cost_usd": 0.0002352,
+        "cache_read_tokens": 0,
+        "cost_usd": 0.0002376,
         "input_tokens": 680,
-        "output_tokens": 222,
+        "output_tokens": 226,
         "priced": true
       }
     },
@@ -99,33 +99,33 @@
           ],
           "kind": "feature",
           "source": "title",
-          "text": "greet() now always ends greetings with '!'."
+          "text": "Greetings will always end with '!'."
         },
         {
           "files": [
             "greeting/hello.py"
           ],
-          "kind": "refactor",
+          "kind": "feature",
           "source": "description",
           "text": "greet() no longer takes a punctuation argument."
         }
       ]
     },
-    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"greet() now always ends greetings with '!'.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"greeting/hello.py\"]\n    },\n    {\n      \"text\": \"greet() no longer takes a punctuation argument.\",\n      \"kind\": \"refactor\",\n      \"source\": \"description\",\n      \"files\": [\"greeting/hello.py\"]\n    }\n  ]\n}",
+    "text": "{\n  \"claims\": [\n    {\n      \"text\": \"Greetings will always end with '!'.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"greeting/hello.py\"]\n    },\n    {\n      \"text\": \"greet() no longer takes a punctuation argument.\",\n      \"kind\": \"feature\",\n      \"source\": \"description\",\n      \"files\": [\"greeting/hello.py\"]\n    }\n  ]\n}",
     "tool_calls": [],
     "turns": 1,
     "usage": {
-      "cache_read_tokens": 256,
-      "cost_usd": 0.0002352,
+      "cache_read_tokens": 0,
+      "cost_usd": 0.0002376,
       "input_tokens": 680,
-      "output_tokens": 222,
+      "output_tokens": 226,
       "priced": true
     }
   },
   "transcript": [
     {
       "progress": {
-        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"greet() now always ends greetings with '!'.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"greeting/hello.py\"]\n    },\n    {\n      \"text\": \"gr",
+        "detail": "{\n  \"claims\": [\n    {\n      \"text\": \"Greetings will always end with '!'.\",\n      \"kind\": \"feature\",\n      \"source\": \"title\",\n      \"files\": [\"greeting/hello.py\"]\n    },\n    {\n      \"text\": \"greet() no",
         "state": "thinking",
         "tool": null,
         "turn": 1

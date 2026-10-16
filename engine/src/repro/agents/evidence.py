@@ -1,8 +1,9 @@
 """A run's evidence as agents see it: listed, related to targets, rendered (G03).
 
 Agents may cite only evidence the engine produced (ground rule 1), so what they read of it is
-built here from the run's own log: ``evidence.created`` payloads, and ``symbol.changed`` for
-which file each changed symbol is in.
+built here from the run's own log: ``evidence.created`` payloads, ``symbol.changed`` for which
+file each changed symbol is in, and ``test.selected`` for the changed symbols each test was
+selected for, so that a test is evidence about the code it exercises (G06).
 
 **Rendering is the text quotes are checked against** (G05: every quote must be an exact
 substring of it), so it is a pure function of the evidence and the same on every machine and in
@@ -56,6 +57,7 @@ FIELDS: Final[Mapping[str, tuple[str, ...]]] = {
         "change",
         "inputs_differing",
         "inputs_tried",
+        "found_by",
         "reproducer.call",
         "reproducer.base",
         "reproducer.head",
@@ -154,20 +156,31 @@ class Item:
 
 
 class EvidenceView:
-    """A run's citable evidence and the files its changed symbols are in."""
+    """A run's citable evidence, the files its changed symbols are in, and the changed symbols
+    each test was selected for."""
 
-    def __init__(self, items: Iterable[Item], symbol_files: Mapping[str, str]) -> None:
+    def __init__(
+        self,
+        items: Iterable[Item],
+        symbol_files: Mapping[str, str],
+        test_symbols: Mapping[str, Sequence[str]] | None = None,
+    ) -> None:
         self.items = sorted(items, key=lambda item: item.order)
         self.by_id = {item.id: item for item in self.items}
         self.symbol_files = dict(symbol_files)
+        self.test_symbols = {test: tuple(found) for test, found in (test_symbols or {}).items()}
 
     @classmethod
     def from_events(cls, events: Iterable[Mapping[str, Any]]) -> "EvidenceView":
-        items, files = [], {}
+        items, files, tests = [], {}, {}
         for event in events:
             payload = event["payload"]
             if event["kind"] == "symbol.changed":
                 files[payload["symbol_id"]] = payload["file"]
+            elif event["kind"] == "test.selected":
+                test = (event.get("target") or {}).get("test")
+                if test:
+                    tests[test] = list(payload.get("symbols") or [])
             elif event["kind"] == "evidence.created":
                 record = payload["evidence"]
                 if record["type"] in HIDDEN:
@@ -183,19 +196,26 @@ class EvidenceView:
                         origin=record["origin"],
                     )
                 )
-        return cls(items, files)
+        return cls(items, files, tests)
 
     def _files_of(self, target: Mapping[str, str]) -> set[str]:
+        """The files a target is about: its own, its symbol's, its test's, and the files of the
+        changed symbols its test was selected for (G06: a test is evidence about the code it
+        exercises, not only about its own file)."""
         files = {target["file"]} if "file" in target else set()
         if "symbol" in target and target["symbol"] in self.symbol_files:
             files.add(self.symbol_files[target["symbol"]])
         if "test" in target:
             files.add(target["test"].split("::", 1)[0])
+            for symbol in self.test_symbols.get(target["test"], ()):
+                if symbol in self.symbol_files:
+                    files.add(self.symbol_files[symbol])
         return files
 
     def related(self, item: Item, target: Mapping[str, str]) -> bool:
-        """Whether ``item`` is about ``target``: the same test or symbol, or the same file
-        (a symbol's file being where it changed, a test's the file it is in)."""
+        """Whether ``item`` is about ``target``: the same test or symbol, or a file in common (a
+        symbol's file being where it changed; a test's, the file it is in and the files of the
+        changed symbols it was selected for)."""
         wanted = self._files_of(target)
         for own in item.targets:
             if any(own.get(key) and own.get(key) == target.get(key) for key in ("symbol", "test")):

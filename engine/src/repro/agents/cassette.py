@@ -19,11 +19,14 @@ the API. The recorded tool calls are made again with the current run's tools, an
 return what it returned when recorded (IDs normalised); otherwise ``StaleCassetteError``: the
 evidence the model saw has changed, and so might its answer.
 
-**Recording** (``record`` mode) makes the call through the given backend, writes the cassette
-and returns the result. A call that ends in ``timeout`` or ``error`` is not recorded: that is
-the infrastructure, not the model. Cassettes are canonical JSON (sorted keys, two-space indent,
-LF), scrubbed of credentials like every event (``repro.scrub``) and of the home directory
-(written ``~``), and hold no recording time, so a cassette changes only when the call does.
+**Recording** (``record`` mode) serves a call from its cassette when one exists and is still
+true (not stale), and otherwise makes it through the given backend, writes the cassette and
+returns the result: recording a run again calls the model only for what is new or changed, and
+leaves the rest as it was (delete a cassette to record it again). A call that ends in
+``timeout`` or ``error`` is not recorded: that is the infrastructure, not the model.
+Cassettes are canonical JSON (sorted keys, two-space indent, LF), scrubbed of credentials like
+every event (``repro.scrub``) and of the home directory (written ``~``), and hold no recording
+time, so a cassette changes only when the call does.
 """
 
 import hashlib
@@ -278,6 +281,11 @@ class CassetteBackend:
 
     async def _record(self, request: AgentRequest, on_progress: OnProgress | None) -> AgentResult:
         assert self.backend is not None  # noqa: S101 - the constructor guarantees it
+        if CassetteKey.of(request).path(self.root).exists():
+            try:
+                return await self._replay(request, on_progress)
+            except StaleCassetteError:
+                pass  # the evidence changed since: record the call again
         ids = Ids()
         key = CassetteKey.of(request, ids)
         recorder = _Recorder(ids, on_progress)

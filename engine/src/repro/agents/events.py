@@ -26,6 +26,7 @@ from dataclasses import replace
 from typing import Final, Literal
 
 from repro.agents.backend import AgentRequest, AgentResult, LLMBackend, Progress, Usage
+from repro.agents.cassette import CassetteError
 from repro.agents.cost import RunLedger
 from repro.agents.dispatch import POLL_S, Dispatch
 from repro.orchestrator.jobs import JobContext
@@ -144,6 +145,9 @@ async def run_agent(
             try:
                 bounded = replace(request, budget=reservation.budget)
                 result = await _call(ctx, backend, bounded, agent)
+            except CassetteError as exc:  # the agent ends here; the caller says what it means
+                _state(ctx, agent, "failed", status="fail", detail=f"cassette: {exc}")
+                raise
             finally:
                 if ledger is not None:
                     ledger.settle(reservation, result.usage if result is not None else Usage())

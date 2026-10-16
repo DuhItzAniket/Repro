@@ -27,8 +27,8 @@ def label(*patterns: str) -> Label:
 
 def test_the_labelled_set_is_complete_and_well_formed() -> None:
     items = load(DATA)
-    assert len(items) == 18
-    assert len({item.name for item in items}) == 18
+    assert len(items) == 19
+    assert len({item.name for item in items}) == 19
     for item in items:
         assert item.labels
         assert item.files

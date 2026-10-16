@@ -52,6 +52,8 @@ class AgentSetup:
     ledger: RunLedger
     #: What the backend is, for the log: ``groq (record)``, ``claude (replay)``...
     label: str
+    #: Whether the probe writer runs (G07).
+    probes: bool = True
 
     def model(self, role: Role) -> str:
         return self.models[role]
@@ -89,10 +91,17 @@ def agent_setup(settings: Settings, scratch: Path) -> AgentSetup | None:
         assert cassettes is not None  # noqa: S101 - the settings require it
         concurrency = 1 if settings.agents != "claude" else default_concurrency()
         return AgentSetup(
-            CassetteBackend(cassettes, "replay"), models, Dispatch(concurrency), ledger, label
+            CassetteBackend(cassettes, "replay"),
+            models,
+            Dispatch(concurrency),
+            ledger,
+            label,
+            probes=settings.agent_probes,
         )
     live, concurrency = _live(settings, scratch)
     if settings.agent_mode == "record":
         assert cassettes is not None  # noqa: S101 - the settings require it
         live = CassetteBackend(cassettes, "record", live)
-    return AgentSetup(live, models, Dispatch(concurrency), ledger, label)
+    return AgentSetup(
+        live, models, Dispatch(concurrency), ledger, label, probes=settings.agent_probes
+    )

@@ -252,6 +252,21 @@ base runs disagree are left out; differences are classed as E04's and grouped pe
 `probe_diff` with `provenance: generated`, `diff.probe` `warn`, the probes in
 `obs/probes.cbor`. Timing (D07) runs after the probes and E04's reproducers.
 
+As built (G07, `agents/prober.py`, prompt `probe/1`): the probe writer proposes **inputs, not
+code**, for the functions E06 can probe. It is shown each one's definition on head, its
+parameters' types, the shape its arguments must take and the change to its file, never the PR's
+text or claims, and answers with up to 8 inputs per function (6 functions per call) as JSON
+text. The filters, counted and logged: a proposal must name a probed function and exactly its
+parameters, each value of its annotated JSON type within E06's bounds (`probes.fits`), or it is
+dropped on the host; the rest, without repeats of Hypothesis's inputs, run after them in the
+same three sandboxed runs, where an input the base runs disagree on is left out. Each
+`probe_diff` says which generator's inputs differ (`found_by`: `hypothesis`, `agent` or both)
+and how many inputs were proposed; its reproducer is a call, as for E06. Proposing data rather
+than writing pytest probes keeps every agent-written byte out of the interpreter (T15) and
+reuses E06's determinism and reproducers; functions E06 cannot probe (methods, objects, fixtures)
+get no probes yet. A probe writer that fails is an `agent_failed` item; Hypothesis's inputs run
+regardless.
+
 ### 4.5 Diffs (`diff/`)
 | Differ | Input | Evidence produced |
 |---|---|---|
@@ -565,6 +580,17 @@ pytest's file locations).
   reviewed: `claim_unverifiable`. A reviewer that ends without an answer: `agent_failed`. A
   claim that "nothing else" changes is judged beside the PR's other claims, which say what
   "else" means; whether every difference is accounted for stays with the gap (F04, G06).
+- As built (G06, `agents/gap.py`, the `gap` job after `review`): the differences that would
+  flag only for want of an explanation (`warn` checks no supported verdict cites, none
+  contradicted, none a problem on its own) go to one gap reviewer (prompt `gap/1`) with the
+  supported claims that describe a change (not `no-change`, `refactor`). Its mapping is checked
+  like a verdict (given items only, once each; given claims only, about the item's files;
+  exact quotes); what survives becomes, per claim, a supporting `verdict.issued` citing the
+  differences it explains, so F04's rules count them explained. A mapping that fails leaves
+  its difference unexplained, and it flags. With nothing to explain, or no claim that could,
+  no call is made. Evidence relevance (G03's rule) also follows test selection from G06 on: a test is
+  about the files of the changed symbols it was selected for (`test.selected`), so a new or
+  newly passing test is evidence about the code it exercises.
 
 ### 10.4 Bias controls
 Evidence is rendered in a fixed order, with sides labelled neutrally (A/B plus a legend). As

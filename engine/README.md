@@ -148,6 +148,7 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `agent_mode` | `REPRO_AGENT_MODE` | `live` (`record`, `replay`: cassettes, G02) |
 | `agent_cassettes` | `REPRO_AGENT_CASSETTES` | none; required with `record` or `replay` |
 | `agent_budget_usd` | `REPRO_AGENT_BUDGET_USD` | `2.0`: the most a run's agent calls may cost together |
+| `agent_probes` | `REPRO_AGENT_PROBES` | `true`: with agents on, the probe writer proposes inputs for the probes (G07) |
 
 With agents on, `repro run` reads the pull request's claims from `--pr-title` and `--pr-body`
 (or `--pr-file`: the title, then the description), else from the commit messages. Groq's key is

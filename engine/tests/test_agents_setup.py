@@ -39,6 +39,14 @@ def test_claude_runs_each_role_on_its_model(tmp_path: Path) -> None:
     assert setup.ledger.limit_usd == 5
 
 
+def test_the_probe_writer_runs_unless_switched_off(tmp_path: Path) -> None:
+    on = agent_setup(settings(tmp_path, agents="groq"), tmp_path)
+    off = agent_setup(settings(tmp_path, agents="groq", agent_probes="off"), tmp_path)
+    assert on is not None
+    assert off is not None
+    assert (on.probes, off.probes) == (True, False)
+
+
 def test_one_model_for_every_role(tmp_path: Path) -> None:
     setup = agent_setup(
         settings(tmp_path, agents="claude", agent_model="claude-sonnet-5-5"), tmp_path

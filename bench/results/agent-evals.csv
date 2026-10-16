@@ -1,2 +1,4 @@
 date,eval,model,prompt_version,repro_version,items,labels,extracted,matched,precision,recall,failed,source
 2026-10-16,claims,openai/gpt-oss-120b,reader/1,0.6.0,18,43,44,42,0.955,0.977,0,cassettes
+2026-10-16,claims,openai/gpt-oss-120b,reader/1,0.6.0,18,43,45,43,0.956,1.000,0,cassettes (re-recorded with reviewers, G06)
+2026-10-16,claims,openai/gpt-oss-120b,reader/1,0.6.0,19,46,48,46,0.958,1.000,0,cassettes (probe-semantic added, G07)
