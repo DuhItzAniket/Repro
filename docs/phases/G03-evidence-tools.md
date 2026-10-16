@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G01, F04 |
-| **Branch / PR** | `phase/G03-evidence-tools` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G03-evidence-tools` · [#62](https://github.com/DuhItzAniket/Repro/pull/62) |
+| **Started / finished** | 2026-10-16 / 2026-10-16 |
 
 ## Objective
 Give agents what they may read, and nothing else: the run's citable evidence and the change's
@@ -57,9 +57,9 @@ and on every machine, checked paths, and every piece of the target's text delimi
   the order-swap pass (G08).
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): prompt-injection fixtures in PR text and code comments do not change tool
+- [x] AC1 (roadmap): prompt-injection fixtures in PR text and code comments do not change tool
   behaviour. (Their effect on verdicts is checked in G05, once there are verdicts.)
-- [ ] AC2: `list_evidence`, `get_evidence`, `read_snippet`, `get_diff` with size caps,
+- [x] AC2: `list_evidence`, `get_evidence`, `read_snippet`, `get_diff` with size caps,
   rendering and path normalisation; untrusted-content delimiting.
 
 ## Test plan
@@ -88,7 +88,8 @@ and on every machine, checked paths, and every piece of the target's text delimi
   commit SHAs.
 - A diff driver planted in the repository's own attributes runs on a plain `git diff` (the
   control) and not through `get_diff`.
-- CI run: linked in the PR.
+- Full suite (Windows, Docker stopped): 1649 passed, 13 skipped.
+- CI run: linked in the PR (#62).
 
 ## Deviations from spec
 - ARCHITECTURE §10.4: evidence is rendered in content order, not ID order (IDs follow creation
