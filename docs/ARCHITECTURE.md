@@ -569,7 +569,12 @@ Prompts are versioned files (`agents/prompts/<name>.md`, `version:` front matter
 locked by SHA-256 per version (`lock.json`, only added to); a call names its prompt as
 `<name>/<version>`. Costs come from the CLI's per-model `model_usage`, one `cost.estimate` per
 model with `source` `live` or `cassette`; a run's `RunLedger` totals them and, with a limit,
-reserves each call's dollar budget from what is left. Tests never reach a model: the conftest
+reserves each call's dollar budget from what is left. A second backend (G10, ADR-0016,
+`agents/openai_compat.py`) speaks to OpenAI-compatible APIs (Groq, local servers): Repro runs
+the tool loop, offers only the call's own tools and refuses any other name, asks for a
+structured answer alone with `response_format` `json_schema` (the API cannot combine it with
+tools) and checks it against the schema, honours `retry-after`, and prices calls from a sourced
+table (a model without a price gets no `cost.estimate`). Tests never reach a model: the conftest
 points the API at a closed loopback port, and tests that start the CLI run behind a proxy that
 fails them on any connection past loopback.
 

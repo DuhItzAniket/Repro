@@ -291,3 +291,14 @@ entry. If something turns out wrong, add a correcting entry.
   test's assertion message and the PR text, every tool's output equalled the clean twin's
   outside those blocks, and the deterministic card was identical but for the commit SHAs.
 
+## 2026-10-16 · G10 · The agents will be measured on an open-weight model
+- No Anthropic API key is available for Stage G; the owner provided a Groq key. Stage G's
+  cassettes and its evaluation will therefore use `openai/gpt-oss-120b` through an
+  OpenAI-compatible backend (ADR-0016). Every result names its model, and results on this
+  model are not results on Claude: the same prompts on Claude models remain unmeasured until
+  someone records them.
+- The free tier's limits shape the experiment: 8,000 tokens a minute and 200,000 a day per
+  model, so prompts and tool outputs must stay compact and calls run one at a time. A first
+  live call with a tool and a schema-checked answer took three turns, 591 input and 121
+  output tokens, an estimated $0.000161 ([phase record](../phases/G10-openai-compatible-backend.md)).
+

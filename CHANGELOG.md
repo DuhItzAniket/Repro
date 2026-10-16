@@ -40,6 +40,11 @@ All notable changes to this project are documented here. The format follows
   every run and on every machine, and everything from the target is delimited as data it
   cannot step out of. Fixture `injection`: honest-fix with instructions to the reviewers
   planted in its text; its tool outputs and card equal honest-fix's. [G03]
+- A second LLM backend for OpenAI-compatible APIs (Groq, local servers, routers), decided in
+  ADR-0016: Repro runs the tool loop with only the call's own tools, asks for structured
+  answers alone and checks them against the schema, honours rate limits, and prices calls from
+  sourced price tables. The Claude Agent SDK stays the default; Stage G's recordings and
+  evaluation use Groq's gpt-oss-120b. [G10]
 
 ## [0.6.0] - 2026-10-15
 

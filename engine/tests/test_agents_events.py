@@ -290,3 +290,10 @@ def test_a_run_whose_agent_budget_is_spent_starts_no_more_calls(
         "max_budget: the run's agent budget of $0.02 is spent"
     ]
     assert len([e for e in of_agents(events) if e["kind"] == "cost.estimate"]) == 2
+
+
+def test_a_model_with_no_known_price_reports_no_cost(writer: StoreWriter) -> None:
+    unpriced = Usage(input_tokens=500, output_tokens=50, priced=False)
+    result = AgentResult("ok", turns=1, usage=unpriced, by_model={"llama3.2": unpriced})
+    _, _, events = run_job(writer, agents(ScriptedBackend(result), Dispatch(1), 1, []))
+    assert "cost.estimate" not in [e["kind"] for e in of_agents(events)]

@@ -482,12 +482,13 @@ agent eval set meets the thresholds set in G09.
 | G01 | LLM backend & locked-down runtime | M | C03 | done |
 | G02 | Cassettes, prompt versioning & cost accounting | M | G01 | done |
 | G03 | Read-only evidence tools | M | G01, F04 | done |
-| G04 | Reader agent (claim extraction) | M | G02, G03 | planned |
+| G04 | Reader agent (claim extraction) | M | G02, G03, G10 | planned |
 | G05 | Reviewer agents (evidence-constrained verdicts) | L | G04 | planned |
 | G06 | Gap reviewer (explained-by mapping) | M | G05 | planned |
 | G07 | Probe-writer agent | L | G03, E06 | planned |
 | G08 | Bias controls & QA agent | M | G05, G06 | planned |
 | G09 | Agent evaluation harness | M | G04–G08 | planned |
+| G10 | OpenAI-compatible backend (Groq, local models) | M | G01, G02 | in progress |
 
 **G01** `LLMBackend` protocol, Agent SDK implementation with the full lockdown (ADR-0007),
 budgets, concurrency limiter, `agent.spawned` and `agent.state` events. *Accept:* tests prove
@@ -524,6 +525,14 @@ reported on the eval set.
 **G09** Labelled mini-set of handmade PRs. Metrics: claim P/R, verdict accuracy, citation
 validity, flip rate, cost. Regression gate for prompt or model changes. *Accept:* metrics are
 appended to `bench/results/agent-evals.csv`. CI fails on a regression beyond tolerance.
+
+**G10** *(added 2026-10-16, ADR-0016; done before G04)* A second `LLMBackend` for
+OpenAI-compatible Chat Completions APIs (Groq, local servers, routers): Repro's own tool loop,
+schema-checked structured answers, rate limits honoured, costs from sourced prices. Stage G's
+recordings and evaluation use Groq's `openai/gpt-oss-120b` (the owner's key); the Claude Agent
+SDK stays the default. *Accept:* the tool loop refuses every tool outside the call's own;
+budgets end calls with the right outcome; a call records and replays through a cassette; one
+live call succeeds.
 
 ---
 

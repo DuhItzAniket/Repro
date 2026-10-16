@@ -82,7 +82,9 @@ evidence, claim attribution, and the Missing list, all local and replayable.
   grimp and griffe (ADR-0006). Tracer, encoder and selection map are Repro's own (ADR-0005).
 - **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004).
 - **Agents:** Claude Agent SDK (Python `claude-agent-sdk`, pinned exactly), locked down, behind
-  an `LLMBackend` protocol (ADR-0007). Models are configurable via env.
+  an `LLMBackend` protocol (ADR-0007). Models are configurable via env. A second backend for
+  OpenAI-compatible APIs (Groq, local servers) is accepted in ADR-0016; Stage G's recordings
+  and evaluation use Groq's gpt-oss-120b.
 - **CLI:** `repro` (Python, Typer): `run`, `replay`, `serve`, `doctor`, `export`.
 
 ## Commands (keep accurate; add a command only once it works)

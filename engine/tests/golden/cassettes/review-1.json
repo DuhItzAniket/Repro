@@ -62,7 +62,8 @@
         "cache_read_tokens": 0,
         "cost_usd": 0.0016,
         "input_tokens": 200,
-        "output_tokens": 40
+        "output_tokens": 40,
+        "priced": true
       }
     },
     "detail": "",
@@ -89,7 +90,8 @@
       "cache_read_tokens": 0,
       "cost_usd": 0.0016,
       "input_tokens": 200,
-      "output_tokens": 40
+      "output_tokens": 40,
+      "priced": true
     }
   },
   "transcript": [

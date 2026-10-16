@@ -83,6 +83,9 @@ class Usage:
     output_tokens: int = 0
     cache_read_tokens: int = 0
     cost_usd: float = 0.0
+    #: Whether ``cost_usd`` rests on a known price; False: the tokens are counted, the cost is
+    #: unknown (0 here, and no ``cost.estimate``; G10, ADR-0016).
+    priced: bool = True
 
 
 @dataclass(frozen=True, slots=True)

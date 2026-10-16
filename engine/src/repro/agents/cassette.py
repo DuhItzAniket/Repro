@@ -160,6 +160,7 @@ def _usage(value: Mapping[str, Any]) -> Usage:
         output_tokens=int(value["output_tokens"]),
         cache_read_tokens=int(value["cache_read_tokens"]),
         cost_usd=float(value["cost_usd"]),
+        priced=bool(value.get("priced", True)),
     )
 
 
@@ -169,6 +170,7 @@ def _usage_dict(usage: Usage) -> dict[str, Any]:
         "output_tokens": usage.output_tokens,
         "cache_read_tokens": usage.cache_read_tokens,
         "cost_usd": usage.cost_usd,
+        "priced": usage.priced,
     }
 
 
