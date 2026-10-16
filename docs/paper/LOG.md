@@ -279,3 +279,15 @@ entry. If something turns out wrong, add a correcting entry.
   to reach Anthropic's API five times in a one-turn session (feature flags and telemetry). The
   locked-down runtime made none, and every agent test now fails on any such attempt.
 
+## 2026-10-16 · G03 · The judge's input, made reproducible
+- What an agent reads must be the same text in every run of the same change, or neither its
+  cassette nor a quote check can rely on it. Two run logs showed how easily it is not: the
+  evidence order followed creation time, which varies with how a run's jobs interleave, and
+  pytest's failure locations carried the platform's path separator. Ordering by content and
+  normalising separators, the home directory and line ends fixed both
+  ([phase record](../phases/G03-evidence-tools.md)).
+- Text from the target reaches the model only inside a delimited block whose delimiters it
+  cannot write. On a fixture with instructions to the reviewers planted in a code comment, a
+  test's assertion message and the PR text, every tool's output equalled the clean twin's
+  outside those blocks, and the deterministic card was identical but for the commit SHAs.
+

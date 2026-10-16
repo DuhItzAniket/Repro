@@ -22,8 +22,8 @@ evidence the model saw has changed, and so might its answer.
 **Recording** (``record`` mode) makes the call through the given backend, writes the cassette
 and returns the result. A call that ends in ``timeout`` or ``error`` is not recorded: that is
 the infrastructure, not the model. Cassettes are canonical JSON (sorted keys, two-space indent,
-LF), scrubbed of credentials like every event (``repro.scrub``), and hold no recording time, so
-a cassette changes only when the call does.
+LF), scrubbed of credentials like every event (``repro.scrub``) and of the home directory
+(written ``~``), and hold no recording time, so a cassette changes only when the call does.
 """
 
 import hashlib
@@ -46,6 +46,7 @@ from repro.agents.backend import (
     ReproTool,
     Usage,
 )
+from repro.agents.untrusted import without_home
 from repro.scrub import scrub
 
 CASSETTE_VERSION: Final = 1
@@ -182,6 +183,18 @@ def _versions() -> dict[str, str]:
         return {}
 
 
+def _unhomed(value: Any) -> Any:
+    """``value`` with the user's home directory written ``~`` in every string: a cassette is
+    committed, and must not carry the machine it was recorded on (G03)."""
+    if isinstance(value, str):
+        return without_home(value)
+    if isinstance(value, dict):
+        return {key: _unhomed(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_unhomed(item) for item in value]
+    return value
+
+
 def _write(path: Path, document: Mapping[str, Any]) -> None:
     """Writes the cassette whole or not at all."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -288,7 +301,7 @@ class CassetteBackend:
             },
             "recorded_with": _versions(),
         }
-        _write(key.path(self.root), scrub(document))
+        _write(key.path(self.root), _unhomed(scrub(document)))
         return result
 
     def _load(self, key: CassetteKey) -> dict[str, Any]:

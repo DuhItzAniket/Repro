@@ -313,6 +313,16 @@ def test_a_cassette_is_scrubbed_of_credentials(tmp_path: Path) -> None:
     assert "[redacted]" in path.read_text(encoding="utf-8")
 
 
+def test_a_cassette_does_not_carry_the_home_directory(tmp_path: Path) -> None:
+    run = Run()
+    record(tmp_path / "c", run, prompt=f"Claim C1 rests on {run.claim}. Seen in {Path.home()}.")
+    [path] = cassette_files(tmp_path / "c")
+    text = path.read_text(encoding="utf-8")
+    assert str(Path.home()) not in text
+    assert json.dumps(str(Path.home()))[1:-1] not in text  # nor as JSON escapes it
+    assert "Seen in ~." in text
+
+
 def test_no_test_can_reach_a_real_model() -> None:
     """The repository's conftest points every test at a closed loopback port with a dummy
     key, whatever the machine's own environment holds."""
