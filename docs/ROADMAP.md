@@ -482,12 +482,13 @@ agent eval set meets the thresholds set in G09.
 | G01 | LLM backend & locked-down runtime | M | C03 | done |
 | G02 | Cassettes, prompt versioning & cost accounting | M | G01 | done |
 | G03 | Read-only evidence tools | M | G01, F04 | done |
-| G04 | Reader agent (claim extraction) | M | G02, G03 | planned |
-| G05 | Reviewer agents (evidence-constrained verdicts) | L | G04 | planned |
-| G06 | Gap reviewer (explained-by mapping) | M | G05 | planned |
-| G07 | Probe-writer agent | L | G03, E06 | planned |
+| G04 | Reader agent (claim extraction) | M | G02, G03, G10 | done |
+| G05 | Reviewer agents (evidence-constrained verdicts) | L | G04 | done |
+| G06 | Gap reviewer (explained-by mapping) | M | G05 | done |
+| G07 | Probe-writer agent | L | G03, E06 | done |
 | G08 | Bias controls & QA agent | M | G05, G06 | planned |
 | G09 | Agent evaluation harness | M | G04–G08 | planned |
+| G10 | OpenAI-compatible backend (Groq, local models) | M | G01, G02 | done |
 
 **G01** `LLMBackend` protocol, Agent SDK implementation with the full lockdown (ADR-0007),
 budgets, concurrency limiter, `agent.spawned` and `agent.state` events. *Accept:* tests prove
@@ -524,6 +525,14 @@ reported on the eval set.
 **G09** Labelled mini-set of handmade PRs. Metrics: claim P/R, verdict accuracy, citation
 validity, flip rate, cost. Regression gate for prompt or model changes. *Accept:* metrics are
 appended to `bench/results/agent-evals.csv`. CI fails on a regression beyond tolerance.
+
+**G10** *(added 2026-10-16, ADR-0016; done before G04)* A second `LLMBackend` for
+OpenAI-compatible Chat Completions APIs (Groq, local servers, routers): Repro's own tool loop,
+schema-checked structured answers, rate limits honoured, costs from sourced prices. Stage G's
+recordings and evaluation use Groq's `openai/gpt-oss-120b` (the owner's key); the Claude Agent
+SDK stays the default. *Accept:* the tool loop refuses every tool outside the call's own;
+budgets end calls with the right outcome; a call records and replays through a cassette; one
+live call succeeds.
 
 ---
 
@@ -721,3 +730,8 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | G01 | 2026-10-15 | [#60](https://github.com/DuhItzAniket/Repro/pull/60) | LLMBackend protocol with outcomes instead of exceptions; Claude Agent SDK 0.2.167 under ADR-0007's lockdown (no built-in tools, a gate permitting only the call's own mcp__repro__ tools and StructuredOutput, no settings, CLAUDE.md, memory, plugins, skills or other MCP servers, empty per-call cwd and config dir, turn/dollar/time budgets); tested against the bundled CLI with a local Messages API stand-in: planted CLAUDE.md, hooks and more load on an unlocked CLI and never under the lockdown, foreign tools denied with no effect; dispatch min(12, free GiB) in 12 slots with agent.spawned/agent.state/cost.estimate |
 | G02 | 2026-10-16 | [#61](https://github.com/DuhItzAniket/Repro/pull/61) | Cassettes keyed by prompt version, model and an input digest taken with run-specific IDs (ev_, evt_, run_) normalised by first-seen order, replayed in any later run with that run's IDs; recorded tool calls made again (stale if they differ); a missing cassette raises and replay has no backend to call; canonical scrubbed JSON; versioned prompt files with a SHA-256 lock; per-model cost.estimate with source live or cassette; RunLedger run budget; every test offline (closed loopback API, CLI tests fail on any connection past loopback) |
 | G03 | 2026-10-16 | [#62](https://github.com/DuhItzAniket/Repro/pull/62) | list_evidence, get_evidence, read_snippet and get_diff over the run's own evidence and the commits' git objects (never the snapshots), by checked paths, with size caps; evidence rendered the same in every run and on every machine (content order, per-type fields, no timings, pids or digests, portable paths, ~ for home); the target's text in delimited blocks it cannot close; injection fixture: tool outputs and card equal honest-fix's |
+| G10 | 2026-10-16 | [#63](https://github.com/DuhItzAniket/Repro/pull/63) | Added by the owner's decision (ADR-0016): a second LLMBackend for OpenAI-compatible APIs (Groq, local servers) with Repro's own tool loop (only the call's tools, anything else refused), structured answers asked for alone and schema-checked, retry-after honoured, the key kept out of results, sourced prices (unpriced: no cost.estimate); one live gpt-oss-120b call with a tool and a strict schema: ok, 591+121 tokens, an estimated $0.000161 |
+| G04 | 2026-10-16 | [#64](https://github.com/DuhItzAniket/Repro/pull/64) | Agent settings (off by default; claude, groq, openai; live, record, replay; a 2.0 USD run budget); the reader (reader/1) reads the PR's title and description or commit messages, delimited and capped, into checked, numbered claim.extracted events tied to changed files; a failed reader is agent_failed; labelled set of 18 PR texts and 43 claims: precision 0.955, recall 0.977 live on Groq gpt-oss-120b, replayed in CI from 18 cassettes against proposed 0.90 thresholds |
+| G05 | 2026-10-16 | [#65](https://github.com/DuhItzAniket/Repro/pull/65) | One reviewer per claim (reviewer/1) given the claim, the other claims, the claim's evidence in full and its files' diffs; a per-claim schema with an enum of evidence IDs and minItems 1; validation of citations, exact quotes and consistency (no-change supported by a change only where another claim describes it); one retry, then verdict.rejected; 300 adversarial answers pass none; live on Groq and replayed in CI: honest-fix and injection VERIFIED with the same verdicts, silent-change and false-claim FLAGGED |
+| G06 | 2026-10-16 | [#66](https://github.com/DuhItzAniket/Repro/pull/66) | After the review, the differences no verdict accounts for go to one gap reviewer (gap/1) with the supported claims that describe a change; its mapping is checked like a verdict and becomes supporting verdicts citing what they explain (ADR-0015); unexplained differences flag, no call when nothing could be explained; relevance through test selection; Groq's off-schema 400 asked again; record mode keeps valid cassettes; re-recorded: honest-fix and injection VERIFIED, silent-change and false-claim FLAGGED |
+| G07 | 2026-10-16 | [#67](https://github.com/DuhItzAniket/Repro/pull/67) | With agents on, a claim-blind probe writer (probe/1) proposes inputs as data for the functions E06 can probe; proposals that do not fit the signature are dropped and counted, the rest run beside Hypothesis's on base, base again and head, and each probe_diff says which inputs found it (found_by); agent_probes switches it off; new fixture probe-semantic (VERIFIED without agents); live: 8 proposed, 0 dropped, 3 differ (+05:30, -04:45, +02:15); the Gate G runs replay with the probe writer off until re-recorded |

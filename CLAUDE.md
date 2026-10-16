@@ -82,7 +82,9 @@ evidence, claim attribution, and the Missing list, all local and replayable.
   grimp and griffe (ADR-0006). Tracer, encoder and selection map are Repro's own (ADR-0005).
 - **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004).
 - **Agents:** Claude Agent SDK (Python `claude-agent-sdk`, pinned exactly), locked down, behind
-  an `LLMBackend` protocol (ADR-0007). Models are configurable via env.
+  an `LLMBackend` protocol (ADR-0007). Models are configurable via env. A second backend for
+  OpenAI-compatible APIs (Groq, local servers) is accepted in ADR-0016; Stage G's recordings
+  and evaluation use Groq's gpt-oss-120b.
 - **CLI:** `repro` (Python, Typer): `run`, `replay`, `serve`, `doctor`, `export`.
 
 ## Commands (keep accurate; add a command only once it works)
@@ -114,6 +116,8 @@ uv run repro-events-codegen --check   # drift gate (CI): fails if generated code
 uv run python scripts/check_licenses.py   # licence allow-list over all installed deps (CI)
 uv run repro-events validate <log.jsonl>   # schema + log invariants of an event log
 pnpm fixtures                             # regenerate apps/web/fixtures/*.jsonl (review the diff!)
+uv run python -m repro_bench.claims       # the reader on the labelled claims, from cassettes (G04);
+                                          # --mode record re-records live (GROQ_API_KEY), --append logs it
 uv run pytest --update-goldens            # rewrite golden files, lock new prompt versions (review the diff!)
 pnpm --filter @repro/web exec playwright test -c playwright.gate.config.ts
                         # Gate C end to end; needs pnpm build, uv sync and REPRO_GATE_REPO

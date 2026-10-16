@@ -1,0 +1,14 @@
+# What the agents must reach on the labelled sets, checked in CI by replaying the recorded
+# cassettes (engine/tests/test_agents_claims_eval.py) and on every re-recording.
+#
+# Status "proposed": set from the first measured baseline and awaiting the project owner's
+# approval (the owner asked for thresholds to be proposed with the numbers they rest on).
+
+[claims]
+status = "proposed"
+# Measured 2026-10-16, reader/1 on openai/gpt-oss-120b (Groq), 18 pull requests, 43 labels:
+# precision 0.955 (42/44), recall 0.977 (42/43), no failed call. The thresholds leave room for
+# one or two claims either way on a set this small.
+precision = 0.90
+recall = 0.90
+max_failed = 0

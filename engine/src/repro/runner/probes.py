@@ -13,6 +13,13 @@ run of the same Hypothesis version (its version is in the evidence). Integers ar
 32 bits, floats finite, text and collections short; at most ``EXAMPLES`` distinct inputs a
 function. The inputs are data, written to the sandbox as JSON.
 
+**Proposed inputs** (G07). The probe-writer agent, shown each function and its change but not
+the PR's claims, may propose inputs of its own: realistic values random generation would not
+form (a valid timestamp, say). A proposal is data, never code: it must name exactly the
+function's parameters, each value of its annotated JSON type (``fits``), or it is dropped. The
+proposals that fit run beside Hypothesis's, through the same runs and filters; each difference
+says which generator's inputs found it (``found_by``).
+
 **How they run.** ``repro_probe`` (beside the plugin) calls each function with each input in
 the side's sandbox, with its interpreter: base, base again with another hash seed and another
 ``random`` seed (A2), and head. A probe whose result differs between the two base runs is not
@@ -23,9 +30,10 @@ difference, classed as behaviour differences are (E04) and grouped per function 
 
 import ast
 import json
+import math
 import re
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from importlib.metadata import version as installed_version
 from typing import Any, Final
@@ -42,6 +50,8 @@ from repro.sandbox.process import read_head
 #: Functions probed in one run, at most, and inputs per function.
 MAX_FUNCTIONS: Final = 20
 EXAMPLES: Final = 40
+#: A proposed input's text and collections, at most this long.
+MAX_PROPOSED: Final = 1000
 MAX_BYTES: Final = 16 * 1024 * 1024
 PREVIEW: Final = 512
 SUMMARY: Final = 1000
@@ -242,6 +252,53 @@ def inputs(candidate: Candidate, count: int = EXAMPLES) -> list[dict[str, Any]]:
     return list(found.values())
 
 
+def fits(spec: Spec, value: Any) -> bool:  # noqa: PLR0911 - one answer per kind
+    """Whether ``value`` is of the JSON type ``spec`` describes (within Repro's bounds)."""
+    kind = spec["kind"]
+    if kind == "none":
+        return value is None
+    if kind == "bool":
+        return isinstance(value, bool)
+    if kind == "int":
+        return isinstance(value, int) and not isinstance(value, bool) and -_INT <= value < _INT
+    if kind == "float":
+        number = isinstance(value, int | float) and not isinstance(value, bool)
+        return number and math.isfinite(value)
+    if kind == "str":
+        return isinstance(value, str) and len(value) <= MAX_PROPOSED
+    if kind == "list":
+        return (
+            isinstance(value, list)
+            and len(value) <= MAX_PROPOSED
+            and all(fits(spec["of"], item) for item in value)
+        )
+    if kind == "dict":
+        return (
+            isinstance(value, dict)
+            and len(value) <= MAX_PROPOSED
+            and all(isinstance(k, str) and fits(spec["of"], v) for k, v in value.items())
+        )
+    return any(fits(member, value) for member in spec["of"])
+
+
+def arranged(candidate: Candidate, named: Any) -> dict[str, Any] | None:
+    """A proposed input, by parameter name, as a call's ``args`` and ``kwargs``; None unless it
+    names exactly the function's parameters, each value of its type."""
+    names = [name for name, _, _ in candidate.parameters]
+    if not isinstance(named, Mapping) or set(named) != set(names) or len(named) != len(names):
+        return None
+    given: dict[str, Any] = {"args": [], "kwargs": {}}
+    for name, kind, spec in candidate.parameters:
+        value = named[name]
+        if not fits(spec, value):
+            return None
+        if kind == "positional":
+            given["args"].append(value)
+        else:
+            given["kwargs"][name] = value
+    return given
+
+
 # -- runs ----------------------------------------------------------------------------------------
 
 
@@ -363,6 +420,8 @@ class ProbeDiff:
     inputs: list[int] = field(default_factory=list)
     tried: int = 0
     unstable: int = 0
+    #: How many of the function's inputs Hypothesis generated; the rest were proposed (G07).
+    generated: int = 0
     first_input: dict[str, Any] = field(default_factory=dict)
     base: dict[str, Any] = field(default_factory=dict)
     head: dict[str, Any] = field(default_factory=dict)
@@ -375,6 +434,12 @@ class ProbeDiff:
     def previews(self) -> tuple[str | None, str | None]:
         return _shown(self.base), _shown(self.head)
 
+    @property
+    def found_by(self) -> list[str]:
+        """Which generators' inputs differ this way: ``hypothesis``, ``agent`` or both."""
+        found = {"hypothesis" if index < self.generated else "agent" for index in self.inputs}
+        return sorted(found)
+
     def summary(self) -> str:
         base, head = self.previews()
         call = self.candidate.call(self.first_input)
@@ -386,8 +451,13 @@ class ProbeDiff:
             "order_only": "gives the same entries in another order",
         }[self.change]
         count = len(self.inputs)
+        source = (
+            "generated input"
+            if not self.inputs or self.inputs[0] < self.generated
+            else "the probe writer's input"
+        )
         text = (
-            f"{call} {words}: head {head}, base {base} (generated input; "
+            f"{call} {words}: head {head}, base {base} ({source}; "
             f"{count} of {self.tried} inputs differ this way)"
         )
         return text if len(text) <= SUMMARY else text[: SUMMARY - 1] + "…"
@@ -407,6 +477,8 @@ class ProbeDiff:
                 "inputs_differing": len(self.inputs),
                 "inputs_tried": self.tried,
                 "inputs_unstable": self.unstable,
+                "inputs_proposed": self.tried - self.generated,
+                "found_by": self.found_by,
                 "reproducer": {
                     "call": self.candidate.call(self.first_input),
                     "input": self.first_input,
@@ -453,6 +525,10 @@ class Probing:
     runs: dict[str, ProbeRun]
     differences: list[ProbeDiff]
     unstable: dict[str, int]  # symbol -> inputs left out (A and A2 differ)
+    #: Per function, how many of its inputs Hypothesis generated (the rest were proposed).
+    generated: list[int] = field(default_factory=list)
+    #: Proposed inputs that ran, that A and A2 disagreed on, and that differ on head (G07).
+    proposed: dict[str, int] = field(default_factory=dict)
 
     def missing(self) -> list[dict[str, Any]]:
         items = []
@@ -502,14 +578,21 @@ def _missing(reason: str, detail: str, symbol: str | None) -> dict[str, Any]:
 
 
 def compare(
-    found: Sequence[Candidate], given: Sequence[Sequence[dict[str, Any]]], runs: dict[str, ProbeRun]
+    found: Sequence[Candidate],
+    given: Sequence[Sequence[dict[str, Any]]],
+    runs: dict[str, ProbeRun],
+    generated: Sequence[int] | None = None,
 ) -> Probing:
-    """Base against head for every input both ran, those A and A2 disagree on left out."""
+    """Base against head for every input both ran, those A and A2 disagree on left out;
+    ``generated``: per function, how many of its inputs came first from Hypothesis."""
     base, again, head = runs["A"], runs["A2"], runs["H"]
+    counts = list(generated) if generated is not None else [len(i) for i in given]
     groups: dict[tuple[int, str], ProbeDiff] = {}
     unstable: dict[str, int] = {}
+    proposed = {"ran": 0, "unstable": 0, "differing": 0}
     for number, candidate in enumerate(found):
         for index in range(len(given[number])):
+            mine = index >= counts[number]
             key = (number, index)
             first, second, last = (
                 base.results.get(key),
@@ -518,12 +601,15 @@ def compare(
             )
             if first is None or last is None:
                 continue
+            proposed["ran"] += mine
             if second is None or _same(first, second) is not True:
                 unstable[candidate.symbol] = unstable.get(candidate.symbol, 0) + 1
+                proposed["unstable"] += mine
                 continue
             change = change_of(first, last)
             if change is None:
                 continue
+            proposed["differing"] += mine
             group = groups.get((number, change))
             if group is None:
                 group = ProbeDiff(
@@ -534,19 +620,34 @@ def compare(
     for (number, _), group in groups.items():
         group.tried = len(given[number])
         group.unstable = unstable.get(found[number].symbol, 0)
+        group.generated = counts[number]
     differences = sorted(groups.values(), key=lambda g: (g.candidate.symbol, g.change))
-    return Probing(list(found), [list(i) for i in given], runs, differences, unstable)
+    return Probing(
+        list(found), [list(i) for i in given], runs, differences, unstable, counts, proposed
+    )
 
 
 def probe(
     sides: tuple[Side, Side],
     found: Sequence[Candidate],
     *,
+    proposed: Sequence[Sequence[dict[str, Any]]] | None = None,
     timeout_s: float | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> Probing:
-    """Generates the inputs, runs them on base, base again (A2) and head, and compares."""
-    given = [inputs(candidate) for candidate in found]
+    """Generates the inputs, adds ``proposed`` (per function, after Hypothesis's, without
+    repeats), runs them on base, base again (A2) and head, and compares."""
+    generated = [inputs(candidate) for candidate in found]
+    given = []
+    for number, own in enumerate(generated):
+        seen = {json.dumps(i, sort_keys=True) for i in own}
+        extra = []
+        for item in proposed[number] if proposed is not None else []:
+            text = json.dumps(item, sort_keys=True)
+            if text not in seen:
+                seen.add(text)
+                extra.append(item)
+        given.append([*own, *extra])
     runs = {
         "A": run_probes(sides[0], "A", found, given, timeout_s=timeout_s, stop=stop),
         "A2": run_probes(
@@ -561,4 +662,4 @@ def probe(
         ),
         "H": run_probes(sides[1], "H", found, given, timeout_s=timeout_s, stop=stop),
     }
-    return compare(found, given, runs)
+    return compare(found, given, runs, [len(own) for own in generated])

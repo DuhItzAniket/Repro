@@ -5,7 +5,9 @@ change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``),
 (``repro.yml`` from base; head's change to it as ``policy_change`` evidence, F01). Then, unless the
 run only analyses, the run and diff stages (``repro.run_stage``, D06): each side's sandbox and
 environment, the selected tests on both sides, and the evidence of what differs. What could not
-be read or run becomes a ``missing.recorded`` item, never a silent gap. Last, the card stage
+be read or run becomes a ``missing.recorded`` item, never a silent gap. With agents (G04), the
+read stage first: the reader agent's claims; after every other job, the review stage: each
+claim judged against the run's evidence (``repro.agents.stages``, G05). Last, the card stage
 (``repro.card.job``, F05) assembles the card from the run's own log.
 """
 
@@ -14,6 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
+from repro.agents.reader import PrText
+from repro.agents.setup import AgentSetup
+from repro.agents.stages import claims_job, gap_job, review_job
 from repro.analysis import StaticAnalysis, analyse, graph_payloads
 from repro.card.job import CardStore, card_job
 from repro.gitops import Git, Snapshot, snapshot
@@ -35,6 +40,9 @@ class Change:
     repo: Path
     base: GitRef
     head: GitRef
+    pr_title: str | None = None
+    #: No agent stage runs (G04): the status comes from the deterministic rules alone.
+    deterministic_only: bool = True
 
     @classmethod
     def resolve(cls, git: Git, repo: Path, base: str, head: str) -> "Change":
@@ -43,7 +51,11 @@ class Change:
 
     def spec(self) -> RunSpec:
         return RunSpec(
-            repo_name=self.repo.resolve().name or "repository", base=self.base, head=self.head
+            repo_name=self.repo.resolve().name or "repository",
+            base=self.base,
+            head=self.head,
+            pr_title=self.pr_title,
+            deterministic_only=self.deterministic_only,
         )
 
 
@@ -203,16 +215,52 @@ def pipeline_jobs(
     analyse_only: bool,
     artifacts: ArtifactStore | None = None,
     cards: CardStore | None = None,
+    agents: AgentSetup | None = None,
+    pr: PrText | None = None,
 ) -> tuple[Sequence[Job], RunState]:
     """Every job of a run, and the state they share (close it when the run is over). With
-    ``cards``, the card stage ends the run (F05)."""
+    ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04)."""
     state = RunState()
-    jobs = list(build_jobs(git, change, work, state))
+    jobs: list[Job] = []
+    if agents is not None:
+        text = pr if pr is not None else PrText(())
+        jobs.append(
+            claims_job(
+                git,
+                base=change.base.sha,
+                head=change.head.sha,
+                pr=text,
+                setup=agents,
+                state=state.agents,
+            )
+        )
+    jobs += build_jobs(git, change, work, state)
     if not analyse_only:
         base, head = change.base.sha, change.head.sha
         jobs += run_jobs(
-            git, base, head, work, state, backend=backend, cache=cache, artifacts=artifacts
+            git,
+            base,
+            head,
+            work,
+            state,
+            backend=backend,
+            cache=cache,
+            artifacts=artifacts,
+            agents=agents,
         )
+    if agents is not None and cards is not None:
+        others = [job.name for job in jobs]
+        jobs.append(
+            review_job(
+                cards.events,
+                git,
+                base=change.base.sha,
+                head=change.head.sha,
+                setup=agents,
+                others=others,
+            )
+        )
+        jobs.append(gap_job(cards.events, setup=agents, after=["review"]))
     if cards is not None:
         jobs.append(card_job(cards, [job.name for job in jobs]))
     return jobs, state

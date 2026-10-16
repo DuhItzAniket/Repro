@@ -252,6 +252,21 @@ base runs disagree are left out; differences are classed as E04's and grouped pe
 `probe_diff` with `provenance: generated`, `diff.probe` `warn`, the probes in
 `obs/probes.cbor`. Timing (D07) runs after the probes and E04's reproducers.
 
+As built (G07, `agents/prober.py`, prompt `probe/1`): the probe writer proposes **inputs, not
+code**, for the functions E06 can probe. It is shown each one's definition on head, its
+parameters' types, the shape its arguments must take and the change to its file, never the PR's
+text or claims, and answers with up to 8 inputs per function (6 functions per call) as JSON
+text. The filters, counted and logged: a proposal must name a probed function and exactly its
+parameters, each value of its annotated JSON type within E06's bounds (`probes.fits`), or it is
+dropped on the host; the rest, without repeats of Hypothesis's inputs, run after them in the
+same three sandboxed runs, where an input the base runs disagree on is left out. Each
+`probe_diff` says which generator's inputs differ (`found_by`: `hypothesis`, `agent` or both)
+and how many inputs were proposed; its reproducer is a call, as for E06. Proposing data rather
+than writing pytest probes keeps every agent-written byte out of the interpreter (T15) and
+reuses E06's determinism and reproducers; functions E06 cannot probe (methods, objects, fixtures)
+get no probes yet. A probe writer that fails is an `agent_failed` item; Hypothesis's inputs run
+regardless.
+
 ### 4.5 Diffs (`diff/`)
 | Differ | Input | Evidence produced |
 |---|---|---|
@@ -380,7 +395,8 @@ rendered evidence (§10.3).
 `no_covering_test` · `environment_failed` · `collection_error` · `timeout` ·
 `unstable_observation` · `trace_unavailable` · `trace_truncated` · `subprocess_untraced` ·
 `encoding_failed` · `network_not_enforced` · `perf_not_assessable` · `unsupported_project` ·
-`verdict_rejected` · `claim_unverifiable`. Every item has a reason, the affected targets, and
+`verdict_rejected` · `claim_unverifiable` · `agent_failed` (an agent call ended without a usable
+answer, G04). Every item has a reason, the affected targets, and
 where possible what would resolve it. For the status (F04), `no_covering_test`,
 `unstable_observation`, `encoding_failed` and `trace_unavailable` leave the symbols they name
 unverified (every changed symbol when they name none); the others are listed on the card and
@@ -497,6 +513,19 @@ Rules:
 The judge model should differ from the model that authored the PR when that is known, because
 self-preference bias is documented (research/04 §2.3).
 
+As built (G04, `agents/setup.py`, `agents/reader.py`, `agents/stages.py`): the `agents` setting
+chooses the backend (`off` by default: a run is deterministic only and reaches no model;
+`claude`; `groq`, every role on `openai/gpt-oss-120b`, ADR-0016; or any `openai`-compatible
+endpoint), `agent_model` puts every role on one model, `agent_mode` wraps it in cassettes, and
+`agent_budget_usd` (2.0) bounds a run's agent spending. The reader is the `claims` job in the
+read stage, running beside the build: it is given the changed files (`git diff`) and the PR's
+title and description (`--pr-title`, `--pr-body`, `--pr-file`) or else its commit messages,
+each in an untrusted block and capped at 4,000 characters; it answers in a strict schema whose
+files are an enum of the changed files; the claims are checked again (empty text or an unknown
+kind dropped, files outside the change dropped, duplicates merged, at most 8), numbered `C1`…
+and emitted as `claim.extracted`. A reader that ends without an answer fails the job: an
+`agent_failed` missing item.
+
 ### 10.2 Runtime lockdown (Claude Agent SDK; research/04 §1.3)
 `tools=[]` (no built-in tools). The only tools are a call's own in-process MCP tools,
 `mcp__repro__<name>`, and, when the call asks for structured output, the CLI's
@@ -537,6 +566,31 @@ pytest's file locations).
   contradicting diff on the claim's own target is cited is rejected for QA.
 - When validation fails or retries are exhausted, the engine emits `verdict.rejected` and a
   `verdict_rejected` missing item. It never falls back to an uncited verdict.
+- As built (G05, `agents/reviewer.py`, `agents/validate.py`, the `review` job in
+  `agents/stages.py`): after every other job, one reviewer per claim (prompt `reviewer/1`,
+  effort high) is given its claim and the PR's other claims in untrusted blocks, the evidence
+  about the claim's files rendered in full (at most 10 items; G03's tools offered only when
+  more exist), and those files' diffs. Its schema's `cited_evidence` has `minItems: 1` and an
+  enum of that evidence's IDs; Groq's strict mode accepts it (measured). The answer is checked
+  for shape, citations (existing, about the claim), quotes (exact substrings of the evidence's
+  rendering) and consistency: `supported` resting only on unstable evidence, or a claim that
+  nothing changes supported by a stable introduced difference while no other claim describes
+  a change, is rejected. A rejected verdict gets one more attempt, told why; then
+  `verdict.rejected` and `verdict_rejected`. A claim with no evidence about it is not
+  reviewed: `claim_unverifiable`. A reviewer that ends without an answer: `agent_failed`. A
+  claim that "nothing else" changes is judged beside the PR's other claims, which say what
+  "else" means; whether every difference is accounted for stays with the gap (F04, G06).
+- As built (G06, `agents/gap.py`, the `gap` job after `review`): the differences that would
+  flag only for want of an explanation (`warn` checks no supported verdict cites, none
+  contradicted, none a problem on its own) go to one gap reviewer (prompt `gap/1`) with the
+  supported claims that describe a change (not `no-change`, `refactor`). Its mapping is checked
+  like a verdict (given items only, once each; given claims only, about the item's files;
+  exact quotes); what survives becomes, per claim, a supporting `verdict.issued` citing the
+  differences it explains, so F04's rules count them explained. A mapping that fails leaves
+  its difference unexplained, and it flags. With nothing to explain, or no claim that could,
+  no call is made. Evidence relevance (G03's rule) also follows test selection from G06 on: a test is
+  about the files of the changed symbols it was selected for (`test.selected`), so a new or
+  newly passing test is evidence about the code it exercises.
 
 ### 10.4 Bias controls
 Evidence is rendered in a fixed order, with sides labelled neutrally (A/B plus a legend). As
@@ -569,7 +623,12 @@ Prompts are versioned files (`agents/prompts/<name>.md`, `version:` front matter
 locked by SHA-256 per version (`lock.json`, only added to); a call names its prompt as
 `<name>/<version>`. Costs come from the CLI's per-model `model_usage`, one `cost.estimate` per
 model with `source` `live` or `cassette`; a run's `RunLedger` totals them and, with a limit,
-reserves each call's dollar budget from what is left. Tests never reach a model: the conftest
+reserves each call's dollar budget from what is left. A second backend (G10, ADR-0016,
+`agents/openai_compat.py`) speaks to OpenAI-compatible APIs (Groq, local servers): Repro runs
+the tool loop, offers only the call's own tools and refuses any other name, asks for a
+structured answer alone with `response_format` `json_schema` (the API cannot combine it with
+tools) and checks it against the schema, honours `retry-after`, and prices calls from a sourced
+table (a model without a price gets no `cost.estimate`). Tests never reach a model: the conftest
 points the API at a closed loopback port, and tests that start the CLI run behind a proxy that
 fails them on any connection past loopback.
 

@@ -8,8 +8,9 @@ DESIGN.md, the agents panel). One agent's events, in order:
 - ``agent.state`` ``thinking`` as it starts, then ``thinking`` and ``tool_call`` as the model
   works, with what it does as ``detail``; ``progress`` is the share of its turn budget used;
 - ``agent.state`` ``done`` (``ok``, progress 1) or ``failed`` (``fail``, saying why);
-- ``cost.estimate`` (``ok``): the client-side estimate, one per model the call used, with its
-  ``source``: ``live``, or ``cassette`` when the call was replayed (what it cost when recorded).
+- ``cost.estimate`` (``ok``): the client-side estimate, one per model the call used whose
+  price is known, with its ``source``: ``live``, or ``cassette`` when the call was replayed
+  (what it cost when recorded).
 
 With a ``RunLedger`` that has a limit, a call starts only if some of the run's agent budget is
 left, with its dollar budget cut down to what is left (``repro.agents.cost``); one that finds
@@ -25,6 +26,7 @@ from dataclasses import replace
 from typing import Final, Literal
 
 from repro.agents.backend import AgentRequest, AgentResult, LLMBackend, Progress, Usage
+from repro.agents.cassette import CassetteError
 from repro.agents.cost import RunLedger
 from repro.agents.dispatch import POLL_S, Dispatch
 from repro.orchestrator.jobs import JobContext
@@ -88,11 +90,13 @@ async def _call(
 
 
 def _costs(ctx: JobContext, request: AgentRequest, result: AgentResult, agent: str) -> None:
-    """One ``cost.estimate`` per model the call used."""
+    """One ``cost.estimate`` per model the call used and whose price is known."""
     by_model = dict(result.by_model)
     if not by_model and result.usage != Usage():
         by_model = {request.model: result.usage}
     for model, usage in sorted(by_model.items()):
+        if not usage.priced:
+            continue
         cost = {
             "model": model,
             "input_tokens": usage.input_tokens,
@@ -141,6 +145,9 @@ async def run_agent(
             try:
                 bounded = replace(request, budget=reservation.budget)
                 result = await _call(ctx, backend, bounded, agent)
+            except CassetteError as exc:  # the agent ends here; the caller says what it means
+                _state(ctx, agent, "failed", status="fail", detail=f"cassette: {exc}")
+                raise
             finally:
                 if ledger is not None:
                     ledger.settle(reservation, result.usage if result is not None else Usage())

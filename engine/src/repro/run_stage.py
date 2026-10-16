@@ -45,14 +45,20 @@ execution, and its evidence as events.
 The jobs share a ``RunState``; ``RunState.close`` removes what they left (Docker volumes).
 """
 
+import asyncio
 import sys
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from repro import __version__
+from repro.agents.stages import AgentState
+
+if TYPE_CHECKING:
+    from repro.agents.setup import AgentSetup
+    from repro.agents.sources import RepoSources
 from repro.analysis import StaticAnalysis
 from repro.analysis.api import api_diff
 from repro.gitops import Git
@@ -143,6 +149,8 @@ class RunState:
     perf_too_fast: list[str] = field(default_factory=list)
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
+    #: What the agent jobs hand on (G04).
+    agents: AgentState = field(default_factory=AgentState)
 
     def close(self) -> None:
         while self.containers:
@@ -698,7 +706,52 @@ def _installed(ctx: JobContext, state: RunState) -> dict[str, dict[str, str]]:
     return listed
 
 
-def _probes_job(git: Git, base: str, head: str, state: RunState) -> Job:
+def _proposals(
+    ctx: JobContext,
+    found: Sequence[probes.Candidate],
+    setup: "AgentSetup",
+    *,
+    sources: "RepoSources",
+) -> list[list[dict[str, Any]]] | None:
+    """The probe writer's inputs for ``found`` (G07), or None when it gave none; a failure is
+    an ``agent_failed`` item, and the probes run on Hypothesis's inputs alone."""
+    from repro.agents import prober  # noqa: PLC0415
+    from repro.agents.cassette import CassetteError  # noqa: PLC0415 - agents only when on
+    from repro.agents.events import run_agent  # noqa: PLC0415
+    from repro.agents.prompts import load_prompt  # noqa: PLC0415
+
+    request = prober.prober_request(found, sources, load_prompt("probe"), setup.model("probe"))
+    agent = setup.dispatch.agent_id()
+    ctx.log(f"asking the probe writer for inputs ({setup.label}, {request.model})")
+    try:
+        result = asyncio.run(
+            run_agent(ctx, setup.backend, setup.dispatch, request, agent=agent, ledger=setup.ledger)
+        )
+        detail = f"the probe writer ended {result.outcome}: {result.detail}"
+    except CassetteError as exc:  # Hypothesis's inputs still run: the job is not lost
+        result, detail = None, f"the probe writer's call has no usable cassette: {exc}"
+    if result is None or result.outcome != "ok":
+        item: dict[str, Any] = {
+            "reason": "agent_failed",
+            "targets": [
+                {"file": c.file, "symbol": c.symbol} for c in found[: prober.MAX_FUNCTIONS]
+            ],
+            "detail": detail[:1000],
+            "resolution": "check the agent settings, the API or the cassettes, then run again",
+        }
+        ctx.emit("missing.recorded", status="warn", payload={"missing": item})
+        return None
+    kept = prober.read_proposals(result.structured, found)
+    ctx.log(
+        f"probe writer: {kept.proposed} inputs proposed, {kept.dropped} dropped as not fitting "
+        "their function's signature"
+    )
+    return kept.inputs
+
+
+def _probes_job(
+    git: Git, base: str, head: str, state: RunState, agents: "AgentSetup | None" = None
+) -> Job:
     def run(ctx: JobContext) -> None:
         analysis = state.analysis
         if analysis is None or "base" not in state.sides or "head" not in state.sides:
@@ -711,12 +764,24 @@ def _probes_job(git: Git, base: str, head: str, state: RunState) -> Job:
             return
         names = ", ".join(c.symbol for c in found[:5]) + (" …" if len(found) > 5 else "")  # noqa: PLR2004
         ctx.log(f"probing {len(found)} functions with generated inputs: {names}")
+        proposed = None
+        if agents is not None and agents.probes:
+            from repro.agents.sources import RepoSources  # noqa: PLC0415 - agents only when on
+
+            proposed = _proposals(ctx, found, agents, sources=RepoSources(git, base, head))
         state.probing = probes.probe(
             (state.sides["base"], state.sides["head"]),
             found,
+            proposed=proposed,
             timeout_s=PROBE_TIMEOUT_S,
             stop=lambda: ctx.cancelled,
         )
+        if proposed is not None:
+            counts = state.probing.proposed
+            ctx.log(
+                f"proposed inputs: {counts.get('ran', 0)} ran, {counts.get('unstable', 0)} left "
+                f"out as unstable, {counts.get('differing', 0)} differ between base and head"
+            )
 
     return Job(
         "probes",
@@ -752,8 +817,14 @@ def _probe_diff_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
         for item in found.missing():
             ctx.emit("missing.recorded", status="warn", payload=item)
         tried = sum(len(i) for i in found.inputs)
+        generated = sum(found.generated) if found.generated else tried
+        inputs = (
+            f"{tried} generated inputs"
+            if generated == tried
+            else f"{tried} inputs ({generated} generated, {tried - generated} proposed)"
+        )
         ctx.log(
-            f"probes: {tried} generated inputs over {len(found.candidates)} functions, "
+            f"probes: {inputs} over {len(found.candidates)} functions, "
             f"{len(found.differences)} differences, {sum(found.unstable.values())} unstable"
         )
 
@@ -839,9 +910,11 @@ def run_jobs(
     backend: Backend,
     cache: Path,
     artifacts: ArtifactStore | None = None,
+    agents: "AgentSetup | None" = None,
 ) -> Sequence[Job]:
     """The run and diff stages, after the build stage's snapshots and analysis; ``artifacts``
-    stores the observations (without it they stay in memory)."""
+    stores the observations (without it they stay in memory); with ``agents``, the probe writer
+    proposes inputs for the probes (G07)."""
     return [
         _sandbox_job(git, "base", base, work, state, backend=backend, cache=cache),
         _sandbox_job(git, "head", head, work, state, backend=backend, cache=cache),
@@ -850,7 +923,7 @@ def run_jobs(
         _behaviour_job(state, artifacts),
         _api_job(git, base, head, work, state),
         _deps_job(state),
-        _probes_job(git, base, head, state),
+        _probes_job(git, base, head, state, agents),
         _probe_diff_job(state, artifacts),
         _perf_job(state),
         _perf_diff_job(state),

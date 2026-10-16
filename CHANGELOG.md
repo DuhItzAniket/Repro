@@ -40,6 +40,47 @@ All notable changes to this project are documented here. The format follows
   every run and on every machine, and everything from the target is delimited as data it
   cannot step out of. Fixture `injection`: honest-fix with instructions to the reviewers
   planted in its text; its tool outputs and card equal honest-fix's. [G03]
+- A second LLM backend for OpenAI-compatible APIs (Groq, local servers, routers), decided in
+  ADR-0016: Repro runs the tool loop with only the call's own tools, asks for structured
+  answers alone and checks them against the schema, honours rate limits, and prices calls from
+  sourced price tables. The Claude Agent SDK stays the default; Stage G's recordings and
+  evaluation use Groq's gpt-oss-120b. [G10]
+- The reader agent: with agents on (`agents` setting: `claude`, `groq` or an
+  `openai`-compatible endpoint; off by default), a run reads the pull request's claims from its
+  title and description (`--pr-title`, `--pr-body`, `--pr-file`) or its commit messages, as
+  `claim.extracted` events: atomic, typed, tied to the files the change touches. A reader that
+  ends without an answer is an `agent_failed` missing item. Agent settings: `agent_model`,
+  `agent_mode` (live, record, replay), `agent_cassettes`, `agent_budget_usd` (2.0 a run). [G04]
+- The labelled claim set (`bench/data/claims.toml`: 18 pull requests, 43 claims) and its
+  evaluation (`python -m repro_bench.claims`). The reader on gpt-oss-120b: precision 0.955,
+  recall 0.977, replayed in CI from its cassettes against proposed thresholds of 0.90; the
+  results in `bench/results/agent-evals.csv`. [G04]
+- Reviewer agents: after every other job, each claim is judged against the evidence about its
+  files, shown in full with their diffs and the PR's other claims. A verdict must cite that
+  evidence (an enum of its IDs, at least one) and quote it exactly, and is checked before it
+  counts: unknown or unrelated citations, misquotes, support resting on unstable evidence, or
+  "no change" supported by a change the other claims do not describe are rejected, retried
+  once, then recorded as `verdict.rejected` and a missing item. On Groq's gpt-oss-120b, from
+  cassettes replayed in CI: honest-fix and its injection twin VERIFIED with the same verdicts,
+  silent-change and false-claim FLAGGED. [G05]
+- The gap reviewer: after the review, each difference no verdict accounts for is mapped to the
+  supported claims that describe it, or left unexplained. The mapping is checked like a
+  verdict (given differences and claims only, about the difference's files, exact quotes) and
+  becomes supporting verdicts that cite what they explain; unexplained differences flag. No
+  call is made when nothing needs explaining or no claim could explain it. [G06]
+- Evidence relevance follows test selection: a test is evidence about the code it was selected
+  for. Groq's "Failed to validate JSON" is an invalid answer, asked again. Recording keeps
+  existing cassettes and calls the model only for new or changed calls. [G06]
+- The probe writer: with agents on, an agent shown each changed function E06 can probe (its
+  definition, its parameters' types and the change to its file, never the PR's claims)
+  proposes realistic inputs for it as data. Inputs that do not name exactly the function's
+  parameters with values of their types are dropped and counted; the rest run beside
+  Hypothesis's on base, base again and head, and a difference says which inputs found it
+  (`found_by`). If the agent fails, the card lists it and Hypothesis's inputs run anyway.
+  The new `agent_probes` setting switches the probe writer off. New fixture
+  `probe-semantic`: a change wrong only for half-hour UTC offsets, which random inputs never
+  reach. [G07]
+- An agent whose cassette is missing or stale is shown as failed. [G07]
 
 ## [0.6.0] - 2026-10-15
 
