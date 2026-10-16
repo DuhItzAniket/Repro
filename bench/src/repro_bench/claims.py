@@ -12,7 +12,6 @@ as no claims (its labels are missed) and is reported.
 
 import argparse
 import asyncio
-import csv
 import re
 import sys
 import tomllib
@@ -28,25 +27,9 @@ from repro.agents.openai_compat import Endpoint, OpenAICompatibleBackend
 from repro.agents.prompts import load_prompt
 from repro.agents.reader import PrText, read_claims, reader_request
 from repro.agents.setup import GROQ_MODEL
+from repro_bench.results import ROOT, append_rows
 
-ROOT: Final = Path(__file__).resolve().parents[3]
 DATA: Final = ROOT / "bench" / "data" / "claims.toml"
-RESULTS: Final = ROOT / "bench" / "results" / "agent-evals.csv"
-FIELDS: Final = (
-    "date",
-    "eval",
-    "model",
-    "prompt_version",
-    "repro_version",
-    "items",
-    "labels",
-    "extracted",
-    "matched",
-    "precision",
-    "recall",
-    "failed",
-    "source",
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +37,8 @@ class Label:
     text: str
     kind: str
     patterns: tuple[re.Pattern[str], ...]
+    #: The verdict the claim deserves, where it is clear (G09); None: not labelled.
+    verdict: str | None = None
 
     def matches(self, claim: str) -> bool:
         return all(pattern.search(claim) for pattern in self.patterns)
@@ -120,6 +105,7 @@ def load(path: Path = DATA) -> list[Item]:
                 claim["text"],
                 claim["kind"],
                 tuple(re.compile(p, re.IGNORECASE) for p in claim["match"]),
+                claim.get("verdict"),
             )
             for claim in pr["claims"]
         )
@@ -127,9 +113,9 @@ def load(path: Path = DATA) -> list[Item]:
     return items
 
 
-def matching(claims: Sequence[str], labels: Sequence[Label]) -> int:
-    """The most claim-label pairs where each claim matches its label, each used once
-    (Kuhn's augmenting paths: a maximum bipartite matching)."""
+def pairs(claims: Sequence[str], labels: Sequence[Label]) -> dict[int, int]:
+    """The most claim-label pairs where each claim matches its label, each used once (Kuhn's
+    augmenting paths: a maximum bipartite matching), as {claim index: label index}."""
     edges = [[j for j, label in enumerate(labels) if label.matches(c)] for c in claims]
     owner: dict[int, int] = {}
 
@@ -143,7 +129,14 @@ def matching(claims: Sequence[str], labels: Sequence[Label]) -> int:
                 return True
         return False
 
-    return sum(1 for i in range(len(claims)) if assign(i, set()))
+    for i in range(len(claims)):
+        assign(i, set())
+    return {claim: label for label, claim in owner.items()}
+
+
+def matching(claims: Sequence[str], labels: Sequence[Label]) -> int:
+    """How many claim-label pairs ``pairs`` finds."""
+    return len(pairs(claims, labels))
 
 
 async def score(item: Item, backend: LLMBackend, model: str) -> Scored:
@@ -170,32 +163,28 @@ def backend_for(mode: str, cassettes: Path) -> LLMBackend:
     return CassetteBackend(cassettes, "record", live) if mode == "record" else live
 
 
-def row(report: Report, *, model: str, source: str, date: str) -> dict[str, str]:
-    return {
-        "date": date,
-        "eval": "claims",
-        "model": model,
-        "prompt_version": load_prompt("reader").prompt_version,
-        "repro_version": __version__,
-        "items": str(len(report.scored)),
-        "labels": str(report.labels),
-        "extracted": str(report.extracted),
-        "matched": str(report.matched),
-        "precision": f"{report.precision:.3f}",
-        "recall": f"{report.recall:.3f}",
-        "failed": str(report.failed),
-        "source": source,
+def rows(report: Report, *, model: str, source: str, date: str) -> list[dict[str, str]]:
+    """The result as ``agent-evals.csv`` rows: precision, recall and failed calls."""
+    metrics = {
+        "precision": (report.precision, report.matched, report.extracted),
+        "recall": (report.recall, report.matched, report.labels),
+        "failed": (float(report.failed), report.failed, len(report.scored)),
     }
-
-
-def append(result: dict[str, str], path: Path = RESULTS) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    new = not path.exists()
-    with path.open("a", encoding="utf-8", newline="") as out:
-        writer = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
-        if new:
-            writer.writeheader()
-        writer.writerow(result)
+    return [
+        {
+            "date": date,
+            "eval": "claims",
+            "metric": metric,
+            "value": f"{value:.3f}",
+            "count": str(count),
+            "total": str(total),
+            "model": model,
+            "prompts": load_prompt("reader").prompt_version,
+            "repro_version": __version__,
+            "source": source,
+        }
+        for metric, (value, count, total) in metrics.items()
+    ]
 
 
 def _say(text: str) -> None:
@@ -207,7 +196,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--mode", choices=("live", "record", "replay"), default="replay")
     parser.add_argument("--cassettes", type=Path, default=ROOT / "engine" / "tests" / "cassettes")
     parser.add_argument("--model", default=GROQ_MODEL)
-    parser.add_argument("--append", action="store_true", help=f"append the result to {RESULTS}")
+    parser.add_argument("--append", action="store_true", help="append to agent-evals.csv")
     args = parser.parse_args(argv)
     report = asyncio.run(evaluate(load(), backend_for(args.mode, args.cassettes), args.model))
     for scored in report.scored:
@@ -225,7 +214,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.append:
         source = "cassettes" if args.mode == "replay" else "live"
         date = datetime.now(UTC).date().isoformat()
-        append(row(report, model=args.model, source=source, date=date))
+        append_rows(rows(report, model=args.model, source=source, date=date))
     return 0
 
 

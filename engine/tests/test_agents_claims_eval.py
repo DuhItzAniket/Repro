@@ -15,7 +15,8 @@ import pytest
 
 from repro.agents import CassetteBackend
 from repro.agents.setup import GROQ_MODEL
-from repro_bench.claims import DATA, ROOT, Label, evaluate, load, matching
+from repro_bench.claims import DATA, Label, evaluate, load, matching
+from repro_bench.results import ROOT
 
 CASSETTES = Path(__file__).parent / "cassettes"
 THRESHOLDS = tomllib.loads((ROOT / "bench" / "data" / "thresholds.toml").read_text("utf-8"))
