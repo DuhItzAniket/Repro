@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G03, E06 |
-| **Branch / PR** | `phase/G07-probe-writer` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G07-probe-writer` · [#67](https://github.com/DuhItzAniket/Repro/pull/67) |
+| **Started / finished** | 2026-10-16 / 2026-10-16 |
 
 ## Objective
 Find differences that only realistic inputs reach. An agent that never sees the claims proposes
@@ -100,9 +100,12 @@ and head.
 - Fixture `probe-semantic` (spec, expectation, golden card), labelled in the claim set
   (19 PRs, 46 labels).
 - Tests:
-  - `test_agents_prober.py` (8);
+  - `test_agents_prober.py` (8; the failure test runs for an error and a missing cassette);
   - 4 more in `test_probes.py` (one parametrised over 9 types);
-  - `probe-semantic` in `test_run_stage.py`.
+  - 1 more in `test_agents_setup.py` (the setting);
+  - `probe-semantic` in `test_run_stage.py`;
+  - in `test_agents_run.py`, the Gate G cards are asserted to hold no `agent_failed` item.
+- Local run of the affected suites: 392 passed, 2 skipped (Docker not available).
 
 ## Evidence
 Recorded live on 2026-10-16 (Groq, `openai/gpt-oss-120b`), replayed offline:
@@ -128,7 +131,7 @@ Recorded live on 2026-10-16 (Groq, `openai/gpt-oss-120b`), replayed offline:
 - The reviewed run was recorded as far as the review. The review then waited on the API's
   tokens-per-day limit (200,000 for the model; 199,466 used), past the review job's 600 s.
   Its cassettes were discarded.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#67).
 
 ## Deviations from spec
 - ARCHITECTURE §4.4: the probe writer proposes inputs, not pytest probes, and a reproducer is
