@@ -45,6 +45,16 @@ All notable changes to this project are documented here. The format follows
   answers alone and checks them against the schema, honours rate limits, and prices calls from
   sourced price tables. The Claude Agent SDK stays the default; Stage G's recordings and
   evaluation use Groq's gpt-oss-120b. [G10]
+- The reader agent: with agents on (`agents` setting: `claude`, `groq` or an
+  `openai`-compatible endpoint; off by default), a run reads the pull request's claims from its
+  title and description (`--pr-title`, `--pr-body`, `--pr-file`) or its commit messages, as
+  `claim.extracted` events: atomic, typed, tied to the files the change touches. A reader that
+  ends without an answer is an `agent_failed` missing item. Agent settings: `agent_model`,
+  `agent_mode` (live, record, replay), `agent_cassettes`, `agent_budget_usd` (2.0 a run). [G04]
+- The labelled claim set (`bench/data/claims.toml`: 18 pull requests, 43 claims) and its
+  evaluation (`python -m repro_bench.claims`). The reader on gpt-oss-120b: precision 0.955,
+  recall 0.977, replayed in CI from its cassettes against proposed thresholds of 0.90; the
+  results in `bench/results/agent-evals.csv`. [G04]
 
 ## [0.6.0] - 2026-10-15
 

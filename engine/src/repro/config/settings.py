@@ -19,7 +19,14 @@ from collections.abc import Mapping
 from pathlib import Path, PurePath
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from repro.paths import (
     CONFIG_FILE_NAME,
@@ -34,6 +41,11 @@ LogLevel = Literal["debug", "info", "warning", "error"]
 LogFormat = Literal["json", "text"]
 #: Which sandbox runs target code (ADR-0004): Docker when available, or as asked.
 SandboxChoice = Literal["auto", "docker", "process"]
+#: Which backend runs the agent stages (G04; ADR-0007, ADR-0016); ``off``: deterministic only.
+AgentsChoice = Literal["off", "claude", "groq", "openai"]
+#: ``live`` calls the model; ``record`` calls it and writes cassettes; ``replay`` only reads
+#: cassettes, and fails without one (G02).
+AgentMode = Literal["live", "record", "replay"]
 
 ENV_PREFIX = "REPRO_"
 CONFIG_ENV = "REPRO_CONFIG"
@@ -58,18 +70,39 @@ class Settings(BaseModel):
     sandbox: SandboxChoice = "auto"
     #: The built cockpit (``pnpm build``'s ``apps/web/dist``); unset: this checkout's, if built.
     ui_dir: Path | None = None
+    #: The agent stages' backend; off by default, so no run reaches a model unless asked to.
+    agents: AgentsChoice = "off"
+    #: The model the agents use; unset: the backend's default (``repro.agents.setup``).
+    agent_model: str | None = None
+    #: An OpenAI-compatible endpoint's base URL (``agents = "openai"``), and the environment
+    #: variable holding its key (unset: the endpoint takes none, as a local server).
+    agent_base_url: str | None = None
+    agent_api_key_env: str | None = None
+    agent_mode: AgentMode = "live"
+    #: Where cassettes are read and written (``record`` and ``replay``).
+    agent_cassettes: Path | None = None
+    #: The most a run's agent calls may cost together, in estimated US dollars.
+    agent_budget_usd: float = Field(default=2.0, gt=0)
 
-    @field_validator("log_level", "log_format", "sandbox", mode="before")
+    @field_validator("log_level", "log_format", "sandbox", "agents", "agent_mode", mode="before")
     @classmethod
     def _lowercase(cls, value: object) -> object:
         return value.lower() if isinstance(value, str) else value
 
-    @field_validator("data_dir", "run_root", "ui_dir")
+    @field_validator("data_dir", "run_root", "ui_dir", "agent_cassettes")
     @classmethod
     def _absolute(cls, value: Path | None) -> Path | None:
         if value is not None and not value.is_absolute():
             raise ValueError("must be an absolute path")
         return value
+
+    @model_validator(mode="after")
+    def _agents_complete(self) -> "Settings":
+        if self.agents == "openai" and not (self.agent_base_url and self.agent_model):
+            raise ValueError("agents = openai needs agent_base_url and agent_model")
+        if self.agent_mode != "live" and self.agent_cassettes is None:
+            raise ValueError(f"agent_mode = {self.agent_mode} needs agent_cassettes")
+        return self
 
     @property
     def paths(self) -> DataPaths:
@@ -195,7 +228,7 @@ def load_settings(
     for layer, source in layers:
         for name, value in layer.items():
             values[name], sources[name] = value, source(name)
-    for name in ("data_dir", "run_root", "ui_dir"):
+    for name in ("data_dir", "run_root", "ui_dir", "agent_cassettes"):
         if name in values:
             values[name] = _expand(values[name], home)
 

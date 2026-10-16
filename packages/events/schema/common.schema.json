@@ -168,7 +168,8 @@
         "perf_not_assessable",
         "unsupported_project",
         "verdict_rejected",
-        "claim_unverifiable"
+        "claim_unverifiable",
+        "agent_failed"
       ]
     },
     "IsolationLevel": {

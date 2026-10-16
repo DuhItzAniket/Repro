@@ -20,7 +20,7 @@ import sys
 import threading
 import webbrowser
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, NoReturn
@@ -353,6 +353,23 @@ class _Run:
             self.reporter.join(STOP_WAIT_S)  # it removes the scratch too: one at a time
 
 
+def _pr_options(
+    title: str | None, body: str | None, file: Path | None
+) -> tuple[str | None, str | None]:
+    """The PR's title and description from the options, or exit 2 saying why not."""
+    if file is None:
+        return title, body
+    if title is not None or body is not None:
+        typer.echo("repro run: give --pr-file, or --pr-title and --pr-body, not both", err=True)
+        raise typer.Exit(2)
+    try:
+        first, _, rest = file.read_text(encoding="utf-8").partition("\n")
+    except (OSError, UnicodeDecodeError) as exc:
+        typer.echo(f"repro run: cannot read {file}: {exc}", err=True)
+        raise typer.Exit(2) from None
+    return first.strip() or None, rest
+
+
 def _resolve(repo: Path, base: str, head: str) -> "tuple[Git, Change]":
     """The repository and both commits, or exit 2 saying why not."""
     from repro.gitops import Git, GitError  # noqa: PLC0415
@@ -389,15 +406,33 @@ def run(
             "--analyse-only", help="Only analyse the change: run none of the target's code."
         ),
     ] = False,
+    pr_title: Annotated[
+        str | None, typer.Option("--pr-title", help="The pull request's title.")
+    ] = None,
+    pr_body: Annotated[
+        str | None, typer.Option("--pr-body", help="The pull request's description.")
+    ] = None,
+    pr_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--pr-file", help="A UTF-8 file: the pull request's title, then its description."
+        ),
+    ] = None,
 ) -> None:
     """Reproduce a change: analyse base and head, run the tests the change can affect on both
     sides, and record what differs.
 
-    With --serve (the default) the cockpit shows the run live, and keeps serving after it ends
-    until Ctrl+C. With --no-serve the command waits for the run and exits: status 0 if it
+    With agents on (the agents setting), the pull request's claims are read from its title and
+    description, or from the commit messages when neither is given, and judged against what the
+    run found. With --serve (the default) the cockpit shows the run live, and keeps serving after
+    it ends until Ctrl+C. With --no-serve the command waits for the run and exits: status 0 if it
     completed, 1 if it did not.
     """
+    pr_title, pr_body = _pr_options(pr_title, pr_body, pr_file)
     settings = _session(ctx).settings()
+    from repro.agents.reader import PrText  # noqa: PLC0415
+    from repro.agents.setup import agent_setup  # noqa: PLC0415
+    from repro.agents.stages import commit_messages  # noqa: PLC0415
     from repro.bus import EventBus  # noqa: PLC0415
     from repro.card.job import StoreCards  # noqa: PLC0415
     from repro.ids import new_run_id  # noqa: PLC0415
@@ -410,6 +445,12 @@ def run(
     settings.paths.data_dir.mkdir(parents=True, exist_ok=True)
     run_id = new_run_id()
     work = settings.paths.scratch(run_id)
+    agents = agent_setup(settings, work)
+    pr = None
+    if agents is not None:
+        commits = [] if pr_body else commit_messages(git, change.base.sha, change.head.sha)
+        pr = PrText.of(title=pr_title, description=pr_body, commits=commits)
+    change = replace(change, pr_title=pr_title, deterministic_only=agents is None)
     writer = StoreWriter(settings.paths.database).start()
     orchestrator = Orchestrator(EventBus(writer), concurrency=settings.concurrency)
     jobs, state = pipeline_jobs(
@@ -421,6 +462,8 @@ def run(
         analyse_only=analyse_only,
         artifacts=ArtifactStore(settings.paths.runs, writer),
         cards=StoreCards(settings.paths.database, writer),
+        agents=agents,
+        pr=pr,
     )
     cleaned = threading.Lock()
 

@@ -53,6 +53,7 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from repro import __version__
+from repro.agents.stages import AgentState
 from repro.analysis import StaticAnalysis
 from repro.analysis.api import api_diff
 from repro.gitops import Git
@@ -143,6 +144,8 @@ class RunState:
     perf_too_fast: list[str] = field(default_factory=list)
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
     containers: list[DockerSandbox] = field(default_factory=list)
+    #: What the agent jobs hand on (G04).
+    agents: AgentState = field(default_factory=AgentState)
 
     def close(self) -> None:
         while self.containers:

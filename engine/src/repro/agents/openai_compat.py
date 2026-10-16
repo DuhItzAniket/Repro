@@ -309,6 +309,8 @@ class OpenAICompatibleBackend:
             }
             for tool in request.tools
         ]
+        if not functions and request.output_schema is not None:
+            return await self._answer(session, "")  # nothing to look up: straight to the answer
         text = ""
         while True:
             if session.turn == request.budget.max_turns:
