@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G01, G02 |
-| **Branch / PR** | `phase/G10-openai-backend` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G10-openai-backend` · [#63](https://github.com/DuhItzAniket/Repro/pull/63) |
+| **Started / finished** | 2026-10-16 / 2026-10-16 |
 
 *Added to Stage G on 2026-10-16 by the owner's decision recorded in ADR-0016, and done before
 G04, whose recordings and evaluation use it.*
@@ -80,7 +80,7 @@ stages on a local model or a router as well as on Claude.
   `Endpoint.groq()`: a `ping` tool and a strict schema; the model called the tool once, the
   structured answer validated, three turns, 591 input and 121 output tokens, an estimated
   $0.000161.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#63).
 
 ## Deviations from spec
 - A phase added to Stage G by the owner's decision (ADR-0016); G04 now depends on it.
