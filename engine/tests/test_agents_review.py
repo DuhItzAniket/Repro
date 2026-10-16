@@ -396,7 +396,7 @@ def test_a_second_answer_that_passes_is_issued(tmp_path: Path, repo: tuple[Git, 
     ]
     [refused] = ids_in(events, "verdict.rejected")  # the first answer, then retried (G09)
     assert refused["payload"]["reason"] == "uncited"
-    assert not [e for e in ids_in(events, "missing.recorded")]
+    assert ids_in(events, "missing.recorded") == []
 
 
 def test_a_claim_with_no_evidence_is_not_sent_to_a_reviewer(
