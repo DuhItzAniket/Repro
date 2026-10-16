@@ -219,7 +219,7 @@ def test_an_answer_that_breaks_the_schema_is_retried_once_then_refused(
     assert result.outcome == "invalid_output"
     assert result.structured is None
     assert "did not match the schema" in result.detail
-    assert len(api.requests) == 3  # the conversation, the answer, one retry
+    assert len(api.requests) == 2  # the answer and one retry (no tools: no conversation first)
     assert "did not match the schema" in api.requests[-1]["messages"][-1]["content"]
 
 
@@ -339,3 +339,15 @@ def test_a_call_records_and_replays_through_a_cassette(
     assert (again.usage, dict(again.by_model)) == (recorded.usage, dict(recorded.by_model))
     assert pings.calls == [{"word": "b"}, {"word": "b"}]  # replay makes the tool call again
     assert len(api.requests) == 3
+
+
+def test_a_call_with_a_schema_and_no_tools_asks_for_the_answer_at_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result, api = run(
+        lambda body: say('{"verdict": "supported"}'), monkeypatch, output_schema=STRICT
+    )
+    assert (result.outcome, result.structured, result.turns) == ("ok", {"verdict": "supported"}, 1)
+    [body] = api.requests
+    assert "response_format" in body
+    assert "tools" not in body

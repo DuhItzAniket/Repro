@@ -141,6 +141,17 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `concurrency` | `REPRO_CONCURRENCY` | the CPU count, at most 4 (1–64) |
 | `sandbox` | `REPRO_SANDBOX` | `auto` (`docker`, `process`) |
 | `ui_dir` | `REPRO_UI_DIR` | this checkout's `apps/web/dist`, if built (`pnpm build`) |
+| `agents` | `REPRO_AGENTS` | `off`: deterministic only (`claude`, `groq`, `openai`) |
+| `agent_model` | `REPRO_AGENT_MODEL` | the backend's per-role models (`repro.agents.setup`) |
+| `agent_base_url` | `REPRO_AGENT_BASE_URL` | none; required with `agents = openai` |
+| `agent_api_key_env` | `REPRO_AGENT_API_KEY_ENV` | none: an `openai` endpoint that takes no key |
+| `agent_mode` | `REPRO_AGENT_MODE` | `live` (`record`, `replay`: cassettes, G02) |
+| `agent_cassettes` | `REPRO_AGENT_CASSETTES` | none; required with `record` or `replay` |
+| `agent_budget_usd` | `REPRO_AGENT_BUDGET_USD` | `2.0`: the most a run's agent calls may cost together |
+
+With agents on, `repro run` reads the pull request's claims from `--pr-title` and `--pr-body`
+(or `--pr-file`: the title, then the description), else from the commit messages. Groq's key is
+read from `GROQ_API_KEY`, Claude's from the environment the Agent SDK reads.
 
 Unknown keys and invalid values are errors that name their source. Paths must be absolute
 after `~` is expanded.

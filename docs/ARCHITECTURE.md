@@ -380,7 +380,8 @@ rendered evidence (§10.3).
 `no_covering_test` · `environment_failed` · `collection_error` · `timeout` ·
 `unstable_observation` · `trace_unavailable` · `trace_truncated` · `subprocess_untraced` ·
 `encoding_failed` · `network_not_enforced` · `perf_not_assessable` · `unsupported_project` ·
-`verdict_rejected` · `claim_unverifiable`. Every item has a reason, the affected targets, and
+`verdict_rejected` · `claim_unverifiable` · `agent_failed` (an agent call ended without a usable
+answer, G04). Every item has a reason, the affected targets, and
 where possible what would resolve it. For the status (F04), `no_covering_test`,
 `unstable_observation`, `encoding_failed` and `trace_unavailable` leave the symbols they name
 unverified (every changed symbol when they name none); the others are listed on the card and
@@ -496,6 +497,19 @@ Rules:
 
 The judge model should differ from the model that authored the PR when that is known, because
 self-preference bias is documented (research/04 §2.3).
+
+As built (G04, `agents/setup.py`, `agents/reader.py`, `agents/stages.py`): the `agents` setting
+chooses the backend (`off` by default: a run is deterministic only and reaches no model;
+`claude`; `groq`, every role on `openai/gpt-oss-120b`, ADR-0016; or any `openai`-compatible
+endpoint), `agent_model` puts every role on one model, `agent_mode` wraps it in cassettes, and
+`agent_budget_usd` (2.0) bounds a run's agent spending. The reader is the `claims` job in the
+read stage, running beside the build: it is given the changed files (`git diff`) and the PR's
+title and description (`--pr-title`, `--pr-body`, `--pr-file`) or else its commit messages,
+each in an untrusted block and capped at 4,000 characters; it answers in a strict schema whose
+files are an enum of the changed files; the claims are checked again (empty text or an unknown
+kind dropped, files outside the change dropped, duplicates merged, at most 8), numbered `C1`…
+and emitted as `claim.extracted`. A reader that ends without an answer fails the job: an
+`agent_failed` missing item.
 
 ### 10.2 Runtime lockdown (Claude Agent SDK; research/04 §1.3)
 `tools=[]` (no built-in tools). The only tools are a call's own in-process MCP tools,
