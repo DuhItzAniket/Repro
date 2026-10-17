@@ -31,7 +31,7 @@ each one protects, where it runs, and the fixtures it relies on.
 | 6 | Integration | pytest + scripted fixture repos | Engine stages against real git repos, real venvs, real pytest | Every PR (Ubuntu + Windows, small set), nightly (full) |
 | 7 | End-to-end | pytest (engine) + Playwright (web) | `repro run` → WS → UI shows the expected state | Nightly, stage gates |
 | 8 | Visual regression | Playwright screenshot comparison | Cockpit at frozen replay times on the reference fixture log | Every PR touching `apps/web` |
-| 9 | Performance | Custom harness + Playwright tracing | Frame-time budget, JS bundle size, engine wall-clock on reference repos | Bundle size on every PR; frame/engine perf nightly |
+| 9 | Performance | Custom harness (`repro_bench.scale`, H02) + Playwright tracing | Frame-time budget, JS bundle size, engine wall-clock and cache use on three pinned reference repos | Bundle size on every PR; frame/engine perf nightly |
 | 9a | Allocation | Vitest (heap after GC; V8 allocation counter) | 1,000 frames of the stress burst: flat heap; stage allocation per frame within budget | Every PR (Ubuntu + Windows) |
 | 10 | Security | pytest sandbox suite | Network, filesystem, process, resource-exhaustion escape attempts | Every PR touching isolation; nightly |
 | 11 | Agent evals | Eval harness over labelled PR set | Claim extraction, verdict accuracy, citation validity, cost | On agent changes (recorded), weekly live |

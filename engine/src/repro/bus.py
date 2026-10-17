@@ -98,7 +98,7 @@ class EventBus:
             "stage": stage,
             "agent": agent,
             "kind": kind,
-            "target": scrub(dict(target)) if target is not None else None,
+            "target": scrub(dict(target), escape=False) if target is not None else None,
             "status": status,
             "payload": scrub(dict(payload)),
             "v": 1,

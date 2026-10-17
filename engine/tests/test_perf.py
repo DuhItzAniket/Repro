@@ -11,6 +11,8 @@ import random
 import re
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -20,6 +22,9 @@ from repro.gitops import Git, snapshot
 from repro.ids import new_run_id
 from repro.provision import HostProvisioner, inspect_project
 from repro.runner import perf
+from repro.runner.pytest import PytestRun
+from repro.runner.pytest import TestResult as Reported
+from repro.runner.pytest import TestRun as Ran
 from repro.runner.sides import Side
 from repro.sandbox import Limits, ProcessSandbox
 from repro_events import models
@@ -99,6 +104,38 @@ def test_the_aa_spread_raises_the_floor() -> None:
     assert perf.aa_noise([wobbly]) == pytest.approx(0.5)
     found, _ = perf.assess([wobbly], resamples=500)
     assert found[0].noise_floor == pytest.approx(0.5)
+
+
+class TimedSide:
+    """A side whose runs pass every test asked for in a fixed time, and remember what was."""
+
+    def __init__(self, call_s: dict[str, float]) -> None:
+        self.call_s = call_s
+        self.asked: list[list[str]] = []
+
+    def run(self, tests: list[str], **_: Any) -> Ran:
+        self.asked.append(list(tests))
+        found = {
+            t: Reported(t, "passed", self.call_s[t], None, None, self.call_s[t]) for t in tests
+        }
+        return cast("Ran", SimpleNamespace(results=PytestRun(found, (), {})))
+
+
+def test_tests_too_fast_in_the_first_block_are_timed_no_more() -> None:
+    """H02: after one ABBA block, a test whose every sample is under the timing floor is run no
+    more, and is too fast to time from those samples; with none left, no block follows."""
+    call_s = {"t.py::slow": 0.02, "t.py::fast": 0.001}
+    base, head = TimedSide(call_s), TimedSide(call_s)
+    timed, runs = perf.time_tests(cast("Side", base), cast("Side", head), list(call_s))
+    assert len(runs) == 2 * perf.REPETITIONS
+    assert base.asked == [list(call_s)] * 2 + [["t.py::slow"]] * (perf.REPETITIONS - 2)
+    assert [(len(s.base), len(s.head)) for s in timed] == [(10, 10), (2, 2)]
+    found, too_fast = perf.assess(timed, resamples=500)
+    assert [d.test for d in found] == ["t.py::slow"]
+    assert too_fast == ["t.py::fast"]
+    fast = TimedSide({"t.py::fast": 0.001})
+    _, runs = perf.time_tests(cast("Side", fast), cast("Side", fast), ["t.py::fast"])
+    assert [r.side for r in runs] == perf.abba(1)
 
 
 def test_an_aa_run_of_real_tests_shows_no_change(tmp_path: Path) -> None:

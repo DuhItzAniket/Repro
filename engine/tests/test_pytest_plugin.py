@@ -5,8 +5,9 @@ Roadmap D04: "the plugin's own test matrix passes on 3.12, 3.13, 3.14 and 3.15. 
 run twice gives the same outcomes." The suite (``data/plugin_suite``) has a test for every
 outcome and phase, random draws, the network guard, a module that fails to import, and a
 ``pytest.ini`` whose ``addopts = -x`` would stop the run at its first failure were Repro's
-``-o addopts=`` not applied. Its requirements pin pytest 9.1.1 and every dependency, so each
-Python gets the same wheels from the package index.
+``-o addopts=`` not applied, and whose ``-m "not stress"`` must be kept (H02): its stress test
+fails if it runs. Its requirements pin pytest 9.1.1 and every dependency, so each Python gets
+the same wheels from the package index.
 """
 
 import os

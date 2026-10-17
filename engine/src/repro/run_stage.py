@@ -83,7 +83,14 @@ from repro.runner import behaviour as behaviour_diffs
 from repro.runner import observations, probes, selection
 from repro.runner.observations import Behaviour
 from repro.runner.outcomes import unstable_observation
-from repro.runner.perf import Samples, TimingRun, assess, not_assessable, time_tests
+from repro.runner.perf import (
+    TIMING_FLOOR_S,
+    Samples,
+    TimingRun,
+    assess,
+    not_assessable,
+    time_tests,
+)
 from repro.runner.selection import MapCache, Selected, map_key, no_covering_test
 from repro.runner.sides import Side
 from repro.runner.trace import MAX_SAMPLES, TracePlan
@@ -98,7 +105,6 @@ from repro.runner.twosided import (
     reproduce,
 )
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, SandboxError, docker_available
-from repro.sandbox.detect import Detection
 from repro.sandbox.evidence import detection_evidence
 from repro.sandbox.image import sandbox_image
 from repro.sandbox.process import HASH_SEED
@@ -135,6 +141,8 @@ class RunState:
     platform: dict[str, str] = field(default_factory=dict)
     timings: list[Samples] | None = None
     timing_runs: list[TimingRun] = field(default_factory=list)
+    #: Tests under the timing floor in every traced run: too fast to time, never timed (H02).
+    too_fast_already: list[str] = field(default_factory=list)
     behaviour: Behaviour | None = None
     probing: probes.Probing | None = None
     #: The policy read from base (F01); None until the policy job ran.
@@ -362,6 +370,12 @@ def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) 
             stop=lambda: ctx.cancelled,
             trace=plan,
         )
+        made = (
+            "from the cache, made by an earlier run of this base"
+            if state.result.map_cached
+            else "made by running every base test"
+        )
+        ctx.log(f"base map: {len(state.result.base_map.tests)} tests, {made}")
 
     return Job(
         "tests",
@@ -374,10 +388,6 @@ def _tests_job(git: Git, base: str, head: str, state: RunState, *, cache: Path) 
         needs=("sandbox-base", "sandbox-head", "static-analysis"),
         timeout_s=TESTS_TIMEOUT_S,
     )
-
-
-def _detections(result: TwoSided, side: str) -> list[Detection]:
-    return [d for r in result.runs if r.side == side for d in r.run.execution.detections.items]
 
 
 def _outcomes_job(state: RunState) -> Job:
@@ -405,7 +415,7 @@ def _outcomes_job(state: RunState) -> Job:
         for side in ("base", "head"):
             fallback = {"file": "."}
             for record in detection_evidence(
-                _detections(result, side), run_id=ctx.run_id, side=side, fallback_target=fallback
+                result.detections(side), run_id=ctx.run_id, side=side, fallback_target=fallback
             ):
                 ctx.emit("evidence.created", status="warn", payload={"evidence": record})
                 if side == "head" and record["type"] == "network_attempt":
@@ -438,18 +448,43 @@ def _outcomes_job(state: RunState) -> Job:
     )
 
 
+def too_fast_to_time(result: TwoSided, tests: Sequence[str]) -> list[str]:
+    """The tests whose call took under the timing floor in every traced run that reported it
+    (A, A2 and H; H02). Tracing only slows a call down, so the untraced timing runs would find
+    them under the floor too: timing them would only say so, at many runs' cost."""
+    runs = result.traced().values()
+    fast = []
+    for test in tests:
+        seen = [
+            found.call_s
+            for record in runs
+            if (found := record.run.results.tests.get(test)) is not None
+        ]
+        if seen and all(call is not None and call < TIMING_FLOOR_S for call in seen):
+            fast.append(test)
+    return fast
+
+
 def _perf_job(state: RunState) -> Job:
     def run(ctx: JobContext) -> None:
         result = state.result
         if result is None or "base" not in state.sides or "head" not in state.sides:
             ctx.log("no timing: the tests did not run", level="warning", status="warn")
             return
-        stable = [d.test for d in result.outcomes if d.outcome_class == "P2P"]
+        passing = [d.test for d in result.outcomes if d.outcome_class == "P2P"]
+        state.too_fast_already = fast = too_fast_to_time(result, passing)
+        stable = [test for test in passing if test not in set(fast)]
         if not stable:
-            ctx.log("no timing: no selected test passes on both sides")
+            why = (
+                "every selected test that passes on both sides is too fast to time"
+                if passing
+                else "no selected test passes on both sides"
+            )
+            ctx.log(f"no timing: {why}")
             state.timings = []
             return
-        ctx.log(f"timing {len(stable)} tests, untraced, base and head interleaved (ABBA)")
+        already = f"; {len(fast)} under the timing floor in every run already" if fast else ""
+        ctx.log(f"timing {len(stable)} tests, untraced, base and head interleaved (ABBA){already}")
 
         def observe(timing: TimingRun) -> None:
             for test in stable:
@@ -501,7 +536,10 @@ def _perf_diff_job(state: RunState) -> Job:
                     }
                 }
                 ctx.emit("missing.recorded", status="warn", payload=payload)
-        compared, too_fast = assess(state.timings)
+        compared, assessed = assess(state.timings)
+        fast = {*assessed, *state.too_fast_already}
+        order = [d.test for d in state.result.outcomes] if state.result is not None else []
+        too_fast = [test for test in order if test in fast]
         timed: list[invariants.Timed] = []
         for diff in compared:
             record = diff.evidence(ctx.run_id)

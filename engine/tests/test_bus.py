@@ -117,6 +117,24 @@ def test_credentials_are_scrubbed_before_storage(
     assert envelope["target"] == {"file": f"notes/{REDACTED}.txt"}
 
 
+def test_a_name_with_an_undecodable_byte_is_stored_escaped(
+    bus: EventBus, run_id: str, tmp_path: Path
+) -> None:
+    """H02 (found on click): a file name Python decoded with surrogate escapes holds a lone
+    surrogate, which UTF-8 JSON cannot carry. It is stored as its escape, never refused."""
+    name = "out/" + chr(0xDCFF) + ".txt"
+    payload = {"level": "info", "verb": "run", "message": f"wrote {name}"}
+    target = {"file": name}
+    bus.emit(run_id, "log.line", stage="run", status="ok", payload=payload, target=target).result(
+        TIMEOUT
+    )
+    with StoreReader(tmp_path / "repro.db") as reader:
+        (event,) = reader.events(run_id)
+    envelope = event.envelope()
+    assert envelope["payload"]["message"] == "wrote out/\\udcff.txt"
+    assert envelope["target"] == {"file": "out/\ufffd.txt"}  # paths allow no backslash
+
+
 def test_subscribers_see_committed_events_in_order(bus: EventBus, run_id: str) -> None:
     seen: list[int] = []
     unsubscribe = bus.subscribe(lambda events: seen.extend(e.seq for e in events))

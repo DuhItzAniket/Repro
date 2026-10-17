@@ -116,6 +116,12 @@ Repro's own flags, `PYTHONUTF8=1`, pinned `TZ`/locale, and a minimal environment
 secrets. As built (D04, `repro.runner`): `-p no:randomly -p no:xdist -p no:cacheprovider
 --continue-on-collection-errors`, `TZ=UTC`, `LC_ALL=C.UTF-8`, `random` seeded per test from the
 run's seed and the node ID, and the plugin's net guard (loopback only) on every level.
+Overriding `addopts` also dropped the project's own choice of tests (click's `-m 'not stress'`
+leaves out about 31,000 cases). Since H02 (`runner/pytest_config`), the selection options of the
+project's `addopts` (`-m`, `-k`, `--ignore`, `--ignore-glob`, `--deselect`, `--import-mode`,
+`-W`, `--doctest-modules`, `--doctest-glob`, `--strict-markers`, `--strict-config`, `-p no:…`)
+are read from the file pytest itself would use and passed again; output, plugin and reporting
+options are not.
 
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector

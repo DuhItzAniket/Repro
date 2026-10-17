@@ -3,9 +3,11 @@
 Read from the snapshot's files only: nothing of the target is imported, built or run here. The
 project's kind and its pinned or declared requirements come from, in order:
 
-- ``uv.lock``: ``uv export --frozen`` (uv reads the lock; it resolves and builds nothing);
+- ``uv.lock``: ``uv export --frozen`` (uv reads the lock; it resolves and builds nothing), with
+  the project's own dependencies and its test groups and extras only (H02);
 - ``poetry.lock`` / ``pdm.lock``: the lock's packages and versions, read as TOML;
-- ``requirements*.txt``: the files themselves (``-r`` includes inside the snapshot);
+- ``requirements*.txt``: the files themselves (``-r`` includes inside the snapshot); failing
+  those, ``requirements/tests.txt`` and the like with the project's ``[project]`` dependencies;
 - ``pyproject.toml`` ``[project]`` and dependency groups, then ``setup.py`` / ``setup.cfg``
   literals (``install_requires`` and test extras, read with ``ast`` and ``configparser``).
 
@@ -45,8 +47,26 @@ REQUIREMENT_FILES: Final = (
     "dev-requirements.txt",
     "test-requirements.txt",
 )
-#: Extras and dependency groups that hold a project's test dependencies.
+#: The test requirements of a ``requirements/`` directory (pip-tools' layout, as Pallets used
+#: until 2024): they list the test tools, not the project's own dependencies (H02).
+REQUIREMENT_DIR_FILES: Final = (
+    "requirements/tests.txt",
+    "requirements/test.txt",
+    "requirements/testing.txt",
+)
+#: Extras and dependency groups that hold a project's test dependencies; ``dev`` only when none
+#: of the others exists (it often holds linters and release tools as well, H02).
 TEST_GROUPS: Final = ("test", "tests", "testing", "dev")
+_FALLBACK_GROUP: Final = "dev"
+
+
+def chosen_groups(present: Iterable[str]) -> list[str]:
+    """The test groups (or extras) of ``present`` a run installs: the test ones, else ``dev``."""
+    names = set(present)
+    tests: list[str] = [g for g in TEST_GROUPS if g != _FALLBACK_GROUP and g in names]
+    return tests or ([_FALLBACK_GROUP] if _FALLBACK_GROUP in names else [])
+
+
 #: PEP 518: a project without ``[build-system]`` builds with setuptools.
 DEFAULT_BUILD_REQUIRES: Final = ("setuptools",)
 #: What a build backend asks for at editable-build time on top of ``build-system.requires``
@@ -122,9 +142,20 @@ def _toml(path: Path) -> dict[str, Any]:
         raise ProjectError(f"{path.name} cannot be read: {exc}") from None
 
 
-def _uv_export(root: Path, uv: str) -> list[str]:
+def export_options(pyproject: dict[str, Any]) -> list[str]:
+    """``uv export`` options for what the tests need (H02): the project's own dependencies and
+    the test groups and extras it has (``TEST_GROUPS``), never docs, typing or release tools."""
+    groups = pyproject.get("dependency-groups", {})
+    extras = pyproject.get("project", {}).get("optional-dependencies", {})
+    chosen = ["--no-default-groups"]
+    chosen += [option for group in chosen_groups(groups) for option in ("--group", group)]
+    chosen += [option for extra in chosen_groups(extras) for option in ("--extra", extra)]
+    return chosen
+
+
+def _uv_export(root: Path, uv: str, pyproject: dict[str, Any]) -> list[str]:
     command = [
-        uv, "export", "--frozen", "--format", "requirements.txt", "--all-groups",
+        uv, "export", "--frozen", "--format", "requirements.txt", *export_options(pyproject),
         "--no-emit-project", "--no-hashes", "--no-header", "--no-annotate",
     ]  # fmt: skip
     try:
@@ -236,8 +267,12 @@ def _setup_call(node: ast.Call, *, strict: bool) -> list[str]:
     if strict and extras is not None and not isinstance(extras, ast.Dict):
         raise ProjectError("setup.py: extras_require is not a literal dict")
     if isinstance(extras, ast.Dict):
+        named = [
+            k.value for k in extras.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)
+        ]
+        wanted = chosen_groups(named)
         for extra, value in zip(extras.keys, extras.values, strict=True):
-            if isinstance(extra, ast.Constant) and extra.value in TEST_GROUPS:
+            if isinstance(extra, ast.Constant) and extra.value in wanted:
                 values = _literal_strings(value)
                 if strict and values is None:
                     raise ProjectError(f"setup.py: the {extra.value} extra is not a literal")
@@ -252,7 +287,12 @@ def _setup_cfg(path: Path) -> list[str]:
     except (configparser.Error, UnicodeDecodeError) as exc:
         raise ProjectError(f"setup.cfg cannot be read: {exc}") from None
     found = parser.get("options", "install_requires", fallback="").splitlines()
-    for group in TEST_GROUPS:
+    present = (
+        parser.options("options.extras_require")
+        if parser.has_section("options.extras_require")
+        else []
+    )
+    for group in chosen_groups(present):
         found += parser.get("options.extras_require", group, fallback="").splitlines()
     return [line for line in found if line.strip()]
 
@@ -262,8 +302,9 @@ def _pyproject_requirements(pyproject: dict[str, Any]) -> list[str]:
     found = list(project.get("dependencies", []))
     extras = project.get("optional-dependencies", {})
     groups = pyproject.get("dependency-groups", {})
-    for group in TEST_GROUPS:
-        found += extras.get(group, [])
+    for extra in chosen_groups(extras):
+        found += extras.get(extra, [])
+    for group in chosen_groups(groups):
         found += [item for item in groups.get(group, []) if isinstance(item, str)]
     return found
 
@@ -304,7 +345,7 @@ def _kind(root: Path, pyproject: dict[str, Any]) -> ProjectKind:
         return "poetry"
     if (root / "pdm.lock").is_file() or "pdm" in tool:
         return "pdm"
-    if any((root / name).is_file() for name in REQUIREMENT_FILES):
+    if any((root / name).is_file() for name in (*REQUIREMENT_FILES, *REQUIREMENT_DIR_FILES)):
         return "requirements"
     if (root / "setup.py").is_file() or (root / "setup.cfg").is_file():
         return "setuptools"
@@ -319,16 +360,23 @@ def inspect_project(root: Path, *, uv: str = "uv") -> Project:
     notes: list[str] = []
     source: str | None = None
     if kind == "uv":
-        source, requirements = "uv.lock", _uv_export(root, uv)
+        source, requirements = "uv.lock", _uv_export(root, uv, pyproject)
     elif kind in ("poetry", "pdm") and (root / f"{kind}.lock").is_file():
         source = f"{kind}.lock"
         requirements = _lock_packages(root / source, kind)
     elif kind == "requirements":
         present = [name for name in REQUIREMENT_FILES if (root / name).is_file()]
-        source = present[0]
+        in_dir = [name for name in REQUIREMENT_DIR_FILES if (root / name).is_file()]
+        source = (present or in_dir)[0]
         seen: set[Path] = set()
-        lines = [line for name in present for line in _requirement_file(root / name, root, seen)]
-        requirements = _checked(lines, ", ".join(present))
+        lines = [
+            line
+            for name in (present or in_dir)
+            for line in _requirement_file(root / name, root, seen)
+        ]
+        if not present:  # the test tools alone: the project's own dependencies too
+            lines += list(pyproject.get("project", {}).get("dependencies", []))
+        requirements = _checked(lines, ", ".join(present or in_dir))
     else:
         declared = _pyproject_requirements(pyproject)
         if (root / "setup.py").is_file():

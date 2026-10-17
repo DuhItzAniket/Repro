@@ -1,0 +1,13 @@
+date,reference,pass,seconds,status,selected,evidence,timed,gap_items,missing,provisioned,provision_s,env_cached,map_cached,build_s,run_s,diff_s,sandbox,platform,cpus,repro_version
+2026-10-17,itsdangerous,cold,17.7,FLAGGED,41,48,0,7,5,True,5.0,False,False,5.3,9.7,3.9,process,Windows AMD64,24,0.7.0
+2026-10-17,itsdangerous,warm,15.5,FLAGGED,41,48,0,7,5,True,1.3,True,True,1.6,11.1,3.8,process,Windows AMD64,24,0.7.0
+2026-10-17,flask,cold,109.8,FLAGGED,493,654,38,16,2,True,10.6,False,False,11.2,94.2,66.6,process,Windows AMD64,24,0.7.0
+2026-10-17,flask,warm,90.4,FLAGGED,493,654,38,16,2,True,1.8,True,True,2.4,83.7,54.5,process,Windows AMD64,24,0.7.0
+2026-10-17,click,cold,34.1,FLAGGED,54,61,0,41,1,True,5.5,False,False,5.9,25.4,8.0,process,Windows AMD64,24,0.7.0
+2026-10-17,click,warm,25.7,FLAGGED,54,61,0,41,1,True,1.7,True,True,2.1,20.9,8.1,process,Windows AMD64,24,0.7.0
+2026-10-17,itsdangerous,cold,26.3,FLAGGED,41,48,0,7,5,True,4.7,True,False,10.4,11.0,2.2,docker,Windows AMD64,24,0.7.0
+2026-10-17,itsdangerous,warm,26.2,FLAGGED,41,48,0,7,5,True,4.8,True,True,6.1,14.8,2.2,docker,Windows AMD64,24,0.7.0
+2026-10-17,flask,cold,96.4,FLAGGED,493,496,7,9,2,True,4.7,True,False,6.6,86.2,68.4,docker,Windows AMD64,24,0.7.0
+2026-10-17,flask,warm,97.7,FLAGGED,493,496,6,9,2,True,4.6,True,True,6.2,88.2,67.2,docker,Windows AMD64,24,0.7.0
+2026-10-17,click,cold,49.5,FLAGGED,54,61,0,41,1,True,4.6,True,False,6.7,39.6,20.0,docker,Windows AMD64,24,0.7.0
+2026-10-17,click,warm,46.3,FLAGGED,54,61,0,41,1,True,4.5,True,True,6.3,36.8,19.9,docker,Windows AMD64,24,0.7.0
