@@ -879,3 +879,42 @@ def mcp(ctx: typer.Context) -> None:
     from repro.integrations.mcp_server import Verifier, server  # noqa: PLC0415
 
     server(Verifier(settings)).run("stdio")
+
+
+@app.command()
+def symbolic(
+    ctx: typer.Context,
+    *,
+    repo: Annotated[Path, typer.Option("--repo", help="The target repository.")],
+    base: Annotated[str, typer.Option("--base", help="The base commit or ref.")],
+    head: Annotated[str, typer.Option("--head", help="The head commit or ref.")],
+    output: Annotated[
+        Path | None, typer.Option("--json", help="Also write the report to this file.")
+    ] = None,
+) -> None:
+    """Search for inputs on which a changed function behaves differently (K04).
+
+    Experimental. For each small, pure, annotated top-level function the change edits,
+    CrossHair's diffbehavior compares base's body with head's in head's environment, in the
+    process sandbox. A counterexample is printed; "none_found" means none was found within the
+    search's budget. Makes no card. Exit status 1 if the check could not run.
+    """
+    import tempfile  # noqa: PLC0415
+
+    from repro import symbolic as checks  # noqa: PLC0415
+
+    settings = _session(ctx).settings()
+    git, change = _resolve(repo, base, head)
+    settings.paths.run_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="sym-", dir=settings.paths.run_root, ignore_cleanup_errors=True
+    ) as work:
+        report = checks.run_change(
+            git, change.base.sha, change.head.sha, Path(work), settings.paths.data_dir / "envs"
+        )
+    text = checks.summary(report)
+    if output is not None:
+        output.write_bytes((text + "\n").encode("utf-8"))
+    typer.echo(text)
+    if report.problem:
+        raise typer.Exit(1)

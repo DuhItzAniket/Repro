@@ -51,6 +51,10 @@ All notable changes to this project are documented here. The format follows
   and two commits; Repro runs them in its sandbox, and the agent reads the status, the card
   and the evidence. Every other tool only reads. See `docs/guide/mcp.md`. [K03]
 - `repro run --no-serve` prints `repro: <run id> started` when the run begins. [K03]
+- `repro symbolic` (experimental): CrossHair's `diffbehavior` on the small, pure, annotated
+  functions a change edits. It runs base's body against head's in head's environment, in the
+  sandbox, and reports an input on which they differ. Functions it does not check are named
+  with why. [K04]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
