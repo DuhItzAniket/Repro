@@ -5,13 +5,15 @@ with that memory, not by reasoning from evidence. Contamination of this kind wou
 LLM-only baselines more than Repro, but would inflate both (research/06 §7). The probe follows
 "The SWE-Bench Illusion" [Liang, Garg, Zilouchian Moghaddam, arXiv 2506.12286]: the model gets
 the repository's name and the issue alone, never the code, and is asked
-- which files a fix would change: scored by the share of the gold patch's files it names
-  (``file_recall``), and whether it names the first (``file_hit``);
-- what code the fix would add: scored by the share of the gold patch's added 5-grams it
+- which files a fix would change: scored on the gold patch's Python files (a changelog
+  entry is no evidence of memory; all its files when it has no Python file), by whether it
+  names any of them (``file_hit``) and the share it names (``file_recall``);
+- what code the fix would add: scored by the share of the 5-grams those files gain that it
   reproduces (``ngram5``), on tokens of identifiers, numbers and single symbols.
 
 The prompt is locked (``memorisation/1``). The study stratifies its results by these scores
-and compares S1 (contaminated) with S2 (fresh) (protocol §3, §9).
+and compares S1 (contaminated) with S2 (fresh) (protocol §3, §9). A call that fails keeps its
+``outcome`` and scores nothing: it is left out of any summary, never counted as no memory.
 
     uv run python -m repro_bench.memo --instances <jsonl> --out <jsonl>
         [--mode record|replay --cassettes <dir>]
@@ -66,13 +68,20 @@ def request(repo: str, problem_statement: str, model: str) -> AgentRequest:
     )
 
 
-def added_code(diff: str) -> str:
-    """The lines a diff adds, without their ``+``."""
-    return "\n".join(
-        line[1:]
-        for line in diff.splitlines()
-        if line.startswith("+") and not line.startswith("+++")
-    )
+def added_code(diff: str, files: Sequence[str] | None = None) -> str:
+    """The lines a diff adds, without their ``+``; only in ``files`` when given."""
+    kept: list[str] = []
+    current: str | None = None
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            current = line.rsplit(" b/", 1)[-1]
+        elif (
+            line.startswith("+")
+            and not line.startswith("+++")
+            and (files is None or current in files)
+        ):
+            kept.append(line[1:])
+    return "\n".join(kept)
 
 
 def grams(code: str, n: int = N) -> set[tuple[str, ...]]:
@@ -83,7 +92,7 @@ def grams(code: str, n: int = N) -> set[tuple[str, ...]]:
 @dataclass(frozen=True)
 class Score:
     instance_id: str
-    file_hit: bool  # the gold patch's first file is among those named
+    file_hit: bool  # one of the gold patch's code files is among those named
     file_recall: float  # the share of the gold patch's files named
     ngram5: float  # the share of the gold patch's added 5-grams reproduced
     gold_files: tuple[str, ...]
@@ -93,14 +102,15 @@ class Score:
 
 
 def score(record: Mapping[str, Any], answer: Any, tokens: tuple[int, int], outcome: str) -> Score:
-    gold = changed_files(str(record["patch"]))
+    changed = changed_files(str(record["patch"]))
+    gold = tuple(f for f in changed if f.endswith(".py")) or changed
     named = tuple(str(f).strip().lstrip("./") for f in (answer or {}).get("files", []))[:3]
     hits = [f for f in gold if f in named]
-    wanted = grams(added_code(str(record["patch"])))
+    wanted = grams(added_code(str(record["patch"]), gold))
     found = grams(str((answer or {}).get("code", "")))
     return Score(
         str(record["instance_id"]),
-        bool(gold) and gold[0] in named,
+        bool(hits),
         len(hits) / len(gold) if gold else 0.0,
         len(wanted & found) / len(wanted) if wanted else 0.0,
         gold,
