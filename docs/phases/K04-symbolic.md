@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion backlog |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | — |
-| **Branch / PR** | `phase/K04-symbolic` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/K04-symbolic` · [#91](https://github.com/DuhItzAniket/Repro/pull/91) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 CrossHair `diffbehavior` on small pure functions in the blast radius (roadmap): search for an
@@ -66,7 +66,7 @@ input on which base's version of a changed function and head's behave differentl
   reason.
 - **By hand** (CrossHair 0.0.111, Python 3.13): `x * 2` against `x + x` gave "No differences
   found … functions are likely the same!", exit status 0. The boundary pair took 0.8 s.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#91).
 
 ## Deviations from spec
 - The roadmap says "in the blast radius". This phase checks the edited functions themselves,
