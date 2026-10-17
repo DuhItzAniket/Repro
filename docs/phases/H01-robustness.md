@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | H — Hardening & first release |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G09 |
-| **Branch / PR** | `phase/H01-robustness` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/H01-robustness` · [#71](https://github.com/DuhItzAniket/Repro/pull/71) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 Every way a run can fail is catalogued, ends in an explicit missing item and the right status,
@@ -87,15 +87,48 @@ and reads as something a user can act on. Each is met for real by a test.
 *Filled in at the end of the phase:*
 
 ## What shipped
+- **Code.**
+  - `repro.readable`: portable text, an error's reason, a traceback's error line. The path
+    helpers moved here from `repro.agents.untrusted`, which re-exports them.
+  - `TwoSided.problems(memory_bytes)`: readable collection errors, the timeout wording, and
+    `memory_limit`. `ProbeRun.ended`.
+  - The `tests_not_run` rule for partial runs. Settings `test_timeout_s` and
+    `memory_limit_mb`, through `pipeline_jobs(..., limits=)`.
+  - The sandbox job catching a sandbox that cannot start.
+  - The OpenAI-compatible backend's retry of status 0 (unreachable, unusable answers).
+  - The orchestrator's failure detail naming the error. The Markdown card's resolution
+    column. The CLI's message when git is missing.
+- **Schema.** Missing reason `memory_limit` (additive); generated code regenerated.
+- **Docs.**
+  - `docs/FAILURES.md`.
+  - TEST_STRATEGY §4a; ARCHITECTURE §6.1; CLAUDE.md (`pytest -m chaos`).
+  - `engine/README.md` (the two settings).
+- **Tests.**
+  - `test_failures.py` (7 chaos tests) and `fixtures/failures.py` (4 fixture repositories).
+  - Two more rows in `test_status.py`; 4 more in `test_agents_openai.py`.
+  - Updated: `test_orchestrator.py` and its golden log, `test_probes.py`, seven golden cards
+    (the wording "1 test runs").
+- **CI job** `chaos` on Ubuntu and Windows. The test matrix leaves `chaos` and `agent_eval`
+  out.
 
 ## Evidence
-- CI run: linked in the PR.
+- Locally on Windows: the full suite 1,812 passed and 13 skipped (Docker not available, POSIX
+  checks); `pytest -m chaos` 7 passed.
+- CI run: linked in the PR (#71).
 
 ## Deviations from spec
+- None.
 
 ## Known gaps
+- **The tracer's callbacks are not isolated from the test they observe** (H03). A bug in them
+  would reach the target's test.
+- **A full disk or an unwritable store** has no test (listed as residual).
 
 ## Dependencies added
 None.
 
 ## Research notes
+- A run that stops part way is the quiet way to a false VERIFIED. Every outcome the run did
+  report agrees, and the ones it did not report are simply absent. A completeness check
+  computed from the log (selected against reported), not from a list of failure kinds,
+  closes it for any cause.
