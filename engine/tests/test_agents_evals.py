@@ -20,7 +20,7 @@ from repro_bench.claims import rows as claim_rows
 from repro_bench.flips import Flips
 from repro_bench.results import FIELDS, ROOT, append_rows, read_rows
 from repro_bench.runs import REVIEWED
-from repro_bench.verdicts import Report, effective, measure, rows, score
+from repro_bench.verdicts import Report, effective, measure, regressions, rows, score
 
 THRESHOLDS = tomllib.loads((ROOT / "bench" / "data" / "thresholds.toml").read_text("utf-8"))
 
@@ -166,10 +166,31 @@ def test_the_reviewers_meet_their_thresholds(tmp_path: Path) -> None:
     items = [item for item in load() if item.name in REVIEWED]
     report, problems = measure(items, tmp_path)
     assert problems == []
+    assert regressions(report, THRESHOLDS["verdicts"]) == [], report.scored
+
+
+def test_a_regression_beyond_tolerance_is_caught() -> None:
+    """The gate's checks on a report worse than the thresholds allow, one metric at a time."""
     wanted = THRESHOLDS["verdicts"]
-    rates = report.rates()
-    assert rates["verdict_accuracy"][0] >= wanted["verdict_accuracy"], report.scored
-    assert rates["unsafe_verdicts"][1] <= wanted["max_unsafe"], report.scored
-    assert rates["status_accuracy"][0] >= wanted["status_accuracy"], report.scored
-    assert rates["citation_validity"][0] >= wanted["citation_validity"]
-    assert rates["flip_rate"][0] <= wanted["max_flip_rate"]
+    good = score(ITEM, log(), "UNVERIFIABLE")
+    good.judged = [("a", "supported", "supported")] * 9 + [("b", "supported", None)]
+    good.refused.clear()
+    clean = Report([good], Flips(judged=10, flipped=0))
+    assert regressions(clean, wanted) == []
+    worse = Report([good], Flips(judged=10, flipped=2))
+    assert regressions(worse, wanted) == [f"flip_rate 0.200 is above {wanted['max_flip_rate']}"]
+    unsafe = score(ITEM, log(), "UNVERIFIABLE")
+    unsafe.judged = [("a", "contradicted", "supported"), *good.judged]
+    unsafe.refused.clear()
+    found = regressions(Report([unsafe], Flips()), wanted)
+    assert found == [f"1 unsafe verdicts, more than {wanted['max_unsafe']}"]
+    wrong_card = score(ITEM, log(), "VERIFIED")
+    wrong_card.judged, wrong_card.refused = good.judged, good.refused
+    assert regressions(Report([wrong_card], Flips()), wanted) == [
+        f"status_accuracy 0.000 is below {wanted['status_accuracy']}"
+    ]
+    miscited = score(ITEM, log(), "UNVERIFIABLE")
+    miscited.judged = good.judged
+    assert regressions(Report([miscited], Flips()), wanted) == [
+        f"citation_validity 0.667 is below {wanted['citation_validity']}"
+    ]

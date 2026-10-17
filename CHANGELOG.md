@@ -94,6 +94,18 @@ All notable changes to this project are documented here. The format follows
 - The QA agent: after the review, every claim's verdicts are read together. A supported
   verdict that cannot hold with another is withheld as `unverifiable`, which can make a card
   UNVERIFIABLE, never FLAGGED. [G08]
+- The agent evaluation harness: the reviewed pull requests run end to end from their
+  cassettes (or recorded live), scored against hand-set verdict labels and the fixtures'
+  expected cards. It measures:
+  - verdict accuracy and unsafe verdicts;
+  - status accuracy;
+  - citation validity and rejection rate per reviewer answer;
+  - flip rate under order swap;
+  - cost per pull request.
+
+  The results are appended to `bench/results/agent-evals.csv`, now one row per metric. A CI
+  job, `agent evals`, fails on a regression beyond the thresholds. Every refused reviewer
+  answer is now a `verdict.rejected`. [G09]
 
 ### Fixed
 - Cassette keys normalise run-specific IDs at the start of a line, which the old key left

@@ -487,7 +487,7 @@ agent eval set meets the thresholds set in G09.
 | G06 | Gap reviewer (explained-by mapping) | M | G05 | done |
 | G07 | Probe-writer agent | L | G03, E06 | done |
 | G08 | Bias controls & QA agent | M | G05, G06 | done |
-| G09 | Agent evaluation harness | M | G04–G08 | planned |
+| G09 | Agent evaluation harness | M | G04–G08 | in progress |
 | G10 | OpenAI-compatible backend (Groq, local models) | M | G01, G02 | done |
 
 **G01** `LLMBackend` protocol, Agent SDK implementation with the full lockdown (ADR-0007),

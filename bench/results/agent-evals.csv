@@ -8,3 +8,11 @@ date,eval,metric,value,count,total,model,prompts,repro_version,source
 2026-10-16,claims,precision,0.958,46,48,openai/gpt-oss-120b,reader/1,0.6.0,cassettes (probe-semantic added in G07)
 2026-10-16,claims,recall,1.000,46,46,openai/gpt-oss-120b,reader/1,0.6.0,cassettes (probe-semantic added in G07)
 2026-10-16,claims,failed,0.000,0,19,openai/gpt-oss-120b,reader/1,0.6.0,cassettes (probe-semantic added in G07)
+2026-10-17,verdicts,verdict_accuracy,0.769,10,13,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,unsafe_verdicts,0.000,0,13,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,status_accuracy,1.000,5,5,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,citation_validity,1.000,28,28,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,rejection_rate,0.464,13,28,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,flip_rate,0.000,0,13,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,usd_per_pr,0.0089,0,5,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes
+2026-10-17,verdicts,tokens_per_pr,24138.400,120692,5,openai/gpt-oss-120b,reader/1;reviewer/1;gap/1;probe/1;qa/1,0.6.0,cassettes

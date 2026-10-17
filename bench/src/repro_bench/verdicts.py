@@ -23,6 +23,7 @@ From each run's event log (``repro_bench.runs``), against the labels in
 import argparse
 import sys
 import tempfile
+import tomllib
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -34,7 +35,7 @@ from repro import __version__
 from repro.agents.setup import GROQ_MODEL
 from repro_bench.claims import Item, load, pairs
 from repro_bench.flips import Flips, combined, flips
-from repro_bench.results import append_rows
+from repro_bench.results import ROOT, append_rows
 from repro_bench.runs import REVIEWED, expected_status, run
 
 CITATION_REASONS: Final = frozenset({"uncited", "invalid_citation", "unrelated_citation"})
@@ -207,6 +208,25 @@ def _say(text: str) -> None:
     sys.stdout.write(text + "\n")
 
 
+THRESHOLDS: Final = ROOT / "bench" / "data" / "thresholds.toml"
+
+
+def regressions(report: Report, wanted: Mapping[str, float]) -> list[str]:
+    """Each threshold of ``bench/data/thresholds.toml``'s ``[verdicts]`` the report misses."""
+    rates = report.rates()
+    floors = ("verdict_accuracy", "status_accuracy", "citation_validity")
+    found = [
+        f"{name} {rates[name][0]:.3f} is below {wanted[name]}"
+        for name in floors
+        if rates[name][0] < wanted[name]
+    ]
+    if report.unsafe > wanted["max_unsafe"]:
+        found.append(f"{report.unsafe} unsafe verdicts, more than {wanted['max_unsafe']}")
+    if rates["flip_rate"][0] > wanted["max_flip_rate"]:
+        found.append(f"flip_rate {rates['flip_rate'][0]:.3f} is above {wanted['max_flip_rate']}")
+    return found
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--mode", choices=("live", "record", "replay"), default="replay")
@@ -224,11 +244,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             _say(f"  {mark}{label}: {got} (label {want})")
     for metric, (value, count, total) in report.rates().items():
         _say(f"{metric:18} {value:.3f} ({count}/{total})")
+    missed = regressions(report, tomllib.loads(THRESHOLDS.read_text("utf-8"))["verdicts"])
+    for problem in missed:
+        _say(f"below threshold: {problem}")
     if args.append:
         source = "cassettes" if args.mode == "replay" else args.mode
         date = datetime.now(UTC).date().isoformat()
         append_rows(rows(report, model=GROQ_MODEL, source=source, date=date))
-    return 1 if problems else 0
+    return 1 if problems or missed else 0
 
 
 if __name__ == "__main__":

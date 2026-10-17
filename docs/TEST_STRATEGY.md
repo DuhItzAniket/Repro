@@ -126,6 +126,14 @@ Detailed in `docs/ARCHITECTURE.md` §Agents and `docs/paper/README.md`.
   claim-extraction precision/recall, verdict accuracy, **citation validity rate** (cited
   evidence exists and relates to the claim's targets), rejection rate, tokens and cost per PR.
   Results are appended to `bench/results/agent-evals.csv` with model ID and prompt version.
+- **As built (G09).**
+  - `repro_bench.verdicts` runs the five reviewed pull requests end to end, from their
+    cassettes, twice each: as configured, and with every verdict judged in both orders.
+  - It scores the runs against the claim set's verdict labels and the fixtures' expected cards:
+    verdict accuracy, unsafe verdicts, status accuracy, citation validity and rejection rate
+    per reviewer answer, flip rate, and dollars and tokens per pull request.
+  - `agent-evals.csv` holds one row per metric. The `agent evals` CI job
+    (`pytest -m agent_eval`) holds the metrics to `bench/data/thresholds.toml`.
 
 ## 5a. Web quality gates (B12)
 
