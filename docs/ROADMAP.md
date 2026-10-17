@@ -542,8 +542,9 @@ live call succeeds.
 **Goal:** a stranger can install Repro, run it on their own repo, and trust what the card says
 about what was and wasn't checked.
 
-**Gate H:** install-from-scratch tests pass on Windows and Linux. The security review is
-complete. The user documentation is complete. `v1.0.0` is tagged and published.
+**Gate H (passed 2026-10-17, v1.0.0, record: [`phases/H-gate.md`](phases/H-gate.md)):**
+install-from-scratch tests pass on Windows and Linux. The security review is complete. The user
+documentation is complete. `v1.0.0` is tagged and published.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
@@ -745,3 +746,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | H04 | 2026-10-17 | [#74](https://github.com/DuhItzAniket/Repro/pull/74) | repro export --format in-toto|sarif|junit, each checked against its schema: an unsigned in-toto Statement v1 with Repro's predicate v0.1 (the card and its digest, cited evidence as digested resource descriptors, the event log's digest; card -> attestation -> card exact, tampering refused), predicate schema published with its description; SARIF 2.1.0 (a result per gap item, failed invariant, judged claim and missing item; kind/level as the spec pairs them); JUnit XML (a test case per claim, one for the status) |
 | H05 | 2026-10-17 | [#75](https://github.com/DuhItzAniket/Repro/pull/75) | Release wheels (repro-engine with the cockpit inside, repro-events with the schemas; scripts/build_wheels.py); the README's install, one uv tool install from the release's wheels; scripts/install_check.py follows it into an isolated tool directory and makes a first run, inside ten minutes, in CI's install job on Ubuntu and Windows; release.yml attaches the wheels to a published release; repro doctor reports the cockpit; owner's decisions: repro-engine, GitHub releases now, PyPI later |
 | H06 | 2026-10-17 | [#76](https://github.com/DuhItzAniket/Repro/pull/76) | The user guide (quickstart, reading a card, repro.yml, troubleshooting, for contributors) and a recorded demo (silent-change, stills from its replay); two reviewer dry runs from the docs alone, the second with no blocker; found and fixed: an installed Repro ran no test in Docker on Windows (hook now in a volume), a card VERIFIED with no test run (run_incomplete, UNVERIFIABLE), the session token in uvicorn's log, class-body changes selecting no test; install check requires a VERIFIED run |
+| Gate H | 2026-10-17 | [#77](https://github.com/DuhItzAniket/Repro/pull/77) | Stage H complete; release v1.0.0 ([gate record](phases/H-gate.md)); the release's wheels install and make a first run, VERIFIED with a test run, on Ubuntu (L3, 27.2 s) and Windows (L2, 30.1 s) in CI; every threat traced to tests or a residual (H03); the user guide completed from the docs alone by a reviewer new to the project (H06) |
