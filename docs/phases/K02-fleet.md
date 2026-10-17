@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion backlog |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | — |
-| **Branch / PR** | `phase/K02-fleet` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/K02-fleet` · [#89](https://github.com/DuhItzAniket/Repro/pull/89) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Many PRs and agents at once (roadmap: "the 64 papers view"): every run an engine holds, live,
@@ -64,7 +64,7 @@ on one page, each opening into the cockpit.
   - its tile opened the run in the cockpit, the token carried over;
   - no console errors.
 - **Bundle**: 201.89 kB gzipped across both pages, under the 300 kB gate.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#89).
 
 ## Deviations from spec
 None.
