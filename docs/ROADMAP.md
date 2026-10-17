@@ -549,7 +549,7 @@ complete. The user documentation is complete. `v1.0.0` is tagged and published.
 |---|---|---|---|---|
 | H01 | Robustness & failure modes | M | G09 | done |
 | H02 | Performance & scale | M | H01 | done |
-| H03 | Security hardening | M | H01 | in progress |
+| H03 | Security hardening | M | H01 | done |
 | H04 | Exports: in-toto, JUnit, SARIF | M | F05 | planned |
 | H05 | Packaging & distribution | M | H02, H03 | planned |
 | H06 | User documentation & demo | M | H05 | planned |
@@ -741,3 +741,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Gate G | 2026-10-17 | [#70](https://github.com/DuhItzAniket/Repro/pull/70) | Stage G complete; release v0.7.0 ([gate record](phases/G-gate.md)); replayed offline with every agent on, the honest fix is VERIFIED and the unclaimed change and the false claim FLAGGED, each verdict citing engine evidence; the eval set meets the owner-approved thresholds (claims P 0.958 / R 1.000; verdicts 10/13, 0 unsafe, cards 5/5, citations 28/28, flips 0/13) |
 | H01 | 2026-10-17 | [#71](https://github.com/DuhItzAniket/Repro/pull/71) | The failure catalogue (docs/FAILURES.md) with chaos tests through repro run on Ubuntu and Windows (a broken import, a hang, memory exhausted, a build that cannot work offline, an unreachable API, Docker or git missing); a selected test no run reported makes the change UNVERIFIABLE; memory_limit missing reason; test_timeout_s and memory_limit_mb settings; readable reasons (the error's first line, home written ~, resolutions on the Markdown card); retries for an unreachable API and unusable answers |
 | H02 | 2026-10-17 | [#72](https://github.com/DuhItzAniket/Repro/pull/72) | repro_bench.scale on three pinned Pallets changes (itsdangerous, flask, click), cold and warm, with --check and a nightly job; cold 38 s -> 18 s, 402 s -> 110 s, 1,151 s -> 34 s: test-only dependency groups, the project's pytest selection kept, paired side runs, the timing pass pruned; cached-map runs report what cold runs do; a non-UTF-8 file name and pre-1980 tar times (flit_core in containers) fixed |
+| H03 | 2026-10-17 | [#73](https://github.com/DuhItzAniket/Repro/pull/73) | THREAT_MODEL section 7 traces each of T1-T19 to its tests or residual (test_threat_model.py); the API's session token (URL fragment, sessionStorage, bearer header, no access log, browser opened on a private page); docker_runtime runsc = gVisor L4 with a CI job; seven more container escapes; the audit hook judges writes by resolved paths; home directory written ~ in events, logs scrubbed, an end-to-end leak audit; T6's first test; a dependency audit job (pip-audit, pnpm audit) |

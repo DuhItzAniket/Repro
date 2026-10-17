@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | H — Hardening & first release |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | H01 |
-| **Branch / PR** | `phase/H03-security` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/H03-security` · [#73](https://github.com/DuhItzAniket/Repro/pull/73) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 The threat model is reviewed whole, and every threat in it is either met by a test or carries
@@ -83,14 +83,14 @@ dependencies.
   through one is, which before was missed.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): every THREAT_MODEL item has a test or a documented residual risk.
-- [ ] AC2: the API's data needs the session token, and the token appears in no request line,
+- [x] AC1 (roadmap): every THREAT_MODEL item has a test or a documented residual risk.
+- [x] AC2: the API's data needs the session token, and the token appears in no request line,
   log, `Referer` or command line.
-- [ ] AC3: the container suite, escapes included, passes under gVisor on Linux CI, and a run
+- [x] AC3: the container suite, escapes included, passes under gVisor on Linux CI, and a run
   there states L4.
-- [ ] AC4: nothing secret or personal leaves a run: no host credential in any file it wrote,
+- [x] AC4: nothing secret or personal leaves a run: no host credential in any file it wrote,
   and neither a target's token nor the home directory in its events, card or exports.
-- [ ] AC5: Repro's locked dependencies have no known vulnerabilities, and CI checks it.
+- [x] AC5: Repro's locked dependencies have no known vulnerabilities, and CI checks it.
 
 ## Test plan
 | Criterion | Check |
@@ -142,7 +142,7 @@ dependencies.
     6,159 events streamed in full, and the address bar lost the fragment.
 - **Audits.** pip-audit 2.10.1 over the 59 locked Python packages and `pnpm audit`: no known
   vulnerabilities (2026-10-17).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#73).
 
 ## Deviations from spec
 - **The token is not a cookie**, as a first design would have it: see Design notes.
