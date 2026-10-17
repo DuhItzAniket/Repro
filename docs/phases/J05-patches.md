@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | J — Evaluation & research |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | J04 |
-| **Branch / PR** | `phase/J05-patches` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/J05-patches` · [#86](https://github.com/DuhItzAniket/Repro/pull/86) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Agent patches for S2's fresh tasks, from at least two scaffolds and two model families
@@ -81,7 +81,7 @@ Agent patches for S2's fresh tasks, from at least two scaffolds and two model fa
   - **gpt-oss-120b on Groq was slow tonight.** "What is 2 + 3?" took 95 s and timed out once
     at 120 s (the same session), so its repair calls ran past their 900 s.
 - **Locally**: `test_bench_generate.py` 5 and `test_bench_seed.py` 7 passed.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#86).
 
 ## Deviations from spec
 - **One scaffold run, not two.** mini-SWE-agent resends its whole conversation every step, and
