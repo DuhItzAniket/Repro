@@ -23,6 +23,7 @@ from repro.card import (
     regenerate,
     render,
 )
+from repro.card.markdown import verified_why
 from repro.cli import app
 from repro.config import load_settings
 from repro.store import StoreReader
@@ -249,6 +250,17 @@ def test_markdown() -> None:
     assert f"`repro replay {RUN}`" in text
 
 
+def test_a_verified_card_says_everything_was_checked_only_when_it_was() -> None:
+    """H06: a VERIFIED card can list what it could not check; its Why never denies it."""
+    card = assemble(run_log().events)
+    clean = {**card, "status": "VERIFIED", "status_reasons": [], "missing": []}
+    assert verified_why(clean) == "Nothing flags, and everything was checked."
+    item: dict[str, Any] = {"reason": "perf_not_assessable", "targets": [], "detail": "fast"}
+    timed = {**clean, "missing": [item]}
+    assert "under Missing" in verified_why(timed)
+    assert f"- {verified_why(timed)}" in render(timed)
+
+
 # -- export and replay through the CLI -------------------------------------------------------
 
 
@@ -315,3 +327,12 @@ def test_a_card_that_differs_from_its_log_is_refused(
     result = runner.invoke(app, ["replay", str(log), "--port", str(free_port())], env=env)
     assert result.exit_code == 0, result.output  # replay shows the log as it is, and says so
     assert "differs from the one the run published" in result.output
+
+
+def test_a_missing_item_shows_five_targets_and_counts_the_rest() -> None:
+    card = assemble(run_log().events)
+    tests = [{"test": f"tests/test_a.py::t{n}"} for n in range(7)]
+    item = {"reason": "perf_not_assessable", "targets": tests, "detail": "fast", "resolution": None}
+    text = render({**card, "missing": [item]})
+    assert "tests/test_a.py::t4 and 2 more |" in text
+    assert "t5" not in text

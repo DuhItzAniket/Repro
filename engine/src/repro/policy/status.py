@@ -21,12 +21,13 @@ pass, and head's edit to ``repro.yml``. Each resolves to one of:
 **UNVERIFIABLE**, otherwise, if the evidence is incomplete: base's ``repro.yml`` is not valid
 (or was not read), a side's environment was not built, the change was not analysed, a job
 failed, timed out or was skipped, a selected test has no outcome (no run reported it, H01),
-too many changed symbols are unverified (``missing.max_uncovered_changed_symbols``), an
-invariant was not evaluated, no
-claim was found where ``claims.require_explicit`` asks for one, a claim is not supported, or
-every verdict was rejected. **VERIFIED** otherwise: every claim supported, no unexplained gap,
-every invariant passing. FLAGGED wins over UNVERIFIABLE: a concrete problem outweighs
-incompleteness.
+a test run did not finish (H06: whatever was selected, a run that ends early or past its limit
+leaves what it was for unseen, such as base's map or head's list of tests), too many changed
+symbols are unverified (``missing.max_uncovered_changed_symbols``), an invariant was not
+evaluated, no claim was found where ``claims.require_explicit`` asks for one, a claim is not
+supported, or every verdict was rejected. **VERIFIED** otherwise: every claim supported, no
+unexplained gap, every invariant passing. FLAGGED wins over UNVERIFIABLE: a concrete problem
+outweighs incompleteness.
 
 **Unverified changed symbols** are the changed symbols (``blast.computed``, test code left out)
 that a missing item names as having no covering test, or calls that could not be compared:
@@ -112,6 +113,8 @@ class Inputs:
     environments: frozenset[str] = frozenset({"base", "head"})
     selected: int = 0  # tests selected
     ran: int = 0  # selected tests with an outcome
+    #: Test runs that did not finish (``run_incomplete`` missing items): what each one says.
+    unfinished: tuple[str, ...] = ()
     #: Whether the change was analysed (its blast radius computed).
     analysed: bool = True
     changed: tuple[str, ...] = ()  # changed symbols, test code left out
@@ -193,6 +196,15 @@ def incomplete(inputs: Inputs) -> list[Reason]:
                 "tests_not_run",
                 f"{unreported} of the {inputs.selected} selected tests have no outcome: a run "
                 "did not report them",
+            )
+        )
+    elif inputs.unfinished:  # H06: e.g. base's map or head's listing, with nothing selected
+        more = len(inputs.unfinished) - 1
+        found.append(
+            Reason(
+                "tests_not_run",
+                f"a test run did not finish: {inputs.unfinished[0]}"
+                + (f" (and {more} more)" if more else ""),
             )
         )
     elif inputs.changed and not inputs.selected and len(unverified) < len(inputs.changed):

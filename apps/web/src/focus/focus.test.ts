@@ -93,6 +93,18 @@ describe("evidence drawer content", () => {
   it("only shows what has happened by the cursor", () => {
     expect(drawerView({ kind: "claim", id: "C3" }, model, 0).subtitle).toBe("not extracted yet");
   });
+
+  it("is final once the run has finished, and the card once it is published", () => {
+    const [finished] = model.kinds.last("run.finished", END, 1);
+    const [published] = model.kinds.last("card.published", END, 1);
+    if (finished === undefined || published === undefined) throw new Error("no end in the log");
+    expect(published).toBeLessThan(finished); // the card is published, then the run finishes
+    const claim: Focus = { kind: "claim", id: "C3" };
+    expect(drawerView(claim, model, published + 1).final).toBe(false);
+    expect(drawerView(claim, model, finished + 1).final).toBe(true);
+    expect(drawerView({ kind: "card" }, model, published).final).toBe(false);
+    expect(drawerView({ kind: "card" }, model, published + 1).final).toBe(true);
+  });
 });
 
 describe("feed announcements (role=log, throttled)", () => {

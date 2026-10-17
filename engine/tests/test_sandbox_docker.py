@@ -21,6 +21,7 @@ import pytest
 from gitrepo import Entry, Repo
 from repro.gitops import Git
 from repro.sandbox import MIB, Limits, SandboxError
+from repro.sandbox.detect import HOOK_DIR
 from repro.sandbox.docker import GVISOR, DockerSandbox, docker_available
 from repro_events.models import SandboxReadyPayload
 
@@ -292,6 +293,43 @@ def test_commands_run_under_gvisor(box: DockerSandbox) -> None:
     run = box.run(["sh", "-c", "dmesg 2>/dev/null | head -n 3; uname -r"])
     assert run.returncode == 0, run.stderr
     assert b"gVisor" in run.stdout, run.stdout
+
+
+def test_the_unprivileged_user_reads_the_hook_from_its_volume(box: DockerSandbox) -> None:
+    """H06: the hook is copied into a volume, not bind-mounted. A bind-mounted hook of a Repro
+    installed with `uv tool install` was unreadable to uid 1000 on Docker Desktop for Windows,
+    so pytest could not load Repro's plugin and no test ran."""
+    probe = textwrap.dedent("""
+        import hashlib, os
+        print(os.getuid())
+        for name in sorted(os.listdir("/opt/repro/hook")):
+            data = open(os.path.join("/opt/repro/hook", name), "rb").read()
+            print(f"{name}={hashlib.sha256(data).hexdigest()}")
+    """)
+    run = box.run(["python", "-c", probe])
+    assert run.returncode == 0, run.stderr.decode()
+    uid, *files = run.stdout.decode().split()
+    expected = sorted(
+        f"{path.name}={hashlib.sha256(path.read_bytes()).hexdigest()}"
+        for path in HOOK_DIR.iterdir()
+        if path.is_file()
+    )
+    assert (uid, files) == ("1000", expected)
+
+
+def test_the_hook_volume_lives_as_long_as_the_sandbox(tmp_path: Path) -> None:
+    repo = Repo(tmp_path / "repo")
+    sha = repo.commit({"a.txt": "a"})
+    box = DockerSandbox(tmp_path / "work", Git(repo.path), sha, runtime=RUNTIME)
+
+    def volumes() -> list[str]:
+        return box._docker("volume", "ls", "--quiet").decode().split()
+
+    try:
+        assert box.hook in volumes()
+    finally:
+        box.close()
+    assert box.hook not in volumes()
 
 
 def test_paths_outside_the_snapshot_are_refused(box: DockerSandbox) -> None:

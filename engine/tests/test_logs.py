@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from repro.logs import REDACTED, configure_logging, get_logger, redact
+from repro.logs import REDACTED, adopt, configure_logging, get_logger, redact
 
 
 @pytest.fixture
@@ -136,3 +136,21 @@ def test_non_ascii_is_escaped_so_any_console_can_take_it(stream: io.StringIO) ->
     get_logger("x").info("café → ok")
     assert stream.getvalue().isascii()
     assert lines(stream)[0]["msg"] == "café → ok"
+
+
+def test_a_credential_in_a_query_string_is_redacted(stream: io.StringIO) -> None:
+    """H06: uvicorn logs each WebSocket it accepts with its query, the session token in it."""
+    configure_logging("info", "json", stream)
+    adopt("uvicorn")
+    try:
+        accepted = '%s - "WebSocket %s" [accepted]'
+        path = "/runs/run_1/events?from=0&token=k3y-Value_x"
+        logging.getLogger("uvicorn.error").info(accepted, "127.0.0.1:5", path)
+    finally:
+        uvicorn = logging.getLogger("uvicorn")
+        uvicorn.handlers, uvicorn.propagate = [], True
+    (line,) = lines(stream)
+    assert line["logger"] == "uvicorn.error"  # one format for every line
+    redacted = f"/runs/run_1/events?from=0&token={REDACTED}"
+    assert line["msg"] == f'127.0.0.1:5 - "WebSocket {redacted}" [accepted]'
+    assert "k3y" not in stream.getvalue()

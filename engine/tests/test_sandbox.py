@@ -5,9 +5,11 @@ subprocess attempts become evidence". Every hostile fixture is bounded, so that 
 failure cannot take the machine running the tests down with it.
 """
 
+import io
 import json
 import os
 import sys
+import tarfile
 import textwrap
 import time
 from pathlib import Path
@@ -26,6 +28,7 @@ from repro.sandbox import (
     read_detections,
 )
 from repro.sandbox.detect import HOOK_DIR
+from repro.sandbox.docker import hook_archive
 from repro_events.models import Evidence, SandboxReadyPayload
 from store_support import run_record, started_writer
 
@@ -359,3 +362,14 @@ def test_detections_become_evidence(tmp_path: Path) -> None:
                 payload={"evidence": record},
             ).result(30)
             assert stored[0].kind == "evidence.created"
+
+
+def test_the_container_hook_archive_holds_every_hook_file_readable_by_all() -> None:
+    """The container sandbox copies the hook into a volume from this archive (H06)."""
+    with tarfile.open(fileobj=io.BytesIO(hook_archive())) as tar:
+        members = {m.name: m for m in tar.getmembers()}
+        contents = {name: tar.extractfile(m).read() for name, m in members.items()}  # type: ignore[union-attr]
+    files = {path.name: path.read_bytes() for path in HOOK_DIR.iterdir() if path.is_file()}
+    assert "repro_pytest.py" in files
+    assert contents == files
+    assert {(m.mode, m.uid, m.isfile()) for m in members.values()} == {(0o644, 0, True)}

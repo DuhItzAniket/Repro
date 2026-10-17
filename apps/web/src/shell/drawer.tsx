@@ -18,9 +18,11 @@ export interface DrawerProps {
 
 function Section({
   section,
+  final,
   onFocus,
 }: {
   section: DrawerSection;
+  final: boolean;
   onFocus: DrawerProps["onFocus"];
 }) {
   return (
@@ -56,7 +58,7 @@ function Section({
           <tbody>
             {section.table.rows.length === 0 && (
               <tr>
-                <td colSpan={section.table.columns.length}>None yet.</td>
+                <td colSpan={section.table.columns.length}>{final ? "None." : "None yet."}</td>
               </tr>
             )}
             {section.table.rows.map((row, r) => (
@@ -122,7 +124,7 @@ export function Drawer({ rect, view, onFocus }: DrawerProps) {
       </header>
       <p class="drawer-subtitle">{v.subtitle}</p>
       {v.sections.map((section) => (
-        <Section key={section.title} section={section} onFocus={onFocus} />
+        <Section key={section.title} section={section} final={v.final} onFocus={onFocus} />
       ))}
     </aside>
   );

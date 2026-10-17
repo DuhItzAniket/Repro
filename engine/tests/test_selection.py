@@ -154,6 +154,23 @@ def test_tests_that_ran_a_changed_function_are_selected() -> None:
     models.TestSelectedPayload.model_validate(chosen[0].payload())
 
 
+def test_a_changed_class_body_selects_the_tests_that_ran_its_methods() -> None:
+    """H06: a class attribute changes what every method sees; it runs at import, not in a test."""
+    base = selection.TestMap(
+        {"t.py::a": "t:a#0", "t.py::b": "t:b#0", "t.py::c": "t:c#0"},
+        {
+            "t.py::a": frozenset({"t:a#0", "pkg.m:C.sign#0"}),
+            "t.py::b": frozenset({"t:b#0", "pkg.m:CC.sign#0"}),  # another class, same start
+            "t.py::c": frozenset({"t:c#0", "pkg.m:f#0"}),
+        },
+    )
+    head = selection.TestMap(dict(base.tests), {})
+    chosen = selection.select([change("pkg.m:C#0", symbol_kind="class")], base, head, NO_IMPORTS)
+    assert [(s.test, s.reasons, s.symbols) for s in chosen] == [
+        ("t.py::a", ("blast_radius",), ("pkg.m:C#0",)),
+    ]
+
+
 def test_module_level_changes_select_the_tests_that_import_them() -> None:
     tests = {"tests/test_a.py::t": "test_a:t#0", "tests/test_b.py::t": "test_b:t#0"}
     base = selection.TestMap(tests, {test: frozenset() for test in tests})

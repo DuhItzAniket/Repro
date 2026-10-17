@@ -5,7 +5,7 @@ card. Table cells have their pipes escaped and their line breaks folded.
 """
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Final
 
 _HEADLINE = {
     "VERIFIED": "every claim is supported, no difference is unexplained, every invariant holds",
@@ -31,12 +31,19 @@ def _ref(ref: Mapping[str, Any] | None) -> str:
     return f"`{ref['ref']}` ({ref['sha'][:12]})" if ref else "-"
 
 
+def verified_why(card: Mapping[str, Any]) -> str:
+    """Why a card with no reason is VERIFIED: what it did not check is listed, never hidden."""
+    if card["missing"]:
+        return "Nothing flags; what could not be checked, under Missing, leaves it verifiable."
+    return "Nothing flags, and everything was checked."
+
+
 def _why(card: Mapping[str, Any]) -> list[str]:
     reasons = [r for r in card["status_reasons"] if r["decides"]]
     also = [r for r in card["status_reasons"] if not r["decides"]]
     lines = [f"- {r['detail']} (`{r['rule']}`)" for r in reasons]
     if not lines:
-        lines = ["- Nothing flags, and everything was checked."]
+        lines = [f"- {verified_why(card)}"]
     if also:
         lines += ["", "Also not checked:", ""]
         lines += [f"- {r['detail']} (`{r['rule']}`)" for r in also]
@@ -61,11 +68,22 @@ def _gap(card: Mapping[str, Any]) -> list[str]:
     return _table(columns, rows)
 
 
+#: A missing item's targets shown in its row; the JSON card holds them all.
+TARGETS_SHOWN: Final = 5
+
+
+def _targets(item: Mapping[str, Any]) -> str | None:
+    names = [str(next(iter(t.values()))) for t in item["targets"] if t]
+    more = len(names) - TARGETS_SHOWN
+    shown = ", ".join(names[:TARGETS_SHOWN]) + (f" and {more} more" if more > 0 else "")
+    return shown or None
+
+
 def _missing(card: Mapping[str, Any]) -> list[str]:
-    rows = []
-    for item in card["missing"]:
-        targets = ", ".join(str(next(iter(t.values()))) for t in item["targets"] if t)
-        rows.append([item["reason"], targets or None, item["detail"], item.get("resolution")])
+    rows = [
+        [item["reason"], _targets(item), item["detail"], item.get("resolution")]
+        for item in card["missing"]
+    ]
     return _table(["Reason", "Targets", "Detail", "What would resolve it"], rows)
 
 

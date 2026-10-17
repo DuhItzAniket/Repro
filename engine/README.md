@@ -125,7 +125,9 @@ builds targets from C06 symbols, groups calls by target, and gives the missing i
 `/runs/{id}/artifacts/{sha256}` and `/runs/{id}/card`, and the WebSocket
 `/runs/{id}/events?from=<seq>`: replay, a `caught_up` frame, then live events from the bus, each
 exactly once in `seq` order. A client that falls behind is closed with 4000 "resync" and resumes
-with `?from=`. Requests must name a local host; WebSocket origins must be allow-listed.
+with `?from=`. Requests must name a local host; WebSocket origins must be allow-listed; and
+every request for the engine's data must carry the server's session token, as
+`Authorization: Bearer` or, on the stream, `?token=` (H03, `repro.api.token`).
 
 ## Settings
 

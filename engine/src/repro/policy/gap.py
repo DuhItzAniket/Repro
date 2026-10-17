@@ -140,6 +140,11 @@ def _with_policy(
         unverified.update(symbols or changed)
     read = any(e["kind"] == "stage.started" and e["stage"] == "read" for e in log)
     claims = [e["payload"]["claim"]["id"] for e in log if e["kind"] == "claim.extracted"]
+    unfinished = tuple(
+        e["payload"]["missing"]["detail"]
+        for e in log
+        if e["kind"] == "missing.recorded" and e["payload"]["missing"]["reason"] == "run_incomplete"
+    )
     selected = {e["target"]["test"] for e in log if e["kind"] == "test.selected"}
     ran = {e["target"]["test"] for e in log if e["kind"] == "diff.outcome"} & selected
     return Inputs(
@@ -158,6 +163,7 @@ def _with_policy(
         environments=frozenset(e["payload"]["side"] for e in log if e["kind"] == "env.provisioned"),
         selected=len(selected),
         ran=len(ran),
+        unfinished=unfinished,
         analysed=bool(blast),
         changed=changed,
         unverified=frozenset(unverified),

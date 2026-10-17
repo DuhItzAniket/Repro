@@ -69,7 +69,8 @@ def test_run_records_the_build_stage_and_cleans_up(
     argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve", *ANALYSE]
     result = runner.invoke(app, argv, env=env)
     assert result.exit_code == 0, result.output
-    assert re.search(r"run_[0-9A-Z]{26} completed", result.output)
+    # The last line says how the run ended and, without a cockpit to show it, its card (H06).
+    assert re.search(r"run_[0-9A-Z]{26} completed \(.*\): the card is [A-Z]+$", result.output, re.M)
     events = stored_events(tmp_path, env)
     kinds = Counter(event["kind"] for event in events)
     assert kinds["snapshot.ready"] == 2

@@ -129,3 +129,14 @@ def test_what_the_log_does_not_show_was_not_checked() -> None:
     assert inputs_from_events(skipped).incomplete_stages == ("check",)
     one_side = [e for e in log if e["payload"].get("side") != "head"]
     assert decide(inputs_from_events(one_side)).reasons[0].rule == "environment_failed"
+    # H06: a test run that did not finish, whatever was selected.
+    detail = "base: the A run ended early"
+    died: dict[str, Any] = {
+        "reason": "run_incomplete",
+        "targets": [],
+        "detail": detail,
+        "resolution": None,
+    }
+    unfinished = inputs_from_events([*log, event("missing.recorded", {"missing": died})])
+    assert unfinished.unfinished == (detail,)
+    assert decide(unfinished).reasons[0].rule == "tests_not_run"

@@ -2,9 +2,9 @@
 
 A commit is streamed into a Docker volume of its own: its tree object as a tar stream
 (``gitops.tar_tree``: modes and symbolic links exactly as git stores them, whatever the host),
-unpacked by a helper container with no network and owned by an unprivileged user. Nothing of
-the host is bind-mounted but Repro's own audit hook, read-only. Each command then runs in a
-fresh container that:
+unpacked by a helper container with no network and owned by an unprivileged user. Repro's own
+audit hook goes into a volume of its own the same way, owned by root and mounted read-only, so
+nothing of the host is bind-mounted. Each command then runs in a fresh container that:
 
 - has **no network** (``--network none``): the only level at which Repro reports the network as
   ``enforced``;
@@ -72,6 +72,22 @@ DOCKER_TIMEOUT_S: Final = 300.0
 DOCKER_FAILED: Final = 125
 
 
+def hook_archive() -> bytes:
+    """Repro's hook (``sandbox/_hook``) as a tar archive: its files, readable by everyone.
+
+    Copied into a volume rather than bind-mounted: H06 found the hook of a Repro installed with
+    ``uv tool install`` unreadable to the container's user on Docker Desktop for Windows ("Input/
+    output error"), so no test ran in a container."""
+    archive = io.BytesIO()
+    with tarfile.open(fileobj=archive, mode="w") as tar:
+        for path in sorted(p for p in HOOK_DIR.iterdir() if p.is_file()):
+            data = path.read_bytes()
+            info = tarfile.TarInfo(path.name)
+            info.size, info.mode, info.mtime = len(data), 0o644, int(path.stat().st_mtime)
+            tar.addfile(info, io.BytesIO(data))
+    return archive.getvalue()
+
+
 def docker_available(docker: str = "docker") -> bool:
     """Whether a Docker daemon with Linux containers answers."""
     try:
@@ -112,6 +128,8 @@ class DockerSandbox:
         self.docker = docker
         self.runtime = runtime
         self.volume = f"repro-{uuid.uuid4().hex[:12]}"
+        #: Repro's hook, mounted read-only in every command's container.
+        self.hook = f"repro-hook-{self.volume[6:]}"
         #: Volumes adopted for every command's container: volume -> path (an environment).
         self.mounts: dict[str, str] = {}
         self._runs = 0
@@ -124,6 +142,7 @@ class DockerSandbox:
             self._docker("pull", "--quiet", self.image)
         self._docker("volume", "create", self.volume)
         try:
+            self._load_hook()
             self.tree = self._load(git, commit)
         except BaseException:
             self.close()
@@ -149,10 +168,14 @@ class DockerSandbox:
 
     # -- the volume --------------------------------------------------------------------------
 
-    def _docker(self, *args: str, check: bool = True) -> bytes:
+    def _docker(self, *args: str, check: bool = True, stdin: bytes | None = None) -> bytes:
         try:
             done = subprocess.run(  # noqa: S603 - docker, with Repro's own arguments
-                [self.docker, *args], capture_output=True, timeout=DOCKER_TIMEOUT_S, check=False
+                [self.docker, *args],
+                input=stdin,
+                capture_output=True,
+                timeout=DOCKER_TIMEOUT_S,
+                check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise SandboxError(f"docker {args[0]}: {exc}") from None
@@ -160,6 +183,15 @@ class DockerSandbox:
             problem = done.stderr.decode("utf-8", "replace").strip().splitlines()
             raise SandboxError(f"docker {args[0]} failed: {problem[-1] if problem else '?'}")
         return done.stdout
+
+    def _load_hook(self) -> None:
+        """Copies Repro's hook into its own volume, owned by root (``hook_archive``)."""
+        self._docker("volume", "create", self.hook)
+        self._docker(
+            "run", "--rm", "-i", "--network", "none", "-v", f"{self.hook}:{HOOK_MOUNT}",
+            "--user", "0:0", "--entrypoint", "tar", self.image, "-x", "-C", HOOK_MOUNT,
+            stdin=hook_archive(),
+        )  # fmt: skip
 
     def _load(self, git: Git, commit: str) -> TarredTree:
         """Streams the commit into the volume, owned by the unprivileged user."""
@@ -252,8 +284,8 @@ class DockerSandbox:
         self.mounts[volume] = path
 
     def close(self) -> None:
-        """Removes the volume, the volumes it adopted, and everything in them."""
-        for volume in [*self.mounts, self.volume]:
+        """Removes the volume, the hook's, the volumes it adopted, and everything in them."""
+        for volume in [*self.mounts, self.volume, self.hook]:
             self._docker("volume", "rm", "-f", volume, check=False)
 
     def __enter__(self) -> "DockerSandbox":
@@ -316,7 +348,7 @@ class DockerSandbox:
         name = f"repro-{self.volume[6:]}-{number}"
         command = [
             self.docker, "run", "--name", name, *self._hardening(),
-            "-v", f"{self.volume}:{WORK}", "-v", f"{HOOK_DIR}:{HOOK_MOUNT}:ro",
+            "-v", f"{self.volume}:{WORK}", "-v", f"{self.hook}:{HOOK_MOUNT}:ro",
             *[flag for volume, path in self.mounts.items() for flag in ("-v", f"{volume}:{path}")],
             "-w", self.container_path(cwd),
             *_env_flags(self._environment(audit, env)),

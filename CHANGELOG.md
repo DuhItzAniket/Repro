@@ -47,6 +47,15 @@ All notable changes to this project are documented here. The format follows
   CI follows it on Linux and Windows for every change and makes a first run on a small
   repository, inside ten minutes (`scripts/install_check.py`). [H05]
 - `repro doctor` reports the cockpit: the checkout's build, the wheel's copy, or none. [H05]
+- The user guide (`docs/guide/`): a quickstart, reading a card, the `repro.yml` reference,
+  troubleshooting, and a page for contributors that follows a run through the code. [H06]
+- A recorded demo (`docs/guide/demo.md`): one real run of a change no test catches, with stills
+  of the cockpit taken from its replay and its card. `apps/web/gate/demo.spec.ts` makes the
+  recording again. [H06]
+- A missing reason, `run_incomplete`: a test run that ended early or ran past its limit. Its
+  detail ends with the line of the run's output that names its error. Such runs were
+  `environment_failed` or `timeout` items. [H06]
+- `repro run`'s last line gives the card's status. [H06]
 
 ### Changed
 - A selected test that no run reported leaves the change UNVERIFIABLE (`tests_not_run`). Until
@@ -85,9 +94,34 @@ All notable changes to this project are documented here. The format follows
 - The home directory is written `~` in every string of every event, as on the card's missing
   items: a card may be shared, and an absolute path names its user. Log messages, values and
   errors pass the same credential scrubbing as events. [H03]
+- CONTRIBUTING lists every CI job and what it checks. The engine's README says the API needs
+  the session token. [H06]
+- The install check requires its first run's card to be VERIFIED, with a selected test and
+  nothing missing but the timing of a test too fast to time: completing is not enough. [H06]
+- The cockpit server's own log lines are JSON like Repro's, through the same handler and the
+  same scrubbing. [H06]
+- The Markdown card shows five targets of a missing item and counts the rest; the JSON card
+  keeps them all. [H06]
 
 ### Fixed
 - `repro run` without git installed prints a message and exits 2, not a traceback. [H01]
+- The cockpit's drawer says "None." of an empty table once the run has finished, and on the
+  published card; "None yet." only while the run can still add to it. [H06]
+- An installed Repro ran no test in a container on Docker Desktop for Windows: the container's
+  user could not read Repro's pytest plugin, bind-mounted from the installed package. The hook
+  is now copied into a volume of its own and mounted read-only, so nothing of the host is
+  mounted. [H06]
+- A change could be VERIFIED when every test run ended early and nothing was selected (base's
+  map and head's listing died, and no function changed). A test run that does not finish now
+  leaves the change UNVERIFIABLE (`tests_not_run`), whatever was selected. [H06]
+- A VERIFIED card said "everything was checked" while listing what it could not check; it says
+  so only when nothing is missing. [H06]
+- The session token reached the terminal's log: uvicorn logs each WebSocket it accepts with its
+  query, `?token=…` included, and the access-log switch does not cover that line. A credential
+  in a query string is now redacted from every log line. [H06]
+- A change to a class's own code (an attribute, a base class, a decorator) selected none of the
+  tests that use the class: that code runs at import, never inside a test. It now selects the
+  tests that ran one of the class's methods, as coverage already counted them. [H06]
 - A run from a cached base map reports what the run that made the map did. Base's first run
   reaches the cockpit, and base's collection errors are kept with the map; a warm run used to
   drop both. Of base's first run, only what the selected tests attempted (network, processes,

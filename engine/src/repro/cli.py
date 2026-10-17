@@ -31,7 +31,7 @@ import typer
 from repro import __version__
 from repro.config import CONFIG_ENV, Settings, SettingsError, load_settings
 from repro.doctor import Check, Machine, check_cockpit, diagnose
-from repro.logs import configure_logging, get_logger
+from repro.logs import adopt, configure_logging, get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -320,14 +320,24 @@ def _run_server(api: "FastAPI", sock: socket.socket, log_level: str) -> None:
     """Runs uvicorn on the bound socket until Ctrl+C (tests replace this)."""
     import uvicorn  # noqa: PLC0415
 
-    # No access log: the event stream's request line carries the session token.
-    config = uvicorn.Config(api, log_level=log_level, ws="websockets-sansio", access_log=False)
+    # No access log: the event stream's request line carries the session token. uvicorn's own
+    # lines go through Repro's handler, which redacts it where uvicorn logs a WebSocket (H06).
+    adopt("uvicorn")
+    config = uvicorn.Config(
+        api, log_level=log_level, log_config=None, ws="websockets-sansio", access_log=False
+    )
     uvicorn.Server(config).run(sockets=[sock])
 
 
-def _report(result: "RunResult") -> None:
+def _report(result: "RunResult", database: Path) -> None:
+    """The run's last line: how it ended, what it recorded and, once published, its card."""
+    from repro.store import StoreReader  # noqa: PLC0415
+
     counts = ", ".join(f"{count} {name}" for name, count in sorted(result.counts.items()))
-    typer.echo(f"repro: {result.run_id} {result.outcome} ({counts})", err=True)
+    with StoreReader(database) as reader:
+        card = reader.card(result.run_id)
+    status = f": the card is {card['status']}" if card is not None else ""
+    typer.echo(f"repro: {result.run_id} {result.outcome} ({counts}){status}", err=True)
 
 
 class _Run:
@@ -342,8 +352,10 @@ class _Run:
         *,
         run_id: str,
         cleanup: "Callable[[], None]",
+        database: Path,
     ) -> None:
         self.orchestrator = orchestrator
+        self.database = database
         self.change = change
         self.jobs = jobs
         self.run_id = run_id
@@ -353,7 +365,7 @@ class _Run:
 
     def run_to_end(self) -> "RunResult":
         result = self.orchestrator.run(self.change.spec(), self.jobs, run_id=self.run_id)
-        _report(result)
+        _report(result, self.database)
         return result
 
     def start(self) -> None:
@@ -361,7 +373,7 @@ class _Run:
         self.handle = handle
 
         def finished() -> None:
-            _report(handle.wait())
+            _report(handle.wait(), self.database)
             self.cleanup()  # now, not at Ctrl+C: the cockpit needs only the store
 
         self.reporter = threading.Thread(target=finished, name="repro-run-report", daemon=True)
@@ -507,7 +519,9 @@ def run(
             state.close()
             remove_work(work)
 
-    job_run = _Run(orchestrator, change, jobs, run_id=run_id, cleanup=cleanup)
+    job_run = _Run(
+        orchestrator, change, jobs, run_id=run_id, cleanup=cleanup, database=settings.paths.database
+    )
     try:
         if sock is None:
             if job_run.run_to_end().outcome != "completed":

@@ -145,6 +145,7 @@ MEMORY_FIX: Final = (
     "If the change is meant to use more memory, raise the limit (the memory_limit_mb setting); "
     "otherwise the change's own memory use is the cause"
 )
+ENDED_FIX: Final = "The run's output says why: run the side's tests on their own to see it"
 TIMEOUT_FIX: Final = (
     "A test that hangs or runs long on this side: find it from the tests reported, or raise "
     "the limit (the test_timeout_s setting)"
@@ -209,11 +210,12 @@ def _incomplete(record: RunRecord) -> dict[str, Any]:
             f"{record.side}: the {record.label} run took longer than its limit "
             f"({execution.duration_s:.0f} s); {reported}"
         )
-        return _missing("timeout", detail, resolution=TIMEOUT_FIX)
+        return _missing("run_incomplete", detail, resolution=TIMEOUT_FIX)
     status = execution.returncode
     ended = f"with exit status {status}" if status is not None else "before it finished"
     detail = f"{record.side}: the {record.label} run ended early, {ended}; {reported}"
-    return _missing("environment_failed", detail)
+    said = error_line(execution.stderr[-8192:].decode("utf-8", "replace"))
+    return _missing("run_incomplete", f"{detail}: {said}" if said else detail, resolution=ENDED_FIX)
 
 
 def _outcome(done: TestRun | None, test: str) -> str | None:

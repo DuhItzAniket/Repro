@@ -140,4 +140,26 @@ BROKEN_BUILD = RepoSpec(
     pr_description={"change/backend": "Use our own build backend"},
 )
 
-FAILURE_SPECS = {spec.name: spec for spec in (BROKEN_IMPORT, SLOW_HEAD, MEMORY_HOG, BROKEN_BUILD)}
+# The suite cannot start on either side: its conftest.py imports a plugin the environment does
+# not have. Head changes no code, so no test is selected, and every run Repro makes ends before
+# it reports a test (H06: such a change was VERIFIED, as when no container could load Repro's
+# own pytest plugin).
+SUITE_CANNOT_START = RepoSpec(
+    name="suite-cannot-start",
+    description="A test suite that cannot start on either side; the change touches no code.",
+    base={
+        "pyproject.toml": _PYPROJECT.format(name="calc-fixture"),
+        "README.md": "Totals.\n",
+        "calc/__init__.py": "",
+        "calc/core.py": _TOTAL,
+        "tests/conftest.py": "import repro_fixture_no_such_plugin  # noqa: F401\n",
+        "tests/test_core.py": _TEST_TOTAL,
+    },
+    heads={"docs/readme": {"README.md": "Totals of numbers.\n"}},
+    pr_description={"docs/readme": "Say what is totalled"},
+)
+
+FAILURE_SPECS = {
+    spec.name: spec
+    for spec in (BROKEN_IMPORT, SLOW_HEAD, MEMORY_HOG, BROKEN_BUILD, SUITE_CANNOT_START)
+}
