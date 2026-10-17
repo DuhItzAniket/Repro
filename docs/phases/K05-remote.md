@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion backlog |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | — |
-| **Branch / PR** | `phase/K05-remote` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/K05-remote` · [#92](https://github.com/DuhItzAniket/Repro/pull/92) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Self-hosted E2B / Firecracker for teams (roadmap). The owner decided (2026-10-18) that this
@@ -52,7 +52,7 @@ not run.
   machine's engine) in a temporary `DOCKER_CONFIG`. `docker context show` named it, and the
   sandbox's container printed the snapshot's file through it. The user's Docker
   configuration was not touched.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#92).
 
 ## Deviations from spec
 - Design only for E2B and Firecracker, by the owner's decision.

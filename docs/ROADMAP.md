@@ -649,7 +649,7 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 | K02 | Fleet dashboard | Many PRs and agents at once (the "64 papers" view). **Done (K02, [#89](https://github.com/DuhItzAniket/Repro/pull/89)):** `/fleet.html` |
 | K03 | Repro as an MCP server | Agents can request verification and receive evidence, while the verifier stays independent. **Done (K03, [#90](https://github.com/DuhItzAniket/Repro/pull/90)):** `repro mcp` |
 | K04 | Symbolic deep checks | CrossHair `diffbehavior` on small pure functions in the blast radius. **Done (K04, [#91](https://github.com/DuhItzAniket/Repro/pull/91)):** `repro symbolic` |
-| K05 | Remote sandbox backends | Self-hosted E2B / Firecracker for teams. **In progress (K05):** `docker_context`; E2B and Firecracker designed (ADR-0018, proposed) |
+| K05 | Remote sandbox backends | Self-hosted E2B / Firecracker for teams. **Done (K05, [#92](https://github.com/DuhItzAniket/Repro/pull/92)):** `docker_context`; E2B and Firecracker designed (ADR-0018, proposed) |
 
 ---
 
@@ -762,3 +762,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K02 | 2026-10-18 | [#89](https://github.com/DuhItzAniket/Repro/pull/89) | Fleet view (/fleet.html, GET /fleet): live tiles per run, motion only for events, opens the cockpit; checked in a browser |
 | K03 | 2026-10-18 | [#90](https://github.com/DuhItzAniket/Repro/pull/90) | repro mcp: MCP server on stdio (official SDK); start a verification by commits, read status, card and evidence; run --no-serve prints its run ID at start |
 | K04 | 2026-10-18 | [#91](https://github.com/DuhItzAniket/Repro/pull/91) | repro symbolic: CrossHair diffbehavior on small pure annotated functions a change edits, base body vs head's in head's environment; card evidence needs a schema change |
+| K05 | 2026-10-18 | [#92](https://github.com/DuhItzAniket/Repro/pull/92) | docker_context setting (a team's engine elsewhere); ADR-0018 proposed for E2B self-hosted and Kata with Firecracker |
