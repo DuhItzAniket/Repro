@@ -22,8 +22,10 @@ copied per side, not a package cache.
 """
 
 import hashlib
+import json
 import os
 import platform
+import posixpath
 import shutil
 import subprocess
 import sys
@@ -406,6 +408,112 @@ class DockerProvisioner:
             python_version=version,
             installed_packages=int(count.strip() or 0),
             cache_hit=hit,
+            duration_ms=int((time.monotonic() - started) * 1000),
+        )
+
+
+#: Run in the image's interpreter, with the snapshot first on the import path: the image's
+#: Python, how many distributions it has, and where each of the snapshot's top-level packages
+#: is imported from (importing it: the moment target code runs, in the sandbox, offline).
+_IMAGE_PROBE: Final = """
+import importlib, importlib.metadata, importlib.util, json, platform, sys
+found = {}
+for name in json.loads(sys.argv[1]):
+    try:
+        spec = importlib.util.find_spec(name)
+        places = list(spec.submodule_search_locations or []) if spec else []
+        where = (spec.origin or next(iter(places), None)) if spec else None
+        importlib.import_module(name)
+        found[name] = {"from": where, "error": None}
+    except BaseException as exc:
+        found[name] = {"from": None, "error": f"{type(exc).__name__}: {exc}"[:300]}
+print(json.dumps({"python": sys.executable, "version": platform.python_version(),
+                  "tracer": sys.version_info >= (3, 12),
+                  "packages": sum(1 for _ in importlib.metadata.distributions()),
+                  "found": found}))
+"""
+#: The image's interpreter: its named conda environment's, when it names one
+#: (``CONDA_DEFAULT_ENV``, as SWE-bench's and SWE-rebench's task images do, activating it only
+#: in root's shell profile), else its ``python3``; and the image's ``PATH``.
+_FIND_PYTHON: Final = (
+    'for p in "${CONDA_PREFIX:-/nonexistent}/bin/python" '
+    '"/opt/conda/envs/${CONDA_DEFAULT_ENV:-/nonexistent}/bin/python" '
+    '"$(command -v python3)" "$(command -v python)"; do '
+    'if [ -x "$p" ]; then echo "$p"; echo "$PATH"; exit 0; fi; done; exit 1'
+)
+#: Top-level directories that hold tests or documentation, not the project's code.
+_NOT_CODE: Final = frozenset({"tests", "test", "testing", "docs", "doc", "examples", "benchmarks"})
+
+
+def snapshot_packages(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The import path for a snapshot's code (relative to the snapshot: ``src`` first when the
+    project has that layout) and its top-level packages."""
+    source = root / "src"
+    layout = source if source.is_dir() and any(source.glob("*/__init__.py")) else root
+    names = sorted(
+        path.parent.name
+        for path in layout.glob("*/__init__.py")
+        if path.parent.name.isidentifier() and path.parent.name not in _NOT_CODE
+    )
+    paths = ("src", ".") if layout == source else (".",)
+    return paths, tuple(names)
+
+
+class ImageProvisioner:
+    """The environment an image already holds, used as it is (J04): a benchmark task's image,
+    whose interpreter has the project's dependencies installed, or a team's CI image.
+
+    Nothing is installed. The snapshot goes first on every command's import path (after
+    Repro's hook), so its code is what the tests import, not the copy the image may hold
+    installed elsewhere. That is checked before any test runs: each of the snapshot's
+    top-level packages must import, and from the snapshot; otherwise the side has no
+    environment (UNVERIFIABLE), never a run of the wrong code."""
+
+    def __init__(self, image: str) -> None:
+        self.image = image
+
+    def provision(self, side: str, project: Project, sandbox: DockerSandbox) -> Environment:
+        started = time.monotonic()
+        paths, names = snapshot_packages(project.root)
+        sandbox.python_path = tuple(sandbox.container_path(path) for path in paths)
+        found = sandbox.run(["sh", "-c", _FIND_PYTHON])
+        lines = found.stdout.decode("utf-8", "replace").splitlines()
+        if found.returncode != 0 or len(lines) < 2:  # noqa: PLR2004 - the interpreter, PATH
+            raise ProvisionError("the image has no Python interpreter Repro can find")
+        python, image_path = lines[0].strip(), lines[1].strip()
+        # As activating the environment would: its programs first.
+        sandbox.variables = {"PATH": f"{posixpath.dirname(python)}:{image_path}"}
+        run = sandbox.run([python, "-c", _IMAGE_PROBE, json.dumps(names)])
+        if run.returncode != 0:
+            reason = _tail(run.stderr) if run.outcome == "exited" else run.outcome
+            raise ProvisionError(f"the image's Python did not start: {reason}")
+        try:
+            probe = json.loads(run.stdout.decode("utf-8", "replace").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise ProvisionError("the image's Python gave no report") from None
+        if not probe.get("tracer"):
+            raise ProvisionError(
+                f"the image's Python is {probe.get('version')}; Repro's tracer needs 3.12 or newer"
+            )
+        work = sandbox.container_path(".")
+        for name, where in sorted(probe.get("found", {}).items()):
+            if where.get("error"):
+                raise ProvisionError(
+                    f"the snapshot's {name} does not import in the image: {where['error']}"
+                )
+            origin = str(where.get("from") or "")
+            if not origin.startswith(work + "/"):
+                raise ProvisionError(
+                    f"{name} would be imported from the image ({origin[:200]}), not from the "
+                    "snapshot"
+                )
+        return Environment(
+            side=side,
+            project=project,
+            python=str(probe["python"]),
+            python_version=str(probe["version"]),
+            installed_packages=int(probe.get("packages", 0)),
+            cache_hit=True,  # nothing was built: the image is the environment
             duration_ms=int((time.monotonic() - started) * 1000),
         )
 

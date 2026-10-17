@@ -253,3 +253,12 @@ def test_the_mirror_is_reused(tmp_path: Path, target: tuple[Repo, str, str]) -> 
     # The second call fetches nothing: an unreachable source would fail if it tried.
     again = swe.fetch_base(mirror, "example/pkg", base, source=str(tmp_path / "gone"))
     assert isinstance(again, Git)
+
+
+def test_a_run_that_failed_still_has_its_card() -> None:
+    """A run whose job failed still ends with a card (UNVERIFIABLE): the runner keeps it (J04)."""
+    said = "repro: run_01M55VPEWSTW8SZH0B5WP2GYC4 failed (4454 events): the card is UNVERIFIABLE"
+    found = swe._ENDED.search(said)
+    assert found is not None
+    assert found[1] == "run_01M55VPEWSTW8SZH0B5WP2GYC4"
+    assert swe._ENDED.search("repro run: not a git repository") is None

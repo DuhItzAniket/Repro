@@ -30,14 +30,19 @@ As built in J01 (`bench/src/repro_bench/swe.py`):
   whitespace). Results are keyed by instance, model and patch SHA-256 outside what a system sees.
 - Head is the base commit with the diff applied, written as a commit without a working tree;
   a diff that does not apply is recorded as such, never run.
-- **Open for J04 (found in J01):** Repro's tracer needs Python ≥ 3.12 (`sys.monitoring`), and a
-  task's own environment may pin tools that fail there. On SWE-bench Verified's one Flask
-  instance (`pallets__flask-5014`, 2023), the pinned pytest 7.2.2 fails before any test runs
-  on Python 3.13 under the project's `filterwarnings = error`. Whether S2 includes only tasks
-  whose environment runs on Python ≥ 3.12, or runs older ones without traces, is decided and
-  recorded in J04, before any S2 data exists. For scale: in SWE-rebench's leaderboard splits
-  2025_09 to 2026_03, 351 of 411 tasks pin Python 3.12 or 3.13 (`install_config.python`;
-  dataset revision `34d5a588`, counted in J02 on 2026-10-18), and all 411 use pytest.
+- **Decided in J04 (the question J01 found).** Repro's tracer needs Python ≥ 3.12
+  (`sys.monitoring`), and a task's environment may pin tools that fail there. On SWE-bench
+  Verified's one Flask instance (`pallets__flask-5014`, 2023), the pinned pytest 7.2.2 fails
+  before any test runs on Python 3.13, because the project sets `filterwarnings = error`.
+  - **S2 takes only tasks whose environment pins Python 3.12 or newer** and grades with pytest.
+    In SWE-rebench's leaderboard splits 2025_09 to 2026_03, 351 of 411 tasks qualify: they
+    pin Python 3.12 or 3.13 (`install_config.python`; dataset revision `34d5a588`, counted
+    in J02 on 2026-10-18), and all 411 use pytest. This is a selection effect, stated in §9.
+  - **Every system runs in the task's own image.** For Repro this is the `sandbox_image`
+    setting (J04): the image's interpreter and installed dependencies, with the snapshot first
+    on the import path. When the snapshot's code does not import there (for example, it needs
+    a compiled extension built), Repro's answer is UNVERIFIABLE. That case counts against
+    Repro's coverage and is not excluded from the study.
 
 ## 3. Datasets
 | Split | Source | Target size | Use |
@@ -49,8 +54,16 @@ As built in J01 (`bench/src/repro_bench/swe.py`):
 | S4 synthetic | Rule-based and LLM mutants in S2 repos, stratified by defect class | ~300 | Sensitivity only. Never headline |
 
 The sample-size rationale: exact McNemar, α = 0.05 two-sided, power 0.8. With discordance
-around 0.2, about 155 incorrect patches are needed to detect a 10-point difference
-(research/06 §4). The estimate is re-computed from S1 discordance in J04.
+around 0.2, the normal approximation research/06 §4 used gives 155 incorrect patches to detect
+a 10-point difference. The exact test registered in §7 needs 168
+(`python -m repro_bench.power`, J04). The targets of 200 INCORRECT and 200 CORRECT cover both.
+No S1 discordance has been measured yet: J04 ran no S1 pilot within the free tier (see the J04
+record), so the 0.2 assumption stands until one does.
+
+**Budget (open, the owner's decision before the J06 freeze).** At the measured token counts
+(J04 record), S2 at this size is about 100 million tokens before patch generation. That is
+about 500 days of Groq's free tier, or $15 to $60 at its list prices on a paid plan. The
+choice is a paid plan, or a smaller study stated as under-powered.
 
 ## 4. Ground-truth procedure
 1. **Tier A (automatic).** Hidden tests plus the full developer suite in the official image. A
@@ -98,7 +111,10 @@ As built in J02 (`bench/src/repro_bench/`: `truth`, `difftest`, `groundtruth`, `
 | Ref | PatchDiff-vs-gold | Oracle-assisted ceiling, not a competitor |
 
 Every LLM system runs k = 5 times per patch at the vendor default or one pre-registered
-temperature.
+temperature. Baselines' inputs, prompts and answer rules are fixed in
+[`BASELINES.md`](BASELINES.md) (J03). The reviewer model of every LLM system is
+`openai/gpt-oss-120b` on Groq. Its knowledge cutoff is 1 June 2024 [OpenAI, gpt-oss-120b model
+page, checked 2026-10-18], so every S2 task is after it.
 
 ## 6. Metrics
 - **Primary** (positive class = INCORRECT):
@@ -135,6 +151,9 @@ model swap (smaller model; different vendor) · single run vs majority of 5.
 - **Baseline strength:** same model, budget and inputs. Prompts published.
 - **External validity:** Python and pytest, popular OSS repositories, issue-fix tasks. S3 is
   exploratory.
+- **Interpreter selection (J04):** S2 keeps only tasks whose environment pins Python 3.12 or
+  newer, which Repro's tracer needs. These are 351 of the 411 candidate tasks; older or more
+  conservative projects are under-represented.
 - **Environment:** flakiness, and Docker on WSL2 timing. Images pinned by digest. Cost
   experiments run on Linux.
 - **LLM drift:** model IDs and dates recorded. Raw outputs archived.

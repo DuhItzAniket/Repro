@@ -326,6 +326,23 @@ def _test_place(item: Any) -> Place | None:
     return places.of(code) if code is not None and places is not None else None
 
 
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
+    """With ``REPRO_SELECT``: only the tests that file lists, in its order (J04). Repro passes
+    tests this way when their IDs are too long for a command line; last, so that what runs is
+    exactly the list, whatever the project's own plugins did."""
+    chosen = os.environ.get("REPRO_SELECT")
+    if not chosen:
+        return
+    with open(chosen, encoding="utf-8") as listed:  # noqa: PTH123 - a path from Repro
+        order = {nodeid: index for index, nodeid in enumerate(json.load(listed))}
+    kept = sorted((item for item in items if item.nodeid in order), key=lambda i: order[i.nodeid])
+    dropped = [item for item in items if item.nodeid not in order]
+    if dropped:
+        config.hook.pytest_deselected(items=dropped)
+    items[:] = kept
+
+
 def pytest_collection_finish(session: Any) -> None:
     for item in session.items:
         place = _test_place(item)

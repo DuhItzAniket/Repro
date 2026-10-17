@@ -616,7 +616,7 @@ artifact is archived with a DOI. The paper is submitted.
 | J01 | Benchmark infrastructure & input contract | L | H05 | done |
 | J02 | Ground-truth pipeline & annotation tooling | L | J01 | done |
 | J03 | Baselines | L | J01 | done |
-| J04 | S0 dev set & S1 pilot | M | J02, J03 | planned |
+| J04 | S0 dev set & S1 pilot | M | J02, J03 | done |
 | J05 | S2 patch generation on fresh tasks | M | J04 | planned |
 | J06 | Annotation, κ & label freeze; pre-registration | L | J05 | planned |
 | J07 | S2 main study | M | J06 | planned |
@@ -755,3 +755,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | J01 | 2026-10-18 | [#82](https://github.com/DuhItzAniket/Repro/pull/82) | SWE-format adapter and sealed inputs, manifest by digest, canary input-contract test; first real instance found an interpreter constraint for J04 |
 | J02 | 2026-10-18 | [#83](https://github.com/DuhItzAniket/Repro/pull/83) | Tier A (hidden tests and full suite in the task's image, SWE-bench grading) and tier B (UTBoost and written differential tests, 20 stable reruns); pipeline with 15% audits; blinded annotation page; kappa per source, adjudication, label freeze; guideline v1 |
 | J03 | 2026-10-18 | [#84](https://github.com/DuhItzAniket/Repro/pull/84) | B0 CI-only in the task's image, B1 diff-only and B2 agentic static reviewers (Repro's model and budget), B3 PR-Agent v0.48.0 pinned; rules pre-registered in BASELINES.md; Testora not reproducible, reasons recorded |
+| J04 | 2026-10-18 | [#85](https://github.com/DuhItzAniket/Repro/pull/85) | S0 shake-out on two fresh tasks in their own images (sandbox_image; three faults fixed); exact McNemar power (168 vs 155); memorisation probe and seeding tools; S2 inclusion decided (Python >= 3.12); S1 pilot not run within the free tier; budget open for the owner |

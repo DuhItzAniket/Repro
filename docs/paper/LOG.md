@@ -541,3 +541,22 @@ entry. If something turns out wrong, add a correcting entry.
   refused the calls. The free tier's per-request cap forced reading in small pieces. Latency
   on tool-enabled requests dominated. All of these are stated, with the limits chosen.
 
+## 2026-10-18 · J04 · Real suites, the task's image, and the budget
+- **Repro runs in a task's own image** (`sandbox_image`) with its environment as it is, and
+  refuses to run the image's installed copy in place of the change
+  ([phase record](../phases/J04-shakeout.md)).
+- **Shake-out on two fresh tasks.** Both of Repro's cards were UNVERIFIABLE for stated
+  reasons: an order-dependent suite (the reversed rerun caught it) and a function whose
+  arguments carry the time. Three faults were fixed on the way:
+  - the image's environment is activated only in root's shell profile;
+  - 889 test IDs passed Windows' command-line limit;
+  - a failed run's card was dropped by the runner.
+- **Power:** the exact McNemar test needs 168 incorrect patches where the approximation says
+  155.
+- **Memorisation probe** (five tasks a sample, three answered each): the model named the right
+  file for 3 of 3 SWE-bench Verified tasks and 1 of 3 fresh ones. A smoke test, not a result.
+- **For the paper.** Two of two real tasks produced evidence Repro would not trust: unstable
+  between two runs of the same code. Coverage is part of the result, not a footnote. The
+  study as registered is about 100 million tokens, beyond the free tier. The budget is now a
+  design input to be decided and stated.
+

@@ -132,6 +132,11 @@ class DockerSandbox:
         self.hook = f"repro-hook-{self.volume[6:]}"
         #: Volumes adopted for every command's container: volume -> path (an environment).
         self.mounts: dict[str, str] = {}
+        #: Directories put on every command's import path after the hook: the snapshot's own,
+        #: when the image's environment is used as it is (J04).
+        self.python_path: tuple[str, ...] = ()
+        #: Variables every command gets, under the caller's own: an environment's ``PATH`` (J04).
+        self.variables: dict[str, str] = {}
         self._runs = 0
         self._lock = threading.Lock()
         self.work.mkdir(parents=True, exist_ok=True)
@@ -423,7 +428,7 @@ class DockerSandbox:
     def _environment(self, audit: str, extra: Mapping[str, str] | None) -> dict[str, str]:
         """No host variables at all: the image's own PATH, a home in ``/tmp``, the hook."""
         extra = dict(extra or {})
-        python_path = [HOOK_MOUNT]
+        python_path = [HOOK_MOUNT, *self.python_path]
         if extra.get("PYTHONPATH"):
             python_path.append(extra["PYTHONPATH"])
         env = {
@@ -432,6 +437,7 @@ class DockerSandbox:
             "PYTHONHASHSEED": str(HASH_SEED),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONNOUSERSITE": "1",
+            **self.variables,
             **extra,
         }
         env["PYTHONPATH"] = ":".join(python_path)  # the hook first, always

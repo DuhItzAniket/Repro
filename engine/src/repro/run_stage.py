@@ -71,6 +71,7 @@ from repro.policy.stage import PolicyRead
 from repro.provision import (
     DockerProvisioner,
     HostProvisioner,
+    ImageProvisioner,
     Project,
     ProjectError,
     ProvisionError,
@@ -190,6 +191,7 @@ def _sandbox_job(
     cache: Path,
     limits: Limits | None = None,
     docker_runtime: str | None = None,
+    env_image: str | None = None,
 ) -> Job:
     def run(ctx: JobContext) -> None:
         try:
@@ -211,8 +213,10 @@ def _sandbox_job(
         box_dir = work / "sandboxes" / side
         chosen = limits or Limits(timeout_s=TEST_RUN_TIMEOUT_S)
         provisioning = f"{side}: provisioning the environment ({project.kind})"
+        if env_image is not None and not use_docker(backend):
+            raise ProvisionError("sandbox_image needs the Docker sandbox (sandbox = docker)")
         if use_docker(backend):
-            image = sandbox_image()
+            image = env_image or sandbox_image()
             ctx.check()
             container = DockerSandbox(
                 box_dir, git, sha, image=image, limits=chosen, runtime=docker_runtime
@@ -223,7 +227,8 @@ def _sandbox_job(
             state.network[side] = ready["network"]
             ctx.emit("sandbox.ready", status="ok", payload=ready)
             ctx.log(provisioning)
-            env = DockerProvisioner(image).provision(side, project, container)
+            provisioner = ImageProvisioner(image) if env_image else DockerProvisioner(image)
+            env = provisioner.provision(side, project, container)
             state.sides[side] = Side(side, container, env)
         else:
             box = ProcessSandbox(box_dir, chosen)
@@ -981,11 +986,13 @@ def run_jobs(
     agents: "AgentSetup | None" = None,
     limits: Limits | None = None,
     docker_runtime: str | None = None,
+    env_image: str | None = None,
 ) -> Sequence[Job]:
     """The run and diff stages, after the build stage's snapshots and analysis; ``artifacts``
     stores the observations (without it they stay in memory); with ``agents``, the probe writer
     proposes inputs for the probes (G07); ``limits``: each sandboxed run's (H01);
-    ``docker_runtime``: the containers' runtime (H03)."""
+    ``docker_runtime``: the containers' runtime (H03); ``env_image``: an image whose own
+    environment the tests run in (J04)."""
 
     def sandbox(side: str, sha: str) -> Job:
         return _sandbox_job(
@@ -998,6 +1005,7 @@ def run_jobs(
             cache=cache,
             limits=limits,
             docker_runtime=docker_runtime,
+            env_image=env_image,
         )
 
     return [

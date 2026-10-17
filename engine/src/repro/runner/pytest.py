@@ -59,6 +59,11 @@ Place = tuple[str, str, int]
 TraceTarget = tuple[str, str, int, int]
 TRACE_TARGETS: Final = "trace-targets.json"
 PREVIEW_CALLS: Final = "preview-calls.json"
+#: The tests to run, when their IDs are too long for a command line (J04: 889 IDs passed
+#: Windows' 32,767 characters). The plugin keeps those items, in that order.
+SELECT: Final = "select.json"
+#: The most characters of node IDs passed as arguments.
+ARGV_IDS_MAX: Final = 8_000
 #: A preview's length at most (the event schema's ``Preview``).
 PREVIEW: Final = 512
 #: At most this many calls are previewed in one run.
@@ -450,6 +455,18 @@ def _tracing(
     return files, named, plain
 
 
+def _selection(tests: Sequence[str]) -> tuple[list[str], dict[str, bytes], dict[str, str]]:
+    """``tests`` as pytest's arguments, or, when their IDs are too long for a command line,
+    their files (or none, the project's own test paths, when those are too long as well) with
+    the IDs in ``select.json``: the files to write and the variable naming them."""
+    if sum(len(test) + 1 for test in tests) <= ARGV_IDS_MAX:
+        return list(tests), {}, {}
+    files = list(dict.fromkeys(test.partition("::")[0] for test in tests))
+    if sum(len(file) + 1 for file in files) > ARGV_IDS_MAX:
+        files = []
+    return files, {SELECT: json.dumps(list(tests)).encode()}, {"REPRO_SELECT": SELECT}
+
+
 def run_tests(
     sandbox: ProcessSandbox | DockerSandbox,
     env: Environment,
@@ -476,6 +493,8 @@ def run_tests(
     # The project's own test selection (its addopts' -m, -k, ignores...), then Repro's (H02).
     extra = [*selection(env.project.root), *(["--collect-only"] if collect_only else [])]
     files, named, plain = _tracing(trace, previews, samples)
+    tests, chosen, chosen_named = _selection(tests)
+    files, named = files | chosen, named | chosen_named
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"

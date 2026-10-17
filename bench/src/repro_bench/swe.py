@@ -58,7 +58,8 @@ RUN_TIMEOUT_S: Final = 3600.0
 _SHA: Final = re.compile(r"^[0-9a-f]{40}$")
 _REPO: Final = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 _DIGEST: Final = re.compile(r"^sha256:[0-9a-f]{64}$")
-_COMPLETED: Final = re.compile(r"\b(run_[0-9A-HJKMNP-TV-Z]{26}) completed\b")
+#: A run that ended with its card made: "completed", or "failed" when a job failed (J04).
+_ENDED: Final = re.compile(r"\b(run_[0-9A-HJKMNP-TV-Z]{26}) (?:completed|failed)\b")
 _LABELS: Final = (None, "CORRECT", "INCORRECT", "UNCERTAIN")
 
 
@@ -358,8 +359,8 @@ def run_task(
             argv, env=dict(env), capture_output=True, timeout=RUN_TIMEOUT_S, check=False
         )
     said = done.stderr.decode("utf-8", "replace")
-    found = _COMPLETED.search(said)
-    if done.returncode != 0 or found is None:
+    found = _ENDED.search(said)
+    if found is None:
         last = said.strip().splitlines()[-1:] or [f"exit status {done.returncode}"]
         return ended(f"no card: {last[0][:300]}", head)
     run_id = found[1]

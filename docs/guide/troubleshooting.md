@@ -43,6 +43,14 @@ answers.
 installed as Docker's runtime. Install it as [gVisor's guide](https://gvisor.dev/docs/user_guide/install/)
 says (`runsc install`), or unset `docker_runtime` for L3. gVisor runs on Linux only.
 
+**`sandbox_image` and `the snapshot's <package> does not import in the image`.** With
+`sandbox_image` set, the tests run in that image's own environment and nothing is installed.
+The change's code must import as it is in the repository. A package that needs building
+first (a compiled extension) cannot, and the card says so. Unset `sandbox_image` to let Repro
+build the project in its own image. `<package> would be imported from the image` means the
+image holds an installed copy that would be imported instead of the change, so Repro does
+not run.
+
 **The card says `network: detected-only`.** The run was in a contained process (L2): network
 attempts were recorded, not blocked. Install Docker for L3, where the network is cut off.
 
