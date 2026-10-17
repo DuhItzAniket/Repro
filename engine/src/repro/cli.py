@@ -12,6 +12,7 @@ Global options override the environment and the configuration file (``repro.conf
 to stderr; a command's output goes to stdout.
 """
 
+import html
 import json
 import os
 import re
@@ -226,8 +227,8 @@ def _bind(host: str, port: int) -> socket.socket:
     """The listening socket, open before anything starts, so a busy port fails at once."""
     if host not in LOOPBACK:
         typer.echo(
-            f"repro: {host} is not a loopback address. Until the per-session token arrives "
-            "(H03), the cockpit listens on 127.0.0.1 or ::1 only.",
+            f"repro: {host} is not a loopback address. The cockpit listens on 127.0.0.1 or ::1 "
+            "only: its token would cross the network in clear text (THREAT_MODEL T13).",
             err=True,
         )
         raise typer.Exit(2)
@@ -261,12 +262,14 @@ def _serve(
     """Serves the API and the cockpit on ``sock`` until Ctrl+C; ``page`` is the URL to show."""
     # Imported here: the API's dependencies are not needed by the other commands.
     from repro.api import create_app  # noqa: PLC0415
+    from repro.api.token import new_token  # noqa: PLC0415
     from repro.api.ui import find_ui  # noqa: PLC0415
 
     host, port = sock.getsockname()[:2]
     shown = f"[{host}]" if ":" in host else host
     origins = {f"http://{shown}:{port}", f"http://localhost:{port}", *(allow_origin or [])}
     ui = find_ui(settings.ui_dir)
+    token = new_token()  # this server's only: the URL below carries it (THREAT_MODEL T13)
     api = create_app(
         settings.paths.database,
         runs_dir=settings.paths.runs,
@@ -274,8 +277,9 @@ def _serve(
         allowed_origins=origins,
         ui_dir=ui,
         replay_log=replay_log,
+        token=token,
     )
-    url = f"http://{shown}:{port}{page}"
+    url = f"http://{shown}:{port}{page}#token={token}"
     if ui is None:
         typer.echo(
             "repro: the cockpit is not built (pnpm build) or ui_dir holds no index.html; "
@@ -286,16 +290,43 @@ def _serve(
     typer.echo(f"repro: cockpit at {url} (Ctrl+C to stop)", err=True)
     if started is not None:
         started()
-    if open_browser and ui is not None:
-        webbrowser.open(url)
-    _run_server(api, sock, settings.log_level)
+    opener = (
+        _opener(url, settings.paths.data_dir, port) if open_browser and ui is not None else None
+    )
+    try:
+        if opener is not None:
+            webbrowser.open(opener.as_uri())
+        _run_server(api, sock, settings.log_level)
+    finally:
+        if opener is not None:
+            opener.unlink(missing_ok=True)
+
+
+def _opener(url: str, data_dir: Path, port: int) -> Path:
+    """A page only this user can read that sends the browser to ``url`` (THREAT_MODEL T13). The
+    browser is started with this file's path, not the URL: a command line can be read by the
+    machine's other users (on Linux, ``/proc/<pid>/cmdline``), and the URL holds the token."""
+    data_dir.mkdir(parents=True, exist_ok=True)
+    page = data_dir / f"open-{port}.html"
+    target = html.escape(url, quote=True)
+    body = (
+        '<!doctype html><meta charset="utf-8">'
+        f'<meta http-equiv="refresh" content="0;url={target}">'
+        f'<title>Repro</title><a href="{target}">Open the cockpit</a>\n'
+    )
+    page.unlink(missing_ok=True)  # created afresh, so the mode below is the file's
+    descriptor = os.open(page, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as out:
+        out.write(body)
+    return page
 
 
 def _run_server(api: "FastAPI", sock: socket.socket, log_level: str) -> None:
     """Runs uvicorn on the bound socket until Ctrl+C (tests replace this)."""
     import uvicorn  # noqa: PLC0415
 
-    config = uvicorn.Config(api, log_level=log_level, ws="websockets-sansio")
+    # No access log: the event stream's request line carries the session token.
+    config = uvicorn.Config(api, log_level=log_level, ws="websockets-sansio", access_log=False)
     uvicorn.Server(config).run(sockets=[sock])
 
 
@@ -472,6 +503,7 @@ def run(
         limits=Limits(
             timeout_s=settings.test_timeout_s, memory_bytes=settings.memory_limit_mb * MIB
         ),
+        docker_runtime=settings.docker_runtime,
     )
     cleaned = threading.Lock()
 

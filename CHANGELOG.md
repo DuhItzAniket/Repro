@@ -17,6 +17,22 @@ All notable changes to this project are documented here. The format follows
 - `repro_bench.scale`: `repro run` on three pinned Pallets changes of increasing size
   (itsdangerous, flask, click), cloned at run time, cold and then warm. Times, cache use and
   the card's counts go to `bench/results/scale.csv`. [H02]
+- A session token for the engine's API. Each server `repro serve`, `run` or `replay` starts
+  makes its own, and every request for a run's data must carry it; the cockpit's own files
+  need none. The printed URL holds it in its fragment, which a browser never sends. The cockpit
+  keeps it for the tab and sends it with each request. The browser is opened on a page only the
+  user can read, not on a command line holding the token, and the server keeps no access log.
+  [H03]
+- `docker_runtime` (`REPRO_DOCKER_RUNTIME`): `runsc` runs the target's containers under gVisor,
+  isolation level L4. A runtime Docker does not have is an error, never a silent L3. CI runs
+  the container tests under gVisor in a job of their own. [H03]
+- The container escape suite also tries becoming root, a raw socket, mounting a filesystem,
+  Docker's own socket, writing a kernel setting, opening kernel devices and reading the host's
+  environment. [H03]
+- A dependency audit in CI: pip-audit 2.10.1 over the locked Python dependencies (hashes
+  checked) and `pnpm audit`. [H03]
+- THREAT_MODEL.md §7 names, for each threat, the tests that meet its mitigation or why none
+  can; a test keeps the two in step. [H03]
 
 ### Changed
 - A selected test that no run reported leaves the change UNVERIFIABLE (`tests_not_run`). Until
@@ -52,6 +68,9 @@ All notable changes to this project are documented here. The format follows
   dependencies from `pyproject.toml`. [H02]
 - The run's log says where base's test map came from: made by running every base test, or
   from the cache. [H02]
+- The home directory is written `~` in every string of every event, as on the card's missing
+  items: a card may be shared, and an absolute path names its user. Log messages, values and
+  errors pass the same credential scrubbing as events. [H03]
 
 ### Fixed
 - `repro run` without git installed prints a message and exits 2, not a traceback. [H01]
@@ -66,6 +85,11 @@ All notable changes to this project are documented here. The format follows
   installed. The snapshot's files reached the container dated 1970, and a wheel, being a
   zip, cannot hold a time before 1980. They now carry the commit's time, as `git archive`
   does, never earlier than 1980-01-02. [H02]
+- The audit hook judges a write by where its path resolves. A link inside the run's directory
+  that leads out is now reported. A path that reaches the run's directory through a link, a
+  junction, a short name or a redirected folder no longer is. [H03]
+- A cockpit opened without the session token says to open the printed URL, instead of showing
+  the demo run. [H03]
 
 ## [0.7.0] - 2026-10-17
 

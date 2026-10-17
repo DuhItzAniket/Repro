@@ -3,7 +3,9 @@
 import io
 import json
 import logging
+import os
 import re
+from pathlib import Path
 
 import pytest
 
@@ -65,6 +67,33 @@ def test_redact_leaves_ordinary_values() -> None:
     assert redact({"password_hint": "x"}) == {"password_hint": REDACTED}
     assert redact({"count": 3, "items": (1, 2)}) == {"count": 3, "items": [1, 2]}
     assert redact("plain") == "plain"
+
+
+def test_credentials_and_the_home_directory_leave_no_trace_in_text(
+    stream: io.StringIO,
+) -> None:
+    """H03: a credential-shaped value or the home directory in a message, a field's value or an
+    error is scrubbed as events are, whatever the field is called."""
+    token = "gh" + "p_" + "a1B2" * 9  # built here: a literal would trip the repository scan
+    home = str(Path.home())
+    for log_format in ("json", "text"):
+        configure_logging("info", log_format, stream)
+        try:
+            raise RuntimeError(f"failed with {token} in {home}{os.sep}project")
+        except RuntimeError:
+            get_logger("x").exception(
+                f"pushing with {token}",
+                extra={"fields": {"remote": f"https://{token}@example.invalid/r.git"}},
+            )
+        get_logger("x").info("wrote", extra={"fields": {"path": f"{home}{os.sep}out.txt"}})
+        written = stream.getvalue()
+        assert token not in written
+        assert home not in written
+        assert home.replace("\\", "/") not in written
+        assert REDACTED in written
+        assert "~" in written
+        stream.seek(0)
+        stream.truncate()
 
 
 def test_fields_cannot_overwrite_the_envelope(stream: io.StringIO) -> None:

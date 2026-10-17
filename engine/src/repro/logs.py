@@ -14,8 +14,11 @@ The default format is one JSON object per line::
 
 ``ts`` is UTC with milliseconds. Extra fields come from ``extra={"fields": {...}}``. A field whose
 name looks like a credential (token, secret, password, authorization, API key) is replaced by
-``"[redacted]"``, at any depth, so a careless call cannot leak one. What a user should see about a
-run is not a log line: it is a ``log.line`` event in the run's event log.
+``"[redacted]"``, at any depth, so a careless call cannot leak one. Every other string, the
+message and an error's text included, goes through the events' scrubbing (``repro.scrub``,
+H03): credentials of a recognised shape are redacted and the home directory is written ``~``.
+What a user should see about a run is not a log line: it is a ``log.line`` event in the run's
+event log.
 """
 
 import json
@@ -27,6 +30,7 @@ from typing import IO, Any, Final
 
 from repro.clock import utc_timestamp
 from repro.config import LogFormat, LogLevel
+from repro.scrub import scrub_text
 
 LOGGER_NAME: Final = "repro"
 REDACTED: Final = "[redacted]"
@@ -48,6 +52,8 @@ def redact(value: object) -> object:
         }
     if isinstance(value, list | tuple):
         return [redact(item) for item in value]
+    if isinstance(value, str):
+        return scrub_text(value)
     return value
 
 
@@ -67,7 +73,7 @@ class JsonFormatter(logging.Formatter):
             "ts": utc_timestamp(record.created),
             "level": record.levelname.lower(),
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": scrub_text(record.getMessage()),
         }
         for key, value in _fields(record).items():
             if key not in entry:
@@ -76,8 +82,8 @@ class JsonFormatter(logging.Formatter):
             error = record.exc_info[1]
             entry["error"] = {
                 "type": record.exc_info[0].__name__,
-                "message": str(error),
-                "traceback": self.formatException(record.exc_info),
+                "message": scrub_text(str(error)),
+                "traceback": scrub_text(self.formatException(record.exc_info)),
             }
         return json.dumps(entry, ensure_ascii=True, default=str, separators=(",", ":"))
 
@@ -88,9 +94,9 @@ class TextFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         fields = " ".join(f"{key}={value}" for key, value in _fields(record).items())
         line = f"{utc_timestamp(record.created)} {record.levelname.lower():<7} {record.name}: "
-        line += record.getMessage() + (f" {fields}" if fields else "")
+        line += scrub_text(record.getMessage()) + (f" {fields}" if fields else "")
         if record.exc_info and record.exc_info[0] is not None:
-            line += "\n" + self.formatException(record.exc_info)
+            line += "\n" + scrub_text(self.formatException(record.exc_info))
         return line
 
 

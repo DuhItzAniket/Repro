@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import type { CockpitSummary } from "../src/test-hook";
-import { buildFixture, startRepro, stop, summaryWhenFinished } from "./support";
+import { buildFixture, startRepro, stop, summaryWhenFinished, testMode } from "./support";
 
 /** A full run: provisioning, and on a machine with Docker, Repro's sandbox image on first use. */
 const RUN_MS = 900_000;
@@ -37,7 +37,7 @@ async function reproduce(
     join(data, `${name}-data`),
   );
   started.push(live.child);
-  await page.goto(`${await live.url}&test`);
+  await page.goto(testMode(await live.url));
   const summary = await summaryWhenFinished(page, RUN_MS);
   await stop(live.child);
   return summary;

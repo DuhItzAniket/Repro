@@ -169,6 +169,10 @@ from an earlier measurement and checked by a repeatable benchmark.
   26.2 s warm, flask 96.4 s and 97.7 s, click 49.5 s and 46.3 s. flask has 9 gap items here and
   16 on the host: 7 of its CLI tests fail on both sides on Windows (F2F, pre-existing), not
   in Linux.
+- **On Linux** (the nightly `scale` job, Ubuntu on GitHub's runner, process sandbox, run
+  39026482930 on this branch): itsdangerous 4.8 s cold and 4.0 s warm, flask 35.0 s and
+  36.2 s, click 19.3 s and 12.9 s; `--check` passed. flask has 9 gap items there, as in a
+  container.
 - **The targets**, in the recorded runs (`--check` passed for both sandboxes):
   - T1: warm provisioning 1.3, 1.8 and 1.7 s a side (process), 4.5–4.8 s (container).
   - T2: Repro selects click's tests as its configuration does: 2,117 on head, where pytest's

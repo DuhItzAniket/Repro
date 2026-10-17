@@ -4,7 +4,15 @@ import "./styles/shell.css";
 import { computed, effect, signal } from "@preact/signals";
 import { render } from "preact";
 import { FIXTURES, loadLog } from "./data/load";
-import { latestRun, type Source, sourceFromQuery, streamUrl } from "./data/source";
+import { takeToken, withToken } from "./data/session";
+import {
+  LOCKED,
+  latestRun,
+  needsToken,
+  type Source,
+  sourceFromQuery,
+  streamUrl,
+} from "./data/source";
 import { browserSocket, RunStream } from "./data/stream";
 import { type DrawerView, drawerView } from "./focus/evidence";
 import { type Focus, type FocusTargets, focusKey, focusTargets, NO_FOCUS } from "./focus/focus";
@@ -344,10 +352,24 @@ function ingest(values: readonly unknown[]): AppendSummary {
   return result;
 }
 
+/** The engine's session token, from the printed URL's fragment or this tab (T13, H03). */
+function tokenStorage(): Storage | null {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null; // blocked site data
+  }
+}
+const token = takeToken(window.location, tokenStorage(), (url) =>
+  window.history.replaceState(window.history.state, "", url),
+);
+/** `fetch` for the engine's data: with the session's token. */
+const engineFetch = withToken(token);
+
 /** A whole log at once (a fixture, or one the engine serves): replayed from the start. */
 function replayLog(url: string, label: string): void {
   view.status.value = `loading ${label}…`;
-  loadLog(url)
+  loadLog(url, engineFetch)
     .then(({ values, badLines }) => {
       const result = ingest(values);
       clock.play();
@@ -372,7 +394,7 @@ function followRun(runId: string, replay: boolean): void {
   view.status.value = `connecting to ${runId}…`;
   let playing = false;
   const stream = new RunStream(
-    (from) => streamUrl(window.location, runId, from),
+    (from) => streamUrl(window.location, runId, from, token),
     {
       ingest: (events) => {
         const result = ingest(events);
@@ -401,7 +423,22 @@ function followRun(runId: string, replay: boolean): void {
   stream.start();
 }
 
+/**
+ * Starts showing `source`. A fixture needs nothing; anything from the engine first needs its
+ * session token: without it, the page says so instead of showing the demo (T13).
+ */
 function load(source: Source): void {
+  if (source.kind === "fixture") {
+    start(source);
+    return;
+  }
+  void needsToken(engineFetch).then((locked) => {
+    if (locked) view.status.value = LOCKED;
+    else start(source);
+  });
+}
+
+function start(source: Source): void {
   switch (source.kind) {
     case "fixture":
       replayLog(FIXTURES[source.name], `${source.name} run`);
@@ -414,8 +451,8 @@ function load(source: Source): void {
       break;
     case "latest":
       // Served by the engine: its newest run; on the dev server (or with no runs): the demo.
-      void latestRun().then((runId) =>
-        runId === null ? load({ kind: "fixture", name: "demo" }) : followRun(runId, false),
+      void latestRun(engineFetch).then((runId) =>
+        runId === null ? start({ kind: "fixture", name: "demo" }) : followRun(runId, false),
       );
       break;
   }

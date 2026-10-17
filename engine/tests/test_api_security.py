@@ -1,4 +1,5 @@
-"""The API answers only local hosts, and WebSockets only allowed origins (C04; THREAT_MODEL T16)."""
+"""The API answers only local hosts, WebSockets only allowed origins (C04; THREAT_MODEL T16),
+and with a session token, only requests that carry it (H03; T13)."""
 
 import json
 from collections.abc import Iterator
@@ -12,7 +13,7 @@ from websockets.exceptions import InvalidStatus
 from websockets.sync.client import connect
 from websockets.typing import Origin
 
-from api_support import Server
+from api_support import AUTH, TOKEN, Server
 from repro.api import create_app
 from repro.store import StoreWriter
 from store_support import log_line, run_record, started_writer
@@ -98,8 +99,8 @@ def test_a_real_server_refuses_a_foreign_origin_with_403(
         assert [event["seq"] for event in first["events"]] == [1]
 
 
-def open_and_close(client: TestClient, url: str) -> None:
-    with client.websocket_connect(url):
+def open_and_close(client: TestClient, url: str, headers: dict[str, str] | None = None) -> None:
+    with client.websocket_connect(url, headers=headers or {}):
         pass
 
 
@@ -107,3 +108,61 @@ def test_a_websocket_to_a_foreign_host_is_refused(client: TestClient, run_id: st
     with pytest.raises(WebSocketDenialResponse) as denied:
         open_and_close(client, f"ws://evil.example/runs/{run_id}/events")
     assert denied.value.status_code == 400
+
+
+@pytest.fixture
+def guarded(tmp_path: Path, writer: StoreWriter) -> Iterator[TestClient]:
+    """The API with a session token, the cockpit's files and a log to replay."""
+    ui = tmp_path / "dist"
+    ui.mkdir()
+    (ui / "index.html").write_text("<!doctype html><title>Repro</title>", "utf-8")
+    log = tmp_path / "replay.jsonl"
+    log.write_text("{}\n", "utf-8")
+    app = create_app(
+        tmp_path / "repro.db", allowed_origins={OWN_ORIGIN}, ui_dir=ui, replay_log=log, token=TOKEN
+    )
+    with TestClient(app, base_url="http://127.0.0.1") as client:
+        yield client
+
+
+def test_with_a_token_the_engines_data_needs_it(guarded: TestClient, run_id: str) -> None:
+    for path in ("/runs", f"/runs/{run_id}", f"/runs/{run_id}/card", "/replay.jsonl"):
+        refused = guarded.get(path)
+        assert refused.status_code == 401, path
+        assert refused.headers["www-authenticate"] == "Bearer"
+        assert "open the URL repro printed" in refused.text
+        assert guarded.get(path, headers={"Authorization": "Bearer wrong"}).status_code == 401
+        # Only the event stream takes the token in its query: request lines get logged.
+        assert guarded.get(f"{path}?token={TOKEN}").status_code == 401
+    assert guarded.get("/runs", headers=AUTH).json()[0]["id"] == run_id
+    assert guarded.get("/replay.jsonl", headers=AUTH).status_code == 200
+    assert guarded.get("/").text.startswith("<!doctype html>")  # the cockpit's files: no data
+
+
+def test_with_a_token_the_stream_needs_it(guarded: TestClient, run_id: str) -> None:
+    url = f"ws://127.0.0.1/runs/{run_id}/events"
+    for refused_url, headers in (
+        (url, {}),
+        (f"{url}?token=wrong", {}),
+        (url, {"Authorization": "Bearer wrong"}),
+        (f"{url}?token={TOKEN}", {"origin": "https://evil.example"}),  # the origin still counts
+    ):
+        with pytest.raises(WebSocketDisconnect) as refused:
+            open_and_close(guarded, refused_url, headers)
+        assert refused.value.code == 1008, (refused_url, headers)
+    for allowed_url, headers in ((f"{url}?token={TOKEN}", {"origin": OWN_ORIGIN}), (url, AUTH)):
+        with guarded.websocket_connect(allowed_url, headers=headers) as socket:
+            assert socket.receive_json()["type"] == "events"
+
+
+def test_a_real_server_refuses_a_stream_without_its_token_with_403(
+    tmp_path: Path, writer: StoreWriter, run_id: str
+) -> None:
+    app = create_app(tmp_path / "repro.db", allowed_origins={OWN_ORIGIN}, token=TOKEN)
+    with Server(app) as server:
+        uri = f"ws://127.0.0.1:{server.port}/runs/{run_id}/events"
+        with pytest.raises(InvalidStatus) as refused:
+            connect(uri, origin=Origin(OWN_ORIGIN), open_timeout=10)
+        assert refused.value.response.status_code == 403
+        with connect(f"{uri}?token={TOKEN}", origin=Origin(OWN_ORIGIN), open_timeout=10) as socket:
+            assert json.loads(socket.recv(timeout=10))["type"] == "events"

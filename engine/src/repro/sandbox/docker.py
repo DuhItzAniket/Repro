@@ -1,4 +1,4 @@
-"""The container sandbox: L3 (ADR-0004, ARCHITECTURE §8).
+"""The container sandbox: L3, or L4 under gVisor (ADR-0004, ARCHITECTURE §8).
 
 A commit is streamed into a Docker volume of its own: its tree object as a tar stream
 (``gitops.tar_tree``: modes and symbolic links exactly as git stores them, whatever the host),
@@ -13,12 +13,18 @@ fresh container that:
 - drops **every capability**, cannot gain privileges, and runs as uid 1000;
 - is limited in **processes, memory (no swap) and CPU**, and killed at its wall-clock timeout.
 
+With ``runtime="runsc"``, the containers that run the target's code run under gVisor, a kernel
+in user space between them and the host's (L4, H03; installed as https://gvisor.dev/docs/
+user_guide/install/ says, checked 2026-10-17). The sandbox checks that Docker has the runtime
+before it starts; any other runtime named is passed on, and the level stays L3.
+
 L1 detection still runs inside, so blocked attempts are still recorded. What a command leaves
 (its audit log, result files) is read back with ``docker cp`` after it ends: no host directory
 is writable from inside.
 """
 
 import io
+import json
 import posixpath
 import subprocess
 import tarfile
@@ -80,11 +86,14 @@ def docker_available(docker: str = "docker") -> bool:
     return done.returncode == 0 and done.stdout.strip() == b"linux"
 
 
+#: gVisor's Docker runtime: the one that makes a container L4.
+GVISOR: Final = "runsc"
+
+
 class DockerSandbox:
     """Runs commands at L3 on commit ``commit`` of ``git``'s repository, held in a volume."""
 
     backend: Final = "docker"
-    isolation_level: Final = "L3"
 
     def __init__(
         self,
@@ -95,11 +104,13 @@ class DockerSandbox:
         limits: Limits | None = None,
         image: str = DEFAULT_IMAGE,
         docker: str = "docker",
+        runtime: str | None = None,
     ) -> None:
         self.work = work
         self.limits = limits or Limits()
         self.image = image
         self.docker = docker
+        self.runtime = runtime
         self.volume = f"repro-{uuid.uuid4().hex[:12]}"
         #: Volumes adopted for every command's container: volume -> path (an environment).
         self.mounts: dict[str, str] = {}
@@ -107,6 +118,8 @@ class DockerSandbox:
         self._lock = threading.Lock()
         self.work.mkdir(parents=True, exist_ok=True)
         self._server = self._docker("version", "--format", "{{.Server.Version}}").decode().strip()
+        if runtime is not None:
+            self._check_runtime(runtime)
         if not self._docker("image", "inspect", "--format", "{{.Id}}", self.image, check=False):
             self._docker("pull", "--quiet", self.image)
         self._docker("volume", "create", self.volume)
@@ -115,6 +128,24 @@ class DockerSandbox:
         except BaseException:
             self.close()
             raise
+
+    @property
+    def isolation_level(self) -> str:
+        """L4 under gVisor, else L3 (any other runtime is not known to add a layer)."""
+        return "L4" if self.runtime == GVISOR else "L3"
+
+    def _check_runtime(self, runtime: str) -> None:
+        listed = self._docker("info", "--format", "{{json .Runtimes}}").decode().strip()
+        try:
+            known = json.loads(listed) if listed else {}
+        except ValueError:
+            known = {}
+        if not isinstance(known, dict) or runtime not in known:
+            have = ", ".join(sorted(known)) if isinstance(known, dict) else "none listed"
+            raise SandboxError(
+                f"Docker has no runtime {runtime!r} (it has: {have}); gVisor's is installed "
+                "with `runsc install` (https://gvisor.dev/docs/user_guide/install/)"
+            )
 
     # -- the volume --------------------------------------------------------------------------
 
@@ -234,13 +265,14 @@ class DockerSandbox:
     # -- running -----------------------------------------------------------------------------
 
     def ready_payload(self, side: str) -> dict[str, str]:
-        """The ``sandbox.ready`` payload: L3, the network enforced."""
+        """The ``sandbox.ready`` payload: L3 (L4 under gVisor), the network enforced."""
+        runtime = f", runtime {self.runtime}" if self.runtime is not None else ""
         return {
             "side": side,
             "backend": self.backend,
             "isolation_level": self.isolation_level,
             "network": "enforced",
-            "platform": f"Docker {self._server} linux, {self.image}"[:200],
+            "platform": f"Docker {self._server} linux{runtime}, {self.image}"[:200],
         }
 
     @staticmethod
@@ -343,6 +375,7 @@ class DockerSandbox:
     def _hardening(self) -> list[str]:
         memory = str(self.limits.memory_bytes)
         return [
+            *(["--runtime", self.runtime] if self.runtime is not None else []),
             "--network", "none",
             "--read-only",
             "--tmpfs", f"{TMP}:rw,exec,size={TMPFS_SIZE}",

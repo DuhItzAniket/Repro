@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { latestRun, sourceFromQuery, streamUrl } from "./source";
+import { latestRun, needsToken, sourceFromQuery, streamUrl } from "./source";
 
 const RUN = "run_01M4XFFGE7890FQMJMSM5RP3T9";
 
@@ -43,9 +43,25 @@ describe("latestRun", () => {
   });
 });
 
+describe("needsToken", () => {
+  const status = (code: number) =>
+    (async () => new Response("", { status: code })) as unknown as typeof fetch;
+
+  it("is a refusal only when the engine answers 401", async () => {
+    expect(await needsToken(status(401))).toBe(true);
+    for (const code of [200, 404, 503]) expect(await needsToken(status(code))).toBe(false);
+    const offline = (async () =>
+      Promise.reject(new TypeError("failed"))) as unknown as typeof fetch;
+    expect(await needsToken(offline)).toBe(false);
+  });
+});
+
 it("builds the stream URL on the page's origin", () => {
   expect(streamUrl({ protocol: "http:", host: "127.0.0.1:8780" }, RUN, 12)).toBe(
     `ws://127.0.0.1:8780/runs/${RUN}/events?from=12`,
+  );
+  expect(streamUrl({ protocol: "http:", host: "h" }, RUN, 3, "a-b_c")).toBe(
+    `ws://h/runs/${RUN}/events?from=3&token=a-b_c`,
   );
   expect(streamUrl({ protocol: "https:", host: "h" }, RUN, 0)).toBe(
     `wss://h/runs/${RUN}/events?from=0`,
