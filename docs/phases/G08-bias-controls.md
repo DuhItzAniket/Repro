@@ -59,28 +59,81 @@ liking for its own family's output. A last check reads all the verdicts together
     This repository's own commits carry it.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): the verdict flip rate under order swap is measured and reported on the
-  eval set.
+- [x] AC1 (roadmap): the verdict flip rate under order swap is measured and reported on the
+  eval set: 0 of 13 (see Evidence).
 - [x] AC2: order-swap pass for contradicted verdicts, optional 2-of-3 panel, judge ≠ author
-  policy, QA agent (scripted tests).
+  policy, QA agent.
 
 ## Test plan
 | Criterion | Check |
 |---|---|
-| AC1 | The recorded runs replayed with `agent_order_swap = all`; the flip rate from their verdicts' `agreement` |
+| AC1 | The recorded runs replayed with `agent_order_swap = all` (`repro_bench.flips`; G09's harness runs them in CI); `test_a_contradiction_stands_only_when_both_orders_give_it` |
 | AC2 | `test_agents_review.py`: the swapped request, a contradiction both orders give, one they do not, `all`/`off`, the panel. `test_agents_bias.py`: families, authors, agreement. `test_agents_qa.py`: the request, the checks, the job withholding and asking nothing. `test_agents_reader.py`: `judge_is_author` from a commit trailer |
 
 ---
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.agents.bias` (families, `author_families`, `judge_is_author`, `agreeing`, `degraded`,
+  `majority`), `repro.agents.qa` and prompt `qa/1` (locked), the `qa` job after `gap`.
+- In the review job: one judging helper, the swap and the panel. `reviewer_request(...,
+  reverse=)`.
+- Settings `agent_order_swap` and `agent_panel`. Missing reason `judge_is_author` (event
+  schema; generated code regenerated).
+- `repro_bench.flips`: the flip rate from event logs.
+- **The cassette key normalises IDs at the start of a line.** It used to normalise on the
+  call's JSON text, where such an ID follows the `\n` escape's `n` and the pattern's word
+  boundary does not match. The QA agent's evidence lines kept their IDs, so every run asked
+  for a new call.
+  - IDs are now normalised in each string before encoding. That gives the same key wherever
+    the old way matched: 73 cassettes kept theirs.
+  - The four QA recordings were re-keyed from their stored requests. Each was first checked
+    to give its old key, so the stored request is what was sent.
+  - The pairs then fell onto two keys, which confirms they were the same call twice.
+- Cassettes recorded live for the five reviewed pull requests. The eight reviewer cassettes
+  they superseded were removed: a trace of every replay suite found them unused.
+- `test_agents_run.py` replays the five runs with every agent on. The G07 run with the probe
+  writer off is gone.
+- Tests:
+  - `test_agents_bias.py` (14);
+  - `test_agents_qa.py` (5);
+  - 5 more in `test_agents_review.py`;
+  - 1 more each in `test_agents_reader.py` and `test_agents_cassette.py`;
+  - 3 more in `test_agents_run.py`.
 
 ## Evidence
+Recorded live on 2026-10-17 (Groq, `openai/gpt-oss-120b`), replayed offline:
+
+| Pull request | Card | Verdicts |
+|---|---|---|
+| honest-fix | VERIFIED | C1–C4 supported. QA: 0 inconsistencies. The probe writer's 7 inputs all differ, as the fix intends |
+| injection | VERIFIED | Same as honest-fix. QA: 0 inconsistencies |
+| silent-change | FLAGGED | C1, C2 rejected (refactor claims supported by a change); the difference stays unexplained |
+| false-claim | FLAGGED | C1 contradicted, and the reversed order agrees (2 of 2); C2, C3, C5 unverifiable; C4 rejected |
+| probe-semantic | FLAGGED | C3 ("No behaviour change") contradicted, 2 of 2, citing the probe difference only the probe writer's `+05:30` input found; C1, C2 rejected |
+
+**Flip rate under order swap: 0 of 13.** Every verdict was judged in both orders in the
+recorded runs: 8 supported, 3 unverifiable, 2 contradicted, and no second order changed one.
+MT-Bench found GPT-4 consistent in 65 % of swapped pairs (research/04 §2.3), but that measured
+a comparison of two answers. Here the order is that of the evidence about one claim, and 13
+verdicts is too few to compare either way.
+
+Other observations:
+- The panel and `judge_is_author` have scripted tests only. No fixture names an AI author, and
+  a panel was not recorded.
+- Recording took about 130,000 tokens over two passes. Part of the second pass timed out on
+  the API's daily limit; another part met a failure to reach the package index. Both were run
+  again; record mode serves what was already recorded.
 - CI run: linked in the PR.
 
 ## Deviations from spec
+- The panel's second judge reads the order reversed, so a panel needs no separate swap pass.
 
 ## Known gaps
+- The panel has not been run live. Its three models must be configured.
+- Judge ≠ author discloses only; it does not change which model reviews.
+- G07's known gap is closed: the Gate G runs and probe-semantic replay with the probe writer
+  on.
 
 ## Dependencies added
 None.
