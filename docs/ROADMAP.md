@@ -617,7 +617,7 @@ artifact is archived with a DOI. The paper is submitted.
 | J02 | Ground-truth pipeline & annotation tooling | L | J01 | done |
 | J03 | Baselines | L | J01 | done |
 | J04 | S0 dev set & S1 pilot | M | J02, J03 | done |
-| J05 | S2 patch generation on fresh tasks | M | J04 | planned |
+| J05 | S2 patch generation on fresh tasks | M | J04 | in progress |
 | J06 | Annotation, κ & label freeze; pre-registration | L | J05 | planned |
 | J07 | S2 main study | M | J06 | planned |
 | J08 | Ablations, S3 in-the-wild & S4 synthetic | M | J07 | planned |
