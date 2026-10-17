@@ -37,6 +37,20 @@ Each phase still has its own PR, record and phase-log row:
 | G09 | [#69](https://github.com/DuhItzAniket/Repro/pull/69) | 1cead89 | The eval harness, its metrics, results file and CI gate |
 
 ## CI matrix
+| Job | Python | Node | Result | Run |
+|---|---|---|---|---|
+| test, ubuntu-latest (Docker: L3 suites required) | 3.13 | 24 | pass (13 min 2 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| test, windows-latest | 3.13 | 24 | pass (19 min 51 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| agent evals, ubuntu-latest (five reviewed PRs, twice each, from cassettes) | 3.13 | — | pass (2 min 16 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| Gate E, ubuntu-latest (containers) | 3.13 | 24 | pass (2 min 55 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| Gate D, ubuntu-latest (containers) | 3.13 | 24 | pass (2 min 40 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| Gate C, ubuntu-latest (`--analyse-only`) | 3.13 | 24 | pass (1 min 0 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| visual, ubuntu-latest + Playwright image | — | 24 | pass (3 min 14 s) | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+| lint, security, gates | 3.13 | 24 | pass | [CI run 39004587485](https://github.com/DuhItzAniket/Repro/actions/runs/39004587485) on `main` at 1cead89 (all of Stage G) |
+
+Gate G's criteria are engine criteria: `test_agents_run.py` replays the reviewed runs in the
+`test` jobs on both operating systems, and the `agent evals` job holds them to the thresholds.
+No job reaches a model: replay never makes a call.
 
 ## Metrics at gate (measured)
 | Metric | Value |
