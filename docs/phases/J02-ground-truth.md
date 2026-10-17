@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | J — Evaluation & research |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | J01 |
-| **Branch / PR** | `phase/J02-ground-truth` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/J02-ground-truth` · [#83](https://github.com/DuhItzAniket/Repro/pull/83) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Every (task, patch) pair gets a ground-truth label by the protocol's procedure
@@ -118,7 +118,7 @@ adjudication and a frozen label file.
   and a rationale were kept across items, and the export was the JSONL `labels` reads.
 - **Locally**: `test_bench_truth.py` 27 and `test_bench_labels.py` 18 passed, with
   `test_bench_swe.py`'s 18.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#83).
 
 ## Deviations from spec
 None.
