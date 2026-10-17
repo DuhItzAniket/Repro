@@ -36,6 +36,10 @@ All notable changes to this project are documented here. The format follows
 - S2's candidate tasks, pinned (`bench/data/s2-candidates.jsonl`, 351 tasks by the protocol's
   rules; `python -m repro_bench.tasks`), and `python -m repro_bench.generate`, a two-call
   localize-and-repair scaffold whose edits become a diff by `difflib`, its trajectory kept. [J05]
+- The study's registered analysis as code (`python -m repro_bench.analysis`): majority of k,
+  flip rate, coverage and bounding conversions, exact McNemar with Holm, and cluster-bootstrap
+  intervals over repositories. Also the pre-registration and its freeze checklist
+  (`docs/paper/PREREGISTRATION.md`). [J06]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported

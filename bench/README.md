@@ -17,6 +17,7 @@ What is here so far:
 | `repro_bench.baselines` | J03 | B0 CI-only, B1 diff-only LLM, B2 agentic static LLM, B3 PR-Agent, on sealed inputs |
 | `repro_bench.seed`, `memo`, `power` | J04 | Seeded S0 patches, the memorisation probe, McNemar sample sizes |
 | `repro_bench.tasks`, `generate`, `edits` | J05 | S2's candidate tasks, and agent patches from a two-call localize-and-repair scaffold |
+| `repro_bench.analysis` | J06 | The registered analysis: rates, coverage, exact McNemar with Holm, cluster bootstrap |
 
 Each runs `repro run` through its CLI, or calls the agents as the engine does, and reads what a
 run stored through `repro.store`. Results go to `bench/results/`.
