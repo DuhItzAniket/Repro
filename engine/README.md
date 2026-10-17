@@ -11,7 +11,7 @@ uv run repro --version
 uv run repro doctor          # Python, SQLite, git, uv, Docker and the data paths (--json)
 uv run repro run --repo <path> --base <ref> --head <ref>   # the cockpit shows it live
 uv run repro replay <run id | log.jsonl>                    # from the start
-uv run repro export <run id | log.jsonl> --format md|json  # the Reproduction Card
+uv run repro export <run id | log.jsonl> --format md|json|in-toto|sarif|junit  # the Reproduction Card
 uv run repro serve           # the cockpit, the read-only API and the event stream
 uv run pytest
 ```

@@ -33,6 +33,14 @@ All notable changes to this project are documented here. The format follows
   checked) and `pnpm audit`. [H03]
 - THREAT_MODEL.md §7 names, for each threat, the tests that meet its mitigation or why none
   can; a test keeps the two in step. [H03]
+- `repro export --format in-toto|sarif|junit`. An unsigned in-toto Statement v1 of the card,
+  with Repro's predicate: described at `docs/attestation/reproduction-card/v0.md`, schema in
+  `packages/events/schema/attestation`. It holds the card with its digest, the evidence the
+  card cites as digested resource descriptors, and the event log's digest. Taking the card back
+  out checks every digest; the round trip is exact. Also SARIF 2.1.0, with a result per gap
+  item, failed invariant, judged claim and missing item, and JUnit XML, with a test case per
+  claim and one for the status. Each is checked against its schema: Repro's own, OASIS's SARIF
+  2.1.0 schema, and Apache Ant's JUnit XSD. [H04]
 
 ### Changed
 - A selected test that no run reported leaves the change UNVERIFIABLE (`tests_not_run`). Until

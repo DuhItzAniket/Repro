@@ -439,12 +439,22 @@ UTF-8); `card.published` carries it with its SHA-256 and counts, the `cards` tab
 refuses one that differs from what the run published; `repro replay` reports the same check.
 The cockpit opens it from a header button, in the drawer.
 
-Exports (phase H04, Stage I): Markdown (PR comment and job summary), canonical JSON,
-**in-toto Statement v1** with a Repro predicate (subject = head commit digest; SCAI-like
-attributes whose evidence is digested ResourceDescriptors; see ADR-0012), JUnit XML (one
-testcase per claim), and SARIF 2.1.0 (`kind` = `fail` / `open` / `review`). The attestation
-records *who ran what and what was observed*. It does not certify correctness, and LLM
-verdicts are labelled as judgements.
+Exports (H04, `repro.card.exports`; `repro export --format in-toto|sarif|junit`):
+- **in-toto Statement v1** with Repro's predicate (ADR-0012; described at
+  `docs/attestation/reproduction-card/v0.md`, schema in `packages/events/schema/attestation`).
+  The subject is the head commit (`gitCommit`). The predicate holds the card itself and its
+  digest, the cited evidence as digested ResourceDescriptors, the event log's digest, and copies
+  of the status, isolation level and network. `card_from_attestation` takes the card back out,
+  checking each digest and copy: the round trip is exact. Unsigned; CI signs (I03).
+- **SARIF 2.1.0**: a result per gap item, failed invariant, judged claim and missing item.
+  `kind` is `fail` (level error or warning), `review`, `open` (what could not be decided),
+  `informational` or `pass`, with level `none` beside any kind but `fail` (§3.27.10).
+  Locations are the files the evidence names.
+- **JUnit XML** (Apache Ant's format): one test case per claim and one for the status.
+
+Each says what the card says, no more: the attestation records what was run and observed. It
+does not certify correctness, and LLM verdicts are labelled as judgements. Markdown (PR comment
+and job summary) and canonical JSON are F05's.
 
 ## 8. Isolation and sandbox — see ADR-0004 and THREAT_MODEL.md
 
