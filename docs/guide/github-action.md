@@ -22,8 +22,8 @@ jobs:
       - uses: DuhItzAniket/Repro@<ref>
 ```
 
-`<ref>` is a release tag from the first that has the Action on, or a commit's hash. A hash is
-the safer pin: a tag can be moved, a hash cannot.
+`<ref>` is a release tag from `v1.1.0` on, the first with the Action, or a commit's hash. A
+hash is the safer pin: a tag can be moved, a hash cannot.
 
 The job needs no `actions/checkout`: Repro fetches the pull request into a mirror of its own
 and runs it from its git objects. It needs a Linux runner with Docker, which `ubuntu-latest`

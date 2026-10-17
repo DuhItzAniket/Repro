@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-18
+
+Stage I — GitHub integration. Gate record: `docs/phases/I-gate.md`.
+
 ### Changed
 - An attestation's subject may be the card itself (its canonical JSON, by `cardDigest`), as
   GitHub signs it; `card_from_attestation` checks either subject against the card. [I03]
@@ -706,7 +710,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.1.0
 [1.0.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.0.0
 [0.7.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.7.0
 [0.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.6.0

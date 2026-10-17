@@ -583,15 +583,16 @@ completes the quickstart from the docs alone.
 
 ## Stage I — GitHub integration · v1.1.0
 
-**Gate I:** on a test repository, opening a PR produces a Repro check run, a sticky card comment
-and (on public repos) a signed attestation, and re-running updates rather than duplicates them.
+**Gate I (passed 2026-10-18, v1.1.0, record: [`phases/I-gate.md`](phases/I-gate.md)):** on a
+test repository, opening a PR produces a Repro check run, a sticky card comment and (on public
+repos) a signed attestation, and re-running updates rather than duplicates them.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | I01 | PR ingestion | M | H05 | done |
 | I02 | Check run, sticky comment & job summary | M | I01 | done |
 | I03 | GitHub Action & attestation signing | M | I02, H04 | done |
-| I04 | GitHub App (optional) | L | I03 | planned |
+| I04 | GitHub App (optional) | L | I03 | deferred: built only if users ask |
 
 **I01** PR URL → refs, description, commits (gh/API, token from env), fork handling.
 **I02** Conclusion mapping (VERIFIED→success, FLAGGED→failure or action_required, UNVERIFIABLE→
