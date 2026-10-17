@@ -14,6 +14,9 @@ All notable changes to this project are documented here. The format follows
   limits. [H01]
 - A missing reason, `memory_limit`: a run that reached its memory limit says so (Docker
   stopped it, its peak reached the limit, or tests failed with `MemoryError`). [H01]
+- `repro_bench.scale`: `repro run` on three pinned Pallets changes of increasing size
+  (itsdangerous, flask, click), cloned at run time, cold and then warm. Times, cache use and
+  the card's counts go to `bench/results/scale.csv`. [H02]
 
 ### Changed
 - A selected test that no run reported leaves the change UNVERIFIABLE (`tests_not_run`). Until
@@ -30,9 +33,39 @@ All notable changes to this project are documented here. The format follows
 - The OpenAI-compatible backend retries an API it cannot reach and an answer it cannot use,
   as it retries rate limits and server errors; an unusable answer no longer crashes the job.
   Any failure of the probe writer leaves Hypothesis's probes running. [H01]
+- Runs are faster on real repositories. On the three references, cold, on one Windows
+  machine: itsdangerous 38 s → 18 s, flask 402 s → 110 s, click 1,151 s (base's run stopped
+  at its 900 s limit) → 34 s. A warm run takes 15 s, 90 s and 26 s. [H02]
+  - Provisioning installs the dependency groups the tests need (`test`, `tests`, `testing`,
+    else `dev`), not every group: flask's environment goes from 80 packages (237 s) to 16
+    (6 s).
+  - A project's pytest configuration (`addopts` in `pytest.ini`, `pyproject.toml`, `tox.ini`
+    or `setup.cfg`) keeps its selection options (`-m`, `-k`, `--ignore`, `--deselect`,
+    `-p no:…`, …) when Repro runs its tests. click deselects about 31,000 stress cases this
+    way; Repro used to collect and run them.
+  - Base and head run at the same time where they are independent: base's mapped run with
+    head's listing, base's second run with head's, and each rerun of a flip.
+  - The timing pass leaves out tests already under the timing floor in every traced run, and,
+    after its first ABBA block, those under it in every sample. They are reported as too fast
+    to time, as before.
+- A requirements directory (`requirements/tests.txt` and the like) adds the project's own
+  dependencies from `pyproject.toml`. [H02]
+- The run's log says where base's test map came from: made by running every base test, or
+  from the cache. [H02]
 
 ### Fixed
 - `repro run` without git installed prints a message and exits 2, not a traceback. [H01]
+- A run from a cached base map reports what the run that made the map did. Base's first run
+  reaches the cockpit, and base's collection errors are kept with the map; a warm run used to
+  drop both. Of base's first run, only what the selected tests attempted (network, processes,
+  file writes) counts; a cold run used to report the attempts of every base test. [H02]
+- A file name with a byte that is not UTF-8 (held by Python as a lone surrogate) no longer
+  fails the job that reports it: text shows it escaped, a target path as U+FFFD. Found on
+  click. [H02]
+- In containers, a project built with flit_core (itsdangerous, flask, click) can be
+  installed. The snapshot's files reached the container dated 1970, and a wheel, being a
+  zip, cannot hold a time before 1980. They now carry the commit's time, as `git archive`
+  does, never earlier than 1980-01-02. [H02]
 
 ## [0.7.0] - 2026-10-17
 

@@ -419,3 +419,23 @@ entry. If something turns out wrong, add a correcting entry.
   model's verdicts safe rather than accurate: no verdict pointed the wrong way, and every
   error was a refusal or an `unverifiable`. Whether that holds on real pull requests is
   Stage J's question.
+
+## 2026-10-17 · H02 · What made real repositories slow was not Repro's own work
+- **Measured on three pinned Pallets changes** (`repro_bench.scale`; itsdangerous, flask and
+  click, 1,736 to 29,214 lines of Python), Windows, process sandbox. Cold, before and after
+  H02: 38 s → 18 s, 402 s → 110 s, 1,151 s → 34 s; the first click run had base's run stopped
+  at its 900 s limit. Warm: 15 s, 90 s, 26 s. Spread and container times are in the
+  [phase record](../phases/H02-performance.md); the rows in `bench/results/scale.csv`.
+- **The cost was in what the target asks for, read wrongly.**
+  - Installing every dependency group (documentation, type checking, release tools): 237 s of
+    flask's 402 s, 80 packages where its tests need 16.
+  - Overriding the project's pytest configuration whole: click's `-m 'not stress'` keeps 2,117
+    of 33,117 tests, and Repro ran all of them.
+
+  Neither is visible on toy fixtures. Both are what a reviewer tool meets on a real project.
+- **For the paper.** A tool that runs a project's tests must run the tests the project runs: its
+  own deselection is part of the specification, and ignoring it both costs hours and judges the
+  change on tests its authors exclude. Running a change twice and comparing the cards found
+  three ways a cache had silently changed the evidence (D06). In containers, the snapshot's
+  zero timestamps made all three references uninstallable (D02). The fixture suite could see
+  neither.

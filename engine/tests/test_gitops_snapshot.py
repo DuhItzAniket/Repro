@@ -6,13 +6,16 @@ import os
 import stat
 import sys
 import tarfile
+import time
+import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from gitrepo import Repo
 from repro.gitops import Git, SnapshotError, path_problem, regular_files, snapshot, tar_tree
-from repro.gitops.snapshot import extended, remove_snapshot
+from repro.gitops.snapshot import ZIP_EPOCH, extended, remove_snapshot
 
 POSIX = sys.platform != "win32"
 
@@ -220,16 +223,29 @@ def test_tar_tree_is_the_commit_exactly_and_the_same_every_time(repo: Repo) -> N
     first, second = io.BytesIO(), io.BytesIO()
     tarred = tar_tree(Git(repo.path), sha, first)
     tar_tree(Git(repo.path), sha, second)
-    assert first.getvalue() == second.getvalue()  # deterministic: no times, no owners
+    assert first.getvalue() == second.getvalue()  # deterministic: the commit's time, no owners
     with tarfile.open(fileobj=io.BytesIO(first.getvalue())) as tar:
         members = {member.name: member for member in tar.getmembers()}
         assert set(members) == {"a/run.py", "b.txt", "link"}
         assert (members["a/run.py"].mode, members["b.txt"].mode) == (0o755, 0o644)
         assert members["link"].issym()
         assert members["link"].linkname == "b.txt"
-        assert all(member.mtime == 0 for member in members.values())
+        committed = datetime(2026, 1, 1, tzinfo=UTC).timestamp()  # gitrepo's committer date
+        assert all(member.mtime == committed for member in members.values())
         handle = tar.extractfile(members["a/run.py"])
         assert handle is not None
         assert handle.read() == b"print('x')"
     assert (tarred.commit, tarred.files, tarred.bytes) == (sha, 3, len("print('x')") + 1)
     assert {item.path for item in tarred.skipped} == {"con", "vendor"}
+
+
+def test_a_commit_dated_before_zip_can_hold_it_is_tarred_from_1980(repo: Repo) -> None:
+    """H02: the project's own install builds a wheel, and a zip holds no time before 1980."""
+    repo.env["GIT_COMMITTER_DATE"] = "@86400 +0000"  # 1970-01-02
+    sha = repo.commit({"setup.py": "from setuptools import setup\nsetup()\n"})
+    out = io.BytesIO()
+    tar_tree(Git(repo.path), sha, out)
+    with tarfile.open(fileobj=io.BytesIO(out.getvalue())) as tar:
+        (member,) = tar.getmembers()
+    assert member.mtime == ZIP_EPOCH
+    assert zipfile.ZipInfo("setup.py", time.gmtime(member.mtime)[:6]).date_time[0] == 1980

@@ -17,7 +17,8 @@ or ``environment_failed``), with every collection error (``collection_error``); 
 compared where both runs reported them.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Final
 
@@ -25,7 +26,7 @@ from repro.analysis.changes import SymbolChange
 from repro.analysis.imports import ImportGraph
 from repro.readable import error_line
 from repro.runner.outcomes import RERUNS, OutcomeDiff, classify, is_flip, passes
-from repro.runner.pytest import TestRun
+from repro.runner.pytest import CollectError, TestRun
 from repro.runner.selection import (
     MapCache,
     Resolver,
@@ -40,6 +41,7 @@ from repro.runner.selection import (
 from repro.runner.sides import Side
 from repro.runner.testdiff import TestChange, test_changes
 from repro.runner.trace import TracePlan
+from repro.sandbox.detect import Detection
 
 #: A2's hash seed and ``random`` seed: anything but the sandbox's and the plugin's 0.
 OTHER_HASH_SEED: Final = 1
@@ -59,6 +61,11 @@ class RunRecord:
     label: str  # "A", "A2", "H", "rerun 1".., "head tests", "base tests on head"
     tests: tuple[str, ...]  # the tests asked for (empty: every test)
     run: TestRun
+
+    @property
+    def maps_every_test(self) -> bool:
+        """A over every test, to make base's map (not made when the map is cached)."""
+        return self.label == "A" and not self.tests
 
 
 def _empty() -> TestMap:
@@ -83,24 +90,45 @@ class TwoSided:
         """A, A2 and H, those that ran, by label."""
         return {r.label: r for r in self.runs if r.label in TRACED_RUNS}
 
+    def detections(self, side: str) -> list[Detection]:
+        """What ``side``'s runs detected (ADR-0004). Of A, only what the selected tests attempted
+        (H02): made with the map, A runs every base test, from the cached map only the selected
+        ones, and what else either run does is not about the change. A2 runs the same tests
+        again, so what their session does outside any test (its imports, pytest's own files) is
+        still reported, once a run either way."""
+        chosen = {s.test for s in self.selected}
+        return [
+            detection
+            for record in self.runs
+            if record.side == side
+            for detection in record.run.execution.detections.items
+            if record.label != "A" or detection.test in chosen
+        ]
+
     def problems(self, memory_bytes: int | None = None) -> list[dict[str, Any]]:
         """``missing.recorded`` payloads for runs that did not finish or reached their memory
         limit (``memory_bytes``), collection errors, and a map that could not be made; each
         reason in words a user can act on (H01)."""
         items: list[dict[str, Any]] = []
         seen: set[tuple[str, str]] = set()
-        for record in self.runs:
-            results = record.run.results
-            for error in results.collect_errors:
-                if (record.side, error.nodeid) not in seen:
-                    seen.add((record.side, error.nodeid))
+
+        def uncollected(side: str, errors: Iterable[CollectError]) -> None:
+            for error in errors:
+                if (side, error.nodeid) not in seen:
+                    seen.add((side, error.nodeid))
                     detail = (
-                        f"{record.side}: {error.nodeid} could not be collected: "
+                        f"{side}: {error.nodeid} could not be collected: "
                         f"{error_line(error.message)}"
                     )
                     items.append(
                         _missing("collection_error", detail, _file(error.nodeid), COLLECT_FIX)
                     )
+
+        # The map's first, whether made in this run or cached (H02): the same items either way.
+        uncollected("base", (CollectError(*item) for item in self.base_map.uncollected.items()))
+        for record in self.runs:
+            results = record.run.results
+            uncollected(record.side, results.collect_errors)
             memory = _memory(record, memory_bytes)
             if memory is not None:
                 items.append(_missing("memory_limit", memory, resolution=MEMORY_FIX))
@@ -199,6 +227,8 @@ def _message(done: TestRun | None, test: str) -> str | None:
 
 
 Observe = Callable[[RunRecord], None]
+#: A run to make: its side, label, tests and options.
+Planned = tuple[Side, str, Sequence[str], dict[str, Any]]
 
 
 class _Reproduction:
@@ -223,23 +253,45 @@ class _Reproduction:
 
     def run(self, side: Side, label: str, tests: Sequence[str] = (), **options: Any) -> TestRun:
         done = side.run(tests, stop=self.stop, **options)
+        return self._record(side, label, tests, done)
+
+    def pair(self, first: "Planned", second: "Planned") -> tuple[TestRun, TestRun]:
+        """Two runs on different sides at once (H02: base and head are separate sandboxes),
+        recorded in the order given, so that what the run reports does not depend on which
+        finished first."""
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="repro-side") as pool:
+            futures = [
+                pool.submit(side.run, tests, stop=self.stop, **options)
+                for side, _, tests, options in (first, second)
+            ]
+            done = [future.result() for future in futures]
+        return (
+            self._record(first[0], first[1], first[2], done[0]),
+            self._record(second[0], second[1], second[2], done[1]),
+        )
+
+    def _record(self, side: Side, label: str, tests: Sequence[str], done: TestRun) -> TestRun:
         record = RunRecord(side.name, label, tuple(tests), done)
         self.result.runs.append(record)
-        if self.observe is not None and label != "A":
+        # A over every test is observed once the selection is known (run_selected).
+        if self.observe is not None and not record.maps_every_test:
             self.observe(record)
         return done
 
-    def map_base(self, cache: MapCache | None, key: str | None) -> TestRun | None:
-        """The base map: from the cache, or from A run over every test."""
+    def map_base(self, cache: MapCache | None, key: str | None) -> tuple[TestRun | None, TestRun]:
+        """The base map (from the cache, or from A run over every test) and head's tests,
+        listed: both at once when A runs."""
+        listing: Planned = (self.head, "head tests", (), {"collect_only": True})
         cached = cache.get(key) if cache is not None and key is not None else None
         if cached is not None:
             self.result.base_map, self.result.map_cached = cached, True
-            return None
-        full = self.run(self.base, "A", map_tests=True, trace=self.on_base, samples=SAMPLES)
+            return None, self.run(self.head, "head tests", collect_only=True)
+        options = {"map_tests": True, "trace": self.on_base, "samples": SAMPLES}
+        full, listed = self.pair((self.base, "A", (), options), listing)
         self.result.base_map = test_map(full.results, self.resolvers[0])
         if cache is not None and key is not None and full.results.complete:
             cache.put(key, self.result.base_map)
-        return full
+        return full, listed
 
     def run_selected(self, full: TestRun | None, on_base: list[str], on_head: list[str]) -> None:
         if full is not None:
@@ -248,29 +300,40 @@ class _Reproduction:
                 self.observe(RunRecord("base", "A", tuple(on_base), full))
         elif on_base:
             self.a = self.run(self.base, "A", on_base, trace=self.on_base, samples=SAMPLES)
-        if on_base:
-            reverse = list(reversed(on_base))
-            self.a2 = self.run(
-                self.base,
-                "A2",
-                reverse,
-                hash_seed=OTHER_HASH_SEED,
-                seed=OTHER_SEED,
-                trace=self.on_base,
-                samples=SAMPLES,
-            )
-        if on_head:
-            self.h = self.run(
-                self.head, "H", on_head, map_tests=True, trace=self.on_head, samples=SAMPLES
-            )
+        again: Planned = (
+            self.base,
+            "A2",
+            list(reversed(on_base)),
+            {
+                "hash_seed": OTHER_HASH_SEED,
+                "seed": OTHER_SEED,
+                "trace": self.on_base,
+                "samples": SAMPLES,
+            },
+        )
+        head: Planned = (
+            self.head,
+            "H",
+            on_head,
+            {"map_tests": True, "trace": self.on_head, "samples": SAMPLES},
+        )
+        if on_base and on_head:
+            self.a2, self.h = self.pair(again, head)
+        elif on_base:
+            self.a2 = self.run(again[0], again[1], again[2], **again[3])
+        elif on_head:
+            self.h = self.run(head[0], head[1], head[2], **head[3])
+        if self.h is not None:
             self.result.head_map = test_map(self.h.results, self.resolvers[1])
 
     def rerun(self, flips: list[str]) -> dict[str, tuple[list[str | None], list[str | None]]]:
         """Each flip's outcomes when run again, on base and on head."""
         again: dict[str, tuple[list[str | None], list[str | None]]] = {t: ([], []) for t in flips}
         for attempt in range(1, RERUNS + 1) if flips else ():
-            on_base = self.run(self.base, f"rerun {attempt}", flips)
-            on_head = self.run(self.head, f"rerun {attempt}", flips)
+            label = f"rerun {attempt}"
+            on_base, on_head = self.pair(
+                (self.base, label, flips, {}), (self.head, label, flips, {})
+            )
             for test in flips:
                 again[test][0].append(_outcome(on_base, test))
                 again[test][1].append(_outcome(on_head, test))
@@ -351,8 +414,7 @@ def reproduce(
     ``on_selected`` the selection; ``trace`` is what A, A2 and H trace."""
     steps = _Reproduction(sides, resolvers, observe, stop, trace)
     result = steps.result
-    full = steps.map_base(cache, cache_key)
-    listed = steps.run(steps.head, "head tests", collect_only=True)
+    full, listed = steps.map_base(cache, cache_key)
     result.head_tests = test_map(listed.results, resolvers[1])
     result.selected = select(changes, result.base_map, result.head_tests, graphs)
     if on_selected is not None:

@@ -122,6 +122,8 @@ uv run python -m repro_bench.verdicts     # the reviewed PRs end to end, from ca
                                           # accuracy, flips, cost; --mode record (GROQ_API_KEY), --append
 uv run pytest -m agent_eval               # G09's gate: those metrics against bench/data/thresholds.toml
 uv run pytest -m chaos                    # H01: each catalogued failure (docs/FAILURES.md) end to end
+uv run python -m repro_bench.scale --repos <dir>   # H02: three pinned Pallets changes, cold and
+                                          # warm (clones into <dir>); --append logs to bench/results
 uv run pytest --update-goldens            # rewrite golden files, lock new prompt versions (review the diff!)
 pnpm --filter @repro/web exec playwright test -c playwright.gate.config.ts
                         # Gate C end to end; needs pnpm build, uv sync and REPRO_GATE_REPO

@@ -23,7 +23,7 @@ import hashlib
 import json
 import uuid
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any, Final, Literal
 
@@ -43,7 +43,7 @@ REASONS: Final[tuple[SelectionReason, ...]] = (
     "modified_test",
 )
 #: Bumped whenever what a cached map holds, or how it is made, changes.
-MAP_FORMAT: Final = 1
+MAP_FORMAT: Final = 2
 CONFTEST: Final = "conftest.py"
 
 
@@ -126,6 +126,9 @@ class TestMap:
     tests: Mapping[str, str | None]
     ran: Mapping[str, frozenset[str]]  # node ID -> symbols run, for the tests that were mapped
     unresolved: int = 0  # places that named no symbol
+    #: node ID -> why it could not be collected: modules the map knows nothing of, kept so
+    #: that a run from the cached map reports them as the run that made it did (H02)
+    uncollected: Mapping[str, str] = field(default_factory=dict)
 
     def payload(self) -> dict[str, Any]:
         return {
@@ -133,6 +136,7 @@ class TestMap:
             "tests": dict(self.tests),  # in collection order
             "ran": {test: sorted(symbols) for test, symbols in sorted(self.ran.items())},
             "unresolved": self.unresolved,
+            "uncollected": dict(self.uncollected),
         }
 
     @classmethod
@@ -143,7 +147,8 @@ class TestMap:
             str(test): (str(s) if s is not None else None) for test, s in data["tests"].items()
         }
         ran = {str(test): frozenset(map(str, symbols)) for test, symbols in data["ran"].items()}
-        return cls(tests, ran, int(data["unresolved"]))
+        uncollected = {str(test): str(why) for test, why in data["uncollected"].items()}
+        return cls(tests, ran, int(data["unresolved"]), uncollected)
 
 
 def test_map(run: PytestRun, resolver: Resolver) -> TestMap:
@@ -168,7 +173,8 @@ def test_map(run: PytestRun, resolver: Resolver) -> TestMap:
     for test, places in run.maps.items():
         ran[test] = frozenset(s for s in map(resolve, sorted(places)) if s is not None)
         tests.setdefault(test, None)
-    return TestMap(tests, ran, unresolved)
+    uncollected = {error.nodeid: error.message for error in run.collect_errors}
+    return TestMap(tests, ran, unresolved, uncollected)
 
 
 @dataclass(frozen=True, slots=True)

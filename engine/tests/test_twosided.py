@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from fixtures.repo_builder import build_repo
+from fixtures.repo_builder import RepoSpec, build_repo
 from fixtures.specs import ALL_SPECS
 from repro.analysis import analyse
 from repro.gitops import Git, snapshot
@@ -46,10 +46,17 @@ def expectation(name: str) -> dict[str, Any]:
 def reproduce_fixture(
     name: str, root: Path, provisioner: HostProvisioner, **options: Any
 ) -> twosided.TwoSided:
-    built = build_repo(ALL_SPECS[name], root / "repo")
+    head = expectation(name)["fixture"]["head"]
+    return reproduce_spec(ALL_SPECS[name], head, root, provisioner, **options)
+
+
+def reproduce_spec(
+    spec: RepoSpec, head: str, root: Path, provisioner: HostProvisioner, **options: Any
+) -> twosided.TwoSided:
+    built = build_repo(spec, root / "repo")
     git = Git(built.path)
     base_sha = built.base_sha
-    head_sha = built.head_shas[expectation(name)["fixture"]["head"]]
+    head_sha = built.head_shas[head]
     analysis = analyse(git, base_sha, head_sha, root / "analysis")
     sides = []
     for side, sha in (("base", base_sha), ("head", head_sha)):
@@ -171,3 +178,62 @@ def test_a_cached_base_map_runs_only_the_selected_tests(
     a = next(r for r in second.runs if r.label == "A")
     assert set(a.tests) == {s.test for s in second.selected if s.test in second.base_map.tests}
     assert evidence_of(second) == evidence_of(first)
+
+
+#: One change and its test, beside a test that starts a process and a module that cannot be
+#: imported: neither is selected, and A over every test (to make the map) runs both.
+BYSTANDERS = RepoSpec(
+    name="bystanders",
+    description="A covered change beside an unrelated test with a side effect and a broken module.",
+    base={
+        "pyproject.toml": '[project]\nname = "calc-fixture"\nversion = "0.1.0"\n',
+        "calc/__init__.py": "",
+        "calc/core.py": "def double(x):\n    return x * 2\n",
+        "tests/test_core.py": (
+            "from calc.core import double\n\n\ndef test_double():\n    assert double(2) == 4\n"
+        ),
+        "tests/test_process.py": (
+            "import subprocess\nimport sys\n\n\ndef test_starts_a_process():\n"
+            '    subprocess.run([sys.executable, "-c", "pass"], check=True)\n'
+        ),
+        "tests/test_broken.py": "import calc.missing\n",
+    },
+    heads={"change/double": {"calc/core.py": "def double(x):\n    return x + x\n"}},
+)
+
+
+def test_a_cached_map_reports_what_the_run_that_made_it_did(
+    tmp_path: Path, provisioner: HostProvisioner
+) -> None:
+    """H02: a run from the cached map gives the same evidence and missing items as the run that
+    made the map, though that one ran every test on base; and both report base's first run."""
+    cache = selection.MapCache(tmp_path / "maps")
+    results, observed = [], []
+    for name in ("cold", "warm"):
+        seen: list[str] = []
+        results.append(
+            reproduce_spec(
+                BYSTANDERS,
+                "change/double",
+                tmp_path / name,
+                provisioner,
+                cache=cache,
+                cache_key="k",
+                observe=lambda record, seen=seen: seen.append(f"{record.side} {record.label}"),
+            )
+        )
+        observed.append(seen)
+    cold, warm = results
+    assert (cold.map_cached, warm.map_cached) == (False, True)
+    assert [s.test for s in warm.selected] == ["tests/test_core.py::test_double"]
+    full = next(r for r in cold.runs if r.maps_every_test)
+    assert any(d.kind == "subprocess" for d in full.run.execution.detections.items)
+    assert cold.detections("base") == warm.detections("base") == []
+    assert "base A" in observed[0]
+    assert "base A" in observed[1]
+    assert sorted(observed[0]) == sorted(observed[1])
+    assert evidence_of(warm) == evidence_of(cold)
+    assert missing_of(warm) == missing_of(cold)
+    assert "collection_error:" in missing_of(warm)
+    broken = [i["missing"]["detail"] for i in warm.problems()]
+    assert any(d.startswith("base: tests/test_broken.py could not be collected") for d in broken)

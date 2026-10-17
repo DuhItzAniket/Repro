@@ -3,11 +3,13 @@
 import hashlib
 import re
 import shutil
+import tomllib
 from pathlib import Path
 
 import pytest
 
 from repro.provision import ProjectError, inspect_project
+from repro.provision.project import chosen_groups, export_options
 
 PROJECTS = Path(__file__).parent / "data" / "projects"
 PINNED = ("iniconfig==2.0.0", "packaging==24.2", "pluggy==1.5.0", "pytest==8.3.3")
@@ -166,3 +168,38 @@ def test_a_lock_uv_cannot_export_is_reported(tmp_path: Path) -> None:
     root = make(tmp_path, {"pyproject.toml": '[project]\nname = "x"\n', "uv.lock": "not toml ["})
     with pytest.raises(ProjectError, match=r"uv\.lock cannot be exported"):
         inspect_project(root)
+
+
+def test_only_what_the_tests_need_is_installed(tmp_path: Path) -> None:
+    """H02: docs, typing and release groups are left out; ``dev`` only when no test group is."""
+    pyproject = (
+        '[project]\nname = "x"\ndependencies = ["packaging"]\n'
+        '[project.optional-dependencies]\ntesting = ["pluggy"]\nserver = ["uvicorn"]\n\n'
+        '[dependency-groups]\ntests = ["pytest"]\ndev = ["ruff", "tox"]\n'
+        'docs = ["sphinx"]\ntyping = ["mypy"]\n'
+    )
+    project = inspect_project(make(tmp_path / "groups", {"pyproject.toml": pyproject}))
+    assert project.requirements == ("packaging", "pluggy", "pytest")
+    dev_only = pyproject.replace('tests = ["pytest"]\n', "").replace('testing = ["pluggy"]\n', "")
+    project = inspect_project(make(tmp_path / "dev", {"pyproject.toml": dev_only}))
+    assert project.requirements == ("packaging", "ruff", "tox", "pytest")
+    assert export_options(tomllib.loads(pyproject)) == [
+        "--no-default-groups", "--group", "tests", "--extra", "testing",
+    ]  # fmt: skip
+    assert chosen_groups(["docs", "dev"]) == ["dev"]
+    assert chosen_groups(["docs"]) == []
+
+
+def test_a_requirements_directory_adds_the_projects_own_dependencies(tmp_path: Path) -> None:
+    """H02: pip-tools' ``requirements/tests.txt`` lists the test tools only."""
+    root = make(
+        tmp_path,
+        {
+            "pyproject.toml": '[project]\nname = "x"\ndependencies = ["packaging>=24"]\n',
+            "requirements/tests.txt": "freezegun==1.4.0\n    # via -r tests.in\npytest==8.1.1\n",
+            "requirements/docs.txt": "sphinx==7.0.0\n",
+        },
+    )
+    project = inspect_project(root)
+    assert (project.kind, project.source) == ("requirements", "requirements/tests.txt")
+    assert project.requirements == ("freezegun==1.4.0", "pytest==8.1.1", "packaging>=24")

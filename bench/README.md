@@ -4,4 +4,13 @@ The evaluation harness for Repro (Stage J): SWE-format dataset adapters, baselin
 ground-truth tooling and analysis. The protocol is in
 [`docs/paper/EVALUATION_PROTOCOL.md`](../docs/paper/EVALUATION_PROTOCOL.md).
 
-The benchmark drives Repro through its CLI and API only. It never imports engine internals.
+What is here so far:
+
+| Module | Phase | What it measures |
+|---|---|---|
+| `repro_bench.claims` | G04 | The reader agent on labelled PR descriptions, from cassettes |
+| `repro_bench.verdicts` | G09 | Reviewed PRs end to end: verdict accuracy, flips, cost |
+| `repro_bench.scale` | H02 | `repro run` on three pinned real repositories, cold and warm |
+
+Each runs `repro run` through its CLI, or calls the agents as the engine does, and reads what a
+run stored through `repro.store`. Results go to `bench/results/`.

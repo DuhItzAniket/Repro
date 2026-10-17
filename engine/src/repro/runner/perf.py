@@ -310,27 +310,43 @@ class TimingRun:
     record: TestRun
 
 
+def _under_floor(times: dict[str, list[float]], timing_floor_s: float) -> bool:
+    """Whether a test has samples on both sides, every one under the timing floor."""
+    return all(times.values()) and max(*times["base"], *times["head"]) < timing_floor_s
+
+
 def time_tests(
     base: Side,
     head: Side,
     tests: Sequence[str],
     *,
     repetitions: int = REPETITIONS,
+    timing_floor_s: float = TIMING_FLOOR_S,
     observe: Callable[[TimingRun], None] | None = None,
     stop: Callable[[], bool] | None = None,
 ) -> tuple[list[Samples], list[TimingRun]]:
     """Runs ``tests`` untraced in ABBA blocks until each side has ``repetitions`` runs; each
-    test's call-phase times per side, in run order, and the runs themselves."""
+    test's call-phase times per side, in run order, and the runs themselves.
+
+    After the first block, a test whose every sample on both sides is under the timing floor is
+    run no more (H02): its medians are already under it, and the traced runs that made it a
+    candidate were slowed by the tracer. It is reported as too fast to time, from those
+    samples; when no test is left, the remaining blocks are not run."""
     sides = {"base": base, "head": head}
     counts = {"base": 0, "head": 0}
     times: dict[str, dict[str, list[float]]] = {t: {"base": [], "head": []} for t in tests}
     runs = []
-    for name in abba(max(1, math.ceil(repetitions / 2))):
+    running = list(tests)
+    for position, name in enumerate(abba(max(1, math.ceil(repetitions / 2)))):
+        if position == len(abba(1)):
+            running = [test for test in running if not _under_floor(times[test], timing_floor_s)]
+            if not running:
+                break
         counts[name] += 1
-        done = sides[name].run(list(tests), stop=stop)
+        done = sides[name].run(running, stop=stop)
         timing = TimingRun(name, counts[name], done)
         runs.append(timing)
-        for test in tests:
+        for test in running:
             found = done.results.tests.get(test)
             if found is not None and found.outcome == "passed" and found.call_s is not None:
                 times[test][name].append(found.call_s)

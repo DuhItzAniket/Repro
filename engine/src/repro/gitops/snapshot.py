@@ -43,6 +43,9 @@ from repro.gitops.git import Git, GitError
 
 DEFAULT_MAX_BYTES: Final = 4 * 1024**3
 DEFAULT_MAX_FILES: Final = 500_000
+#: 1980-01-02T00:00:00Z: a zip's earliest time (1980-01-01) a day later, so that no time zone
+#: puts it before.
+ZIP_EPOCH: Final = 315_619_200
 _MAX_SEGMENT: Final = 255
 _MAX_PATH: Final = 4096
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
@@ -347,12 +350,16 @@ def tar_tree(
 
     The entries are checked as for a snapshot, but for a case-sensitive filesystem that has
     symbolic links: file modes and links are exactly git's, whatever the host. Every timestamp
-    is zero and no owner is named, so the same commit always gives the same stream.
+    is the commit's committer time, as ``git archive`` gives a commit's files, and no owner is
+    named, so the same commit always gives the same stream. The time is at least 1980-01-02:
+    the project's own install builds a wheel, a zip, which cannot hold earlier times (H02:
+    with every timestamp zero, itsdangerous, flask and click could not be installed).
     """
     sha = git.resolve(commit)
     try:
         entries = _list_tree(git, sha)
-    except GitError as exc:
+        mtime = max(int(git.text("show", "-s", "--format=%ct", sha)), ZIP_EPOCH)
+    except (GitError, ValueError) as exc:
         raise SnapshotError(f"cannot list {sha}: {exc}") from None
     _check_limits(sha, entries, max_bytes=max_bytes, max_files=max_files)
     to_write, skipped = _plan(entries, insensitive=False, links=True)
@@ -364,7 +371,7 @@ def tar_tree(
                 if entry.sha != blob_sha:
                     raise SnapshotError("git cat-file answered out of order")
                 info = tarfile.TarInfo(entry.path)
-                info.mtime = 0
+                info.mtime = mtime
                 if entry.mode == "120000":
                     info.type = tarfile.SYMTYPE
                     info.linkname = data.read(length).decode("utf-8", "surrogateescape")

@@ -1,7 +1,9 @@
 """Running a side's tests under Repro's pytest plugin (D04), and reading what it wrote.
 
 The command is Repro's, whatever the project configures: ``-o addopts=`` drops the project's
-own default options, ``-p no:randomly`` and ``-p no:xdist`` keep order and process layout
+own default options, except those that select which tests run (``-m``, ``-k``, ignores;
+``repro.runner.pytest_config``, H02), ``-p no:randomly`` and ``-p no:xdist`` keep order and
+process layout
 fixed, ``-p no:cacheprovider`` keeps the snapshot unwritten, and ``-p repro_pytest`` loads the
 plugin, which the sandboxes already put first on ``PYTHONPATH`` beside the audit hook.
 ``--continue-on-collection-errors`` keeps one module that fails to import from hiding every
@@ -30,6 +32,7 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from repro.provision.env import Environment
+from repro.runner.pytest_config import selection
 from repro.sandbox.docker import WORK, DockerSandbox
 from repro.sandbox.process import Execution, ProcessSandbox, read_head
 
@@ -470,7 +473,8 @@ def run_tests(
     ``trace``, its functions are traced (E01), ``previews`` names calls to preview (E04) and
     ``samples`` how many of each test's first calls of each function to preview (E07)."""
     name = f"pytest-{uuid.uuid4().hex[:12]}"
-    extra = ["--collect-only"] if collect_only else []
+    # The project's own test selection (its addopts' -m, -k, ignores...), then Repro's (H02).
+    extra = [*selection(env.project.root), *(["--collect-only"] if collect_only else [])]
     files, named, plain = _tracing(trace, previews, samples)
     if isinstance(sandbox, DockerSandbox):
         relative = f".repro/{name}"

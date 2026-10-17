@@ -216,9 +216,18 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path, golden: Golden)
         assert "policy (repro.yml on base): invariants no_network, forbidden_paths" in logged
     if name == "noisy":  # E03: each traced run's observations and the comparison, stored
         assert_observations_stored(tmp_path)
-    if name == "perf-regress":  # ABBA: ten timing runs on each side, three tests timed
-        samples = Counter(e["payload"]["side"] for e in events if e["kind"] == "perf.sample")
-        assert samples == {"base": 30, "head": 30}
+    if name == "perf-regress":  # ABBA: ten timing runs on each side for the tests worth timing
+        samples = Counter(
+            (e["target"]["test"], e["payload"]["side"])
+            for e in events
+            if e["kind"] == "perf.sample"
+        )
+        for test in ("test_unique_tags", "test_report_is_sorted"):
+            assert samples[(f"tests/test_tags.py::{test}", "base")] == 10
+            assert samples[(f"tests/test_tags.py::{test}", "head")] == 10
+        # H02: too fast in every traced run (never timed), or in the first ABBA block (2 a side)
+        small = "tests/test_tags.py::test_unique_tags_small"
+        assert samples[(small, "base")] == samples[(small, "head")] in (0, 2)
     stages = [e["stage"] for e in events if e["kind"] == "stage.started"]
     assert stages == ["build", "run", "diff", "check", "card"]  # claims (read): Stage G
     assert events[-1]["kind"] == "run.finished"
