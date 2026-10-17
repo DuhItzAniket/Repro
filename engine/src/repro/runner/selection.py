@@ -1,7 +1,9 @@
 """Test selection (D05, ARCHITECTURE §4.1): the tests a change can affect, and the changed code
 no selected test runs.
 
-- ``blast_radius``: tests that ran a changed function, method or class on base (the map);
+- ``blast_radius``: tests that ran a changed function, method or class on base (the map). A
+  class's own code (its body: attributes, bases, decorators) runs at import, so a change to it
+  reaches the tests that ran one of its methods (H06), as coverage counts it below;
 - ``module_import``: tests whose module imports, directly or not, a module whose own code
   changed (the import graphs of C07), or that sit below a changed ``conftest.py``;
 - ``new_test``, ``modified_test``: tests the change added, or whose function it changed.
@@ -229,8 +231,17 @@ def select(
         found.setdefault(test, {}).setdefault(reason, set()).update(symbols)
 
     changed_base = {i for c in changes if (i := base_id(c)) and not _is_module_level(i)}
+    bodies = {  # a changed class body, by the prefix of its methods
+        i.partition("#")[0] + ".": i
+        for c in changes
+        if c.kind == "class" and (i := base_id(c)) and not _is_module_level(i)
+    }
     for test, ran in base.ran.items():
-        if touched := ran & changed_base:
+        touched = ran & changed_base
+        touched |= {
+            body for prefix, body in bodies.items() if any(r.startswith(prefix) for r in ran)
+        }
+        if touched:
             add(test, "blast_radius", touched)
 
     module_level = sorted(
