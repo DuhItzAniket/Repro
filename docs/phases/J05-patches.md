@@ -51,14 +51,61 @@ Agent patches for S2's fresh tasks, from at least two scaffolds and two model fa
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro_bench.tasks` and `bench/data/s2-candidates.jsonl` (351 tasks).
+- `repro_bench.generate` (scaffold `repair2`) with the locked prompts `repair_localize/1` and
+  `repair_edit/1`.
+- `repro_bench.edits`: edits and search/replace blocks to diffs, now shared with
+  `repro_bench.seed`.
+- Docs: protocol §3 (the pinned candidates), the bench README (the list's source and licence).
+- Tests: `test_bench_generate.py` (5); `test_bench_seed.py` follows the shared module.
 
 ## Evidence
+- **The candidates.** From SWE-rebench's leaderboard at revision `34d5a588`, splits 2025_09 to
+  2026_03, 351 tasks were kept. The 60 left out are pinned to Python 3.11 (54), 3.10 (3) and
+  3.9 (3).
+- **A live pilot** on `pypa__twine-1309` and `delgan__loguru-1451`, both families, one scaffold
+  (never reported):
+
+  | Model | Task | Localize | Repair | Tier A |
+  |---|---|---|---|---|
+  | `qwen/qwen3.8-27b` | twine | the gold file first | a 15-line patch | INCORRECT_auto |
+  | `qwen/qwen3.8-27b` | loguru | the gold file first | no patch: a search snippet not in the file, the answer cut at 3,000 tokens | — |
+  | `openai/gpt-oss-120b` | twine | the gold file first | timed out (900 s) | — |
+  | `openai/gpt-oss-120b` | loguru | the gold file first | timed out (900 s) | — |
+
+  - **Qwen's twine patch** falls back to the response's `reason` where the maintainers wrote
+    "Unknown Status". The task's hidden test fails on it. CI-only (J03's B0) would pass it:
+    no existing test covers the case. It is the class of patch the study is about.
+  - **Qwen answered a check question in 0.2 to 0.4 s.** Its two calls on twine used 1,461 +
+    435 and 3,936 + 662 tokens.
+  - **gpt-oss-120b on Groq was slow tonight.** "What is 2 + 3?" took 95 s and timed out once
+    at 120 s (the same session), so its repair calls ran past their 900 s.
+- **Locally**: `test_bench_generate.py` 5 and `test_bench_seed.py` 7 passed.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- **One scaffold run, not two.** mini-SWE-agent resends its whole conversation every step, and
+  on the free tier one request may not exceed 8,000 tokens, its answer included (J03). Its
+  conversation passes that within a few steps, so it is specified (v2.4.6, MIT, bash-only,
+  litellm with `groq/` models) and left for a paid plan. `repair2` was built to fit the cap.
+- **Two tasks, not S2.** The pilot shows the path from task to graded patch. S2's patches wait
+  for the budget decision (`PREREGISTRATION.md`).
 
 ## Known gaps
+- **Qwen's structured output.** With a JSON schema, Qwen 3.8 on Groq answered malformed JSON
+  (`'}5'` for "2 + 3"). The scaffold avoids it with plain text. Repro's own agents use
+  schemas, so they stay on gpt-oss.
+- **The repair call's context is cut at 10,000 characters of code**, so a fix far from the
+  named definitions cannot be seen. That is the scaffold's design, and its patches are graded
+  like any other.
 
 ## Dependencies added
 None.
 
 ## Research notes
+- **Localizing was not the hard part.** In four of four pilot calls, two models named the gold
+  patch's file first, from the issue and a ranked file list alone. The failures were in the
+  repair: a patch with the wrong fallback, an edit that did not match the file, and time.
+- **A plausible-looking wrong patch appeared in the first real try.** Qwen's twine patch reads
+  as a reasonable fix, and only the task's hidden test catches it. The study's premise is that
+  such patches are common enough to matter. The first sample agrees, at n = 1.
