@@ -8,6 +8,12 @@ the card then lists as ``agent_failed`` (ground rule 3: never unverified silentl
 - ``review`` (G05): after every other job, each claim's reviewer, its verdict checked.
 - ``gap`` (G06): after the review, the differences no verdict accounts for mapped to the
   supported claims that explain them.
+- ``qa`` (G08): after the gap reviewer, the verdicts read together; a supported verdict that
+  cannot hold with another is withheld.
+
+The review applies G08's bias controls (``repro.agents.bias``): a contradicted verdict must
+survive the evidence in the opposite order, a panel's verdict needs two of three, and the card
+says when the reviewers share the model family the change names as its author.
 """
 
 import asyncio
@@ -16,11 +22,20 @@ from dataclasses import dataclass, field
 from typing import Any, Final
 
 from repro.agents.backend import AgentResult, ReproTool
+from repro.agents.bias import (
+    agreeing,
+    author_families,
+    degraded,
+    described,
+    judge_is_author,
+    majority,
+)
 from repro.agents.events import run_agent
-from repro.agents.evidence import EvidenceView
+from repro.agents.evidence import EvidenceView, Item
 from repro.agents.gap import MAX_ITEMS as GAP_MAX_ITEMS
 from repro.agents.gap import candidates, check_mapping, explainers, gap_request, verdicts
 from repro.agents.prompts import Prompt, load_prompt
+from repro.agents.qa import check_answer, judged, qa_request, withheld, worth_checking
 from repro.agents.reader import PrText, read_claims, reader_request
 from repro.agents.reviewer import MAX_INLINE_ITEMS, relevant, reviewer_request
 from repro.agents.setup import AgentSetup
@@ -66,12 +81,36 @@ def _call(ctx: JobContext, setup: AgentSetup, build: Callable[[], Any], agent: s
     )
 
 
+def _judge_policy(  # noqa: PLR0917 - what the check reads
+    ctx: JobContext, setup: AgentSetup, texts: Sequence[str], git: Git, base: str, head: str
+) -> None:
+    """G08's judge ≠ author check: when the change names its author's model (a co-author
+    trailer, a "generated with" line) and every reviewer is of that model's family, the card
+    says so; LLM judges favour their own family's output (research/04 §2.3)."""
+    authors = author_families([*texts, *commit_messages(git, base, head)])
+    judges = list(setup.panel) or [m for m in [setup.models.get("review")] if m]
+    shared = judge_is_author(judges, authors)
+    if shared is None:
+        return
+    item = {
+        "reason": "judge_is_author",
+        "targets": [],
+        "detail": (
+            f"the change names a model by {shared} among its authors, and its reviewers "
+            f"({', '.join(dict.fromkeys(judges))}) are models by {shared} too"
+        ),
+        "resolution": "review with a model of another family (agent_model or agent_panel)",
+    }
+    ctx.emit("missing.recorded", status="warn", payload={"missing": item})
+
+
 def claims_job(
     git: Git, *, base: str, head: str, pr: PrText, setup: AgentSetup, state: AgentState
 ) -> Job:
     def run(ctx: JobContext) -> None:
         files = changed_files(git, base, head)
         state.files = files
+        _judge_policy(ctx, setup, [text for _, text in pr.parts], git, base, head)
         if not pr.parts:
             ctx.log("the pull request has no text: no claims to read", level="warning")
             state.claims = []
@@ -131,20 +170,38 @@ def _missing(
     ctx.emit("missing.recorded", status="warn", payload={"missing": item})
 
 
-async def review_claim(
-    ctx: JobContext, setup: AgentSetup, context: "ReviewContext", claim: Mapping[str, Any]
-) -> None:
-    """One claim: a reviewer's verdict, checked; or why there is none."""
-    items = relevant(context.view, claim)
-    if not items:
-        _missing(
-            ctx,
-            "claim_unverifiable",
-            f"{claim['id']}: no evidence about it, so nothing could support it",
-            claim,
-            "a test that exercises what the claim is about",
-        )
-        return
+@dataclass(frozen=True, slots=True)
+class Judgement:
+    """One reviewer's outcome: a checked verdict, the last rejection, or no answer at all."""
+
+    model: str
+    agent: str
+    verdict: dict[str, Any] | None = None
+    rejection: Rejection | None = None
+    #: How the call ended when it gave no answer (its ``agent_failed`` item is recorded).
+    failed: str = ""
+
+    @property
+    def answer(self) -> str:
+        """What it answered, in a few words."""
+        if self.verdict is not None:
+            return str(self.verdict["verdict"])
+        if self.rejection is not None:
+            return f"an answer refused by the checks ({self.rejection.reason})"
+        return f"no answer ({self.failed})"
+
+
+async def _judge(
+    ctx: JobContext,
+    setup: AgentSetup,
+    context: "ReviewContext",
+    claim: Mapping[str, Any],
+    items: Sequence[Item],
+    *,
+    model: str,
+    reverse: bool = False,
+) -> Judgement:
+    """One reviewer on the claim: its verdict, checked, after one more try on a rejection."""
     ids = [item.id for item in items]
     feedback, rejection, agent = "", None, ""
     for _ in range(ATTEMPTS):
@@ -155,9 +212,10 @@ async def review_claim(
             context.sources,
             tools=context.tools if len(items) > MAX_INLINE_ITEMS else (),
             prompt=context.prompt,
-            model=setup.model("review"),
+            model=model,
             claims=context.claims,
             feedback=feedback,
+            reverse=reverse,
         )
         result = await run_agent(
             ctx, setup.backend, setup.dispatch, request, agent=agent, ledger=setup.ledger
@@ -172,21 +230,30 @@ async def review_claim(
                 claim,
                 "check the agent settings, the API or the cassettes, then run again",
             )
-            return
+            return Judgement(model, agent, failed=f"{result.outcome}: {result.detail}")
         else:
             checked = check(
                 result.structured, claim, context.view, ids, request.model, claims=context.claims
             )
             if not isinstance(checked, Rejection):
-                status = VERDICT_STATUS[checked["verdict"]]
-                ctx.emit("verdict.issued", status=status, payload={"verdict": checked}, agent=agent)
-                return
+                return Judgement(model, agent, verdict=checked)
             rejection = checked
         feedback = f"{rejection.reason}: {rejection.detail}"
-    assert rejection is not None  # noqa: S101 - the loop ran
+    return Judgement(model, agent, rejection=rejection)
+
+
+def _issue(ctx: JobContext, verdict: Mapping[str, Any], agent: str) -> None:
+    status = VERDICT_STATUS[verdict["verdict"]]
+    ctx.emit("verdict.issued", status=status, payload={"verdict": dict(verdict)}, agent=agent)
+
+
+def _refused(ctx: JobContext, claim: Mapping[str, Any], judgement: Judgement) -> None:
+    """No verdict for the claim passed the checks: why, and a missing item."""
+    rejection = judgement.rejection
+    assert rejection is not None  # noqa: S101 - only for a judgement that has one
     detail = rejection.detail[:SHORT]
     rejected = {"claim_id": claim["id"], "reason": rejection.reason, "detail": detail}
-    ctx.emit("verdict.rejected", status="warn", payload=rejected, agent=agent)
+    ctx.emit("verdict.rejected", status="warn", payload=rejected, agent=judgement.agent)
     _missing(
         ctx,
         "verdict_rejected",
@@ -194,6 +261,88 @@ async def review_claim(
         claim,
         "run the review again, or with another model",
     )
+
+
+def _swapped(
+    ctx: JobContext, claim: Mapping[str, Any], first: Judgement, second: Judgement
+) -> dict[str, Any]:
+    """The first verdict if the reversed order gives it too; otherwise ``unverifiable``."""
+    assert first.verdict is not None  # noqa: S101 - only a verdict is judged again
+    said = first.verdict["verdict"]
+    if second.verdict is not None and second.verdict["verdict"] == said:
+        return agreeing(first.verdict, 2, 2)
+    detail = f"{said} with the evidence in one order, {second.answer} in the other"
+    rejected = {"claim_id": claim["id"], "reason": "order_swap_disagreement", "detail": detail}
+    ctx.emit("verdict.rejected", status="warn", payload=rejected, agent=second.agent)
+    ctx.log(f"{claim['id']}: {detail}; it is unverifiable", level="warning")
+    agree = int(said == "unverifiable") + int(second.answer == "unverifiable")
+    why = f"with the evidence in the opposite order the reviewer answered {second.answer}"
+    return degraded(first.verdict, why, 2, agree)
+
+
+async def _panel(
+    ctx: JobContext,
+    setup: AgentSetup,
+    context: "ReviewContext",
+    claim: Mapping[str, Any],
+    items: Sequence[Item],
+) -> None:
+    """Three reviewers, the second with the order reversed; two must give the verdict."""
+    judgements = await asyncio.gather(
+        *(
+            _judge(ctx, setup, context, claim, items, model=model, reverse=number == 1)
+            for number, model in enumerate(setup.panel)
+        )
+    )
+    given = [(j, j.verdict) for j in judgements if j.verdict is not None]
+    if not given:
+        refused = [j for j in judgements if j.rejection is not None]
+        if refused:
+            _refused(ctx, claim, refused[0])
+        return  # otherwise every call failed, each an agent_failed item
+    verdicts = [verdict for _, verdict in given]
+    found = majority(verdicts, len(judgements))
+    if found is not None:
+        agent = next(j.agent for j, v in given if v["verdict"] == found["verdict"])
+        _issue(ctx, found, agent)
+        return
+    answers = described([(j.model, j.answer) for j in judgements])
+    ctx.log(f"{claim['id']}: the panel did not agree ({answers}); unverifiable", level="warning")
+    agree = sum(v["verdict"] == "unverifiable" for v in verdicts)
+    why = f"the panel did not agree ({answers})"
+    _issue(ctx, degraded(verdicts[0], why, len(judgements), agree), given[0][0].agent)
+
+
+async def review_claim(
+    ctx: JobContext, setup: AgentSetup, context: "ReviewContext", claim: Mapping[str, Any]
+) -> None:
+    """One claim: a reviewer's verdict, checked and, if it is to be, judged again in the
+    opposite order (G08); a panel's verdict instead when there is one; or why there is none."""
+    items = relevant(context.view, claim)
+    if not items:
+        _missing(
+            ctx,
+            "claim_unverifiable",
+            f"{claim['id']}: no evidence about it, so nothing could support it",
+            claim,
+            "a test that exercises what the claim is about",
+        )
+        return
+    if setup.panel:
+        await _panel(ctx, setup, context, claim, items)
+        return
+    model = setup.model("review")
+    first = await _judge(ctx, setup, context, claim, items, model=model)
+    if first.verdict is None:
+        if first.rejection is not None:
+            _refused(ctx, claim, first)
+        return
+    verdict = first.verdict
+    said = verdict["verdict"]
+    if setup.swap == "all" or (setup.swap == "contradicted" and said == "contradicted"):
+        second = await _judge(ctx, setup, context, claim, items, model=model, reverse=True)
+        verdict = _swapped(ctx, claim, first, second)
+    _issue(ctx, verdict, first.agent)
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,6 +467,60 @@ def gap_job(
         OnFailure(
             reason="agent_failed",
             detail="the differences no verdict accounts for could not be mapped to the claims",
+            resolution="check the agent settings, the API or the cassettes, then run again",
+        ),
+        after=tuple(after),
+    )
+
+
+QA_PROMPT: Final = "qa"
+
+
+def qa_job(
+    log: Callable[[str], list[dict[str, Any]]],
+    *,
+    setup: AgentSetup,
+    after: Sequence[str],
+) -> Job:
+    """The ``qa`` job (G08): after the gap reviewer, the verdicts read together; a supported
+    verdict that cannot hold with another is withheld (``unverifiable``)."""
+
+    def run(ctx: JobContext) -> None:
+        stored = ctx.emit(
+            "log.line",
+            status="progress",
+            payload={"level": "info", "verb": "review", "message": "checking the verdicts"},
+        )
+        stored.result(COMMIT_WAIT_S)
+        events = log(ctx.run_id)
+        found = judged(events)
+        if not worth_checking(found):
+            ctx.log("QA: nothing to cross-check (fewer than two judged claims, or none supported)")
+            return
+        request = qa_request(
+            found, EvidenceView.from_events(events), load_prompt(QA_PROMPT), setup.model("qa")
+        )
+        agent = setup.dispatch.agent_id()
+        result = asyncio.run(
+            run_agent(ctx, setup.backend, setup.dispatch, request, agent=agent, ledger=setup.ledger)
+        )
+        if result.outcome != "ok":
+            raise AgentFailedError(f"the QA agent ended {result.outcome}: {result.detail}"[:500])
+        checked = check_answer(result.structured, found)
+        for problem in checked.dropped:
+            ctx.log(f"QA: dropped {problem}", level="warning")
+        for verdict in withheld(checked, found, request.model):
+            ctx.emit("verdict.issued", status="warn", payload={"verdict": verdict}, agent=agent)
+            ctx.log(f"QA: {verdict['claim_id']} withheld: {verdict['rationale']}"[:500])
+        ctx.log(f"QA: {len(checked.kept)} inconsistencies among {len(found)} judged claims")
+
+    return Job(
+        "qa",
+        "review",
+        run,
+        OnFailure(
+            reason="agent_failed",
+            detail="the verdicts could not be checked against each other",
             resolution="check the agent settings, the API or the cassettes, then run again",
         ),
         after=tuple(after),

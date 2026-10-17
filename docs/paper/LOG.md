@@ -366,3 +366,20 @@ entry. If something turns out wrong, add a correcting entry.
   but gave bare strings. All 8 were dropped. Showing each function's argument shape took the
   rate to 0 of 8. One fixture and one call are not a measurement of either rate. G09's eval
   set is where it should be measured.
+
+## 2026-10-17 · G08 · Order swap, QA, and a replay key that missed IDs
+- **No flips.** Every verdict on the five reviewed pull requests was judged again with the
+  evidence, the other claims and the evidence-ID enum reversed. None of 13 changed: 8
+  supported, 3 unverifiable, 2 contradicted, on gpt-oss-120b.
+  - MT-Bench found GPT-4 consistent in 65 % of swapped pairs. That compared two answers; here
+    one claim's evidence is reordered.
+  - Thirteen verdicts are too few to compare the two.
+  - A contradiction now stands only when both orders give it ([phase record](../phases/G08-bias-controls.md)).
+- **QA agrees.** It read honest-fix's and its injection twin's verdicts together and found
+  them consistent. It can only withhold a supported verdict, never flag a change.
+- **A replay key that missed IDs.** The cassette key missed run-specific IDs at the start of
+  a line: in JSON they follow an escape, where a word boundary does not match.
+  - Reviewer prompts never put an ID first on a line; QA's evidence list does. Each of its
+    runs looked like a new call, and replaying it failed.
+  - Worth stating for any record/replay harness that normalises identifiers on serialised
+    text.

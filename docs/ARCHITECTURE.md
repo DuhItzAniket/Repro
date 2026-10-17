@@ -396,7 +396,8 @@ rendered evidence (§10.3).
 `unstable_observation` · `trace_unavailable` · `trace_truncated` · `subprocess_untraced` ·
 `encoding_failed` · `network_not_enforced` · `perf_not_assessable` · `unsupported_project` ·
 `verdict_rejected` · `claim_unverifiable` · `agent_failed` (an agent call ended without a usable
-answer, G04). Every item has a reason, the affected targets, and
+answer, G04) · `judge_is_author` (the reviewers are of the model family the change names as its
+author, G08). Every item has a reason, the affected targets, and
 where possible what would resolve it. For the status (F04), `no_covering_test`,
 `unstable_observation`, `encoding_failed` and `trace_unavailable` leave the symbols they name
 unverified (every changed symbol when they name none); the others are listed on the card and
@@ -601,6 +602,30 @@ only whether the claim's wording is supported. PR text fed to judges is capped a
 atomic claim. For `contradicted` verdicts, a second pass with the order swapped must agree, or
 the verdict degrades to `unverifiable`. An optional 2-of-3 panel uses different models or
 effort levels. Agreement is logged per run.
+
+As built (G08, `agents/bias.py`, `agents/qa.py`, the review and `qa` jobs):
+
+- **Order swap.** A verdict is judged again with three things reversed: the evidence given in
+  full, the other claims, and the evidence-ID enum. Only `contradicted` verdicts are judged
+  again by default (`agent_order_swap`; `all` judges every verdict again, which is how the flip
+  rate is measured; `off` judges none).
+- **When the two orders disagree.** The verdict is issued as `unverifiable`, with three
+  things attached:
+  - the first judgement's citations;
+  - a rationale that says what the other order answered;
+  - `verdict.rejected` with `order_swap_disagreement`.
+- **Agreement.** Every verdict's `agreement` records `{runs, agreeing}`: how many judgements it
+  rests on, and how many gave the issued verdict.
+- **Panel.** `agent_panel` names three models. Each judges the claim, the second with the
+  order reversed. A verdict stands when two give it, and is `unverifiable` otherwise.
+- **Judge ≠ author.** The `claims` job reads co-author trailers and "generated with" lines in
+  the commits and the PR text. When they name a model family and every reviewer belongs to it,
+  the card lists `judge_is_author`. Families are read from model names only, never from
+  people's names or addresses.
+- **QA.** The `qa` job runs after `gap`. It reads every claim with its verdicts, their
+  rationales and a line per cited evidence item, and names verdicts that cannot hold together.
+  A checked inconsistency withholds each supported claim it names with an `unverifiable`
+  verdict. QA can make a card UNVERIFIABLE, never FLAGGED.
 
 ### 10.5 Backend abstraction and CI determinism
 `agents/backend.py` defines an `LLMBackend` protocol: `run(request, on_progress)` gives an

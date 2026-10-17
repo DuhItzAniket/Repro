@@ -9,6 +9,7 @@ import pytest
 from agent_support import ScriptedBackend
 from gitrepo import Repo
 from repro.agents import AgentResult, Dispatch, RunLedger
+from repro.agents.backend import Role
 from repro.agents.openai_compat import strict_allowed
 from repro.agents.prompts import load_prompt
 from repro.agents.reader import (
@@ -163,11 +164,16 @@ def test_the_change_s_files_and_commits_are_read_from_git(repo: tuple[Git, str, 
 
 
 def run_claims(
-    tmp_path: Path, repo: tuple[Git, str, str], result: AgentResult, pr: PrText = PR
+    tmp_path: Path,
+    repo: tuple[Git, str, str],
+    result: AgentResult,
+    pr: PrText = PR,
+    models: dict[Role, str] | None = None,
 ) -> tuple[dict[str, str], list[dict[str, Any]], ScriptedBackend, AgentState]:
     git, base, head = repo
     backend = ScriptedBackend(result)
-    setup = AgentSetup(backend, {"read": "test-model"}, Dispatch(1), RunLedger(), "test (live)")
+    chosen = models or {"read": "test-model"}
+    setup = AgentSetup(backend, chosen, Dispatch(1), RunLedger(), "test (live)")
     state = AgentState()
     job = claims_job(git, base=base, head=head, pr=pr, setup=setup, state=state)
     spec = RunSpec("repo", GitRef("main", base), GitRef("pr", head), deterministic_only=False)
@@ -217,3 +223,24 @@ def test_a_pr_without_text_reads_no_claims_and_calls_nothing(
     assert jobs == {"claims": "ok"}
     assert backend.requests == []
     assert state.claims == []
+
+
+def test_reviewers_of_the_author_s_model_family_are_on_the_card(tmp_path: Path) -> None:
+    """G08: the change's commit names Claude as a co-author, and the reviewers are Claude."""
+    repo = Repo(tmp_path / "repo")
+    base = repo.commit({"pkg/dates.py": "x = 1\n"}, message="base")
+    trailer = "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+    head = repo.commit({"pkg/dates.py": "x = 2\n"}, message=f"Fix x\n\n{trailer}")
+    found = (Git(repo.path), base, head)
+    ok = AgentResult("ok", structured={"claims": []}, turns=1)
+    claude: dict[Role, str] = {"read": "claude-haiku-5-5", "review": "claude-opus-5-5"}
+    _, events, _, _ = run_claims(tmp_path / "same", found, ok, models=claude)
+    [missing] = [e["payload"]["missing"] for e in events if e["kind"] == "missing.recorded"]
+    assert missing["reason"] == "judge_is_author"
+    assert missing["detail"] == (
+        "the change names a model by anthropic among its authors, and its reviewers "
+        "(claude-opus-5-5) are models by anthropic too"
+    )
+    other: dict[Role, str] = {"read": "m", "review": "openai/gpt-oss-120b"}
+    _, events, _, _ = run_claims(tmp_path / "other", found, ok, models=other)
+    assert not [e for e in events if e["kind"] == "missing.recorded"]

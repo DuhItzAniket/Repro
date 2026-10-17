@@ -169,7 +169,8 @@
         "unsupported_project",
         "verdict_rejected",
         "claim_unverifiable",
-        "agent_failed"
+        "agent_failed",
+        "judge_is_author"
       ]
     },
     "IsolationLevel": {

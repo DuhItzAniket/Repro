@@ -157,6 +157,20 @@ def test_the_same_call_in_another_run_has_the_same_digest() -> None:
     assert CassetteKey.of(first.request()) == CassetteKey.of(second.request())
 
 
+def test_an_id_at_the_start_of_a_line_is_normalised_too() -> None:
+    """G08: the QA agent lists evidence one per line, each line starting with its ID. In the
+    input's JSON the ID follows the ``\\n`` escape, where a word boundary does not match, so
+    the IDs were left as they were and every run made another call."""
+    runs = [Run(), Run()]
+    digests = []
+    for run in runs:
+        listing = f"The evidence:\n{run.claim}  behaviour_diff\n{run.related}  test_outcome"
+        ids = Ids()
+        digests.append(input_digest(run.request(prompt=listing), ids))
+        assert ids.seen == [run.claim, run.related]
+    assert digests[0] == digests[1]
+
+
 @pytest.mark.parametrize(
     "change",
     [

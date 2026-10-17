@@ -46,6 +46,10 @@ AgentsChoice = Literal["off", "claude", "groq", "openai"]
 #: ``live`` calls the model; ``record`` calls it and writes cassettes; ``replay`` only reads
 #: cassettes, and fails without one (G02).
 AgentMode = Literal["live", "record", "replay"]
+#: Which verdicts a second reviewer judges with the order reversed (G08): ``contradicted``
+#: ones, ``all`` (to measure the flip rate), or none.
+OrderSwap = Literal["contradicted", "all", "off"]
+PANEL_SIZE = 3
 
 ENV_PREFIX = "REPRO_"
 CONFIG_ENV = "REPRO_CONFIG"
@@ -85,8 +89,20 @@ class Settings(BaseModel):
     agent_budget_usd: float = Field(default=2.0, gt=0)
     #: Whether the probe writer proposes inputs for the probes (G07) when the agents are on.
     agent_probes: bool = True
+    agent_order_swap: OrderSwap = "contradicted"
+    #: Three models that each judge every claim, a verdict standing when two agree (G08);
+    #: empty: one reviewer, on the review model.
+    agent_panel: tuple[str, ...] = ()
 
-    @field_validator("log_level", "log_format", "sandbox", "agents", "agent_mode", mode="before")
+    @field_validator(
+        "log_level",
+        "log_format",
+        "sandbox",
+        "agents",
+        "agent_mode",
+        "agent_order_swap",
+        mode="before",
+    )
     @classmethod
     def _lowercase(cls, value: object) -> object:
         return value.lower() if isinstance(value, str) else value
@@ -98,12 +114,22 @@ class Settings(BaseModel):
             raise ValueError("must be an absolute path")
         return value
 
+    @field_validator("agent_panel", mode="before")
+    @classmethod
+    def _models(cls, value: object) -> object:
+        """A panel given as text (the environment, the file): models separated by commas."""
+        if isinstance(value, str):
+            return tuple(model.strip() for model in value.split(",") if model.strip())
+        return value
+
     @model_validator(mode="after")
     def _agents_complete(self) -> "Settings":
         if self.agents == "openai" and not (self.agent_base_url and self.agent_model):
             raise ValueError("agents = openai needs agent_base_url and agent_model")
         if self.agent_mode != "live" and self.agent_cassettes is None:
             raise ValueError(f"agent_mode = {self.agent_mode} needs agent_cassettes")
+        if self.agent_panel and len(self.agent_panel) != PANEL_SIZE:
+            raise ValueError(f"agent_panel names {PANEL_SIZE} models, or none")
         return self
 
     @property
