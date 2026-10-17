@@ -164,7 +164,7 @@ and explained each row correctly. What it found was fixed here too:
 None.
 
 ## Research notes
-- An acceptance test by a reader who knows nothing of the code found what 1,902 tests did not:
+- An acceptance test by a reader who knows nothing of the code found what 1,896 tests did not:
   every test of the install path ran from a checkout, and the one test of the installed tool
   checked only that a run completed. A test of the installed product must check what the
   product promises (here, that the tests ran), not that it ran to the end.
