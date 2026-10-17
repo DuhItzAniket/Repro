@@ -454,3 +454,28 @@ entry. If something turns out wrong, add a correcting entry.
 - **For the paper.** A verification tool's own outputs are an attack surface: they carry the
   target's text to people and agents. Stating which outputs are scrubbed (events, logs, cards)
   and which are not (raw artifacts) is part of what "trust the card" can mean.
+
+## 2026-10-17 · H06 · A reader with only the documentation found what 1,896 tests did not
+- **Two dry runs of the quickstart**, each by an agent given only the user guide, the release's
+  wheels and `pallets/itsdangerous` ([phase record](../phases/H06-docs.md)).
+  - The first completed every step, but an installed Repro ran no test in a container
+    (Windows, Docker Desktop: the container's user could not read Repro's bind-mounted pytest
+    plugin). It also met a card VERIFIED with no test run: base's map and head's listing had
+    both died, no function had changed, so nothing was selected and no rule looked further.
+  - The second, after the fixes, completed it with no blocker. It found the session token in
+    the web server's log line for each WebSocket, and a change to a class attribute that
+    selected none of the class's tests (57 tests ran once fixed, against 41).
+- **Why the tests missed them.** Every test of the install path ran from a checkout, and the one
+  test of the installed tool, in CI on both systems, checked that its first run completed, not
+  that it ran a test. The status rules were tested rule by rule, each from inputs where
+  something had been selected.
+- **For the paper.** A verification tool can fail by omission: a rule that never fires reads
+  as a pass. "Nothing ran" has to be a state the rules see directly, not one they infer from
+  what was selected; and an acceptance test of the shipped product must check what it
+  promises (here, that the tests ran), not that it ended.
+
+## 2026-10-17 · Gate H · v1.0.0, the first release
+- **Gate H passed** ([gate record](../phases/H-gate.md)): the release's wheels install and make
+  a first run, VERIFIED with a test run, on Linux and Windows in CI; every threat in the threat
+  model is traced to tests or a stated residual (H03); the user guide was completed from the
+  docs alone by a reviewer who had not seen the project (H06).

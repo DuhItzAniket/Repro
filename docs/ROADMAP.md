@@ -542,8 +542,9 @@ live call succeeds.
 **Goal:** a stranger can install Repro, run it on their own repo, and trust what the card says
 about what was and wasn't checked.
 
-**Gate H:** install-from-scratch tests pass on Windows and Linux. The security review is
-complete. The user documentation is complete. `v1.0.0` is tagged and published.
+**Gate H (passed 2026-10-17, v1.0.0, record: [`phases/H-gate.md`](phases/H-gate.md)):**
+install-from-scratch tests pass on Windows and Linux. The security review is complete. The user
+documentation is complete. `v1.0.0` is tagged and published.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|

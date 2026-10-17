@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-17
+
+Stage H — Hardening & first release. Gate record: `docs/phases/H-gate.md`.
+
 ### Added
 - The failure catalogue (`docs/FAILURES.md`). Each way a run can fail is listed with what the
   run records, its effect on the card, what resolves it, and its test. Chaos tests meet each
@@ -679,7 +683,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.0.0
 [0.7.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.7.0
 [0.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.6.0
 [0.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.5.0

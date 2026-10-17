@@ -14,10 +14,10 @@ result is a **Reproduction Card** with one of three verdicts:
 
 > Not "does it work?", but **"what did it change, and did it say so?"**
 
-> **Status: v0.7.0, Stages A to G done; Stage H (hardening and the first release, v1.0.0) in
-> progress.** Repro runs both sides of a change in a sandbox, compares what they do, checks
-> invariants, has agents judge the PR's claims against the evidence, and shows it all live in
-> the cockpit. Progress is tracked in the [roadmap](docs/ROADMAP.md).
+> **Status: v1.0.0, the first release: Stages A to H done.** Repro runs both sides of a change
+> in a sandbox, compares what they do, checks invariants, has agents judge the PR's claims
+> against the evidence, and shows it all live in the cockpit. Next is GitHub integration
+> (Stage I). Progress is tracked in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 
@@ -72,8 +72,9 @@ repro run --repo <path> --base <ref> --head <ref>
 `repro doctor` says what this machine can do. `repro run` serves the cockpit and prints its
 address, which follows the run live (`--open` opens it in the browser). CI makes this same
 install, and a first run on a small repository, on Linux and Windows for every change, inside
-ten minutes (`scripts/install_check.py`). PyPI comes later. Until v1.0.0, run Repro from a
-checkout: `uv sync`, `pnpm install` and `pnpm build`, then `uv run repro ...`.
+ten minutes (`scripts/install_check.py`). PyPI comes later. To work on Repro itself, run it
+from a checkout: `uv sync`, `pnpm install` and `pnpm build`, then `uv run repro ...`
+([CONTRIBUTING](CONTRIBUTING.md)).
 
 New to Repro? The [quickstart](docs/guide/quickstart.md) goes from nothing to a first card, and
 [the demo](docs/guide/demo.md) shows one run, from the command to the card.
