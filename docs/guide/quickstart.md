@@ -61,6 +61,11 @@ without it. When the run ends, its last line gives the run's ID and the card's s
 example `repro: run_… completed (…): the card is FLAGGED`. The server keeps going until you
 press Ctrl+C.
 
+**Many runs at once.** The same server shows every run in its data directory at
+`/fleet.html`, one tile each: running, then the card's status, refreshed every two seconds.
+Open it in the tab that has the token (`http://127.0.0.1:8780/fleet.html` once the cockpit has
+taken it). A tile opens its run in the cockpit.
+
 **Or give it a pull request.** With a GitHub pull request's address, Repro reads its base,
 head, title and description from GitHub and fetches its commits, a fork's included, into a
 mirror of its own in the data directory:

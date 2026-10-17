@@ -44,6 +44,9 @@ All notable changes to this project are documented here. The format follows
   Each side's dependencies are installed from its lockfile with lifecycle scripts off, its
   tests run in the process sandbox, and the outcomes are compared test by test. There is no
   card yet: the tracer and the card are proposed in ADR-0017. [K01]
+- The fleet view (`/fleet.html`, and `GET /fleet` in the API): every run of the engine's data
+  directory as a tile, live. A tile shows running, then the card's status, and flashes only
+  when its run writes events. A tile opens its run in the cockpit. [K02]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported

@@ -104,3 +104,30 @@ def test_no_store_yet_is_a_clear_503(tmp_path: Path) -> None:
         response = client.get("/runs")
     assert response.status_code == 503
     assert "not available" in response.json()["detail"]
+
+
+def test_the_fleet_lists_runs_with_their_pull_request_and_card(
+    client: TestClient, writer: StoreWriter, run_id: str
+) -> None:
+    """K02: many runs at once, each with what a tile shows."""
+    other = run_record()
+    writer.create_run(other).result(TIMEOUT)
+    started = log_line(other.id) | {
+        "kind": "run.started",
+        "stage": "build",
+        "payload": {
+            "repo": {"name": "pallets/flask", "url": "https://github.com/pallets/flask"},
+            "pr": {"title": "Fix the parser", "number": 7, "url": "https://github.com/p/f/pull/7"},
+        },
+    }
+    writer.submit(started).result(TIMEOUT)
+    writer.put_card(other.id, "FLAGGED", '{"status": "FLAGGED"}', "2026-10-18T00:00:00Z").result(
+        TIMEOUT
+    )
+    fleet = client.get("/fleet").json()
+    assert [run["id"] for run in fleet] == [other.id, run_id]
+    assert (fleet[0]["card_status"], fleet[0]["repo_name"]) == ("FLAGGED", "pallets/flask")
+    assert fleet[0]["pr"]["number"] == 7
+    # A run whose first event is not run.started, and with no card yet.
+    assert (fleet[1]["card_status"], fleet[1]["pr"], fleet[1]["last_seq"]) == (None, None, 1)
+    assert client.get("/fleet?limit=0").status_code == 422

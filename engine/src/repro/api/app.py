@@ -16,6 +16,7 @@ Nothing here changes state. With ``ui_dir``, the built cockpit is served at ``/`
 ``replay_log``, one event log file is served at ``/replay.jsonl`` for the cockpit to replay.
 """
 
+import json
 import re
 from collections.abc import Collection, Sequence
 from pathlib import Path
@@ -125,6 +126,27 @@ def _add_records(api: APIRouter, database: Path, runs_dir: Path) -> None:
     def runs(limit: Annotated[int, Query(ge=1, le=500)] = 50) -> list[dict[str, Any]]:
         with reader() as store:
             return [_run_json(run, store.last_seq(run.id)) for run in store.runs(limit)]
+
+    @api.get("/fleet")
+    def fleet(limit: Annotated[int, Query(ge=1, le=500)] = 64) -> list[dict[str, Any]]:
+        """Many runs at once (K02): each run with its card's status (once it has one) and the
+        repository and pull request its ``run.started`` names."""
+        with reader() as store:
+            found = []
+            for record in store.runs(limit):
+                card = store.card(record.id)
+                first = store.events(record.id, 0, 1)
+                body = json.loads(first[0].body) if first else {}
+                started = body.get("payload", {}) if body.get("kind") == "run.started" else {}
+                found.append(
+                    _run_json(record, store.last_seq(record.id))
+                    | {
+                        "card_status": card.get("status") if card else None,
+                        "repo_name": (started.get("repo") or {}).get("name"),
+                        "pr": started.get("pr"),
+                    }
+                )
+            return found
 
     @api.get("/runs/{run_id}")
     def run(run_id: RunId) -> dict[str, Any]:

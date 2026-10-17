@@ -1,0 +1,135 @@
+/* The fleet view (K02). Greyscale but for state, as the cockpit (DESIGN.md "Palette"). */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--body-size) / 1.5 var(--font-mono);
+}
+
+.fleet {
+  padding: 20px 24px;
+}
+
+.fleet header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 1px solid var(--panel-border);
+  margin-bottom: 16px;
+}
+
+.fleet h1 {
+  font-size: var(--title-size);
+  font-weight: 500;
+  color: var(--hot);
+  margin: 0 0 8px;
+}
+
+.counts {
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.problem {
+  color: var(--flag);
+}
+
+.tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-left: 3px solid var(--text-faint);
+  color: inherit;
+  text-decoration: none;
+  min-height: 72px;
+}
+
+.tile:focus-visible,
+.tile:hover {
+  border-color: var(--line-strong);
+  outline: none;
+}
+
+.tile .state {
+  font-size: var(--micro-size);
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.tile .title {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile .where,
+.tile .events {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile.running {
+  border-left-color: var(--hot);
+}
+
+.tile.flagged {
+  border-left-color: var(--flag);
+}
+
+.tile.flagged .state,
+.count.flagged {
+  color: var(--flag);
+}
+
+.tile.verified {
+  border-left-color: var(--ok);
+}
+
+.tile.verified .state,
+.count.verified {
+  color: var(--ok);
+}
+
+.tile.unverifiable {
+  border-left-color: var(--violet);
+}
+
+.tile.unverifiable .state,
+.count.unverifiable {
+  color: var(--violet);
+}
+
+/* A run that wrote events since the last poll: one short flash of its edge, nothing more. */
+.tile.pulse {
+  animation: fleet-pulse 600ms ease-out;
+}
+
+@keyframes fleet-pulse {
+  from {
+    background: var(--line-faint);
+  }
+  to {
+    background: var(--panel);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.pulse {
+    animation: none;
+  }
+}

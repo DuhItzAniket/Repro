@@ -44,6 +44,10 @@ export function injectedBloat(): Plugin {
 
 export default defineConfig({
   plugins: [fontLicence(), injectedBloat()],
+  // The cockpit and the fleet view (K02): two pages, one shared chunk.
+  build: {
+    rollupOptions: { input: { main: "index.html", fleet: "fleet.html" } },
+  },
   test: {
     // Playwright specs (e2e/, gate/) run in their own runner.
     exclude: [...configDefaults.exclude, "e2e/**", "gate/**"],
