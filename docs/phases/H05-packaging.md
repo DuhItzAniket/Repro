@@ -56,10 +56,10 @@ change, so it keeps working.
   (`repro-engine @ <url>`) the README uses, with file URLs in place of the release's.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): clean-machine install and first run on Windows and Linux in under 10
+- [x] AC1 (roadmap): clean-machine install and first run on Windows and Linux in under 10
   minutes, as a documented procedure and a CI job.
-- [ ] AC2: the wheels carry the cockpit and the schemas, and an installed Repro uses them.
-- [ ] AC3: a published release gets its wheels attached, checked first.
+- [x] AC2: the wheels carry the cockpit and the schemas, and an installed Repro uses them.
+- [x] AC3: a published release gets its wheels attached, checked first.
 
 ## Test plan
 | Criterion | Check |
