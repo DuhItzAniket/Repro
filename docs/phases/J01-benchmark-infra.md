@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | J — Evaluation & research |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | H05 |
-| **Branch / PR** | `phase/J01-benchmark-infra` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/J01-benchmark-infra` · [#82](https://github.com/DuhItzAniket/Repro/pull/82) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 SWE-format tasks and agent patches become Repro runs under the evaluation's input contract
@@ -90,7 +90,7 @@ manifest.
   Flask's `filterwarnings = ["error"]` makes the warning an error before any test runs. Before
   the fix the card said only "ImportError while loading conftest"; after it, the warning.
 - **Locally**: `test_bench_swe.py` 18 passed; `test_readable.py` 2 passed.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#82).
 
 ## Deviations from spec
 None.
