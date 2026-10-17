@@ -613,7 +613,7 @@ artifact is archived with a DOI. The paper is submitted.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| J01 | Benchmark infrastructure & input contract | L | H05 | planned |
+| J01 | Benchmark infrastructure & input contract | L | H05 | in progress |
 | J02 | Ground-truth pipeline & annotation tooling | L | J01 | planned |
 | J03 | Baselines | L | J01 | planned |
 | J04 | S0 dev set & S1 pilot | M | J02, J03 | planned |

@@ -21,6 +21,22 @@ Every system receives exactly:
 hints, and post-PR discussion. The benchmark adapter writes sanitised instances, a test asserts
 that no withheld field reaches any system, and the digest of each system's inputs is logged.
 
+As built in J01 (`bench/src/repro_bench/swe.py`):
+- A sealed input is built from an allow-list (`repo`, `base_commit`, the diff, the claim text),
+  so a field a dataset adds later is withheld too. The instance ID is withheld as well: it
+  carries a GitHub number that leads to the fix. Where a system needs a title (Repro's pull
+  request text), it is the claim's first line, the issue's title.
+- The logged digest is the SHA-256 of the sealed input's canonical JSON (sorted keys, no
+  whitespace). Results are keyed by instance, model and patch SHA-256 outside what a system sees.
+- Head is the base commit with the diff applied, written as a commit without a working tree;
+  a diff that does not apply is recorded as such, never run.
+- **Open for J04 (found in J01):** Repro's tracer needs Python ≥ 3.12 (`sys.monitoring`), and a
+  task's own environment may pin tools that fail there. On SWE-bench Verified's one Flask
+  instance (`pallets__flask-5014`, 2023), the pinned pytest 7.2.2 fails before any test runs
+  on Python 3.13 under the project's `filterwarnings = error`. Whether S2 includes only tasks
+  whose environment runs on Python ≥ 3.12, or runs older ones without traces, is decided and
+  recorded in J04, before any S2 data exists.
+
 ## 3. Datasets
 | Split | Source | Target size | Use |
 |---|---|---|---|
