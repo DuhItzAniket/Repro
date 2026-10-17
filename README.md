@@ -14,10 +14,11 @@ result is a **Reproduction Card** with one of three verdicts:
 
 > Not "does it work?", but **"what did it change, and did it say so?"**
 
-> **Status: v1.0.0, the first release: Stages A to H done.** Repro runs both sides of a change
-> in a sandbox, compares what they do, checks invariants, has agents judge the PR's claims
-> against the evidence, and shows it all live in the cockpit. Next is GitHub integration
-> (Stage I). Progress is tracked in the [roadmap](docs/ROADMAP.md).
+> **Status: v1.1.0, Stages A to I done.** Repro runs both sides of a change in a sandbox,
+> compares what they do, checks invariants, has agents judge the PR's claims against the
+> evidence, and shows it all live in the cockpit; on GitHub, its Action reports each pull
+> request's card and signs it. Next is evaluation and research (Stage J). Progress is tracked
+> in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 

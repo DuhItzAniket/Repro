@@ -583,15 +583,16 @@ completes the quickstart from the docs alone.
 
 ## Stage I — GitHub integration · v1.1.0
 
-**Gate I:** on a test repository, opening a PR produces a Repro check run, a sticky card comment
-and (on public repos) a signed attestation, and re-running updates rather than duplicates them.
+**Gate I (passed 2026-10-18, v1.1.0, record: [`phases/I-gate.md`](phases/I-gate.md)):** on a
+test repository, opening a PR produces a Repro check run, a sticky card comment and (on public
+repos) a signed attestation, and re-running updates rather than duplicates them.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | I01 | PR ingestion | M | H05 | done |
 | I02 | Check run, sticky comment & job summary | M | I01 | done |
 | I03 | GitHub Action & attestation signing | M | I02, H04 | done |
-| I04 | GitHub App (optional) | L | I03 | planned |
+| I04 | GitHub App (optional) | L | I03 | deferred: built only if users ask |
 
 **I01** PR URL → refs, description, commits (gh/API, token from env), fork handling.
 **I02** Conclusion mapping (VERIFIED→success, FLAGGED→failure or action_required, UNVERIFIABLE→
@@ -750,3 +751,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | I01 | 2026-10-17 | [#78](https://github.com/DuhItzAniket/Repro/pull/78) | repro run --pr <url>: the pull request read from GitHub's REST API (2026-03-10; token from GITHUB_TOKEN or GH_TOKEN, dropped on a cross-host redirect), its base branch and refs/pull/<n>/head (forks included) fetched into Repro's own bare mirror with the token in GIT_CONFIG_* only, head compared with the merge base; run.started records repo and PR; --repo uses a user's clone as is; failures exit 2 in words; checked on pallets/itsdangerous#378 |
 | I02 | 2026-10-17 | [#79](https://github.com/DuhItzAniket/Repro/pull/79) | repro report <run>: the card on its GitHub pull request, checked against its log, no target code run; the check run Repro on the head commit (VERIFIED success, FLAGGED failure, UNVERIFIABLE neutral; annotations at the changed code, 50 a request), one comment found by a hidden marker and its author, updated in place, the job summary in Actions; a rerun updates; a target it cannot update is named and the others made |
 | I03 | 2026-10-17 | [#80](https://github.com/DuhItzAniket/Repro/pull/80) | action.yml (composite): Repro from the Action's own checkout on the runner, containers only (REPRO_SANDBOX=docker), card kept as an artifact, reported, and on public repositories signed with actions/attest (card.json, the card's canonical bytes, as subject; Repro's predicate); actions pinned to commits; mirror and maps cached; forks not posted to unless opted in under pull_request_target (owner's decisions); plan/run/report in repro.integrations.github.action, tested; THREAT_MODEL T20 |
+| Gate I | 2026-10-18 | [#81](https://github.com/DuhItzAniket/Repro/pull/81) | Stage I complete; release v1.1.0 ([gate record](phases/I-gate.md)); on the public test repository DuhItzAniket/repro-gate-i, opening a pull request made the check run (FLAGGED, one annotation), one comment and a signed attestation of the card (gh attestation verify passes), and re-running left one of each; I04 deferred |

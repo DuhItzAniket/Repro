@@ -479,3 +479,16 @@ entry. If something turns out wrong, add a correcting entry.
   a first run, VERIFIED with a test run, on Linux and Windows in CI; every threat in the threat
   model is traced to tests or a stated residual (H03); the user guide was completed from the
   docs alone by a reviewer who had not seen the project (H06).
+
+## 2026-10-18 · Gate I · A card on the pull request, and where the token lives
+- **Gate I passed** ([gate record](../phases/I-gate.md)) on a public test repository:
+  opening a pull request made the check run, the comment and a signed attestation of the card,
+  and running again updated them. The Action's job took 54 s on `ubuntu-latest`, in containers.
+- **The signed subject is the card.** GitHub's attestations take `sha256` subjects only; a
+  commit's git ID is not one. The card's canonical JSON is the subject, so the signed digest is
+  the card's own, and the head commit stays in Repro's predicate.
+- **For the paper.** A verification tool in CI is only as trustworthy as the place it runs. For
+  a fork's pull request, the job that runs untrusted code is the one that could hold a write
+  token; Repro reports from a step that runs none of it, posts for forks only on the
+  maintainer's opt-in, and in GitHub Actions runs the code in containers only, never as the
+  job's own user.
