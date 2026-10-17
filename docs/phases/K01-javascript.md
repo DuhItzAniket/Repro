@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion backlog |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | — |
-| **Branch / PR** | `phase/K01-javascript` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/K01-javascript` · [#88](https://github.com/DuhItzAniket/Repro/pull/88) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Repro for JavaScript and TypeScript changes tested with Vitest or Jest (roadmap: "Needs a
@@ -61,7 +61,7 @@ image and the event schema's core.
   Each side was snapshotted and run with Vitest 5.0.4 in the process sandbox. Base had two
   tests passing. The comparison found `test/m.test.js::m adds` regressed and one test the
   same: `add(0, 0)` is 0 either way.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#88).
 
 ## Deviations from spec
 - Phase 1 of 4: the roadmap's item is the whole design. The rest needs the owner's approval
