@@ -5,7 +5,7 @@
 | **Stage** | J — Evaluation & research |
 | **Status** | paused: draft prepared; results, review and submission wait |
 | **Depends on** | J08 |
-| **Branch / PR** | `phase/J10-paper` · PR pending |
+| **Branch / PR** | `phase/J10-paper` · [#94](https://github.com/DuhItzAniket/Repro/pull/94) |
 | **Started / finished** | 2026-10-18 / — |
 
 ## Objective
@@ -42,7 +42,7 @@ results, the internal review and the submission wait for J07–J08 and the owner
 
 ## Evidence
 - All 23 citation keys in the draft resolve in `references.bib`.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#94).
 
 ## Deviations from spec
 - Drafted before J07–J08, by the owner's decision to prepare while Stage J waits.
