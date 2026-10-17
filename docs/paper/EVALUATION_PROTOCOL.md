@@ -35,7 +35,9 @@ As built in J01 (`bench/src/repro_bench/swe.py`):
   instance (`pallets__flask-5014`, 2023), the pinned pytest 7.2.2 fails before any test runs
   on Python 3.13 under the project's `filterwarnings = error`. Whether S2 includes only tasks
   whose environment runs on Python ≥ 3.12, or runs older ones without traces, is decided and
-  recorded in J04, before any S2 data exists.
+  recorded in J04, before any S2 data exists. For scale: in SWE-rebench's leaderboard splits
+  2025_09 to 2026_03, 351 of 411 tasks pin Python 3.12 or 3.13 (`install_config.python`;
+  dataset revision `34d5a588`, counted in J02 on 2026-10-18), and all 411 use pytest.
 
 ## 3. Datasets
 | Split | Source | Target size | Use |
@@ -64,6 +66,24 @@ around 0.2, about 155 incorrect patches are needed to detect a 10-point differen
    reported per source.
 4. `UNCERTAIN` is excluded from primary metrics. A sensitivity analysis treats it as each class.
 5. Labels are **frozen** and version-tagged before any system runs on S2.
+
+As built in J02 (`bench/src/repro_bench/`: `truth`, `difftest`, `groundtruth`, `labels`,
+`annotate`; guideline [`ANNOTATION_GUIDELINE.md`](ANNOTATION_GUIDELINE.md)):
+- **Tier A** runs in the task's image (SWE-rebench `docker_image`, pinned by digest), in a
+  fresh container with no network, with the task's own `install_config.test_cmd`; the full
+  suite is that command without the test patch's files. Grading reimplements SWE-bench's
+  (`grading.py` at 02e7a74): a missing test is failed, a skipped FAIL_TO_PASS does not
+  resolve, an invalid log is not a pass. A full-suite regression counts only if it holds over
+  3 reruns of both sides. A run with no valid result goes to people (`NEEDS_REVIEW`), never to
+  a label.
+- **Tier B** runs each test source against both patches 20 times; a test counts only if its
+  outcome is the same in every rerun on both sides. Generated tests come from one locked
+  prompt (`difftest/1`) through the same Groq model as the reviewers, recorded as cassettes.
+- **Annotators** see the issue, both patches, the maintainers' tests and the tiers' evidence,
+  from an allow-list: a batch carrying any other field is refused. Each gets their own order.
+  κ is reported per source; a disagreement on the defect class is a disagreement.
+- The final label file's SHA-256 is written beside it, and the analysis refuses a label file
+  that no longer matches.
 
 ## 5. Systems
 | ID | System | Notes |

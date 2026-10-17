@@ -12,6 +12,8 @@ What is here so far:
 | `repro_bench.verdicts` | G09 | Reviewed PRs end to end: verdict accuracy, flips, cost |
 | `repro_bench.scale` | H02 | `repro run` on three pinned real repositories, cold and warm |
 | `repro_bench.swe` | J01 | SWE-format instances and agent patches as sealed inputs, a manifest, and `repro run` on them |
+| `repro_bench.truth`, `difftest`, `groundtruth` | J02 | Ground truth: tier A (hidden tests, full suite) and tier B (differential tests) in the task's image |
+| `repro_bench.labels`, `annotate` | J02 | Blinded annotation pages, Cohen's κ, adjudication, the label freeze |
 
 Each runs `repro run` through its CLI, or calls the agents as the engine does, and reads what a
 run stored through `repro.store`. Results go to `bench/results/`.
