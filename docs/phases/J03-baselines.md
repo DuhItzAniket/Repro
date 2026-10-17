@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | J — Evaluation & research |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | J01 |
-| **Branch / PR** | `phase/J03-baselines` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/J03-baselines` · [#84](https://github.com/DuhItzAniket/Repro/pull/84) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 The systems Repro is compared with run on the same sealed inputs and answer by rules fixed
@@ -94,7 +94,7 @@ fallback phrase, so its FAIL_TO_PASS test fails. This is one task and never repo
   and a test injects that setting. After the fix, B3 reviewed the gold patch and listed
   neither a key issue nor a security concern.
 - **Locally**: `test_bench_baselines.py` 27 passed.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#84).
 
 ## Deviations from spec
 - **Testora (B4) is not run.** It is published for its own dev-container setup, GitHub pull
