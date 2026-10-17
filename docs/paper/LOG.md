@@ -492,3 +492,18 @@ entry. If something turns out wrong, add a correcting entry.
   token; Repro reports from a step that runs none of it, posts for forks only on the
   maintainer's opt-in, and in GitHub Actions runs the code in containers only, never as the
   job's own user.
+
+## 2026-10-18 · J01 · The input contract, and a task Repro's interpreter cannot run
+- **The input contract is enforced, not described.** A system's input is built from an
+  allow-list (repository at base, diff, claim), and a test plants a canary in every withheld
+  field, in a field the dataset does not have and in the instance ID, then runs Repro: none
+  reaches its command line, PR text, event log or card ([phase record](../phases/J01-benchmark-infra.md)).
+- **The instance ID is withheld too**: it carries a GitHub number that leads to the fix. The
+  protocol's list did not name it.
+- **First real instance** (SWE-bench Verified `pallets__flask-5014`, gold patch as a stand-in,
+  never reported): UNVERIFIABLE, both sides stopped before any test. The task pins pytest
+  7.2.2, which Python 3.13 warns about, and Flask turns warnings into errors. Repro's tracer
+  needs Python ≥ 3.12.
+- **For the paper.** An execution-based reviewer inherits its interpreter's constraints:
+  older tasks' pinned tools may not run on it. That is a selection effect on any benchmark of
+  such a tool, to be fixed before S2 (J04) and stated as a threat to validity.

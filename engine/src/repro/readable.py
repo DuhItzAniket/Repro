@@ -19,8 +19,11 @@ from typing import Final
 MIN_HOME: Final = 3
 #: A relative Windows path to a Python file, as pytest prints a location (``tests\a\b.py:3``).
 _WINDOWS_PY_PATH: Final = re.compile(r"(?<![\w\\/:.])(?:[\w.-]+\\)+[\w.-]+\.py(?=[:\s\"')]|$)")
-#: The line of a traceback that names its error: ``E   ImportError: ...`` or ``ValueError: ...``.
-_ERROR_LINE: Final = re.compile(r"^(?:E\s+)?((?:[\w.]+\.)?\w*(?:Error|Exception|Exit)\b.*)$")
+#: The line of a traceback that names its error: ``E   ImportError: ...`` or ``ValueError: ...``,
+#: or a warning a project's ``filterwarnings = error`` made one (J01: ``E   DeprecationWarning``).
+_ERROR_LINE: Final = re.compile(
+    r"^(?:E\s+)?((?:[\w.]+\.)?\w*(?:Error|Exception|Exit|Warning)\b.*)$"
+)
 REASON_MAX: Final = 300
 
 

@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `python -m repro_bench.swe`: SWE-format instances and agent patches as Repro runs, under the
+  evaluation's input contract. `seal` keeps a system's input to the repository at base, the
+  diff and the claim, from an allow-list (the ground truth and the instance's ID are withheld),
+  and writes a manifest pinning each instance's source, base commit, image digest and patch
+  SHA-256; `run` makes head without a working tree, runs Repro and logs the input's SHA-256
+  with each card. [J01]
+
+### Fixed
+- A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
+  by that warning, not by pytest's "ImportError while loading conftest". [J01]
+
 ## [1.1.0] - 2026-10-18
 
 Stage I — GitHub integration. Gate record: `docs/phases/I-gate.md`.
