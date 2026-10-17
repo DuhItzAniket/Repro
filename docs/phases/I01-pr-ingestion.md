@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | I — GitHub integration |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | H05 |
-| **Branch / PR** | `phase/I01-pr-ingestion` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/I01-pr-ingestion` · [#78](https://github.com/DuhItzAniket/Repro/pull/78) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 `repro run --pr <url>` reproduces a GitHub pull request from its URL alone: the commits it
@@ -103,7 +103,7 @@ by hand.
   `pallets/itsdangerous` and the pull request's number, title and URL.
 - **Locally**: `test_github_ingest.py` 23 passed, and the CLI, card, run, config, paths,
   orchestrator and doctor tests around the change.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#78).
 
 ## Deviations from spec
 - **Commits from git, not the API.** The roadmap names the API for the commits; the reader's
