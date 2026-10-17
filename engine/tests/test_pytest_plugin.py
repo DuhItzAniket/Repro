@@ -232,3 +232,18 @@ def test_the_suite_in_a_container(tmp_path: Path) -> None:
     check_suite(first, "3.13")
     assert second.results.outcomes() == first.results.outcomes()
     assert draw(second) == draw(first)
+
+
+def test_tests_too_many_for_a_command_line_go_in_a_file(
+    side: Side, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """J04: 889 node IDs passed Windows' 32,767-character command line. Past the limit the IDs
+    go in a file the plugin reads: exactly those tests run, in the order given."""
+    monkeypatch.setattr(runner.pytest, "ARGV_IDS_MAX", 1)
+    wanted = [f"{OUTCOMES}test_passes", f"{OUTCOMES}test_fails", DRAW]
+    for order in (wanted, wanted[::-1]):
+        run = side.run(*order)
+        assert list(run.results.tests) == order
+        assert run.results.outcomes() == {test: EXPECTED[test] for test in order}
+        files = [d.detail for d in run.execution.detections.items if d.kind == "file"]
+        assert files == []  # the list is read from where Repro wrote it

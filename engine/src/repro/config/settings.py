@@ -78,6 +78,11 @@ class Settings(BaseModel):
     memory_limit_mb: int = Field(default=4096, gt=0)
     #: The Docker runtime for the target's containers: ``runsc`` (gVisor) makes them L4 (H03).
     docker_runtime: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+    #: An image whose own Python environment the Docker sandbox runs the tests in, as it is, in
+    #: place of Repro's (J04): a benchmark task's image, or a team's CI image. Pinned by digest.
+    sandbox_image: str | None = Field(
+        default=None, pattern=r"^[a-z0-9][a-z0-9._/:-]{0,250}@sha256:[0-9a-f]{64}$"
+    )
     #: GitHub's REST API, for `repro run --pr` (I01): github.com's, or a GitHub Enterprise
     #: Server's (``https://<host>/api/v3``). HTTPS, or HTTP on a loopback address for tests.
     github_api_url: str = "https://api.github.com"

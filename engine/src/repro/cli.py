@@ -575,6 +575,7 @@ def run(
             timeout_s=settings.test_timeout_s, memory_bytes=settings.memory_limit_mb * MIB
         ),
         docker_runtime=settings.docker_runtime,
+        env_image=settings.sandbox_image,
     )
     cleaned = threading.Lock()
 

@@ -514,6 +514,18 @@ Rules:
   a new session with resource limits set by a launcher before `exec`; a wall-clock timeout that
   kills the tree, and processes left behind killed and reported. `sandbox.ready` states the
   level reached and `network: detected-only`.
+- **An image's own environment (J04, `sandbox_image`).** The containers run in that image, at
+  L3 as above, and nothing is installed: the tests run with the image's interpreter (its named
+  conda environment's, as SWE-bench-style task images have, else `python3`), with that
+  environment's programs first on `PATH`. The snapshot goes first on the import path, after
+  Repro's hook. Before any test, each of the snapshot's top-level packages must import from the
+  snapshot; if one fails to import, or would come from a copy the image holds installed, the
+  side has no environment and the card is UNVERIFIABLE. Repro never runs the image's copy in
+  place of the change. Code that needs a build step (a compiled extension) does not import
+  from a bare snapshot, so it is reported this way.
+  The image itself is the operator's choice and is trusted as such: its interpreter is what
+  runs Repro's hook, so an image built to deceive could. Pinning by digest fixes which image
+  that is, and the card names it.
 - **L3 as built (D02, `repro.sandbox.DockerSandbox`):** the commit is streamed from its tree
   object into a volume (modes and links exact on any host), unpacked by a no-network helper and
   owned by uid 1000. Each command runs in a fresh container with the hardening above, pids,

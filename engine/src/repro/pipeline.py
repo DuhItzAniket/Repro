@@ -228,6 +228,7 @@ def pipeline_jobs(
     pr: PrText | None = None,
     limits: Limits | None = None,
     docker_runtime: str | None = None,
+    env_image: str | None = None,
 ) -> tuple[Sequence[Job], RunState]:
     """Every job of a run, and the state they share (close it when the run is over). With
     ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04)."""
@@ -260,6 +261,7 @@ def pipeline_jobs(
             agents=agents,
             limits=limits,
             docker_runtime=docker_runtime,
+            env_image=env_image,
         )
     if agents is not None and cards is not None:
         others = [job.name for job in jobs]
