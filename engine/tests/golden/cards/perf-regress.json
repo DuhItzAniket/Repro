@@ -66,7 +66,7 @@
       ]
     },
     {
-      "detail": "1 tests run in under 5 ms on both sides, too fast to time: tests/test_tags.py::test_unique_tags_small",
+      "detail": "1 test runs in under 5 ms on both sides, too fast to time: tests/test_tags.py::test_unique_tags_small",
       "reason": "perf_not_assessable",
       "resolution": "A benchmark that runs the changed code long enough to time",
       "targets": [

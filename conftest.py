@@ -47,6 +47,11 @@ def pytest_configure(config: pytest.Config) -> None:
         "agent_eval: replays the reviewed pull requests for G09's thresholds (CI runs it in its "
         "own job: pytest -m agent_eval)",
     )
+    config.addinivalue_line(
+        "markers",
+        "chaos: runs repro run end to end into a catalogued failure (H01; CI runs it in its own "
+        "job: pytest -m chaos)",
+    )
 
 
 @pytest.fixture(scope="session")

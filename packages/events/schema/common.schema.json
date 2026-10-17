@@ -170,7 +170,8 @@
         "verdict_rejected",
         "claim_unverifiable",
         "agent_failed",
-        "judge_is_author"
+        "judge_is_author",
+        "memory_limit"
       ]
     },
     "IsolationLevel": {

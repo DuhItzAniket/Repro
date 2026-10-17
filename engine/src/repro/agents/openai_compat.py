@@ -124,25 +124,40 @@ def _post(url: str, body: Mapping[str, Any], key: str | None, timeout: float) ->
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
-            data: dict[str, Any] = json.loads(response.read())
-            return data
+            raw_answer = response.read()
     except urllib.error.HTTPError as exc:
-        raw = exc.read().decode("utf-8", "replace")
-        code = None
-        try:
-            error = json.loads(raw)["error"]
-            message = str(error["message"])
-            code = str(error["code"]) if error.get("code") else None
-        except (ValueError, KeyError, TypeError, AttributeError):
-            message = raw[:300] or exc.reason
-        after = exc.headers.get("retry-after") if exc.headers else None
-        try:
-            retry_after = float(after) if after is not None else None
-        except ValueError:
-            retry_after = None
-        raise _HttpError(exc.code, message[:300], retry_after, code) from None
+        raise _http_error(exc) from None
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise _HttpError(0, f"cannot reach the API: {exc}") from None
+    try:
+        data: Any = json.loads(raw_answer)
+    except ValueError:
+        raise _HttpError(0, "the API's answer is not JSON") from None
+    choices = data.get("choices") if isinstance(data, dict) else None
+    if not (isinstance(choices, list) and choices and isinstance(choices[0], dict)):
+        raise _HttpError(0, "the API's answer has no choices")
+    if not isinstance(choices[0].get("message"), dict):
+        raise _HttpError(0, "the API's answer has no message")
+    answer: dict[str, Any] = data
+    return answer
+
+
+def _http_error(exc: urllib.error.HTTPError) -> "_HttpError":
+    """An HTTP error status as ``_HttpError``: its message, code and ``retry-after``."""
+    raw = exc.read().decode("utf-8", "replace")
+    code = None
+    try:
+        error = json.loads(raw)["error"]
+        message = str(error["message"])
+        code = str(error["code"]) if error.get("code") else None
+    except (ValueError, KeyError, TypeError, AttributeError):
+        message = raw[:300] or exc.reason
+    after = exc.headers.get("retry-after") if exc.headers else None
+    try:
+        retry_after = float(after) if after is not None else None
+    except ValueError:
+        retry_after = None
+    return _HttpError(exc.code, message[:300], retry_after, code)
 
 
 def strict_allowed(schema: Any) -> bool:
@@ -296,7 +311,9 @@ class OpenAICompatibleBackend:
             try:
                 return await asyncio.to_thread(_post, url, body, key, endpoint.request_timeout_s)
             except _HttpError as exc:
-                retryable = exc.status == 429 or exc.status >= 500  # noqa: PLR2004 - HTTP codes
+                # Rate limits, server errors and an API that cannot be reached or answers
+                # something unusable (status 0, H01) may pass: asked again after a pause.
+                retryable = exc.status in (0, 429) or exc.status >= 500  # noqa: PLR2004
                 if not retryable or attempt == endpoint.retries:
                     raise
                 pause = exc.retry_after if exc.retry_after is not None else BACKOFF_S * 2**attempt

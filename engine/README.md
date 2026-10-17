@@ -148,6 +148,8 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `agent_mode` | `REPRO_AGENT_MODE` | `live` (`record`, `replay`: cassettes, G02) |
 | `agent_cassettes` | `REPRO_AGENT_CASSETTES` | none; required with `record` or `replay` |
 | `agent_budget_usd` | `REPRO_AGENT_BUDGET_USD` | `2.0`: the most a run's agent calls may cost together |
+| `test_timeout_s` | `REPRO_TEST_TIMEOUT_S` | `900`: each sandboxed test run's wall-clock limit, in seconds (H01) |
+| `memory_limit_mb` | `REPRO_MEMORY_LIMIT_MB` | `4096`: the memory a sandboxed run's processes may use (H01) |
 | `agent_probes` | `REPRO_AGENT_PROBES` | `true`: with agents on, the probe writer proposes inputs for the probes (G07) |
 | `agent_order_swap` | `REPRO_AGENT_ORDER_SWAP` | `contradicted`: which verdicts a second reviewer judges with the evidence in the opposite order (`all`, `off`; G08) |
 | `agent_panel` | `REPRO_AGENT_PANEL` | empty: three models, comma-separated, that each judge every claim; a verdict stands when two agree (G08) |

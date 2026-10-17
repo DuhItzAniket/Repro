@@ -375,7 +375,11 @@ def _resolve(repo: Path, base: str, head: str) -> "tuple[Git, Change]":
     from repro.gitops import Git, GitError  # noqa: PLC0415
     from repro.pipeline import Change  # noqa: PLC0415
 
-    git = Git(repo)
+    try:
+        git = Git(repo)
+    except GitError as exc:  # git itself is missing (H01): a reason, not a traceback
+        typer.echo(f"repro run: {exc}", err=True)
+        raise typer.Exit(2) from None
     if not git.is_repository():
         typer.echo(f"repro run: {repo} is not a git repository", err=True)
         raise typer.Exit(2)
@@ -438,6 +442,7 @@ def run(
     from repro.ids import new_run_id  # noqa: PLC0415
     from repro.orchestrator import Orchestrator  # noqa: PLC0415
     from repro.pipeline import pipeline_jobs, remove_work  # noqa: PLC0415
+    from repro.sandbox.limits import MIB, Limits  # noqa: PLC0415
     from repro.store import ArtifactStore, StoreWriter  # noqa: PLC0415
 
     git, change = _resolve(repo, base, head)
@@ -464,6 +469,9 @@ def run(
         cards=StoreCards(settings.paths.database, writer),
         agents=agents,
         pr=pr,
+        limits=Limits(
+            timeout_s=settings.test_timeout_s, memory_bytes=settings.memory_limit_mb * MIB
+        ),
     )
     cleaned = threading.Lock()
 

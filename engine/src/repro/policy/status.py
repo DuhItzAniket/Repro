@@ -20,8 +20,9 @@ pass, and head's edit to ``repro.yml``. Each resolves to one of:
 **FLAGGED** if any gap item is flagged, any claim is contradicted, or any invariant failed.
 **UNVERIFIABLE**, otherwise, if the evidence is incomplete: base's ``repro.yml`` is not valid
 (or was not read), a side's environment was not built, the change was not analysed, a job
-failed, timed out or was skipped, no selected test ran, too many changed symbols are
-unverified (``missing.max_uncovered_changed_symbols``), an invariant was not evaluated, no
+failed, timed out or was skipped, a selected test has no outcome (no run reported it, H01),
+too many changed symbols are unverified (``missing.max_uncovered_changed_symbols``), an
+invariant was not evaluated, no
 claim was found where ``claims.require_explicit`` asks for one, a claim is not supported, or
 every verdict was rejected. **VERIFIED** otherwise: every claim supported, no unexplained gap,
 every invariant passing. FLAGGED wins over UNVERIFIABLE: a concrete problem outweighs
@@ -185,6 +186,15 @@ def incomplete(inputs: Inputs) -> list[Reason]:
         pass  # no tests run without both environments: the cause is already a reason
     elif inputs.selected and not inputs.ran:
         found.append(Reason("tests_not_run", f"none of the {inputs.selected} selected tests ran"))
+    elif inputs.ran < inputs.selected:  # H01: a run that stopped part way is not a pass
+        unreported = inputs.selected - inputs.ran
+        found.append(
+            Reason(
+                "tests_not_run",
+                f"{unreported} of the {inputs.selected} selected tests have no outcome: a run "
+                "did not report them",
+            )
+        )
     elif inputs.changed and not inputs.selected and len(unverified) < len(inputs.changed):
         found.append(Reason("tests_not_run", "no test was selected for the changed symbols"))
     if inputs.changed and len(unverified) / len(inputs.changed) > inputs.max_uncovered:

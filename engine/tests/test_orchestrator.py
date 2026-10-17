@@ -166,7 +166,7 @@ def test_a_failure_is_recorded_and_its_dependants_are_skipped(
     assert failures[0]["payload"]["message"] == "graph failed: RuntimeError: grimp failed"
     missing = [e["payload"]["missing"] for e in events if e["kind"] == "missing.recorded"]
     assert [m["detail"] for m in missing] == [
-        "the import graph: graph failed (RuntimeError)",
+        "the import graph: graph failed (RuntimeError: grimp failed)",
         "the import graph: not attempted because graph did not succeed",
     ]
     assert all(m["reason"] == "unsupported_project" for m in missing)

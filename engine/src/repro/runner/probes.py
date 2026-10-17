@@ -310,7 +310,9 @@ class ProbeRun:
     label: str
     results: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)
     errors: dict[int, str] = field(default_factory=dict)
-    complete: bool = True  # False: the run ended early (its timeout); later calls are missing
+    complete: bool = True  # False: the run ended early; later calls are missing
+    #: Why an incomplete run ended (H01): ``timeout``, ``memory`` or its exit status.
+    ended: str = ""
 
 
 def run_probes(
@@ -370,7 +372,15 @@ def run_probes(
         )
         target = folder / "out.jsonl"
         output = read_head(target, MAX_BYTES)[0] if target.is_file() else None
-    run = ProbeRun(side.name, label, complete=execution.returncode == 0)
+    ended = (
+        "timeout"
+        if execution.outcome == "timeout"
+        else "memory"
+        if execution.oom_killed
+        else f"exit status {execution.returncode}"
+    )
+    complete = execution.returncode == 0
+    run = ProbeRun(side.name, label, complete=complete, ended="" if complete else ended)
     for line in (output or b"").splitlines():
         try:
             record = json.loads(line)
@@ -534,11 +544,17 @@ class Probing:
         items = []
         for run in self.runs.values():
             if not run.complete:
-                detail = (
-                    f"{run.side} ({run.label}): the probe run did not finish; its later calls "
-                    "are missing"
+                why, reason = {
+                    "timeout": ("took longer than its limit", "timeout"),
+                    "memory": ("reached its memory limit", "memory_limit"),
+                }.get(
+                    run.ended,
+                    (f"ended early ({run.ended or 'no exit status'})", "environment_failed"),
                 )
-                items.append(_missing("timeout", detail, None))
+                detail = (
+                    f"{run.side} ({run.label}): the probe run {why}; its later calls are missing"
+                )
+                items.append(_missing(reason, detail, None))
             for number, error in sorted(run.errors.items()):
                 symbol = self.candidates[number].symbol
                 detail = f"{run.side}: {symbol} could not be probed: {error}"

@@ -159,7 +159,7 @@ def test_a_run_cut_short_or_an_import_that_fails_is_said_so() -> None:
     runs = {
         "A": ProbeRun("base", "A", {}, {0: "ModuleNotFoundError: pkg"}),
         "A2": ProbeRun("base", "A2", {}),
-        "H": ProbeRun("head", "H", {}, complete=False),
+        "H": ProbeRun("head", "H", {}, complete=False, ended="timeout"),
     }
     found = probes.compare([CANDIDATE], [[]], runs)
     assert [m["missing"]["reason"] for m in found.missing()] == ["environment_failed", "timeout"]

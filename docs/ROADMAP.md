@@ -547,7 +547,7 @@ complete. The user documentation is complete. `v1.0.0` is tagged and published.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| H01 | Robustness & failure modes | M | G09 | planned |
+| H01 | Robustness & failure modes | M | G09 | in progress |
 | H02 | Performance & scale | M | H01 | planned |
 | H03 | Security hardening | M | H01 | planned |
 | H04 | Exports: in-toto, JUnit, SARIF | M | F05 | planned |

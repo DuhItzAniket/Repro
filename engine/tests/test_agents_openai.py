@@ -7,14 +7,22 @@ a scripted model.
 import asyncio
 import json
 import time
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from fake_openai_api import Failure, FakeOpenAIApi, Script, call_tools, say
-from repro.agents import AgentRequest, AgentResult, Budget, CassetteBackend, Progress, ReproTool
+from fake_openai_api import Failure, FakeOpenAIApi, Raw, Script, call_tools, say
+from repro.agents import (
+    AgentRequest,
+    AgentResult,
+    Budget,
+    CassetteBackend,
+    Progress,
+    ReproTool,
+    openai_compat,
+)
 from repro.agents.openai_compat import (
     GROQ_PRICES,
     Endpoint,
@@ -261,6 +269,51 @@ def test_an_api_error_ends_the_call_without_the_key(
     assert result.detail.startswith(f"HTTP {status}: nope")
     assert KEY not in json.dumps(result.detail)
     assert len(api.requests) == (2 if retried else 1)
+
+
+@pytest.mark.parametrize(
+    ("body", "detail"),
+    [
+        (b"<html>bad gateway</html>", "HTTP 0: the API's answer is not JSON"),
+        (b'{"choices": []}', "HTTP 0: the API's answer has no choices"),
+        (b'{"choices": [{"index": 0}]}', "HTTP 0: the API's answer has no message"),
+    ],
+)
+def test_an_unusable_answer_is_asked_again_then_an_error(
+    monkeypatch: pytest.MonkeyPatch, body: bytes, detail: str
+) -> None:
+    """H01: an answer that cannot be used (a proxy's error page, no choices) is a failure the
+    call can recover from, never a crash of the job that made it."""
+    monkeypatch.setattr("repro.agents.openai_compat.BACKOFF_S", 0.01)
+    result, api = run(lambda b: Raw(body), monkeypatch)
+    assert (result.outcome, result.detail) == ("error", detail)
+    assert len(api.requests) == 2  # asked again once (the endpoint's retries)
+    answers: Iterator[dict[str, Any] | Failure | Raw] = iter([Raw(body), say("ok")])
+    result, api = run(lambda b: next(answers), monkeypatch)
+    assert (result.outcome, result.text) == ("ok", "ok")
+
+
+def test_an_api_that_cannot_be_reached_is_asked_again_then_an_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """H01: a connection refused (an outage, a DNS failure) is retried like a 5xx."""
+    monkeypatch.setattr("repro.agents.openai_compat.BACKOFF_S", 0.01)
+    monkeypatch.setenv("GROQ_API_KEY", KEY)
+    attempts: list[str] = []
+    real = openai_compat._post
+
+    def counted(url: str, *args: Any) -> dict[str, Any]:
+        attempts.append(url)
+        return real(url, *args)
+
+    monkeypatch.setattr(openai_compat, "_post", counted)
+    closed = FakeOpenAIApi(lambda b: say("never"))
+    end = endpoint(closed, base_url="http://127.0.0.1:9/v1")  # nothing listens on port 9
+    result = asyncio.run(OpenAICompatibleBackend(end).run(request()))
+    assert result.outcome == "error"
+    assert result.detail.startswith("HTTP 0: cannot reach the API")
+    assert KEY not in result.detail
+    assert len(attempts) == 2
 
 
 def test_no_key_means_no_request(monkeypatch: pytest.MonkeyPatch) -> None:

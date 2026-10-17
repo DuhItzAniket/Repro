@@ -23,6 +23,7 @@ from typing import Any, Final
 
 from repro.analysis.changes import SymbolChange
 from repro.analysis.imports import ImportGraph
+from repro.readable import error_line
 from repro.runner.outcomes import RERUNS, OutcomeDiff, classify, is_flip, passes
 from repro.runner.pytest import TestRun
 from repro.runner.selection import (
@@ -82,45 +83,109 @@ class TwoSided:
         """A, A2 and H, those that ran, by label."""
         return {r.label: r for r in self.runs if r.label in TRACED_RUNS}
 
-    def problems(self) -> list[dict[str, Any]]:
-        """``missing.recorded`` payloads for runs that did not finish, collection errors, and a
-        map that could not be made."""
+    def problems(self, memory_bytes: int | None = None) -> list[dict[str, Any]]:
+        """``missing.recorded`` payloads for runs that did not finish or reached their memory
+        limit (``memory_bytes``), collection errors, and a map that could not be made; each
+        reason in words a user can act on (H01)."""
         items: list[dict[str, Any]] = []
         seen: set[tuple[str, str]] = set()
         for record in self.runs:
-            results, execution = record.run.results, record.run.execution
+            results = record.run.results
             for error in results.collect_errors:
                 if (record.side, error.nodeid) not in seen:
                     seen.add((record.side, error.nodeid))
-                    detail = f"{record.side}: {error.nodeid} did not collect: {error.message}"
-                    items.append(_missing("collection_error", detail, _file(error.nodeid)))
+                    detail = (
+                        f"{record.side}: {error.nodeid} could not be collected: "
+                        f"{error_line(error.message)}"
+                    )
+                    items.append(
+                        _missing("collection_error", detail, _file(error.nodeid), COLLECT_FIX)
+                    )
+            memory = _memory(record, memory_bytes)
+            if memory is not None:
+                items.append(_missing("memory_limit", memory, resolution=MEMORY_FIX))
             if not results.complete:
-                timed_out = execution.outcome == "timeout"
-                ended = "took longer than its limit" if timed_out else "ended early"
-                detail = (
-                    f"{record.side}: the {record.label} run {ended} (exit status "
-                    f"{execution.returncode}); {len(results.tests)} tests reported"
-                )
-                items.append(_missing("timeout" if timed_out else "environment_failed", detail))
+                items.append(_incomplete(record))
             if results.map_unavailable:
                 detail = f"{record.side}: no test map ({results.map_unavailable})"
                 items.append(_missing("trace_unavailable", detail))
         return items
 
 
+COLLECT_FIX: Final = "Make the module importable on this side: the error names what fails"
+MEMORY_FIX: Final = (
+    "If the change is meant to use more memory, raise the limit (the memory_limit_mb setting); "
+    "otherwise the change's own memory use is the cause"
+)
+TIMEOUT_FIX: Final = (
+    "A test that hangs or runs long on this side: find it from the tests reported, or raise "
+    "the limit (the test_timeout_s setting)"
+)
+#: A run is said to have reached its limit at this share of it (Windows: the peak committed).
+NEAR_LIMIT: Final = 0.95
+
+
 def _file(nodeid: str) -> str:
     return nodeid.split("::", 1)[0] or "."
 
 
-def _missing(reason: str, detail: str, file: str | None = None) -> dict[str, Any]:
+def _missing(
+    reason: str, detail: str, file: str | None = None, resolution: str | None = None
+) -> dict[str, Any]:
     return {
         "missing": {
             "reason": reason,
             "targets": [{"file": file}] if file else [],
             "detail": detail[:1000],
-            "resolution": None,
+            "resolution": resolution,
         }
     }
+
+
+def _size(count: int) -> str:
+    return f"{count / 2**30:g} GiB" if count >= 2**30 else f"{count / 2**20:.0f} MiB"
+
+
+def _memory(record: RunRecord, limit: int | None) -> str | None:
+    """Why the run looks to have reached its memory limit, or None: the kernel killed it
+    (Docker), its peak came within reach of the limit (Windows), or tests failed with
+    ``MemoryError`` (any platform: the limit refuses an allocation)."""
+    execution = record.run.execution
+    starved = [
+        t
+        for t in record.run.results.tests.values()
+        if t.outcome != "passed" and "MemoryError" in (t.message or "")
+    ]
+    peak = execution.peak_memory_bytes
+    near = limit is not None and peak is not None and peak >= NEAR_LIMIT * limit
+    if not (execution.oom_killed or near or starved):
+        return None
+    limit_text = f" of {_size(limit)}" if limit else ""
+    why = [f"{record.side}: the {record.label} run reached its memory limit{limit_text}"]
+    if execution.oom_killed:
+        why.append("the system stopped it")
+    if starved:
+        why.append(
+            f"{len(starved)} {'test' if len(starved) == 1 else 'tests'} failed with MemoryError"
+        )
+    return "; ".join(why)
+
+
+def _incomplete(record: RunRecord) -> dict[str, Any]:
+    """A run that did not finish: why, in a sentence, and how many tests it reported."""
+    results, execution = record.run.results, record.run.execution
+    count = len(results.tests)
+    reported = f"{count} {'test' if count == 1 else 'tests'} reported before it stopped"
+    if execution.outcome == "timeout":
+        detail = (
+            f"{record.side}: the {record.label} run took longer than its limit "
+            f"({execution.duration_s:.0f} s); {reported}"
+        )
+        return _missing("timeout", detail, resolution=TIMEOUT_FIX)
+    status = execution.returncode
+    ended = f"with exit status {status}" if status is not None else "before it finished"
+    detail = f"{record.side}: the {record.label} run ended early, {ended}; {reported}"
+    return _missing("environment_failed", detail)
 
 
 def _outcome(done: TestRun | None, test: str) -> str | None:

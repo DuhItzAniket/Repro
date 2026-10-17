@@ -64,7 +64,7 @@ from repro.analysis.api import api_diff
 from repro.gitops import Git
 from repro.gitops import diff as changed_files
 from repro.ids import new_evidence_id
-from repro.orchestrator import Job, JobContext, OnFailure
+from repro.orchestrator import Job, JobCancelled, JobContext, OnFailure
 from repro.policy import FILE as POLICY_FILE
 from repro.policy import Invariant, invariants
 from repro.policy.stage import PolicyRead
@@ -78,6 +78,7 @@ from repro.provision import (
     inspect_project,
 )
 from repro.provision import deps as dependencies
+from repro.readable import reason
 from repro.runner import behaviour as behaviour_diffs
 from repro.runner import observations, probes, selection
 from repro.runner.observations import Behaviour
@@ -96,7 +97,7 @@ from repro.runner.twosided import (
     TwoSided,
     reproduce,
 )
-from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, docker_available
+from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, SandboxError, docker_available
 from repro.sandbox.detect import Detection
 from repro.sandbox.evidence import detection_evidence
 from repro.sandbox.image import sandbox_image
@@ -110,6 +111,14 @@ PROVISION_TIMEOUT_S: Final = 1800.0
 TESTS_TIMEOUT_S: Final = 3600.0
 #: A side's probe run at most (a generated input can make a function loop).
 PROBE_TIMEOUT_S: Final = 300.0
+#: A sandboxed test run's wall-clock limit when the settings give none (H01: test_timeout_s).
+TEST_RUN_TIMEOUT_S: Final = 900.0
+#: What to do when the sandbox itself cannot start (H01).
+DOCKER_FIX: Final = (
+    "Start Docker (Docker Desktop on Windows and macOS), or run with the process sandbox "
+    "(REPRO_SANDBOX=process); repro doctor says which sandboxes this machine can use"
+)
+SANDBOX_FIX: Final = "Run repro doctor: it says what this machine is missing"
 #: The media type RFC 8949 §9.3 registers, for the observation artifacts.
 CBOR: Final = "application/cbor"
 
@@ -163,7 +172,15 @@ def use_docker(backend: Backend) -> bool:
 
 
 def _sandbox_job(
-    git: Git, side: str, sha: str, work: Path, state: RunState, *, backend: Backend, cache: Path
+    git: Git,
+    side: str,
+    sha: str,
+    work: Path,
+    state: RunState,
+    *,
+    backend: Backend,
+    cache: Path,
+    limits: Limits | None = None,
 ) -> Job:
     def run(ctx: JobContext) -> None:
         try:
@@ -172,18 +189,23 @@ def _sandbox_job(
             ctx.log(f"{side}: no environment: {exc}", level="warning", status="warn")
             payload = environment_missing(side, str(exc))
             ctx.emit("missing.recorded", status="warn", payload=payload)
+        except SandboxError as exc:  # H01: the sandbox itself, not the project
+            ctx.log(f"{side}: no sandbox: {exc}", level="warning", status="warn")
+            fix = DOCKER_FIX if use_docker(backend) else SANDBOX_FIX
+            payload = environment_missing(side, f"the sandbox could not start: {reason(exc)}", fix)
+            ctx.emit("missing.recorded", status="warn", payload=payload)
 
     def provision(ctx: JobContext) -> None:
         tree = work / "snapshots" / side
         project = inspect_project(tree)
         state.projects[side] = project
         box_dir = work / "sandboxes" / side
-        limits = Limits(timeout_s=900)
+        chosen = limits or Limits(timeout_s=TEST_RUN_TIMEOUT_S)
         provisioning = f"{side}: provisioning the environment ({project.kind})"
         if use_docker(backend):
             image = sandbox_image()
             ctx.check()
-            container = DockerSandbox(box_dir, git, sha, image=image, limits=limits)
+            container = DockerSandbox(box_dir, git, sha, image=image, limits=chosen)
             state.containers.append(container)
             state.platform[side] = f"docker {image}"
             ready = container.ready_payload(side)
@@ -193,7 +215,7 @@ def _sandbox_job(
             env = DockerProvisioner(image).provision(side, project, container)
             state.sides[side] = Side(side, container, env)
         else:
-            box = ProcessSandbox(box_dir, limits)
+            box = ProcessSandbox(box_dir, chosen)
             state.platform[side] = f"process {sys.platform}"
             ready = box.ready_payload(side)
             state.network[side] = ready["network"]
@@ -397,7 +419,8 @@ def _outcomes_job(state: RunState) -> Job:
         )
         missing = [no_covering_test(gap) for gap in result.gaps]
         missing += [unstable_observation(diff) for diff in result.outcomes if not diff.stable]
-        missing += result.problems()
+        limit = next((s.sandbox.limits.memory_bytes for s in state.sides.values()), None)
+        missing += result.problems(limit)
         for item in missing:
             ctx.emit("missing.recorded", status="warn", payload=item)
         counts: dict[str, int] = defaultdict(int)
@@ -730,6 +753,10 @@ def _proposals(
         detail = f"the probe writer ended {result.outcome}: {result.detail}"
     except CassetteError as exc:  # Hypothesis's inputs still run: the job is not lost
         result, detail = None, f"the probe writer's call has no usable cassette: {exc}"
+    except JobCancelled:
+        raise
+    except Exception as exc:  # noqa: BLE001 - H01: whatever ends the agent, the probes still run
+        result, detail = None, f"the probe writer could not run: {reason(exc)}"
     if result is None or result.outcome != "ok":
         item: dict[str, Any] = {
             "reason": "agent_failed",
@@ -911,13 +938,14 @@ def run_jobs(
     cache: Path,
     artifacts: ArtifactStore | None = None,
     agents: "AgentSetup | None" = None,
+    limits: Limits | None = None,
 ) -> Sequence[Job]:
     """The run and diff stages, after the build stage's snapshots and analysis; ``artifacts``
     stores the observations (without it they stay in memory); with ``agents``, the probe writer
-    proposes inputs for the probes (G07)."""
+    proposes inputs for the probes (G07); ``limits``: each sandboxed run's (H01)."""
     return [
-        _sandbox_job(git, "base", base, work, state, backend=backend, cache=cache),
-        _sandbox_job(git, "head", head, work, state, backend=backend, cache=cache),
+        _sandbox_job(git, "base", base, work, state, backend=backend, cache=cache, limits=limits),
+        _sandbox_job(git, "head", head, work, state, backend=backend, cache=cache, limits=limits),
         _tests_job(git, base, head, state, cache=cache),
         _outcomes_job(state),
         _behaviour_job(state, artifacts),
