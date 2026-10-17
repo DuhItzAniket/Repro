@@ -1,5 +1,7 @@
 # Repro documentation
 
+Using Repro rather than building it? Start with [the guide](guide/README.md).
+
 | Document | Read it when you need to know… |
 |---|---|
 | [PRODUCT.md](PRODUCT.md) | What Repro is, who it is for, the Reproduction Card, scope and non-goals |
@@ -11,7 +13,9 @@
 | [TEST_STRATEGY.md](TEST_STRATEGY.md) | Test layers, fixture repositories, CI tiers, agent evaluation |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Assets, adversaries, trust boundaries, threats and mitigations |
 | [process/SDLC.md](process/SDLC.md) | How work flows: phases, stage gates, Definition of Done, branching, privacy |
-| [adr/](adr/) | Architecture Decision Records (0001–0014) |
+| [FAILURES.md](FAILURES.md) | What can fail in a run, what the card says, and what resolves it |
+| [attestation/](attestation/reproduction-card/v0.md) | The in-toto predicate of an exported card |
+| [adr/](adr/) | Architecture Decision Records |
 | [phases/](phases/) | Per-phase records: what shipped, evidence, gaps |
 | [paper/](paper/README.md) | Research-paper tracker, evaluation protocol, research log, bibliography |
 | [research/](research/README.md) | Detailed source-tagged research notes (six tracks) |

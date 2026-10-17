@@ -4,7 +4,8 @@
  * (`pnpm build`) and the Python environment (`uv sync`). Gate C (C08) also needs a clone of
  * its target named by REPRO_GATE_REPO (see gate/gate-c.spec.ts); Gate D builds Repro's own
  * fixture repositories and needs the package index (and Docker for containers). CI's `gate-c`
- * and `gate-d` jobs run one spec each.
+ * and `gate-d` jobs run one spec each. `demo.spec.ts` is not a gate: it records the guide's
+ * demo (docs/guide/demo.md), and only when REPRO_DEMO_OUT is set.
  */
 import { defineConfig, devices } from "@playwright/test";
 

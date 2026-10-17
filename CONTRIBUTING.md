@@ -17,9 +17,21 @@ Repro is developed phase by phase against a public roadmap. Before you open a PR
 | Job | Checks |
 |---|---|
 | `lint` | Biome, `tsc --noEmit`, Ruff lint + format, mypy (strict), generated-code drift |
-| `test` (Ubuntu, Windows) | Vitest, web build, pytest, CLI smoke test |
+| `test` (Ubuntu, Windows) | Vitest, the web build, pytest (on Ubuntu with Docker required, for the container escape suite), CLI smoke test; on Ubuntu also the bundle size and the model's coverage |
+| `agent evals` | The reviewed pull requests replayed from their cassettes, held to `bench/data/thresholds.toml`; no model is called |
+| `chaos` (Ubuntu, Windows) | Each failure in [`docs/FAILURES.md`](docs/FAILURES.md), met for real by `repro run` |
+| `gate C`, `gate D`, `gate E` | Stage gates end to end in the cockpit (Playwright): a real repository live and replayed; the fixtures in containers; a behaviour diff with its reproducer, and no noise from the A/A2 control |
+| `visual` | The cockpit at frozen replay moments against committed baselines, and an injected visual change must fail |
+| `gates` | The size, allocation and frame-cost gates each reject an injected regression |
 | `security` | gitleaks over the full history; licence allow-list for every Python and JS dependency |
+| `install` (Ubuntu, Windows) | The release's wheels built, installed as the README says, and a first run, inside ten minutes |
+| `dependency audit` | Known vulnerabilities in every locked dependency (pip-audit, `pnpm audit`); not required |
+| `gvisor` | The container sandbox under gVisor (L4), escape suite included; not required |
 | `dependency review` (PRs) | Known vulnerabilities (high and above) in dependencies the PR adds or changes. Off until the repository's Dependency graph is enabled and the variable `DEPENDENCY_REVIEW=true` is set |
+
+A nightly workflow runs the frame-cost gate, the full visual suite, and the scale benchmark on
+three real repositories at pinned commits. A published release builds and attaches its wheels
+(`release.yml`).
 
 All actions are pinned to commit SHAs. Dependabot proposes weekly updates for actions, npm and
 uv dependencies.

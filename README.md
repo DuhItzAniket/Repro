@@ -70,14 +70,21 @@ repro run --repo <path> --base <ref> --head <ref>
 ```
 
 `repro doctor` says what this machine can do. `repro run` serves the cockpit and prints its
-address, which follows the run live (`--open` opens it in the browser). CI makes this same install, and a first run on a small repository, on
-Linux and Windows for every change, inside ten minutes (`scripts/install_check.py`). PyPI comes
-later. Until v1.0.0, run Repro from a checkout: `uv sync`, `pnpm install` and `pnpm build`, then
-`uv run repro ...`.
+address, which follows the run live (`--open` opens it in the browser). CI makes this same
+install, and a first run on a small repository, on Linux and Windows for every change, inside
+ten minutes (`scripts/install_check.py`). PyPI comes later. Until v1.0.0, run Repro from a
+checkout: `uv sync`, `pnpm install` and `pnpm build`, then `uv run repro ...`.
+
+New to Repro? The [quickstart](docs/guide/quickstart.md) goes from nothing to a first card, and
+[the demo](docs/guide/demo.md) shows one run, from the command to the card.
 
 ## Documentation
 
-Start with [docs/README.md](docs/README.md). Key documents:
+**Using Repro:** [the guide](docs/guide/README.md): the [quickstart](docs/guide/quickstart.md),
+[reading a card](docs/guide/reading-a-card.md), [`repro.yml`](docs/guide/repro-yml.md),
+[troubleshooting](docs/guide/troubleshooting.md) and [the demo](docs/guide/demo.md).
+
+**How it is made:** start with [docs/README.md](docs/README.md). Key documents:
 [Product](docs/PRODUCT.md) ·
 [Research & positioning](docs/RESEARCH.md) ·
 [Architecture](docs/ARCHITECTURE.md) ·

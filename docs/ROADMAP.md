@@ -552,7 +552,7 @@ complete. The user documentation is complete. `v1.0.0` is tagged and published.
 | H03 | Security hardening | M | H01 | done |
 | H04 | Exports: in-toto, JUnit, SARIF | M | F05 | done |
 | H05 | Packaging & distribution | M | H02, H03 | done |
-| H06 | User documentation & demo | M | H05 | planned |
+| H06 | User documentation & demo | M | H05 | in progress |
 
 **H01** Failure catalogue (install failure, collection error, timeout, OOM, encoder failure, API
 outage) mapped to explicit missing/UNVERIFIABLE outcomes. Chaos tests. *Accept:* every catalogued
