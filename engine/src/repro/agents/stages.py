@@ -238,6 +238,13 @@ async def _judge(
             if not isinstance(checked, Rejection):
                 return Judgement(model, agent, verdict=checked)
             rejection = checked
+        # Every refused answer is in the log, retried or not (G09 counts them).
+        refused = {
+            "claim_id": claim["id"],
+            "reason": rejection.reason,
+            "detail": rejection.detail[:SHORT],
+        }
+        ctx.emit("verdict.rejected", status="warn", payload=refused, agent=agent)
         feedback = f"{rejection.reason}: {rejection.detail}"
     return Judgement(model, agent, rejection=rejection)
 
@@ -248,12 +255,11 @@ def _issue(ctx: JobContext, verdict: Mapping[str, Any], agent: str) -> None:
 
 
 def _refused(ctx: JobContext, claim: Mapping[str, Any], judgement: Judgement) -> None:
-    """No verdict for the claim passed the checks: why, and a missing item."""
+    """No verdict for the claim passed the checks (each refusal is already in the log): a
+    missing item."""
     rejection = judgement.rejection
     assert rejection is not None  # noqa: S101 - only for a judgement that has one
     detail = rejection.detail[:SHORT]
-    rejected = {"claim_id": claim["id"], "reason": rejection.reason, "detail": detail}
-    ctx.emit("verdict.rejected", status="warn", payload=rejected, agent=judgement.agent)
     _missing(
         ctx,
         "verdict_rejected",

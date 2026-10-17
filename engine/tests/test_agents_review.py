@@ -372,8 +372,8 @@ def test_a_rejected_verdict_is_retried_once_then_recorded(
     events = run_review(tmp_path, repo, backend, [FIX])
     assert backend.calls == 2
     assert ids_in(events, "verdict.issued") == []
-    [rejected] = ids_in(events, "verdict.rejected")
-    assert rejected["payload"]["reason"] == "uncited"
+    rejected = ids_in(events, "verdict.rejected")  # each refused answer (G09)
+    assert [r["payload"]["reason"] for r in rejected] == ["uncited", "uncited"]
     missing = [e["payload"]["missing"] for e in ids_in(events, "missing.recorded")]
     assert [m["reason"] for m in missing] == ["verdict_rejected"]
     assert missing[0]["targets"] == [{"file": "pkg/dates.py"}]
@@ -394,7 +394,9 @@ def test_a_second_answer_that_passes_is_issued(tmp_path: Path, repo: tuple[Git, 
     assert [e["payload"]["verdict"]["verdict"] for e in ids_in(events, "verdict.issued")] == [
         "unverifiable"
     ]
-    assert ids_in(events, "verdict.rejected") == []
+    [refused] = ids_in(events, "verdict.rejected")  # the first answer, then retried (G09)
+    assert refused["payload"]["reason"] == "uncited"
+    assert ids_in(events, "missing.recorded") == []
 
 
 def test_a_claim_with_no_evidence_is_not_sent_to_a_reviewer(

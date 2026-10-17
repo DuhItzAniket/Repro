@@ -118,6 +118,9 @@ uv run repro-events validate <log.jsonl>   # schema + log invariants of an event
 pnpm fixtures                             # regenerate apps/web/fixtures/*.jsonl (review the diff!)
 uv run python -m repro_bench.claims       # the reader on the labelled claims, from cassettes (G04);
                                           # --mode record re-records live (GROQ_API_KEY), --append logs it
+uv run python -m repro_bench.verdicts     # the reviewed PRs end to end, from cassettes (G09): verdict
+                                          # accuracy, flips, cost; --mode record (GROQ_API_KEY), --append
+uv run pytest -m agent_eval               # G09's gate: those metrics against bench/data/thresholds.toml
 uv run pytest --update-goldens            # rewrite golden files, lock new prompt versions (review the diff!)
 pnpm --filter @repro/web exec playwright test -c playwright.gate.config.ts
                         # Gate C end to end; needs pnpm build, uv sync and REPRO_GATE_REPO

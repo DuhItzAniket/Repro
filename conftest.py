@@ -42,6 +42,11 @@ def pytest_configure(config: pytest.Config) -> None:
         "model_cli: starts the Claude Code CLI, behind a proxy that refuses and records every "
         "connection past loopback; the test fails if there was one",
     )
+    config.addinivalue_line(
+        "markers",
+        "agent_eval: replays the reviewed pull requests for G09's thresholds (CI runs it in its "
+        "own job: pytest -m agent_eval)",
+    )
 
 
 @pytest.fixture(scope="session")

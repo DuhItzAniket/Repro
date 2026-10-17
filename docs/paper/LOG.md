@@ -383,3 +383,23 @@ entry. If something turns out wrong, add a correcting entry.
     runs looked like a new call, and replaying it failed.
   - Worth stating for any record/replay harness that normalises identifiers on serialised
     text.
+
+## 2026-10-17 · G09 · The agents measured end to end
+- **Results.** On the five reviewed pull requests (gpt-oss-120b, replayed):
+  - every card is right (5 of 5);
+  - verdict accuracy is 0.769 (10 of 13 hand-set labels), with no verdict wrong the other
+    way round;
+  - citation validity 1.000 (28 of 28 reviewer answers);
+  - flip rate 0 of 13;
+  - about 24,000 tokens and $0.009 per pull request
+  ([phase record](../phases/G09-agent-evals.md)).
+- **The three misses** are true claims Repro cannot support yet:
+  - one about code length, which no evidence type covers;
+  - two behaviour changes the reader typed as refactors, which G05's consistency rule will
+    not let evidence of a change support.
+
+  They point at the claim taxonomy, not at the reviewers, and the labels were left as the
+  truth rather than bent to the system.
+- **Refused answers.** 13 of 28 reviewer answers were refused by the checks: 10 by that
+  consistency rule, 2 off-schema, 1 misquote. Every refusal is retried or recorded; none
+  reaches the card.
