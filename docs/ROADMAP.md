@@ -616,7 +616,7 @@ artifact is archived with a DOI. The paper is submitted.
 | J01 | Benchmark infrastructure & input contract | L | H05 | done |
 | J02 | Ground-truth pipeline & annotation tooling | L | J01 | done |
 | J03 | Baselines | L | J01 | done |
-| J04 | S0 dev set & S1 pilot | M | J02, J03 | planned |
+| J04 | S0 dev set & S1 pilot | M | J02, J03 | in progress |
 | J05 | S2 patch generation on fresh tasks | M | J04 | planned |
 | J06 | Annotation, κ & label freeze; pre-registration | L | J05 | planned |
 | J07 | S2 main study | M | J06 | planned |

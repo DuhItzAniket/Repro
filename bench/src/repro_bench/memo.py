@@ -29,7 +29,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Final
 
-from repro.agents import CassetteBackend, LLMBackend
+from repro.agents import CassetteBackend, LLMBackend, MissingCassetteError
 from repro.agents.backend import AgentRequest, Budget
 from repro.agents.openai_compat import Endpoint, OpenAICompatibleBackend
 from repro.agents.prompts import load_prompt
@@ -121,9 +121,14 @@ def score(record: Mapping[str, Any], answer: Any, tokens: tuple[int, int], outco
 
 
 async def probe(record: Mapping[str, Any], backend: LLMBackend, model: str) -> Score:
-    result = await backend.run(
-        request(str(record["repo"]), str(record["problem_statement"]), model)
-    )
+    """The probe's score for one task; a call with no recording (in replay) scores nothing,
+    with that outcome, as a failed call does."""
+    try:
+        result = await backend.run(
+            request(str(record["repo"]), str(record["problem_statement"]), model)
+        )
+    except MissingCassetteError:
+        return score(record, None, (0, 0), "missing_cassette")
     tokens = (result.usage.input_tokens, result.usage.output_tokens)
     answer = result.structured if result.outcome == "ok" else None
     return score(record, answer, tokens, result.outcome)

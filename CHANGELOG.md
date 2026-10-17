@@ -26,10 +26,20 @@ All notable changes to this project are documented here. The format follows
   base and head in the task's image; B1 reviews the claim and diff with Repro's reviewer model
   and budget; B2 adds read-only tools over the repository; B3 is PR-Agent v0.48.0, pinned,
   with the same model. Testora is not run, for stated reasons. [J03]
+- Setting `sandbox_image` (`REPRO_SANDBOX_IMAGE`): run the tests in an image's own Python
+  environment, as it is, pinned by digest. Examples are a benchmark task's image and a CI
+  image. The image's named conda environment is used when it has one. The snapshot's code
+  must import from the snapshot, or the card is UNVERIFIABLE and names the reason. [J04]
+- `repro_bench.seed` (plausible-but-wrong patches for S0, kept only when tier A finds them
+  plausible), `repro_bench.memo` (the memorisation probe) and `repro_bench.power`
+  (McNemar sample sizes, approximate and exact). [J04]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
   by that warning, not by pytest's "ImportError while loading conftest". [J01]
+- A selection of tests too long for a command line (889 node IDs on Windows,
+  `WinError 206`) no longer fails every test step: past 8,000 characters the IDs go in a file
+  Repro's pytest plugin reads, in the order given. [J04]
 
 ## [1.1.0] - 2026-10-18
 

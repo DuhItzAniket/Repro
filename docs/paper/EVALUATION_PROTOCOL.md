@@ -60,6 +60,11 @@ a 10-point difference. The exact test registered in §7 needs 168
 No S1 discordance has been measured yet: J04 ran no S1 pilot within the free tier (see the J04
 record), so the 0.2 assumption stands until one does.
 
+**Budget (open, the owner's decision before the J06 freeze).** At the measured token counts
+(J04 record), S2 at this size is about 100 million tokens before patch generation. That is
+about 500 days of Groq's free tier, or $15 to $60 at its list prices on a paid plan. The
+choice is a paid plan, or a smaller study stated as under-powered.
+
 ## 4. Ground-truth procedure
 1. **Tier A (automatic).** Hidden tests plus the full developer suite in the official image. A
    failure gives `INCORRECT_auto`. This catches patches that pass F2P/P2P but fail the full suite.
