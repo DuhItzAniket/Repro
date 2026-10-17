@@ -123,6 +123,16 @@ project's `addopts` (`-m`, `-k`, `--ignore`, `--ignore-glob`, `--deselect`, `--i
 are read from the file pytest itself would use and passed again; output, plugin and reporting
 options are not.
 
+**Ingest from a pull request** (I01, `integrations/github`). `repro run --pr <url>` reads the
+pull request from GitHub's REST API (version `2026-03-10`; a token from `GITHUB_TOKEN`, else
+`GH_TOKEN`, when set) before the run starts. Its commits are fetched into Repro's own bare
+mirror under the data directory, never the user's clone: the base branch and
+`refs/pull/<n>/head`, which GitHub keeps on the base repository for a fork's pull request too.
+Head is the pull request's head commit; base is the merge base of its base and head, the
+change the pull request itself makes. `run.started` carries the repository and the pull
+request (title, number, URL), and the title and description are the reader's PR text. With
+`--repo`, a local clone is used as it is, and nothing is fetched into it.
+
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector
 in "collect-map" mode. It does not use coverage.py contexts, because those force coverage's

@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `repro run --pr <url>`: a GitHub pull request, from its address alone. Its base, head,
+  title and description come from GitHub's REST API, its commits, a fork's included, are
+  fetched into a mirror of Repro's own, and its head is compared with where it left its base
+  branch (their merge base). A token from `GITHUB_TOKEN` or `GH_TOKEN`, when set, goes to
+  GitHub only, and on no command line. `--repo` uses a clone of yours as it is. [I01]
+- Setting `github_api_url` (`REPRO_GITHUB_API_URL`), for GitHub Enterprise Server. [I01]
+
 ## [1.0.0] - 2026-10-17
 
 Stage H — Hardening & first release. Gate record: `docs/phases/H-gate.md`.

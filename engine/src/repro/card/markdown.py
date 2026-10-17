@@ -4,6 +4,7 @@ Every value comes from the canonical card, in its order, so the text is as repro
 card. Table cells have their pipes escaped and their line breaks folded.
 """
 
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
@@ -12,6 +13,21 @@ _HEADLINE = {
     "FLAGGED": "the run found a problem",
     "UNVERIFIABLE": "something could not be checked",
 }
+
+
+#: A URL safe to link as it is: https, and nothing Markdown would read as the link's end.
+_LINKABLE: Final = re.compile(r"^https://[^\s()<>\[\]]+$")
+
+
+def _link(text: str, url: Any) -> str:
+    return f"[{text}]({url})" if isinstance(url, str) and _LINKABLE.match(url) else text
+
+
+def _plain(value: Any) -> str:
+    """Text someone else wrote (a pull request's title), shown as text, never as Markdown."""
+    text = "-" if value is None or value == "" else str(value)
+    text = text.replace("\r", " ").replace("\n", " ")
+    return re.sub(r"([\\`*_{}\[\]()<>#+!~|-])", r"\\\1", text)
 
 
 def _cell(value: Any) -> str:
@@ -117,11 +133,13 @@ def render(card: Mapping[str, Any]) -> str:
         "",
         f"**{card['status']}**: {_HEADLINE[card['status']]}.",
         "",
-        f"- Repository: {_cell(card['repo']['name'])}",
+        f"- Repository: {_link(_cell(card['repo']['name']), card['repo']['url'])}",
         f"- Change: {_ref(c['base'])} to {_ref(c['head'])}",
     ]
     if card["pr"] is not None:
-        lines.append(f"- Pull request: {_cell(card['pr']['title'])}")
+        pr = card["pr"]
+        number = _link(f"#{pr['number']}", pr["url"]) + " " if pr["number"] is not None else ""
+        lines.append(f"- Pull request: {number}{_plain(pr['title'])}")
     lines += ["", "## Why", "", *_why(card), "", "## Claims", ""]
     verdicts = {v["claim_id"]: v["verdict"] for v in card["verdicts"]}
     lines += _table(

@@ -68,6 +68,8 @@ class RunSpec:
     head: GitRef
     repo_url: str | None = None
     pr_title: str | None = None
+    pr_number: int | None = None
+    pr_url: str | None = None
     deterministic_only: bool = False
     sandbox_backend: Literal["process", "docker", "gvisor"] = "process"
 
@@ -78,7 +80,7 @@ class RunSpec:
             "head": {"ref": self.head.ref, "sha": self.head.sha},
             "pr": None
             if self.pr_title is None
-            else {"title": self.pr_title, "number": None, "url": None},
+            else {"title": self.pr_title, "number": self.pr_number, "url": self.pr_url},
             "mode": {
                 "deterministic_only": self.deterministic_only,
                 "sandbox_backend": self.sandbox_backend,

@@ -3,7 +3,9 @@
 A Reproduction Card is what one run concluded about one change. It is assembled from the run's
 event log alone, so `repro replay` and `repro export` can rebuild it and check it against the
 card the run published. It starts with the repository and the change (base and head, each by
-the ref given and its commit). Below, its parts in the order the Markdown card shows them
+the ref given and its commit). For a pull request (`--pr`), base is the base branch's name
+with the commit where the pull request left it, and head is the pull request's label
+(`owner:branch`) with its last commit. Below, its parts in the order the Markdown card shows them
 (`repro export <run> --format md`).
 
 The cockpit's card drawer is a summary of the same card. Its gap and missing tables have fewer

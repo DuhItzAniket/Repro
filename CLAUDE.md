@@ -103,6 +103,8 @@ uv run pytest           # Python tests
 uv run repro --version  # engine CLI
 uv run repro doctor     # can this machine run Repro? (--json for a report)
 uv run repro run --repo <path> --base <ref> --head <ref>   # live in the cockpit (C08)
+uv run repro run --pr https://github.com/<owner>/<repo>/pull/<n>  # a GitHub PR (I01; token
+                                          # from GITHUB_TOKEN or GH_TOKEN, if set)
 uv run repro replay <run id | log.jsonl>                    # replayed from the start
 uv run repro export <run id | log.jsonl> --format md|json|in-toto|sarif|junit  # the card, checked against the log (F05, H04)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
