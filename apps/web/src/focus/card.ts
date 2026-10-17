@@ -5,7 +5,7 @@
  * item links to the check that reported it.
  */
 import type { CardPublishedPayload, ReproductionCard } from "@repro/events";
-import type { DrawerRow, DrawerSection, DrawerView } from "./evidence";
+import type { DrawerContent, DrawerRow, DrawerSection } from "./evidence";
 import type { Focus } from "./focus";
 
 const NONE = "—";
@@ -23,6 +23,13 @@ const value = (v: string | number | null | undefined): string =>
 /** A check that reports `evidenceId`, by its index in the checks projection. */
 export type CheckOf = (evidenceId: string) => number | null;
 
+/** Why a card with no reason is VERIFIED: what it did not check is listed, never hidden. */
+export function verifiedWhy(card: ReproductionCard): string {
+  return card.missing.length > 0
+    ? "Nothing flags; what could not be checked, under Missing, leaves it verifiable."
+    : "Nothing flags, and everything was checked.";
+}
+
 function reasons(card: ReproductionCard): DrawerSection[] {
   const rows = (decides: boolean) =>
     card.status_reasons
@@ -33,7 +40,7 @@ function reasons(card: ReproductionCard): DrawerSection[] {
   return [
     {
       title: "Why",
-      paragraphs: why.length > 0 ? why : ["Nothing flags, and everything was checked."],
+      paragraphs: why.length > 0 ? why : [verifiedWhy(card)],
     },
     ...(also.length > 0 ? [{ title: "Also not checked", paragraphs: also }] : []),
   ];
@@ -93,7 +100,7 @@ function conditions(card: ReproductionCard): DrawerSection {
 }
 
 /** The drawer for the card, or what is known before it is published. */
-export function cardView(payload: CardPublishedPayload | null, checkOf: CheckOf): DrawerView {
+export function cardView(payload: CardPublishedPayload | null, checkOf: CheckOf): DrawerContent {
   if (payload === null)
     return { title: "Reproduction Card", subtitle: "not published yet", sections: [] };
   const counts = payload.counts;

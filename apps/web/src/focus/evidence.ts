@@ -8,7 +8,7 @@
 import type { ReproEvent } from "@repro/events";
 import { nameOf } from "../model/changes";
 import { basename, checkIndex, relates, routeTests, type Scope } from "../model/check-index";
-import type { CockpitModel } from "../model/cockpit";
+import type { CockpitModel, CockpitState } from "../model/cockpit";
 import { cardView } from "./card";
 import type { Focus } from "./focus";
 
@@ -36,10 +36,19 @@ export interface DrawerSection {
   readonly table?: DrawerTable;
 }
 
-export interface DrawerView {
+/** What a focus shows. */
+export interface DrawerContent {
   readonly title: string;
   readonly subtitle: string;
   readonly sections: readonly DrawerSection[];
+}
+
+export interface DrawerView extends DrawerContent {
+  /**
+   * Whether the events up to the cursor are all there will be: the run has finished, or this is
+   * its published card. An empty table then says "None.", and "None yet." while more can come.
+   */
+  readonly final: boolean;
 }
 
 /** A payload value as text: scalars as they are, small structures as compact JSON. */
@@ -111,6 +120,17 @@ function testsFor(model: CockpitModel, cursor: number, symbols: ReadonlySet<stri
 
 export function drawerView(focus: Focus, model: CockpitModel, cursor: number): DrawerView {
   const state = model.folder.stateAt(cursor);
+  const { run } = state;
+  const final = run.finishedAt !== null || (focus.kind === "card" && run.card !== null);
+  return { ...contentOf(focus, model, cursor, state), final };
+}
+
+function contentOf(
+  focus: Focus,
+  model: CockpitModel,
+  cursor: number,
+  state: CockpitState,
+): DrawerContent {
   switch (focus.kind) {
     case "claim": {
       const claim = state.claims.list[state.claims.byId.get(focus.id) ?? -1];

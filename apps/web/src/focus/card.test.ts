@@ -1,7 +1,7 @@
 // F05: the Reproduction Card in the drawer, from the run's card.published payload.
 import type { CardPublishedPayload, ReproductionCard } from "@repro/events";
 import { describe, expect, it } from "vitest";
-import { cardView, STATUS_LINE } from "./card";
+import { cardView, STATUS_LINE, verifiedWhy } from "./card";
 
 const EV = "ev_01JBAAHWY0000000000000VBKN";
 const OTHER = "ev_01JBAAHWY0000000000000VBKP";
@@ -166,6 +166,14 @@ describe("the card in the drawer", () => {
     const view = cardView({ ...PAYLOAD, card }, () => null);
     const gap = view.sections.find((s) => s.title === "Gap")?.table;
     expect(gap?.rows[0]?.cells[1]).toBe("passed (pre-existing, unstable): F2P: test_g");
+  });
+
+  it("says everything was checked only when nothing is missing (H06)", () => {
+    const verified = { ...CARD, status: "VERIFIED" as const, status_reasons: [] };
+    expect(verifiedWhy({ ...verified, missing: [] })).toBe(
+      "Nothing flags, and everything was checked.",
+    );
+    expect(verifiedWhy(verified)).toContain("under Missing");
   });
 
   it("shows what a payload without its card holds", () => {

@@ -31,12 +31,19 @@ def _ref(ref: Mapping[str, Any] | None) -> str:
     return f"`{ref['ref']}` ({ref['sha'][:12]})" if ref else "-"
 
 
+def verified_why(card: Mapping[str, Any]) -> str:
+    """Why a card with no reason is VERIFIED: what it did not check is listed, never hidden."""
+    if card["missing"]:
+        return "Nothing flags; what could not be checked, under Missing, leaves it verifiable."
+    return "Nothing flags, and everything was checked."
+
+
 def _why(card: Mapping[str, Any]) -> list[str]:
     reasons = [r for r in card["status_reasons"] if r["decides"]]
     also = [r for r in card["status_reasons"] if not r["decides"]]
     lines = [f"- {r['detail']} (`{r['rule']}`)" for r in reasons]
     if not lines:
-        lines = ["- Nothing flags, and everything was checked."]
+        lines = [f"- {verified_why(card)}"]
     if also:
         lines += ["", "Also not checked:", ""]
         lines += [f"- {r['detail']} (`{r['rule']}`)" for r in also]

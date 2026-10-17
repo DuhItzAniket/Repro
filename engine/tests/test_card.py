@@ -23,6 +23,7 @@ from repro.card import (
     regenerate,
     render,
 )
+from repro.card.markdown import verified_why
 from repro.cli import app
 from repro.config import load_settings
 from repro.store import StoreReader
@@ -247,6 +248,17 @@ def test_markdown() -> None:
         assert f"\n{heading}\n" in text
     assert "a \\| b c" in text  # a pipe escaped, a line break folded
     assert f"`repro replay {RUN}`" in text
+
+
+def test_a_verified_card_says_everything_was_checked_only_when_it_was() -> None:
+    """H06: a VERIFIED card can list what it could not check; its Why never denies it."""
+    card = assemble(run_log().events)
+    clean = {**card, "status": "VERIFIED", "status_reasons": [], "missing": []}
+    assert verified_why(clean) == "Nothing flags, and everything was checked."
+    item: dict[str, Any] = {"reason": "perf_not_assessable", "targets": [], "detail": "fast"}
+    timed = {**clean, "missing": [item]}
+    assert "under Missing" in verified_why(timed)
+    assert f"- {verified_why(timed)}" in render(timed)
 
 
 # -- export and replay through the CLI -------------------------------------------------------
