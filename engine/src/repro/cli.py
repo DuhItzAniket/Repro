@@ -30,7 +30,7 @@ import typer
 
 from repro import __version__
 from repro.config import CONFIG_ENV, Settings, SettingsError, load_settings
-from repro.doctor import Check, Machine, diagnose
+from repro.doctor import Check, Machine, check_cockpit, diagnose
 from repro.logs import configure_logging, get_logger
 
 if TYPE_CHECKING:
@@ -202,6 +202,8 @@ def doctor(
             typer.echo(f"repro: configuration error: {fallback}", err=True)
             raise typer.Exit(2) from None
     configure_logging(settings.log_level, settings.log_format)
+    from repro.api.ui import find_ui  # noqa: PLC0415
+
     report = diagnose(
         data_dir=settings.data_dir,
         run_root=settings.run_root,
@@ -209,6 +211,7 @@ def doctor(
         machine=Machine(),
         extra=extra,
         sandbox=settings.sandbox,
+        cockpit=check_cockpit(find_ui(settings.ui_dir)),
     )
     typer.echo(report.to_json() if as_json else report.to_text())
     if not report.ok:

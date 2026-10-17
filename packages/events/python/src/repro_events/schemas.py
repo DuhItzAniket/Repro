@@ -22,8 +22,12 @@ ENVELOPE_SCHEMA = "envelope.schema.json"
 
 
 def default_schema_root() -> Path:
-    """The schema directory of this source tree (``packages/events/schema``)."""
-    return Path(__file__).resolve().parents[3] / "schema"
+    """The schemas: this checkout's ``packages/events/schema`` when there is one, else the copy a
+    release's wheel carries (``repro_events/schema``, put there by ``scripts/build_wheels.py``)."""
+    checkout = Path(__file__).resolve().parents[3] / "schema"
+    if (checkout / EVENT_SCHEMA).is_file():
+        return checkout
+    return Path(__file__).resolve().parent / "schema"
 
 
 @dataclass(frozen=True)

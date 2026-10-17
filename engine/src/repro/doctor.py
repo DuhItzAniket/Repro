@@ -415,6 +415,18 @@ def system_name() -> str:
     return f"{platform.system()} {platform.release()} {platform.machine()}".strip()
 
 
+def check_cockpit(found: Path | None) -> Check:
+    """Whether ``repro run``, ``serve`` and ``replay`` have the cockpit to show (H05)."""
+    if found is None:
+        return Check(
+            "cockpit",
+            "warn",
+            "not found: runs are served without it (the API only)",
+            hint="In a checkout, run pnpm build; a release's wheel carries the cockpit",
+        )
+    return Check("cockpit", "ok", str(found))
+
+
 def diagnose(
     *,
     data_dir: Path,
@@ -423,6 +435,7 @@ def diagnose(
     machine: Machine | None = None,
     extra: Sequence[Check] = (),
     sandbox: str = "auto",
+    cockpit: Check | None = None,
 ) -> Report:
     """Runs every check. ``extra`` comes first (a configuration problem, for example)."""
     machine = Machine() if machine is None else machine
@@ -439,6 +452,7 @@ def diagnose(
         check_isolation(docker, contained, sandbox),
         check_data_dir(data_dir),
         check_run_root(run_root, windows=machine.windows),
+        *([cockpit] if cockpit is not None else []),
     ]
     if machine.windows:
         checks.append(check_long_paths(machine.long_paths()))

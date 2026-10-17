@@ -436,6 +436,47 @@ jobs:
       - name: Licence allow-list (Python + JS)
         run: uv run --locked python scripts/check_licenses.py
 
+  # H05: a release's wheels (scripts/build_wheels.py: the cockpit and the schemas inside),
+  # installed as the README says into a tool directory of their own, then a first run on a small
+  # repository, all inside ten minutes (scripts/install_check.py).
+  install:
+    name: install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Build the cockpit
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @repro/web build
+      - name: Install Python environment
+        run: uv sync --locked
+      - name: Build the wheels
+        run: uv run --locked python scripts/build_wheels.py
+      - name: Install from the wheels and make a first run
+        run: uv run --locked python scripts/install_check.py dist/wheels
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: wheels
+          path: dist/wheels/
+          retention-days: 14
+
   # H03: known vulnerabilities in every locked dependency, Python (pip-audit, against PyPI's
   # advisories, hashes checked, nothing installed) and JavaScript (pnpm audit). Not a required
   # check: an advisory published today must not block unrelated work, but it shows on every PR.
