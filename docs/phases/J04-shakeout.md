@@ -106,7 +106,10 @@ Calls that timed out on Groq are excluded, not scored as zero.
 From `django__django-13410`'s issue alone, the model named `django/core/files/locks.py` and
 reproduced 69% of the fix's 5-grams. Three answers per sample are a smoke test, not a result.
 
-**Seeding**: see below.
+**Seeding**, live on `pypa__twine-1309` with two defect classes. The `incomplete_fix` call
+timed out on Groq (600 s). The `wrong_behaviour` seed was written, applied and graded: tier A
+found it INCORRECT_auto, because the task's hidden test caught it. So 0 of 2 were kept. That
+filter is the point: S0 wants the seeds no test catches.
 
 **Budget against the free tier.** Measured tokens per patch on `openai/gpt-oss-120b`:
 
