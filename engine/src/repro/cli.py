@@ -761,3 +761,61 @@ def export(
     else:
         sys.stdout.buffer.write(data)
         sys.stdout.buffer.flush()
+
+
+@app.command()
+def report(
+    ctx: typer.Context,
+    source: Annotated[
+        str, typer.Argument(metavar="RUN", help="A run ID or an event log (.jsonl).")
+    ],
+    *,
+    pr_address: Annotated[
+        str | None,
+        typer.Option("--pr", help="The pull request to report to; by default, the run's own."),
+    ] = None,
+    check: Annotated[
+        bool, typer.Option("--check/--no-check", help="Make or update the check run.")
+    ] = True,
+    comment: Annotated[
+        bool, typer.Option("--comment/--no-comment", help="Make or update the comment.")
+    ] = True,
+) -> None:
+    """Report a run's Reproduction Card to its GitHub pull request (I02).
+
+    The card, checked against the run's log as `repro export` checks it, becomes the check run
+    "Repro" on the head commit, one comment on the pull request, and, in GitHub Actions, the
+    job's summary; a rerun updates them. It runs none of the target's code. A token comes from
+    GITHUB_TOKEN or GH_TOKEN. Exit status 1 if a target could not be made, 2 if nothing could
+    be reported.
+    """
+    settings = _session(ctx).settings()
+    from repro.integrations.github import GitHubApi, GitHubError  # noqa: PLC0415
+    from repro.integrations.github.report import report as reported  # noqa: PLC0415
+    from repro.integrations.github.report import target_of  # noqa: PLC0415
+
+    events = _events_of(settings, source, "report")
+    found = _regenerated(events, "report", strict=True)
+    try:
+        target = target_of(found.card, pr_address, settings.github_api_url)
+    except GitHubError as exc:
+        typer.echo(f"repro report: {exc}", err=True)
+        raise typer.Exit(2) from None
+    api = GitHubApi.from_environment(settings.github_api_url)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY") or None
+    result = reported(
+        api,
+        found.card,
+        events,
+        target,
+        summary=Path(summary) if summary else None,
+        check=check,
+        comment_on=comment,
+    )
+    where = f"{target.owner}/{target.repo}#{target.number}"
+    for line in result.done:
+        typer.echo(f"repro report: {where}: {line}")
+    for line in result.failed:
+        typer.echo(f"repro report: {where}: could not update {line}", err=True)
+    if result.failed:
+        raise typer.Exit(1)

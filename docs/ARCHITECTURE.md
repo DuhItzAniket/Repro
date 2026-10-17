@@ -133,6 +133,14 @@ change the pull request itself makes. `run.started` carries the repository and t
 request (title, number, URL), and the title and description are the reader's PR text. With
 `--repo`, a local clone is used as it is, and nothing is fetched into it.
 
+**Report to a pull request** (I02, `integrations/github/report`). `repro report <run>` takes
+the card as `repro export` does, checked against its log, and makes or updates three targets:
+the check run `Repro` on the head commit (the status as its conclusion, the card as its
+text, annotations at the changed code a flagged difference or an unreached function
+concerns, 50 a request); one comment, found by a hidden marker and written by the same
+identity; and, in GitHub Actions, the job's summary. It runs no target code, so it can report
+a run made elsewhere: a fork's pull request gets a read-only token where its code runs.
+
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector
 in "collect-map" mode. It does not use coverage.py contexts, because those force coverage's

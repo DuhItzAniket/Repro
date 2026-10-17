@@ -13,6 +13,11 @@ All notable changes to this project are documented here. The format follows
   branch (their merge base). A token from `GITHUB_TOKEN` or `GH_TOKEN`, when set, goes to
   GitHub only, and on no command line. `--repo` uses a clone of yours as it is. [I01]
 - Setting `github_api_url` (`REPRO_GITHUB_API_URL`), for GitHub Enterprise Server. [I01]
+- `repro report <run>`: the card on its GitHub pull request. The check run `Repro` on the head
+  commit (VERIFIED `success`, FLAGGED `failure`, UNVERIFIABLE `neutral`), with annotations
+  at the changed code, 50 a request; one comment, found by a hidden marker and written by the
+  same identity; the job's summary in GitHub Actions. A rerun updates them; a target it
+  cannot update is named, and the others are still made. [I02]
 
 ## [1.0.0] - 2026-10-17
 

@@ -17,7 +17,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -29,10 +29,21 @@ DEFAULT_API_URL: Final = "https://api.github.com"
 TOKEN_VARIABLES: Final = ("GITHUB_TOKEN", "GH_TOKEN")
 TIMEOUT_S: Final = 30.0
 LOOPBACK: Final = frozenset({"127.0.0.1", "::1", "localhost"})
+#: The most pages of a listing read: 2,000 items, far more than a pull request's comments.
+PAGES_MAX: Final = 20
 
 
 class GitHubError(Exception):
-    """GitHub could not be read; the message says why, in words a person can act on."""
+    """GitHub could not be read or written; the message says why, in words a person can act
+    on."""
+
+
+@dataclass(frozen=True)
+class Answer:
+    """GitHub's answer: its JSON (None when it sent none) and its headers."""
+
+    data: Any
+    headers: Mapping[str, str]
 
 
 def token_from(env: Mapping[str, str]) -> tuple[str, str] | None:
@@ -98,20 +109,51 @@ class GitHubApi:
 
     def get(self, path: str) -> Any:
         """The JSON at ``path`` (``/repos/...``), or a ``GitHubError``."""
-        request = urllib.request.Request(self.base_url + path, headers=self.headers())  # noqa: S310 - https, or a loopback test server (settings)
+        return self.request("GET", path).data
+
+    def request(self, method: str, path: str, body: Any = None) -> "Answer":
+        """``method`` on ``path`` with ``body`` as JSON: GitHub's answer, or a ``GitHubError``."""
+        data = None if body is None else json.dumps(body).encode("utf-8")
+        headers = self.headers() | ({"Content-Type": "application/json"} if data else {})
+        request = urllib.request.Request(  # noqa: S310 - https, or a loopback test server (settings)
+            self.base_url + path, data=data, headers=headers, method=method
+        )
         opener = urllib.request.build_opener(_SameHostRedirects)
         try:
             with opener.open(request, timeout=self.timeout_s) as response:
-                body = response.read()
+                raw, answered = response.read(), dict(response.headers.items())
         except urllib.error.HTTPError as error:
             raise GitHubError(self._refused(error, path)) from None
         except (urllib.error.URLError, OSError) as error:
             reason = getattr(error, "reason", error)
             raise GitHubError(f"cannot reach GitHub's API at {self.base_url}: {reason}") from None
         try:
-            return json.loads(body.decode("utf-8"))
+            return Answer(json.loads(raw.decode("utf-8")) if raw else None, answered)
         except (UnicodeDecodeError, ValueError):
             raise GitHubError(f"GitHub's API answered {path} with something not JSON") from None
+
+    def pages(self, path: str, limit: int = PAGES_MAX) -> Iterator[Any]:
+        """The items of a listing, 100 a page, following its ``next`` links (at most ``limit``)."""
+        here: str | None = f"{path}{'&' if '?' in path else '?'}per_page=100"
+        for _ in range(limit):
+            if here is None:
+                return
+            answer = self.request("GET", here)
+            if not isinstance(answer.data, list):
+                raise GitHubError(f"GitHub's API answered {path} with something not a list")
+            yield from answer.data
+            here = self._next(answer.headers)
+
+    def _next(self, headers: Mapping[str, str]) -> str | None:
+        links = next((v for k, v in headers.items() if k.lower() == "link"), "")
+        for part in links.split(","):
+            url, _, rel = part.partition(";")
+            if 'rel="next"' in rel:
+                target = url.strip().strip("<>")
+                if not target.startswith(self.base_url + "/"):
+                    raise GitHubError("GitHub's next page is on another server")
+                return target[len(self.base_url) :]
+        return None
 
     def _refused(self, error: urllib.error.HTTPError, path: str) -> str:
         status, headers = error.code, error.headers

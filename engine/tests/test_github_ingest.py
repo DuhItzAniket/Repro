@@ -19,6 +19,7 @@ import pytest
 from typer.testing import CliRunner
 
 from cli_support import clean_env
+from github_support import Upstream, make_upstream, pull
 from gitrepo import Repo
 from repro.cli import app
 from repro.config import load_settings
@@ -86,49 +87,9 @@ class FakeGitHub:
             server.server_close()
 
 
-@dataclass(frozen=True)
-class Upstream:
-    repo: Repo
-    branched: str  # where the pull request left main
-    head: str  # the pull request's head, on no branch
-    main: str  # main since
-
-
 @pytest.fixture
 def upstream(tmp_path: Path) -> Upstream:
-    repo = Repo(tmp_path / "upstream")
-    base = {"pkg/__init__.py": "", "pkg/a.py": "def f():\n    return 1\n"}
-    branched = repo.commit(base, "start")
-    at_branch = dict(repo.files)
-    head = repo.commit({"pkg/a.py": "def f():\n    return 2\n"}, "Return 2 from f")
-    repo.parent, repo.files = branched, at_branch  # main moves on without the change
-    repo.commit({"README.md": "Main moved on.\n"}, "main moves on")
-    main = repo.git("rev-parse", "refs/heads/main")
-    repo.git("update-ref", "refs/pull/1/head", head)
-    return Upstream(repo, branched, head, main)
-
-
-def pull(upstream: Upstream, **changes: Any) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "number": 1,
-        "html_url": "https://github.com/o/r/pull/1",
-        "title": "Return 2 from f",
-        "body": "f now returns 2.",
-        "state": "open",
-        "draft": False,
-        "base": {
-            "ref": "main",
-            "sha": upstream.main,
-            "repo": {
-                "full_name": "o/r",
-                "html_url": "https://github.com/o/r",
-                "clone_url": upstream.repo.path.as_uri(),
-            },
-        },
-        "head": {"label": "fork:feature", "sha": upstream.head, "repo": {"full_name": "fork/r"}},
-    }
-    data.update(changes)
-    return data
+    return make_upstream(tmp_path / "upstream")
 
 
 @pytest.fixture

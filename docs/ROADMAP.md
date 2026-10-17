@@ -589,7 +589,7 @@ and (on public repos) a signed attestation, and re-running updates rather than d
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | I01 | PR ingestion | M | H05 | done |
-| I02 | Check run, sticky comment & job summary | M | I01 | planned |
+| I02 | Check run, sticky comment & job summary | M | I01 | in progress |
 | I03 | GitHub Action & attestation signing | M | I02, H04 | planned |
 | I04 | GitHub App (optional) | L | I03 | planned |
 

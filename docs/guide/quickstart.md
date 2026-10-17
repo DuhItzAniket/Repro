@@ -110,6 +110,11 @@ repro replay run_<id>                    # the run again in the cockpit, from th
 Each export assembles the card again from the run's log, and refuses one that differs from the
 card the run published.
 
+For a pull request, `repro report run_<id>` puts the card on it: a check run named `Repro` on
+its head commit (VERIFIED `success`, FLAGGED `failure`, UNVERIFIABLE `neutral`), with
+annotations at the changed code, and one comment that each report updates. The token
+(`GITHUB_TOKEN` or `GH_TOKEN`) must be allowed to write check runs and pull request comments.
+
 ## 7. Claims (optional)
 Without agents, Repro reports what changed but cannot say whether the change does what its
 author says: every unexplained difference flags. With agents, it reads the pull request's
