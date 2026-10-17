@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | I — GitHub integration |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | I02, H04 |
-| **Branch / PR** | `phase/I03-action` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/I03-action` · [#80](https://github.com/DuhItzAniket/Repro/pull/80) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 A repository adds one step to a workflow, and every pull request gets its Reproduction Card: the
@@ -89,7 +89,7 @@ check run, the comment, the job's summary, and on a public repository a signed a
   GitHub, with `card.json`'s SHA-256 equal to the predicate's `cardDigest`, a fork's report to
   the summary alone and a posted one making the check run and the comment; `action.yml` pinned,
   its steps' outputs and inputs consistent, containers required. `test_exports.py` 14 passed.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#80).
 
 ## Deviations from spec
 - **A composite action, not a Docker container action.** The roadmap's "Docker-based Action" is

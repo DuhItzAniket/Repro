@@ -590,7 +590,7 @@ and (on public repos) a signed attestation, and re-running updates rather than d
 |---|---|---|---|---|
 | I01 | PR ingestion | M | H05 | done |
 | I02 | Check run, sticky comment & job summary | M | I01 | done |
-| I03 | GitHub Action & attestation signing | M | I02, H04 | in progress |
+| I03 | GitHub Action & attestation signing | M | I02, H04 | done |
 | I04 | GitHub App (optional) | L | I03 | planned |
 
 **I01** PR URL → refs, description, commits (gh/API, token from env), fork handling.
@@ -749,3 +749,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Gate H | 2026-10-17 | [#77](https://github.com/DuhItzAniket/Repro/pull/77) | Stage H complete; release v1.0.0 ([gate record](phases/H-gate.md)); the release's wheels install and make a first run, VERIFIED with a test run, on Ubuntu (L3, 27.2 s) and Windows (L2, 30.1 s) in CI; every threat traced to tests or a residual (H03); the user guide completed from the docs alone by a reviewer new to the project (H06) |
 | I01 | 2026-10-17 | [#78](https://github.com/DuhItzAniket/Repro/pull/78) | repro run --pr <url>: the pull request read from GitHub's REST API (2026-03-10; token from GITHUB_TOKEN or GH_TOKEN, dropped on a cross-host redirect), its base branch and refs/pull/<n>/head (forks included) fetched into Repro's own bare mirror with the token in GIT_CONFIG_* only, head compared with the merge base; run.started records repo and PR; --repo uses a user's clone as is; failures exit 2 in words; checked on pallets/itsdangerous#378 |
 | I02 | 2026-10-17 | [#79](https://github.com/DuhItzAniket/Repro/pull/79) | repro report <run>: the card on its GitHub pull request, checked against its log, no target code run; the check run Repro on the head commit (VERIFIED success, FLAGGED failure, UNVERIFIABLE neutral; annotations at the changed code, 50 a request), one comment found by a hidden marker and its author, updated in place, the job summary in Actions; a rerun updates; a target it cannot update is named and the others made |
+| I03 | 2026-10-17 | [#80](https://github.com/DuhItzAniket/Repro/pull/80) | action.yml (composite): Repro from the Action's own checkout on the runner, containers only (REPRO_SANDBOX=docker), card kept as an artifact, reported, and on public repositories signed with actions/attest (card.json, the card's canonical bytes, as subject; Repro's predicate); actions pinned to commits; mirror and maps cached; forks not posted to unless opted in under pull_request_target (owner's decisions); plan/run/report in repro.integrations.github.action, tested; THREAT_MODEL T20 |
