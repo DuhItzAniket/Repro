@@ -5,7 +5,7 @@
 | **Stage** | J — Evaluation & research |
 | **Status** | paused: prepared; the results come with J07–J08, the archive with the owner |
 | **Depends on** | J08 |
-| **Branch / PR** | `phase/J09-artifact` · PR pending |
+| **Branch / PR** | `phase/J09-artifact` · [#93](https://github.com/DuhItzAniket/Repro/pull/93) |
 | **Started / finished** | 2026-10-18 / — |
 
 ## Objective
@@ -53,7 +53,7 @@ prepares what does not depend on their results, ahead of its place in the order.
 
   Repro's cards are UNVERIFIABLE because twine's suite is order-dependent (J04), and they say
   so. The first pull of the image (about 4.5 GB) adds its own time.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#93).
 
 ## Deviations from spec
 - Prepared before J07–J08, by the owner's decision to keep going while Stage J waits.

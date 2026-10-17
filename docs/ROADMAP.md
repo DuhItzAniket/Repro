@@ -763,3 +763,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K03 | 2026-10-18 | [#90](https://github.com/DuhItzAniket/Repro/pull/90) | repro mcp: MCP server on stdio (official SDK); start a verification by commits, read status, card and evidence; run --no-serve prints its run ID at start |
 | K04 | 2026-10-18 | [#91](https://github.com/DuhItzAniket/Repro/pull/91) | repro symbolic: CrossHair diffbehavior on small pure annotated functions a change edits, base body vs head's in head's environment; card evidence needs a schema change |
 | K05 | 2026-10-18 | [#92](https://github.com/DuhItzAniket/Repro/pull/92) | docker_context setting (a team's engine elsewhere); ADR-0018 proposed for E2B self-hosted and Kata with Firecracker |
+| J09 | 2026-10-18 | [#93](https://github.com/DuhItzAniket/Repro/pull/93) | Prepared and paused: kick-the-tires script (2 min 10 s, four checks), AE guide, .zenodo.json and CITATION.cff; study data and DOI wait |
