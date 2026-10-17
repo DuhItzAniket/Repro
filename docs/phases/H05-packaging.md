@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | H — Hardening & first release |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | H02, H03 |
-| **Branch / PR** | `phase/H05-packaging` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/H05-packaging` · [#75](https://github.com/DuhItzAniket/Repro/pull/75) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 A stranger installs Repro with one command and makes a first run, on Windows or Linux, in under
@@ -90,7 +90,7 @@ change, so it keeps working.
   1.3 s; 24.8 s in all.
 - **The wheels**, version 0.7.0: `repro_engine` carries `repro/api/cockpit/index.html`, the
   sandbox's hook, its Dockerfile and the prompts; `repro_events` carries the 45 schemas.
-- CI run: linked in the PR (the `install` job's times on clean runners).
+- CI run: linked in the PR (#75).
 
 ## Deviations from spec
 - **No PyPI yet**, by the owner's decision: GitHub releases now, PyPI once its publisher is set
