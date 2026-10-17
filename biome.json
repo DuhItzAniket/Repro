@@ -14,6 +14,7 @@
       "!docs/research",
       "!packages/events/src/generated",
       "!engine/tests/golden",
+      "!engine/tests/data/schemas",
       "!engine/tests/cassettes",
       "!spikes/**/results"
     ]

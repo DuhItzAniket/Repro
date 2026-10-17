@@ -15,6 +15,7 @@ dev = [
   "hypothesis>=6.169.0",
   "httpx2>=2.13.1",
   "types-pyyaml>=6.0.12",
+  "xmlschema>=4.3.2",
 ]
 
 [tool.uv]

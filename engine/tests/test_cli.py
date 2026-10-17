@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 from api_support import AUTH, known_token
 from cli_support import clean_env, free_port
 from repro import __version__
-from repro.cli import NOT_YET, app
+from repro.cli import app
 
 runner = CliRunner()
 
@@ -48,14 +48,6 @@ def test_module_entry_point_runs_in_a_fresh_interpreter() -> None:
     )
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == f"repro {__version__}"
-
-
-def test_an_unfinished_command_says_so_and_exits_2(tmp_path: Path) -> None:
-    argv = ["export", "01J9ZQ4R6M3X8T2K5V7N0P1QWE", "--format", "sarif"]
-    result = runner.invoke(app, argv, env=clean_env(tmp_path))
-    assert result.exit_code == NOT_YET
-    assert "not available yet" in result.output
-    assert "H04" in result.output
 
 
 def test_run_requires_its_refs(tmp_path: Path) -> None:

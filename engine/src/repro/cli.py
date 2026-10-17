@@ -1,12 +1,12 @@
 """The ``repro`` command line.
 
-``doctor``, ``run``, ``replay``, ``serve`` and ``export`` work; an export format that arrives
-later (H04) exits with status 2, naming the phase that brings it: nothing pretends to work.
+``doctor``, ``run``, ``replay``, ``serve`` and ``export``.
 
 ``run``, ``replay`` and ``serve`` serve the cockpit on a loopback port: ``run`` streams its run
 live from the same process, ``replay`` shows a stored run or an event log from the start, after
 assembling its card again from the log and checking it against the one the run published
-(F05). ``export`` writes that card as Markdown or canonical JSON.
+(F05). ``export`` writes that card as Markdown or canonical JSON, or for other tools as an
+in-toto attestation, SARIF or JUnit XML (H04).
 
 Global options override the environment and the configuration file (``repro.config``). Logs go
 to stderr; a command's output goes to stdout.
@@ -24,7 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, NoReturn
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 
@@ -44,8 +44,6 @@ if TYPE_CHECKING:
     from repro.orchestrator import Job, Orchestrator, RunHandle, RunResult
     from repro.pipeline import Change
 
-#: Exit status of a command that is not available yet.
-NOT_YET = 2
 #: The API's port: a project choice (C04).
 DEFAULT_PORT = 8780
 LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
@@ -132,12 +130,6 @@ def _session(ctx: typer.Context) -> Session:
         session = Session()
         ctx.obj = session
     return session
-
-
-def _not_yet(command: str, arrives: str, **request: object) -> NoReturn:
-    log.debug("not available yet", extra={"fields": {"command": command, **request}})
-    typer.echo(f"repro {command}: not available yet; it arrives in {arrives}.", err=True)
-    raise typer.Exit(NOT_YET)
 
 
 @app.callback()
@@ -658,20 +650,30 @@ def export(
     """Export a run's Reproduction Card, assembled again from the run's log.
 
     The card is checked against the one the run published: if they differ, nothing is written
-    and the exit status is 1. Markdown (md) or canonical JSON (json); the attestation and
-    report formats arrive in H04.
+    and the exit status is 1. Markdown (md), canonical JSON (json), an unsigned in-toto
+    attestation (in-toto), SARIF 2.1.0 (sarif) or JUnit XML (junit).
     """
     settings = _session(ctx).settings()
-    if output_format not in (ExportFormat.md, ExportFormat.json):
-        _not_yet("export", "H04 (exporters)", run=source, format=output_format.value)
     from repro.card import canonical, render  # noqa: PLC0415
+    from repro.card.exports import attestation, junit, sarif  # noqa: PLC0415
 
-    found = _regenerated(_events_of(settings, source, "export"), "export", strict=True)
-    data = (
-        render(found.card).encode("utf-8")
-        if output_format is ExportFormat.md
-        else canonical(found.card) + b"\n"
-    )
+    events = _events_of(settings, source, "export")
+    found = _regenerated(events, "export", strict=True)
+    evidence = {
+        e["payload"]["evidence"]["id"]: e["payload"]["evidence"]
+        for e in events
+        if e["kind"] == "evidence.created"
+    }
+    if output_format is ExportFormat.md:
+        data = render(found.card).encode("utf-8")
+    elif output_format is ExportFormat.json:
+        data = canonical(found.card) + b"\n"
+    elif output_format is ExportFormat.in_toto:
+        data = json.dumps(attestation(found.card, evidence), indent=2).encode("utf-8") + b"\n"
+    elif output_format is ExportFormat.sarif:
+        data = json.dumps(sarif(found.card, evidence), indent=2).encode("utf-8") + b"\n"
+    else:
+        data = junit(found.card)
     if output is not None:
         output.write_bytes(data)
         typer.echo(f"wrote {output} ({found.card['status']}, card SHA-256 {found.sha256})")

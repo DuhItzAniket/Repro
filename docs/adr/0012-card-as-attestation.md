@@ -28,3 +28,18 @@ predicates up to 16 MB (research/04 §3).
 ## Consequences
 The predicate needs a published, versioned schema in `packages/events`. Once teams depend on
 it, field changes follow semver.
+
+## Implementation note (H04)
+- The predicate type is `https://github.com/DuhItzAniket/Repro/blob/main/docs/attestation/
+  reproduction-card/v0.md`. It carries the major version only, `v0`, not `v0.1` as written
+  above: in-toto's TypeURI should resolve to a description, and its parsing rules say the URI
+  reflects the major version (minor versions follow the monotonic principle). The predicate is
+  version 0.1.
+- The predicate holds the card itself with its digest, so card -> attestation -> card is exact
+  and checkable. Claims, verdicts, missing items, invariants and the environment are the card's
+  own. Beside it: the cited evidence as digested ResourceDescriptors, the event log's digest, and
+  copies of the status, isolation level and network for policies.
+- The VSA-style summary is not emitted: the copies above serve policies, and a second predicate
+  would be a second thing to keep true.
+- Schemas: `packages/events/schema/attestation/` (the Statement as Repro writes it, and the
+  predicate).
