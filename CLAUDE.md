@@ -107,6 +107,9 @@ uv run repro replay <run id | log.jsonl>                    # replayed from the 
 uv run repro export <run id | log.jsonl> --format md|json|in-toto|sarif|junit  # the card, checked against the log (F05, H04)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
 
+uv run python scripts/build_wheels.py      # H05: the release's two wheels in dist/wheels (pnpm build first)
+uv run python scripts/install_check.py dist/wheels   # H05: the README's install + a first run, timed
+
 pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply
 uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)
 uv run ruff format      # Python format (--check in CI)

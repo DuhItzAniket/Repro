@@ -41,6 +41,12 @@ All notable changes to this project are documented here. The format follows
   item, failed invariant, judged claim and missing item, and JUnit XML, with a test case per
   claim and one for the status. Each is checked against its schema: Repro's own, OASIS's SARIF
   2.1.0 schema, and Apache Ant's JUnit XSD. [H04]
+- Release wheels: `repro-engine`, with the cockpit inside, and `repro-events`, with the event
+  schemas (`scripts/build_wheels.py`). A published GitHub release gets them attached by the
+  release workflow. The README gives the install, one `uv tool install` from the two wheels.
+  CI follows it on Linux and Windows for every change and makes a first run on a small
+  repository, inside ten minutes (`scripts/install_check.py`). [H05]
+- `repro doctor` reports the cockpit: the checkout's build, the wheel's copy, or none. [H05]
 
 ### Changed
 - A selected test that no run reported leaves the change UNVERIFIABLE (`tests_not_run`). Until

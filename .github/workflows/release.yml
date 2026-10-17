@@ -1,0 +1,66 @@
+# Release (H05): a published GitHub release gets the wheels of its version attached, after the
+# same clean install and first run as CI's install job. Run by hand (workflow_dispatch), it
+# builds and checks them and keeps them as an artifact. PyPI comes later, through PyPI's trusted
+# publishing, once the project's publisher is set up there.
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.0"
+
+jobs:
+  wheels:
+    name: wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write # attach the wheels to the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Build the cockpit
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @repro/web build
+      - name: Install Python environment
+        run: uv sync --locked
+      - name: Build the wheels
+        run: uv run --locked python scripts/build_wheels.py
+      - name: Install from the wheels and make a first run
+        run: uv run --locked python scripts/install_check.py dist/wheels
+      - name: The wheels are the release's version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG#v}"
+          test -f "dist/wheels/repro_engine-${version}-py3-none-any.whl"
+          test -f "dist/wheels/repro_events-${version}-py3-none-any.whl"
+      - name: Attach them to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist/wheels/*.whl --clobber
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheels
+          path: dist/wheels/
+          retention-days: 30

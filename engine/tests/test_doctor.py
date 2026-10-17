@@ -378,3 +378,25 @@ def test_isolation_states_the_level_runs_reach(
     check = check_isolation(docker, CONTAINED, sandbox)
     assert (check.status, check.summary) == (status, summary)
     assert check.required == (status == "fail")
+
+
+def test_the_cockpit_is_found_or_said_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """H05: a checkout's build first, else the copy a release's wheel carries; doctor says which,
+    or warns that runs are served without it."""
+    from repro.api import ui  # noqa: PLC0415
+    from repro.doctor import check_cockpit  # noqa: PLC0415
+
+    checkout, packaged = tmp_path / "dist", tmp_path / "cockpit"
+    monkeypatch.setattr(ui, "CHECKOUT_UI", checkout)
+    monkeypatch.setattr(ui, "PACKAGED_UI", packaged)
+    assert ui.find_ui(None) is None
+    missing = check_cockpit(None)
+    assert (missing.status, missing.required) == ("warn", False)
+    for found in (packaged, checkout):  # the packaged copy, then the checkout's, which wins
+        found.mkdir()
+        (found / "index.html").write_text("<!doctype html>", "utf-8")
+        assert ui.find_ui(None) == found
+    assert check_cockpit(checkout).status == "ok"
+    assert ui.find_ui(tmp_path) is None  # a configured directory is the only one looked at

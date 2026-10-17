@@ -78,3 +78,7 @@ desktop.ini
 # Local Claude Code state
 .claude/settings.local.json
 .claude/launch.json
+
+# Copied in only to build a release's wheels (scripts/build_wheels.py), then removed
+engine/src/repro/api/cockpit/
+packages/events/python/src/repro_events/schema/
