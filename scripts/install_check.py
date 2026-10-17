@@ -3,7 +3,10 @@
 From the two wheels of a release (``scripts/build_wheels.py``), into a tool directory of its
 own, away from any checkout: ``uv tool install`` as the README says, then ``repro --version``,
 ``repro doctor``, a first ``repro run`` on a small repository made here, and an export of its
-card checked against the schemas the wheel carries. The cockpit and the schemas must come from
+card checked against the schemas the wheel carries. The run must really have run the tests: the
+change is a refactor its test covers, so its card must be VERIFIED, with a selected test, and
+with nothing missing but the timing of a test too fast to time (H06: an installed Repro once
+completed runs in which no test could start). The cockpit and the schemas must come from
 the installed wheels, not from a checkout. The whole procedure must take under ten minutes
 (H05's target), and the time each step took is printed.
 
@@ -20,6 +23,7 @@ import tempfile
 import time
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 PYTHON = "3.13"  # the Python Repro is developed and tested on; uv fetches it if needed
 TARGET_FILES = {
@@ -31,6 +35,8 @@ TARGET_FILES = {
     ),
 }
 HEAD_FILES = {"calc/core.py": "def total(items):\n    return sum(item for item in items)\n"}
+#: What the first run may leave unchecked: its one test runs in well under 5 ms.
+MAY_BE_MISSING = {"perf_not_assessable"}
 GIT_IDENTITY = {
     "GIT_AUTHOR_NAME": "Install Check",
     "GIT_AUTHOR_EMAIL": "install-check@repro.invalid",
@@ -70,6 +76,19 @@ def make_target(root: Path, env: dict[str, str]) -> tuple[str, str]:
         run([*git, "commit", "-q", "-m", "change"], env=env, cwd=root)
         shas.append(run([*git, "rev-parse", "HEAD"], env=env, cwd=root).strip())
     return shas[0], shas[1]
+
+
+def checked_card(card: dict[str, Any]) -> str:
+    """The first run's isolation level, once its card shows that the tests really ran."""
+    missing = [f"{m['reason']}: {m['detail']}" for m in card["missing"]
+               if m["reason"] not in MAY_BE_MISSING]  # fmt: skip
+    selected = card["conditions"]["selected_tests"]
+    if card["status"] != "VERIFIED" or selected < 1 or missing:
+        raise CheckError(
+            f"the first run's card is {card['status']}, {selected} tests selected, "
+            f"missing: {missing or 'nothing else'}"
+        )
+    return str(card["conditions"]["isolation_level"])
 
 
 def check(wheels: Path, limit_s: float) -> list[tuple[str, float]]:
@@ -126,7 +145,9 @@ def check(wheels: Path, limit_s: float) -> list[tuple[str, float]]:
         found = re.search(r"(run_[0-9A-HJKMNP-TV-Z]{26}) completed", said)
         if found is None:
             raise CheckError(f"repro run reported no completed run:\n{said}")
-        mark = step("the first repro run", mark)
+        exported = ["export", found.group(1), "--format", "json"]
+        level = checked_card(json.loads(run([str(repro), *exported], env=env, cwd=work)))
+        mark = step(f"the first repro run ({level})", mark)
         statement = work / "card.in-toto.json"
         run([str(repro), "export", found.group(1), "--format", "in-toto", "-o", str(statement)],
             env=env, cwd=work)  # fmt: skip
