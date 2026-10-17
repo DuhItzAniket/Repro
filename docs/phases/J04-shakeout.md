@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | J — Evaluation & research |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | J02, J03 |
-| **Branch / PR** | `phase/J04-shakeout` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/J04-shakeout` · [#85](https://github.com/DuhItzAniket/Repro/pull/85) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Shake the pipeline out on real tasks before any study data exists: every system runs on S0
@@ -133,7 +133,7 @@ $60 if every token were output. Most are input.
 
 **Locally**: the new tests above passed, with `test_bench_swe.py`, `test_runner_pytest.py`
 and `test_config.py`.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#85).
 
 ## Deviations from spec
 - **No S1 pilot.** It needs SWE-bench Verified's images and harness for tier A (J02's tier A
