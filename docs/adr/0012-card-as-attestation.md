@@ -43,3 +43,13 @@ it, field changes follow semver.
   would be a second thing to keep true.
 - Schemas: `packages/events/schema/attestation/` (the Statement as Repro writes it, and the
   predicate).
+
+## Implementation note (I03)
+- **Signed through GitHub, the subject is the card.** GitHub's artifact attestations
+  (`actions/attest`, `gh attestation verify`) take subjects by a `sha256` digest only
+  [actions/attest README, checked 2026-10-17], and a commit's git ID is not one. The Action
+  signs the card's canonical JSON (`card.json`, exactly the bytes `cardDigest` is of) with
+  Repro's predicate; the head commit, the event log's digest and the cited evidence stay in
+  the predicate. `repro export --format in-toto` still names the head commit, unsigned.
+  Decided by the project owner on 2026-10-17.
+- `card_from_attestation` accepts either subject, each checked against the card.

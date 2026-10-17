@@ -141,6 +141,14 @@ concerns, 50 a request); one comment, found by a hidden marker and written by th
 identity; and, in GitHub Actions, the job's summary. It runs no target code, so it can report
 a run made elsewhere: a fork's pull request gets a read-only token where its code runs.
 
+**The Action** (I03, `action.yml`, `integrations/github/action`). A composite action: Repro
+runs on the runner from the Action's own checkout, and its sandbox uses the runner's Docker
+(L3; L4 under gVisor). It plans (a fork's pull request is not posted to unless the workflow
+opts in under `pull_request_target`; only a public repository's posted run is signed), runs
+Repro on the pull request, keeps the card as an artifact, reports it, and signs `card.json`
+with Repro's predicate through `actions/attest`. Repro's mirror and test maps are cached
+between runs.
+
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector
 in "collect-map" mode. It does not use coverage.py contexts, because those force coverage's

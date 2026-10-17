@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- An attestation's subject may be the card itself (its canonical JSON, by `cardDigest`), as
+  GitHub signs it; `card_from_attestation` checks either subject against the card. [I03]
+
 ### Added
 - `repro run --pr <url>`: a GitHub pull request, from its address alone. Its base, head,
   title and description come from GitHub's REST API, its commits, a fork's included, are
@@ -18,6 +22,12 @@ All notable changes to this project are documented here. The format follows
   at the changed code, 50 a request; one comment, found by a hidden marker and written by the
   same identity; the job's summary in GitHub Actions. A rerun updates them; a target it
   cannot update is named, and the others are still made. [I02]
+- The GitHub Action (`action.yml`, `uses: DuhItzAniket/Repro@<ref>`): Repro on every pull
+  request, run on the runner with its Docker sandbox, the card reported and kept as an
+  artifact, and, on a public repository, signed with `actions/attest` (the card's canonical
+  JSON as subject, Repro's predicate). A fork's pull request is not posted to unless the
+  workflow opts in under `pull_request_target`. Repro's mirror and test maps are cached.
+  [I03]
 
 ## [1.0.0] - 2026-10-17
 
