@@ -50,7 +50,7 @@ def test_a_seed_may_touch_a_file_the_fix_does_not(task: tuple[Repo, str, str, st
     [
         ({"path": "pkg/core.py", "find": "return", "replace": "yield"}, "occurs 2 times"),
         ({"path": "pkg/core.py", "find": "nowhere", "replace": "x"}, "occurs 0 times"),
-        ({"path": "pkg/missing.py", "find": "x", "replace": "y"}, "not a file the fix leaves"),
+        ({"path": "pkg/missing.py", "find": "x", "replace": "y"}, "is not a file at"),
         ({"path": "pkg/core.py", "find": "    if x is None:\n        return 0\n", "replace": ""},
          "undo the fix entirely"),
     ],

@@ -560,3 +560,17 @@ entry. If something turns out wrong, add a correcting entry.
   study as registered is about 100 million tokens, beyond the free tier. The budget is now a
   design input to be decided and stated.
 
+## 2026-10-18 · J05 · S2's tasks pinned, and the first agent patches
+- **S2's 351 candidate tasks are pinned** by the protocol's rules
+  (`bench/data/s2-candidates.jsonl`; [phase record](../phases/J05-patches.md)).
+- **A two-call localize-and-repair scaffold** that fits the free tier's 8,000-token requests.
+  A second scaffold (mini-SWE-agent) is specified but needs a paid plan.
+- **Pilot, two tasks and two model families:**
+  - every localization named the gold file first;
+  - Qwen's twine patch is plausible and wrong: the hidden test fails it, and CI-only would
+    pass it;
+  - gpt-oss's repair calls timed out on Groq tonight.
+- **For the paper.** The free tier constrains the scaffold as much as the reviewers. A scaffold
+  that resends its conversation cannot run there at all. The study's patches come from what
+  the budget allows, and that is stated with them.
+

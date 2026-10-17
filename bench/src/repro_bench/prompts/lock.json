@@ -3,5 +3,7 @@
   "baseline_static/1": "2b740ca46a5d2b61de5f2c2701194367af5b6ffddcc31ea2a4de83f084b2c4cd",
   "difftest/1": "227ad5406ebe7de271a029bae97aed2c55ec119dc90d27958680e25c3362e0bc",
   "memorisation/1": "4f97dbc63277b152950b3757ad066a95b59aab6aeebea785e8677093561fe8ce",
+  "repair_edit/1": "3dd6df3fb0616ca77472dde4a80864bb38ea023da6aeb5f862c2efe8d4fb4b4b",
+  "repair_localize/1": "014ade47146027b4f5a49add6e317129782a383eb5c79abcff43ba1ad0f61b2b",
   "seed/1": "19ca390b1768faedab21791db82c1142556a0d702868d49cc7a52ac4ee31329a"
 }

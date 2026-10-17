@@ -17,7 +17,6 @@ hidden tests and keeps the full suite. Those are the seeds a CI-only check canno
 
 import argparse
 import asyncio
-import difflib
 import json
 import sys
 from collections.abc import Mapping, Sequence
@@ -31,8 +30,8 @@ from repro.agents.openai_compat import Endpoint, OpenAICompatibleBackend
 from repro.agents.prompts import load_prompt
 from repro.agents.setup import GROQ_MODEL
 from repro.agents.untrusted import block
-from repro.gitops import Git, GitError
-from repro_bench import swe, truth
+from repro.gitops import Git
+from repro_bench import edits, swe, truth
 
 PROMPTS: Final = Path(__file__).parent / "prompts"
 DEFECTS: Final = ("incomplete_fix", "wrong_behaviour", "regression", "edge_case")
@@ -82,45 +81,19 @@ def request(problem_statement: str, gold: str, defect: str, model: str) -> Agent
     )
 
 
-def _text(git: Git, commit: str, path: str) -> str | None:
-    try:
-        return git.run("show", f"{commit}:{path}").decode("utf-8")
-    except GitError:
-        return None
-
-
-def seeded_patch(git: Git, base: str, gold_head: str, edits: Sequence[Mapping[str, Any]]) -> str:
-    """The diff from ``base`` to the gold patch's files with ``edits`` applied (raises
+def seeded_patch(git: Git, base: str, gold_head: str, changes: Sequence[Mapping[str, Any]]) -> str:
+    """The diff from ``base`` to the gold patch's files with ``changes`` applied (raises
     ``SeedError`` when an edit does not match its file exactly once)."""
-    after: dict[str, str] = {}
-    for edit in edits:
-        path = str(edit["path"]).strip().lstrip("./")
-        text = after.get(path) if path in after else _text(git, gold_head, path)
-        if text is None:
-            raise SeedError(f"{path} is not a file the fix leaves")
-        find, replace = str(edit["find"]), str(edit["replace"])
-        if not find or text.count(find) != 1:
-            raise SeedError(
-                f"an edit's snippet occurs {text.count(find) if find else 0} times in {path}"
-            )
-        after[path] = text.replace(find, replace, 1)
     gold_files = git.run("diff", "--name-only", base, gold_head).decode().split()
-    diff = []
-    for path in sorted(set(gold_files) | set(after)):
-        old = _text(git, base, path) or ""
-        new = after.get(path, _text(git, gold_head, path) or "")
-        lines = list(
-            difflib.unified_diff(
-                old.splitlines(True), new.splitlines(True), f"a/{path}", f"b/{path}"
-            )
-        )
-        if lines:
-            if not lines[-1].endswith("\n"):
-                lines[-1] += "\n\\ No newline at end of file\n"
-            diff += [f"diff --git a/{path} b/{path}\n", *lines]
-    if not diff:
-        raise SeedError("the edits undo the fix entirely")
-    return "".join(diff)
+    try:
+        after = edits.apply(git, gold_head, [edits.Edit.of(change) for change in changes])
+    except edits.EditError as exc:
+        raise SeedError(str(exc)) from None
+    fixed = {path: edits.read(git, gold_head, path) or "" for path in gold_files}
+    try:
+        return edits.diff(git, base, fixed | after)
+    except edits.EditError:
+        raise SeedError("the edits undo the fix entirely") from None
 
 
 @dataclass(frozen=True)

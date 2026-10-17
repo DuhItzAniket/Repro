@@ -33,6 +33,9 @@ All notable changes to this project are documented here. The format follows
 - `repro_bench.seed` (plausible-but-wrong patches for S0, kept only when tier A finds them
   plausible), `repro_bench.memo` (the memorisation probe) and `repro_bench.power`
   (McNemar sample sizes, approximate and exact). [J04]
+- S2's candidate tasks, pinned (`bench/data/s2-candidates.jsonl`, 351 tasks by the protocol's
+  rules; `python -m repro_bench.tasks`), and `python -m repro_bench.generate`, a two-call
+  localize-and-repair scaffold whose edits become a diff by `difflib`, its trajectory kept. [J05]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
