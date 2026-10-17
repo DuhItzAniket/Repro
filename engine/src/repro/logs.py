@@ -17,6 +17,9 @@ name looks like a credential (token, secret, password, authorization, API key) i
 ``"[redacted]"``, at any depth, so a careless call cannot leak one. Every other string, the
 message and an error's text included, goes through the events' scrubbing (``repro.scrub``,
 H03): credentials of a recognised shape are redacted and the home directory is written ``~``.
+So is a credential in a URL's query string (``?token=…``, H06): the web server logs the path of
+each WebSocket it accepts, query included. The web server's own logger goes through the same
+handler (``adopt``), so its lines have the same format and the same scrubbing.
 What a user should see about a run is not a log line: it is a ``log.line`` event in the run's
 event log.
 """
@@ -35,6 +38,11 @@ from repro.scrub import scrub_text
 LOGGER_NAME: Final = "repro"
 REDACTED: Final = "[redacted]"
 _SECRET = re.compile(r"token|secret|passw(or)?d|authori[sz]ation|api[_-]?key|credential", re.I)
+#: A query parameter whose name looks like a credential, and its value.
+_QUERY_SECRET = re.compile(
+    r"([?&][\w.-]*(?:token|secret|passw(?:or)?d|api[_-]?key|credential)[\w.-]*=)[^&\s\"'#]+",
+    re.I,
+)
 _LEVELS: Final[dict[LogLevel, int]] = {
     "debug": logging.DEBUG,
     "info": logging.INFO,
@@ -57,6 +65,12 @@ def redact(value: object) -> object:
     return value
 
 
+def clean(text: str) -> str:
+    """``text`` as a log may show it: query-string credentials and recognised ones redacted, the
+    home directory written ``~``."""
+    return scrub_text(_QUERY_SECRET.sub(rf"\1{REDACTED}", text))
+
+
 def _fields(record: logging.LogRecord) -> dict[str, object]:
     fields = getattr(record, "fields", None)
     if not isinstance(fields, Mapping):
@@ -73,7 +87,7 @@ class JsonFormatter(logging.Formatter):
             "ts": utc_timestamp(record.created),
             "level": record.levelname.lower(),
             "logger": record.name,
-            "msg": scrub_text(record.getMessage()),
+            "msg": clean(record.getMessage()),
         }
         for key, value in _fields(record).items():
             if key not in entry:
@@ -82,8 +96,8 @@ class JsonFormatter(logging.Formatter):
             error = record.exc_info[1]
             entry["error"] = {
                 "type": record.exc_info[0].__name__,
-                "message": scrub_text(str(error)),
-                "traceback": scrub_text(self.formatException(record.exc_info)),
+                "message": clean(str(error)),
+                "traceback": clean(self.formatException(record.exc_info)),
             }
         return json.dumps(entry, ensure_ascii=True, default=str, separators=(",", ":"))
 
@@ -94,9 +108,9 @@ class TextFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         fields = " ".join(f"{key}={value}" for key, value in _fields(record).items())
         line = f"{utc_timestamp(record.created)} {record.levelname.lower():<7} {record.name}: "
-        line += scrub_text(record.getMessage()) + (f" {fields}" if fields else "")
+        line += clean(record.getMessage()) + (f" {fields}" if fields else "")
         if record.exc_info and record.exc_info[0] is not None:
-            line += "\n" + scrub_text(self.formatException(record.exc_info))
+            line += "\n" + clean(self.formatException(record.exc_info))
         return line
 
 
@@ -113,6 +127,16 @@ def configure_logging(
     logger.setLevel(_LEVELS[level])
     logger.propagate = False
     return logger
+
+
+def adopt(name: str) -> None:
+    """Sends a library's logger (``uvicorn``) to the ``repro`` logger's handler, at its level:
+    one format, and the same scrubbing, for every line Repro prints."""
+    ours = logging.getLogger(LOGGER_NAME)
+    theirs = logging.getLogger(name)
+    theirs.handlers = list(ours.handlers)
+    theirs.setLevel(ours.level)
+    theirs.propagate = False
 
 
 def get_logger(name: str) -> logging.Logger:

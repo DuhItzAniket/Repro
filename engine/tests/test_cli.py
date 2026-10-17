@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import subprocess
 import sys
@@ -156,9 +157,17 @@ def test_the_server_logs_no_request_lines(monkeypatch: pytest.MonkeyPatch) -> No
             seen["ran"] = True
 
     monkeypatch.setattr(uvicorn, "Server", Recorded)
+    ours, theirs = logging.getLogger("repro"), logging.getLogger("uvicorn")
+    monkeypatch.setattr(theirs, "handlers", list(theirs.handlers))
+    monkeypatch.setattr(theirs, "propagate", theirs.propagate)
     _run_server(object(), None, "info")  # type: ignore[arg-type]
     assert seen["ran"]
     assert seen["config"].access_log is False
+    # H06: uvicorn logs each WebSocket it accepts with its query, the token in it. Its lines go
+    # through Repro's handler, which redacts it (test_logs.py), not uvicorn's own.
+    assert seen["config"].log_config is None
+    assert theirs.handlers == ours.handlers
+    assert theirs.propagate is False
 
 
 def test_serve_starts_the_api_with_its_own_origins(

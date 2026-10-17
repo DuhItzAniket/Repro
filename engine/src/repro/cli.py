@@ -31,7 +31,7 @@ import typer
 from repro import __version__
 from repro.config import CONFIG_ENV, Settings, SettingsError, load_settings
 from repro.doctor import Check, Machine, check_cockpit, diagnose
-from repro.logs import configure_logging, get_logger
+from repro.logs import adopt, configure_logging, get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -320,8 +320,12 @@ def _run_server(api: "FastAPI", sock: socket.socket, log_level: str) -> None:
     """Runs uvicorn on the bound socket until Ctrl+C (tests replace this)."""
     import uvicorn  # noqa: PLC0415
 
-    # No access log: the event stream's request line carries the session token.
-    config = uvicorn.Config(api, log_level=log_level, ws="websockets-sansio", access_log=False)
+    # No access log: the event stream's request line carries the session token. uvicorn's own
+    # lines go through Repro's handler, which redacts it where uvicorn logs a WebSocket (H06).
+    adopt("uvicorn")
+    config = uvicorn.Config(
+        api, log_level=log_level, log_config=None, ws="websockets-sansio", access_log=False
+    )
     uvicorn.Server(config).run(sockets=[sock])
 
 
