@@ -110,7 +110,8 @@ def check(wheels: Path, limit_s: float) -> list[tuple[str, float]]:
         repro = next((work / "bin").glob("repro*"), None)
         if repro is None:
             raise CheckError("uv tool install left no repro command")
-        tool_python = next((work / "tools" / "repro-engine").glob("*/python*"))
+        venv = work / "tools" / "repro-engine"  # the tool's own environment
+        tool_python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
         shown = run([str(repro), "--version"], env=env, cwd=work).strip()
         if shown != f"repro {version}":
             raise CheckError(f"repro --version says {shown!r}, the wheel is {version}")
