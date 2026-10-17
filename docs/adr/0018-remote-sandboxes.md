@@ -23,7 +23,7 @@ What the candidates offer, read on 2026-10-18:
 - **A Docker context** names an engine, including one reached over SSH (`docker context create
   … --docker host=ssh://user@host`). `DOCKER_CONTEXT` selects it for every command
   [docs.docker.com, "Docker contexts" and "Protect the Docker daemon socket"].
-- **E2B's runtime** (`e2b-dev/runtime`, Apache-2.0) runs "one Firecracker microVM per sandbox,
+- **E2B's runtime** (`e2b-dev/runtime`, Apache-2.0) gives "One Firecracker microVM per sandbox,
   in its own cgroup and network namespace, with a per-sandbox nftables egress firewall". It can
   be self-hosted ("E2B Embed … on a single Linux host with KVM") [V GitHub README].
 - **Kata Containers** (Apache-2.0) can use Firecracker as its hypervisor. With containerd it
