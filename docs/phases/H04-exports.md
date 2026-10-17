@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | H — Hardening & first release |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | F05 |
-| **Branch / PR** | `phase/H04-exports` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/H04-exports` · [#74](https://github.com/DuhItzAniket/Repro/pull/74) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 The card leaves Repro in the formats other tools already read: an in-toto attestation for
@@ -59,10 +59,10 @@ card back exactly.
   name: a report may be shared.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): outputs validate against their specs and schemas.
-- [ ] AC2 (roadmap): card -> attestation -> card round trip.
-- [ ] AC3: the predicate schema is published and documented where the predicate type points.
-- [ ] AC4: a tampered attestation (card, subject, copies, type) gives no card.
+- [x] AC1 (roadmap): outputs validate against their specs and schemas.
+- [x] AC2 (roadmap): card -> attestation -> card round trip.
+- [x] AC3: the predicate schema is published and documented where the predicate type points.
+- [x] AC4: a tampered attestation (card, subject, copies, type) gives no card.
 
 ## Test plan
 | Criterion | Check |
@@ -98,7 +98,7 @@ card back exactly.
   `c3b4bb2d…`; JUnit.xsd, SHA-256 `147ff89e…`.
 - `pnpm --filter @repro/events test`: 47 passed, with the attestation schemas loaded in strict
   mode. `repro-events-codegen --check`: no drift.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#74).
 
 ## Deviations from spec
 - **The predicate type ends in `v0`**, not ADR-0012's `v0.1`: in-toto's TypeURI carries the
