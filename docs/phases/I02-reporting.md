@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | I — GitHub integration |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | I01 |
-| **Branch / PR** | `phase/I02-reporting` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/I02-reporting` · [#79](https://github.com/DuhItzAniket/Repro/pull/79) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 A run's card reaches the pull request it is about: a check run on its head commit, one comment
@@ -94,7 +94,7 @@ Actions.
 ## Evidence
 - **Locally**: `test_github_report.py` 11 passed, `test_github_ingest.py` 23, and the card, CLI
   and threat-model tests.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#79).
 
 ## Deviations from spec
 - **`action_required` is not used.** The roadmap allows FLAGGED as `failure` or
