@@ -95,6 +95,11 @@ All notable changes to this project are documented here. The format follows
   verdict that cannot hold with another is withheld as `unverifiable`, which can make a card
   UNVERIFIABLE, never FLAGGED. [G08]
 
+### Fixed
+- Cassette keys normalise run-specific IDs at the start of a line, which the old key left
+  as they were (they follow an escape in the call's JSON): such a call recorded once now
+  replays in any run, and every other key is unchanged. [G08]
+
 ## [0.6.0] - 2026-10-15
 
 Stage F — Policy & deterministic card. Gate record: `docs/phases/F-gate.md`.
