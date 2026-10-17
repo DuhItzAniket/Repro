@@ -37,11 +37,12 @@ FIXTURES = Path(__file__).parent / "fixtures"
 runner = CliRunner()
 
 
-def run_fixture(name: str, tmp_path: Path, sandbox: str) -> list[dict[str, Any]]:
+def run_fixture(name: str, tmp_path: Path, sandbox: str, **variables: str) -> list[dict[str, Any]]:
     expected = tomllib.loads((FIXTURES / f"{name}.toml").read_text(encoding="utf-8"))
     built = build_repo(ALL_SPECS[name], tmp_path / "repo")
     head = built.head_shas[expected["fixture"]["head"]]
-    env = clean_env(tmp_path, REPRO_SANDBOX=sandbox, REPRO_RUN_ROOT=str(tmp_path / "scratch"))
+    scratch = str(tmp_path / "scratch")
+    env = clean_env(tmp_path, REPRO_SANDBOX=sandbox, REPRO_RUN_ROOT=scratch, **variables)
     argv = ["run", "--repo", str(built.path), "--base", built.base_sha, "--head", head]
     result = runner.invoke(app, [*argv, "--no-serve"], env=env)
     assert result.exit_code == 0, result.output
@@ -398,6 +399,21 @@ def test_a_run_in_containers(tmp_path: Path) -> None:
     assert {(r["backend"], r["isolation_level"], r["network"]) for r in ready} == {
         ("docker", "L3", "enforced")
     }
+
+
+@pytest.mark.skipif(
+    os.environ.get("REPRO_DOCKER_RUNTIME") != "runsc",
+    reason="gVisor's runtime is not in use (CI's gVisor job)",
+)
+def test_a_run_under_gvisor_is_l4(tmp_path: Path) -> None:
+    """H03: the same fixture, end to end, with the containers under gVisor: the same evidence,
+    and the card states the layer it added."""
+    events = run_fixture("test-tamper", tmp_path, "docker", REPRO_DOCKER_RUNTIME="runsc")
+    check_against_expectation("test-tamper", events)
+    ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
+    assert {(r["isolation_level"], r["network"]) for r in ready} == {("L4", "enforced")}
+    (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
+    assert card["conditions"]["isolation_level"] == "L4"
 
 
 @docker

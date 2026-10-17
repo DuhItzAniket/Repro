@@ -65,7 +65,7 @@ repro/
 │   ├─ gitops/                 ref resolution, diff parsing, worktrees, .git-less snapshots
 │   ├─ analysis/               symbol table (ast), changed-lines→symbols, import graph (grimp),
 │   │                          blast radius, API extraction (griffe)
-│   ├─ sandbox/                isolation backends: process (L0–L2), docker (L3), [gvisor (L4)]
+│   ├─ sandbox/                isolation backends: process (L0–L2), docker (L3; L4 with gVisor)
 │   ├─ envs/                   project-type detection, interpreter choice, uv provisioning, env cache
 │   ├─ runner/                 test selection, two-sided execution, reruns, perf passes
 │   ├─ plugin/                 the Repro pytest plugin (shipped INTO the sandbox):
@@ -370,7 +370,9 @@ target code runs from snapshots, not worktrees. Adding kinds does not change cor
   to explain it or could not be compared. The cockpit's CHECKS and FLAGGED counters and the
   change×check index are computed from these rules alone.
 - **Secrets.** Payloads never contain environment variables, API keys or tokens. The bus scrubs
-  known secret patterns before persistence, as defence in depth.
+  known secret patterns before persistence, as defence in depth, and writes the home directory
+  as `~` in every string (H03): a card may be shared, and an absolute path names its user. Logs
+  pass through the same scrubbing.
 - **Interop (export only).** Lossless mapping to CloudEvents 1.0: `type = dev.repro.<kind>`,
   `source = /repro/runs/<run_id>`, `sequence` as a zero-padded string, and `target` mapped to
   `subject` (canonical string) with the full object kept in `data`. OpenTelemetry export is
@@ -452,7 +454,7 @@ verdicts are labelled as judgements.
 | L1 detect | in-process socket guard + `sys.addaudithook` → evidence of network, subprocess and file attempts | ✓ | ✓ |
 | L2 contain | Windows Job Objects (kill-on-close, memory, CPU, process count) or POSIX process groups + rlimits, plus wall-clock timeouts | ✓ | ✓ |
 | L3 enforce | Linux container: `--network none`, read-only root + tmpfs `/tmp` (mounted `exec`; A08 found `noexec` breaks real suites), `--cap-drop ALL`, `no-new-privileges`, non-root, pids/memory/cpu limits, snapshot copied into a volume (no bind-mounted live worktree, no `.git`) | Docker Desktop (WSL2) | Docker / Podman |
-| L4 harden | gVisor `runsc` (or a microVM) | — | optional |
+| L4 harden | gVisor `runsc` as Docker's runtime (`docker_runtime = "runsc"`, H03): the target's containers run on a kernel in user space | — | CI job `gvisor` |
 
 Rules:
 - L1 is **detection, not a boundary**. Python's audit-hook docs say hooks are not a sandbox, and
@@ -705,8 +707,14 @@ on Linux; where it cannot be read, one agent runs at a time.
   request and 4404 for an unknown run. A handshake whose `Origin` is not allow-listed is refused
   (HTTP 403), and every request must name a local `Host` (THREAT_MODEL T16).
 - **REST:** `/runs`, `/runs/{id}`, `/runs/{id}/evidence/{ev}`, `/runs/{id}/card`, and
-  `/runs/{id}/artifacts/{sha}` (served only while the file matches its digest). Read-only. All
-  bind to `127.0.0.1` by default; `repro serve` listens on loopback only until H03.
+  `/runs/{id}/artifacts/{sha}` (served only while the file matches its digest). Read-only.
+- **The session token (H03, THREAT_MODEL T13):** `repro serve`, `run` and `replay` listen on
+  loopback only, and each server makes a token of its own. Every request for the engine's data
+  carries it, as `Authorization: Bearer <token>`, or on the event stream as `?token=`; without
+  it the answer is 401, or a refused handshake (HTTP 403). The cockpit's files need none. The
+  printed URL carries the token in its fragment (`#token=…`), which the cockpit keeps in
+  `sessionStorage` and removes from the address bar (`apps/web/src/data/session.ts`); a page
+  without it says to open the printed URL. There is no access log.
 - **The cockpit's client (C08):** the page's query picks the source: `?run=<id>` follows a run
   live, `?run=<id>&replay` replays it from the start, `?log=` loads a fixture or a same-origin
   log. Frames go to the cockpit's store, which ignores duplicates and stops at a gap; the

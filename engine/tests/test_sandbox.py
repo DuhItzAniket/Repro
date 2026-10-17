@@ -141,6 +141,38 @@ def test_network_subprocess_and_file_attempts_are_detected(
     assert written.detail == str(outside)  # inside.txt, in its own directory, is not reported
 
 
+def directory_link(link: Path, target: Path) -> None:
+    """A link to a directory that needs no privilege: a junction on Windows, else a symlink."""
+    if sys.platform == "win32":
+        import _winapi  # noqa: PLC0415 - Windows only
+
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        link.symlink_to(target, target_is_directory=True)
+
+
+def test_a_write_is_judged_by_where_its_path_resolves(
+    box: ProcessSandbox, cwd: Path, tmp_path: Path
+) -> None:
+    """H03: a link inside the run's directory that leads out is a write outside; a path from
+    outside that leads in, as a redirected folder does, is not."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    directory_link(cwd / "leads-out", outside)
+    directory_link(tmp_path / "leads-in", cwd)
+    escape, inside = cwd / "leads-out" / "x.txt", tmp_path / "leads-in" / "y.txt"
+    attempt = script(
+        cwd / "write.py",
+        f"open({str(escape)!r}, 'w').write('x')\nopen({str(inside)!r}, 'w').write('y')\n",
+    )
+    run = box.run([PY, str(attempt)], cwd=cwd)
+    assert run.returncode == 0, run.stderr
+    assert (outside / "x.txt").is_file()
+    assert (cwd / "y.txt").is_file()
+    written = [d.detail for d in run.detections.items if d.kind == "file"]
+    assert written == [str(escape)]
+
+
 def test_the_environments_own_sitecustomize_still_runs(
     box: ProcessSandbox, cwd: Path, tmp_path: Path
 ) -> None:

@@ -439,3 +439,18 @@ entry. If something turns out wrong, add a correcting entry.
   three ways a cache had silently changed the evidence (D06). In containers, the snapshot's
   zero timestamps made all three references uninstallable (D02). The fixture suite could see
   neither.
+
+## 2026-10-17 · H03 · Every threat traced to a test or a stated residual
+- **The threat model is now checked, not only written.** Each of its 19 threats names the
+  tests that meet its mitigation, or what no test covers; a test fails when a threat lacks a
+  row or a row names a test that no longer exists ([phase record](../phases/H03-security.md)).
+  The review found one threat with no test at all (T6, cache poisoning through hard links), now
+  tested, and one real gap in detection: a link inside the sandbox's directory that led out
+  went unreported, while redirected folders were reported falsely.
+- **An end-to-end leak audit.** One run, with credentials of four kinds in the host's
+  environment and a target that prints its environment and fails holding a token: no
+  credential in any file the run wrote, and neither the token nor the home directory in what a
+  user shares (the events, the card, its exports).
+- **For the paper.** A verification tool's own outputs are an attack surface: they carry the
+  target's text to people and agents. Stating which outputs are scrubbed (events, logs, cards)
+  and which are not (raw artifacts) is part of what "trust the card" can mean.

@@ -4,7 +4,9 @@ Roadmap D02: "escape suite (raw `_socket`, `ctypes`, subprocess `curl`, writes o
 dir, host `.git` tampering) is blocked at L3. The card reports `network: enforced` only here."
 
 These tests need Docker with Linux containers. They are skipped where it is missing, except
-where ``REPRO_REQUIRE_DOCKER=1`` (CI's Linux job), where its absence is a failure.
+where ``REPRO_REQUIRE_DOCKER=1`` (CI's Linux job), where its absence is a failure. With
+``REPRO_DOCKER_RUNTIME=runsc`` (CI's gVisor job), every container here runs under gVisor, L4
+(H03): the same escapes must be blocked there too.
 """
 
 import hashlib
@@ -19,7 +21,7 @@ import pytest
 from gitrepo import Entry, Repo
 from repro.gitops import Git
 from repro.sandbox import MIB, Limits, SandboxError
-from repro.sandbox.docker import DockerSandbox, docker_available
+from repro.sandbox.docker import GVISOR, DockerSandbox, docker_available
 from repro_events.models import SandboxReadyPayload
 
 if not docker_available():
@@ -28,6 +30,10 @@ if not docker_available():
             "REPRO_REQUIRE_DOCKER=1, but Docker with Linux containers is not available"
         )
     pytest.skip("Docker with Linux containers is not available", allow_module_level=True)
+
+#: The containers' runtime: unset (Docker's default, L3) or gVisor's (L4).
+RUNTIME = os.environ.get("REPRO_DOCKER_RUNTIME") or None
+LEVEL = "L4" if RUNTIME == GVISOR else "L3"
 
 
 ESCAPES = {
@@ -81,6 +87,61 @@ ESCAPES = {
                  if ".git" in dirs and not root.startswith(("/proc", "/sys"))]
         print(f"ESCAPED: a .git is reachable: {found}" if found else "blocked: no .git anywhere")
     """,
+    # H03: the rest of the escape suite.
+    "become_root.py": """
+        import os
+        try:
+            os.setuid(0)
+            print("ESCAPED: became root")
+        except PermissionError as exc:
+            print(f"blocked: setuid: {exc.errno}")
+    """,
+    "raw_socket_capability.py": """
+        import socket
+        try:
+            socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+            print("ESCAPED: opened a raw socket")
+        except OSError as exc:
+            print(f"blocked: raw socket: {exc.errno}")
+    """,
+    "mount.py": """
+        import ctypes, ctypes.util, os
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        target = "/tmp/repro-mount"
+        os.makedirs(target, exist_ok=True)
+        result = libc.mount(b"none", target.encode(), b"tmpfs", 0, None)
+        print("ESCAPED: mounted a filesystem" if result == 0
+              else f"blocked: mount: errno {ctypes.get_errno()}")
+    """,
+    "docker_socket.py": """
+        import os
+        found = [p for p in ("/var/run/docker.sock", "/run/docker.sock", "/run/containerd")
+                 if os.path.exists(p)]
+        print(f"ESCAPED: {found}" if found else "blocked: no container engine socket")
+    """,
+    "kernel_settings.py": """
+        try:
+            with open("/proc/sys/kernel/hostname", "w") as handle:
+                handle.write("escaped")
+            print("ESCAPED: wrote a kernel setting")
+        except OSError as exc:
+            print(f"blocked: /proc/sys: {exc.errno}")
+    """,
+    "kernel_devices.py": """
+        opened = []
+        for device in ("/dev/mem", "/dev/kmem", "/dev/sda", "/dev/kmsg"):
+            try:
+                open(device, "rb").close()
+                opened.append(device)
+            except OSError:
+                pass
+        print(f"ESCAPED: opened {opened}" if opened else "blocked: no kernel devices")
+    """,
+    "host_environment.py": """
+        import os
+        seen = sorted(k for k in os.environ if k.startswith("REPRO_ESCAPE_"))
+        print(f"ESCAPED: saw {seen}" if seen else "blocked: no host variables")
+    """,
 }
 
 
@@ -101,7 +162,7 @@ def target(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Target]:
     files["link-to-run"] = ("run.sh", "120000")
     sha = repo.commit(files)
     limits = Limits(timeout_s=60, memory_bytes=512 * MIB)
-    with DockerSandbox(root / "work", Git(repo.path), sha, limits=limits) as box:
+    with DockerSandbox(root / "work", Git(repo.path), sha, limits=limits, runtime=RUNTIME) as box:
         yield Target(box, repo.path / ".git")
 
 
@@ -119,7 +180,10 @@ def git_fingerprint(git_dir: Path) -> str:
 
 
 @pytest.mark.parametrize("escape", sorted(ESCAPES))
-def test_the_escape_suite_is_blocked(target: Target, escape: str) -> None:
+def test_the_escape_suite_is_blocked(
+    target: Target, escape: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("REPRO_ESCAPE_SECRET", "s3cr3t")  # the host's: host_environment.py looks
     before = git_fingerprint(target.host_git)
     run = target.box.run(["python", f"escapes/{escape}"])
     output = run.stdout.decode().strip()
@@ -192,7 +256,7 @@ def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
     sha = repo.commit({"bomb.py": bomb})
     limit = 16
     with DockerSandbox(
-        tmp_path / "work", Git(repo.path), sha, limits=Limits(processes=limit)
+        tmp_path / "work", Git(repo.path), sha, limits=Limits(processes=limit), runtime=RUNTIME
     ) as box:
         run = box.run(["python", "bomb.py"], timeout_s=15)
         started = (box.read_file("started.txt") or b"").split()
@@ -203,7 +267,24 @@ def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
 def test_the_ready_payload_reports_the_network_enforced(box: DockerSandbox) -> None:
     payload = box.ready_payload("base")
     SandboxReadyPayload.model_validate(payload)
-    assert (payload["isolation_level"], payload["network"]) == ("L3", "enforced")
+    assert (payload["isolation_level"], payload["network"]) == (LEVEL, "enforced")
+    assert (f"runtime {RUNTIME}" in payload["platform"]) == (RUNTIME is not None)
+
+
+def test_a_runtime_docker_does_not_have_is_refused_before_anything_starts(tmp_path: Path) -> None:
+    """H03: a card never claims gVisor's layer without it; a missing runtime is an error."""
+    repo = Repo(tmp_path / "repo")
+    sha = repo.commit({"a.txt": "a"})
+    with pytest.raises(SandboxError, match="Docker has no runtime 'no-such-runtime'"):
+        DockerSandbox(tmp_path / "work", Git(repo.path), sha, runtime="no-such-runtime")
+
+
+@pytest.mark.skipif(RUNTIME != GVISOR, reason="gVisor's runtime is not in use (CI's gVisor job)")
+def test_commands_run_under_gvisor(box: DockerSandbox) -> None:
+    """The kernel the target sees is gVisor's, not the host's."""
+    run = box.run(["sh", "-c", "dmesg 2>/dev/null | head -n 3; uname -r"])
+    assert run.returncode == 0, run.stderr
+    assert b"gVisor" in run.stdout, run.stdout
 
 
 def test_paths_outside_the_snapshot_are_refused(box: DockerSandbox) -> None:

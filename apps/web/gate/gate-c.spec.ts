@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { startRepro, stop, summaryWhenFinished } from "./support";
+import { startRepro, stop, summaryWhenFinished, testMode } from "./support";
 
 const REPO = process.env.REPRO_GATE_REPO ?? "";
 const BASE = "93ae366874bbd4f69d90495c45b2cd336387496c";
@@ -67,7 +67,7 @@ test("repro run shows the real graph and blast radius live, and repro replay rep
     );
     started.push(live.child);
     const liveUrl = await live.url;
-    await page.goto(`${liveUrl}&test`);
+    await page.goto(testMode(liveUrl));
     const shown = await summaryWhenFinished(page);
     expect(shown.runId).toMatch(/^run_[0-9A-Z]{26}$/);
     expect(shown.kinds["snapshot.ready"]).toBe(2);
@@ -104,7 +104,7 @@ test("repro run shows the real graph and blast radius live, and repro replay rep
     started.push(replay.child);
     const replayUrl = await replay.url;
     expect(replayUrl).toContain("&replay");
-    await page.goto(`${replayUrl}&test`);
+    await page.goto(testMode(replayUrl));
     const replayed = await summaryWhenFinished(page);
     await testInfo.attach("replay.png", {
       body: await page.screenshot(),

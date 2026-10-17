@@ -9,11 +9,18 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
+from api_support import AUTH, known_token
 from cli_support import clean_env, free_port
 from repro import __version__
 from repro.cli import NOT_YET, app
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def session_token(monkeypatch: pytest.MonkeyPatch) -> str:
+    """The servers these tests start get a known session token (T13)."""
+    return known_token(monkeypatch)
 
 
 def test_version_comes_from_installed_metadata() -> None:
@@ -107,6 +114,61 @@ def test_serve_listens_on_loopback_only(tmp_path: Path) -> None:
     assert "not a loopback address" in result.output
 
 
+def test_the_browser_is_opened_on_a_private_page_not_the_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T13: the browser's command line names a page only this user can read; the page sends it
+    on to the cockpit's URL, token and all; the page goes when the server stops."""
+    ui = tmp_path / "dist"
+    ui.mkdir()
+    (ui / "index.html").write_text("<!doctype html><title>Repro</title>", "utf-8")
+    port = free_port()
+    page = tmp_path / "data" / f"open-{port}.html"  # clean_env's data directory
+    opened: list[str] = []
+    seen: dict[str, Any] = {}
+
+    def fake_open(url: str) -> bool:
+        opened.append(url)
+        return True
+
+    def fake_server(api: Any, sock: Any, log_level: str) -> None:
+        sock.close()
+        seen["page"] = page.read_text(encoding="utf-8")
+        seen["mode"] = page.stat().st_mode & 0o777
+
+    monkeypatch.setattr("repro.cli._run_server", fake_server)
+    monkeypatch.setattr("webbrowser.open", fake_open)
+    env = clean_env(tmp_path, REPRO_UI_DIR=str(ui))
+    result = runner.invoke(app, ["serve", "--port", str(port), "--open"], env=env)
+    assert result.exit_code == 0, result.output
+    assert opened == [page.as_uri()]  # no token on the browser's command line
+    assert f"url=http://127.0.0.1:{port}/#token=" in seen["page"]
+    if sys.platform != "win32":  # Windows: the data directory's ACL, the user's profile
+        assert seen["mode"] == 0o600
+    assert not page.exists()
+
+
+def test_the_server_logs_no_request_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The event stream's request line carries the session token (T13): no access log."""
+    import uvicorn  # noqa: PLC0415
+
+    from repro.cli import _run_server  # noqa: PLC0415
+
+    seen: dict[str, Any] = {}
+
+    class Recorded:
+        def __init__(self, config: uvicorn.Config) -> None:
+            seen["config"] = config
+
+        def run(self, sockets: object) -> None:
+            seen["ran"] = True
+
+    monkeypatch.setattr(uvicorn, "Server", Recorded)
+    _run_server(object(), None, "info")  # type: ignore[arg-type]
+    assert seen["ran"]
+    assert seen["config"].access_log is False
+
+
 def test_serve_starts_the_api_with_its_own_origins(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -135,7 +197,7 @@ def test_serve_starts_the_api_with_its_own_origins(
     assert result.exit_code == 0, result.output
     assert started["address"] == ("127.0.0.1", port)  # bound before the server started
     url = f"ws://127.0.0.1/runs/{run.id}/events"
-    with TestClient(started["api"], base_url="http://127.0.0.1") as client:
+    with TestClient(started["api"], base_url="http://127.0.0.1", headers=AUTH) as client:
         own = (f"http://127.0.0.1:{port}", f"http://localhost:{port}", "http://localhost:5173")
         for origin in own:
             with client.websocket_connect(url, headers={"origin": origin}) as socket:

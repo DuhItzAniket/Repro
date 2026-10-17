@@ -70,6 +70,30 @@ def test_both_sides_share_the_dependencies(host: HostProvisioner, tmp_path: Path
     assert second.installed_packages == first.installed_packages
 
 
+def test_a_side_that_rewrites_its_environment_poisons_nothing(
+    host: HostProvisioner, tmp_path: Path
+) -> None:
+    """T6 (H03): each side's environment is a copy, its files linked to nothing shared. A target
+    that rewrites a package in its own changes neither the other side's nor the cached one."""
+    snapshot = snapshot_of("requirements", tmp_path)
+    project = inspect_project(snapshot)
+    base = host.provision("base", project, ProcessSandbox(tmp_path / "base"))
+    head = host.provision("head", project, ProcessSandbox(tmp_path / "head"))
+    base_venv, head_venv = (Path(env.python).parents[1] for env in (base, head))
+    (site,) = base_venv.glob("**/site-packages")
+    packaged = sorted(site.rglob("*.py"))
+    assert packaged, "no package files to check"
+    assert all(path.stat().st_nlink == 1 for path in packaged)  # no hard links: --link-mode copy
+    target = packaged[0]
+    relative = target.relative_to(base_venv)
+    before = target.read_bytes()
+    target.write_bytes(b"raise SystemExit('poisoned')\n")
+    cached = list(Path(host.cache).glob(f"envs/*/venv/{relative.as_posix()}"))
+    assert cached, f"{relative} is not in the cached environment"
+    assert (head_venv / relative).read_bytes() == before
+    assert all(copy.read_bytes() == before for copy in cached)
+
+
 @pytest.mark.parametrize(
     ("requirements", "reason"),
     [

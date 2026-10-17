@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 from typer.testing import CliRunner
 
+from api_support import AUTH, TOKEN, known_token
 from cli_support import clean_env, free_port
 from gitrepo import Repo
 from repro.cli import app
@@ -23,6 +24,13 @@ from repro_events.schemas import load_schema_set
 runner = CliRunner()
 #: These tests are about the build stage and the cockpit: no target code runs (D06 has its own).
 ANALYSE = ["--analyse-only"]
+
+
+@pytest.fixture(autouse=True)
+def session_token(monkeypatch: pytest.MonkeyPatch) -> str:
+    """The servers these tests start get a known session token (T13)."""
+    return known_token(monkeypatch)
+
 
 BASE = {
     "pkg/__init__.py": "",
@@ -145,7 +153,7 @@ def follow(api: Any, run_id: str) -> list[dict[str, Any]]:
             events.extend(ws.receive_json().get("events", []))
 
     with (
-        TestClient(api, base_url="http://127.0.0.1") as client,
+        TestClient(api, base_url="http://127.0.0.1", headers=AUTH) as client,
         client.websocket_connect(f"ws://127.0.0.1/runs/{run_id}/events") as ws,
         pytest.raises(WebSocketDisconnect) as closed,
     ):
@@ -163,7 +171,7 @@ def test_run_streams_live_to_the_cockpit_and_cleans_up(
 
     def fake_server(api: Any, sock: Any, log_level: str) -> None:
         sock.close()
-        with TestClient(api, base_url="http://127.0.0.1") as client:
+        with TestClient(api, base_url="http://127.0.0.1", headers=AUTH) as client:
             (run,) = client.get("/runs").json()
         seen["events"] = follow(api, run["id"])
 
@@ -183,7 +191,9 @@ def test_run_streams_live_to_the_cockpit_and_cleans_up(
     ]
     result = runner.invoke(app, argv, env=env)
     assert result.exit_code == 0, result.output
-    assert re.search(rf"cockpit at http://127.0.0.1:{port}/\?run=run_[0-9A-Z]{{26}}", result.output)
+    assert re.search(
+        rf"cockpit at http://127.0.0.1:{port}/\?run=run_[0-9A-Z]{{26}}#token={TOKEN}", result.output
+    )
     assert [e["kind"] for e in seen["events"]] == [e["kind"] for e in stored_events(tmp_path, env)]
     assert seen["events"][-1]["kind"] == "run.finished"
     assert scratch_dirs(env) == []
@@ -229,7 +239,7 @@ def test_replay_serves_a_valid_event_log_and_refuses_an_invalid_one(
 
     def fake_server(api: Any, sock: Any, log_level: str) -> None:
         sock.close()
-        with TestClient(api, base_url="http://127.0.0.1") as client:
+        with TestClient(api, base_url="http://127.0.0.1", headers=AUTH) as client:
             seen["log"] = client.get("/replay.jsonl").content
 
     monkeypatch.setattr("repro.cli._run_server", fake_server)
@@ -256,10 +266,11 @@ def test_serve_serves_the_built_cockpit_beside_the_api(
 
     def fake_server(api: Any, sock: Any, log_level: str) -> None:
         sock.close()
-        with TestClient(api, base_url="http://127.0.0.1") as client:
+        with TestClient(api, base_url="http://127.0.0.1", headers=AUTH) as client:
             seen["index"] = client.get("/").text
             seen["asset"] = client.get("/assets/app.js").status_code
             seen["runs"] = client.get("/runs").status_code
+            seen["without"] = client.get("/runs", headers={"Authorization": ""}).status_code
             seen["escape"] = client.get("/../pyproject.toml").status_code
 
     monkeypatch.setattr("repro.cli._run_server", fake_server)
@@ -269,6 +280,7 @@ def test_serve_serves_the_built_cockpit_beside_the_api(
     assert seen["index"].startswith("<!doctype html>")
     assert (seen["asset"], seen["escape"]) == (200, 404)
     assert seen["runs"] in {200, 503}  # the API, not a file (503: no store yet)
+    assert seen["without"] == 401  # the engine's data needs the session token (T13)
 
     result = runner.invoke(
         app,

@@ -75,6 +75,8 @@ class Settings(BaseModel):
     #: Each sandboxed test run's wall-clock limit, and the memory its processes may use (H01).
     test_timeout_s: float = Field(default=900.0, gt=0)
     memory_limit_mb: int = Field(default=4096, gt=0)
+    #: The Docker runtime for the target's containers: ``runsc`` (gVisor) makes them L4 (H03).
+    docker_runtime: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
     #: The built cockpit (``pnpm build``'s ``apps/web/dist``); unset: this checkout's, if built.
     ui_dir: Path | None = None
     #: The agent stages' backend; off by default, so no run reaches a model unless asked to.

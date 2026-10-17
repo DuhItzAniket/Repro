@@ -13,6 +13,11 @@ and test output are not mangled by guesses:
 - PEM-encoded private keys: the ``-----BEGIN … PRIVATE KEY-----`` block (RFC 7468);
 - ``Bearer`` credentials, as sent in an ``Authorization`` header (RFC 6750 §2.1).
 
+The user's home directory, in either separator, is written ``~`` in every string (H03): a run's
+events reach its card, which may be shared, and an absolute path (a write the sandbox saw, the
+repository's location) names the user. ``repro.readable`` does the same for the card's
+missing items (H01) and cassettes (G03).
+
 Every string is also made encodable (H02). A file name Python decoded with surrogate escapes
 (an undecodable byte becomes a lone surrogate such as ``\\udcff``) cannot be stored or sent as
 UTF-8 JSON; each such character is written as its escape instead, as text (in a target, whose
@@ -23,6 +28,8 @@ writes a file whose name holds such a byte.
 
 import re
 from typing import Any, Final
+
+from repro.readable import without_home
 
 REDACTED: Final = "[redacted]"
 #: The code points of lone surrogates, which UTF-8 cannot encode.
@@ -52,8 +59,11 @@ def encodable(text: str, *, escape: bool = True) -> str:
 
 
 def scrub_text(text: str, *, escape: bool = True) -> str:
-    """``text`` encodable, with every recognised credential replaced by ``[redacted]``."""
+    """``text`` encodable, with every recognised credential replaced by ``[redacted]`` and the
+    home directory written ``~``."""
     text = encodable(text, escape=escape)
+    if "/" in text or "\\" in text:  # only a path can hold the home directory
+        text = without_home(text)
     for pattern in _PATTERNS:
         text = pattern.sub(REDACTED, text)
     return text

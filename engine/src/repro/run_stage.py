@@ -189,6 +189,7 @@ def _sandbox_job(
     backend: Backend,
     cache: Path,
     limits: Limits | None = None,
+    docker_runtime: str | None = None,
 ) -> Job:
     def run(ctx: JobContext) -> None:
         try:
@@ -213,7 +214,9 @@ def _sandbox_job(
         if use_docker(backend):
             image = sandbox_image()
             ctx.check()
-            container = DockerSandbox(box_dir, git, sha, image=image, limits=chosen)
+            container = DockerSandbox(
+                box_dir, git, sha, image=image, limits=chosen, runtime=docker_runtime
+            )
             state.containers.append(container)
             state.platform[side] = f"docker {image}"
             ready = container.ready_payload(side)
@@ -977,13 +980,29 @@ def run_jobs(
     artifacts: ArtifactStore | None = None,
     agents: "AgentSetup | None" = None,
     limits: Limits | None = None,
+    docker_runtime: str | None = None,
 ) -> Sequence[Job]:
     """The run and diff stages, after the build stage's snapshots and analysis; ``artifacts``
     stores the observations (without it they stay in memory); with ``agents``, the probe writer
-    proposes inputs for the probes (G07); ``limits``: each sandboxed run's (H01)."""
+    proposes inputs for the probes (G07); ``limits``: each sandboxed run's (H01);
+    ``docker_runtime``: the containers' runtime (H03)."""
+
+    def sandbox(side: str, sha: str) -> Job:
+        return _sandbox_job(
+            git,
+            side,
+            sha,
+            work,
+            state,
+            backend=backend,
+            cache=cache,
+            limits=limits,
+            docker_runtime=docker_runtime,
+        )
+
     return [
-        _sandbox_job(git, "base", base, work, state, backend=backend, cache=cache, limits=limits),
-        _sandbox_job(git, "head", head, work, state, backend=backend, cache=cache, limits=limits),
+        sandbox("base", base),
+        sandbox("head", head),
         _tests_job(git, base, head, state, cache=cache),
         _outcomes_job(state),
         _behaviour_job(state, artifacts),

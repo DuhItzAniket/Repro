@@ -1,5 +1,6 @@
 """The event bus: envelopes, validation, secret scrubbing and fan-out after commit (C03)."""
 
+import os
 import re
 from collections.abc import Iterator, Sequence
 from pathlib import Path
@@ -133,6 +134,20 @@ def test_a_name_with_an_undecodable_byte_is_stored_escaped(
     envelope = event.envelope()
     assert envelope["payload"]["message"] == "wrote out/\\udcff.txt"
     assert envelope["target"] == {"file": "out/\ufffd.txt"}  # paths allow no backslash
+
+
+def test_the_home_directory_is_stored_as_a_tilde(
+    bus: EventBus, run_id: str, tmp_path: Path
+) -> None:
+    """H03: an absolute path in an event (a write the sandbox saw, say) does not name the user."""
+    home = str(Path.home())
+    for written in (f"{home}{os.sep}notes.txt", home.replace("\\", "/") + "/notes.txt"):
+        payload = {"level": "info", "verb": "run", "message": f"wrote {written}"}
+        bus.emit(run_id, "log.line", stage="run", status="ok", payload=payload).result(TIMEOUT)
+    with StoreReader(tmp_path / "repro.db") as reader:
+        stored = [event.envelope()["payload"]["message"] for event in reader.events(run_id)]
+    assert stored == [f"wrote ~{os.sep}notes.txt", "wrote ~/notes.txt"]
+    assert all(home not in event for event in stored)
 
 
 def test_subscribers_see_committed_events_in_order(bus: EventBus, run_id: str) -> None:

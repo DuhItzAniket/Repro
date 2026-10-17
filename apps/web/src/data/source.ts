@@ -45,12 +45,35 @@ export async function latestRun(fetcher: typeof fetch = fetch): Promise<string |
   }
 }
 
-/** The event stream's URL on this page's origin, from `seq` `from` on. */
+/** What the cockpit says when the engine wants a token this page does not have (T13). */
+export const LOCKED =
+  "This engine needs its session token: open the URL repro printed (it ends in #token=…).";
+
+/**
+ * Whether the engine serving this page refuses it the data for want of its session token (a page
+ * opened without the printed URL, or a token from an earlier server on this port). A dev server,
+ * no server or any other answer is not a refusal.
+ */
+export async function needsToken(fetcher: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const response = await fetcher("/runs?limit=1", { headers: { Accept: "application/json" } });
+    return response.status === 401;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The event stream's URL on this page's origin, from `seq` `from` on, with the session's token
+ * (`./session`): a WebSocket handshake cannot carry it as a header.
+ */
 export function streamUrl(
   location: Pick<Location, "protocol" | "host">,
   runId: string,
   from: number,
+  token: string | null = null,
 ): string {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
-  return `${scheme}://${location.host}/runs/${runId}/events?from=${from}`;
+  const query = token === null ? "" : `&token=${encodeURIComponent(token)}`;
+  return `${scheme}://${location.host}/runs/${runId}/events?from=${from}${query}`;
 }

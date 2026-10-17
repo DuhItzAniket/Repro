@@ -549,7 +549,7 @@ complete. The user documentation is complete. `v1.0.0` is tagged and published.
 |---|---|---|---|---|
 | H01 | Robustness & failure modes | M | G09 | done |
 | H02 | Performance & scale | M | H01 | done |
-| H03 | Security hardening | M | H01 | planned |
+| H03 | Security hardening | M | H01 | in progress |
 | H04 | Exports: in-toto, JUnit, SARIF | M | F05 | planned |
 | H05 | Packaging & distribution | M | H02, H03 | planned |
 | H06 | User documentation & demo | M | H05 | planned |

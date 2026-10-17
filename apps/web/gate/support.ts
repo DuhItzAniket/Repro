@@ -42,6 +42,16 @@ export function startRepro(
 }
 
 /**
+ * The cockpit URL `repro` printed, in test mode: `test` goes into the query, before the
+ * fragment that carries the session's token (THREAT_MODEL T13).
+ */
+export function testMode(url: string): string {
+  const parsed = new URL(url);
+  parsed.searchParams.append("test", "");
+  return parsed.toString();
+}
+
+/**
  * Stops a `repro` command. POSIX: SIGINT, its Ctrl+C. Windows: the whole process tree, since a
  * virtual environment's python.exe is a launcher that runs the interpreter as a child process.
  */
