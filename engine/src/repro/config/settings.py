@@ -72,6 +72,9 @@ class Settings(BaseModel):
     log_format: LogFormat = "json"
     concurrency: int = Field(default_factory=default_concurrency, ge=1, le=MAX_CONCURRENCY)
     sandbox: SandboxChoice = "auto"
+    #: Each sandboxed test run's wall-clock limit, and the memory its processes may use (H01).
+    test_timeout_s: float = Field(default=900.0, gt=0)
+    memory_limit_mb: int = Field(default=4096, gt=0)
     #: The built cockpit (``pnpm build``'s ``apps/web/dist``); unset: this checkout's, if built.
     ui_dir: Path | None = None
     #: The agent stages' backend; off by default, so no run reaches a model unless asked to.

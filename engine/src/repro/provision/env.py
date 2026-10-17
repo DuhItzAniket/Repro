@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from repro.provision.project import Project
+from repro.readable import portable
 from repro.sandbox import DockerSandbox, ProcessSandbox
 from repro.sandbox.docker import TMP
 
@@ -52,18 +53,22 @@ class ProvisionError(Exception):
     """The environment could not be provisioned; the message is the reason (UNVERIFIABLE)."""
 
 
-def environment_missing(side: str, reason: str) -> dict[str, Any]:
+INSTALL_FIX: Final = (
+    "Make the project installable from the package index, with wheels for its dependencies, "
+    "and its own build working offline"
+)
+
+
+def environment_missing(side: str, reason: str, resolution: str = INSTALL_FIX) -> dict[str, Any]:
     """The ``missing.recorded`` payload for a side whose environment could not be provisioned
-    (a ``ProvisionError`` or a ``ProjectError``): the change is UNVERIFIABLE, never passed."""
+    (a ``ProvisionError``, a ``ProjectError``, a sandbox that cannot start): the change is
+    UNVERIFIABLE, never passed."""
     return {
         "missing": {
             "reason": "environment_failed",
             "targets": [],
-            "detail": f"{side}: {reason}"[:1000],
-            "resolution": (
-                "Make the project installable from the package index, with wheels for its "
-                "dependencies, and its own build working offline"
-            ),
+            "detail": f"{side}: {portable(reason)}"[:1000],
+            "resolution": resolution,
         }
     }
 

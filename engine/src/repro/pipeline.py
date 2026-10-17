@@ -27,6 +27,7 @@ from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
 from repro.policy import FILE as POLICY_FILE
 from repro.policy.stage import read_policy
 from repro.run_stage import Backend, RunState, run_jobs
+from repro.sandbox import Limits
 from repro.store import ArtifactStore
 
 #: A run's log lists at most this many skipped entries or problems one by one.
@@ -217,6 +218,7 @@ def pipeline_jobs(
     cards: CardStore | None = None,
     agents: AgentSetup | None = None,
     pr: PrText | None = None,
+    limits: Limits | None = None,
 ) -> tuple[Sequence[Job], RunState]:
     """Every job of a run, and the state they share (close it when the run is over). With
     ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04)."""
@@ -247,6 +249,7 @@ def pipeline_jobs(
             cache=cache,
             artifacts=artifacts,
             agents=agents,
+            limits=limits,
         )
     if agents is not None and cards is not None:
         others = [job.name for job in jobs]

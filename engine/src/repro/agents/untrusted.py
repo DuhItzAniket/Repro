@@ -20,15 +20,12 @@ the file locations pytest prints (``tests\\test_x.py:13``) become ``/``.
 """
 
 import re
-from pathlib import Path
 from typing import Final
 
-#: Shorter "homes" (a root) would swallow every absolute path.
-MIN_HOME: Final = 3
+from repro.readable import portable, without_home
+
 _DELIMITER: Final = re.compile(r"<(/?)(untrusted_)", re.IGNORECASE)
 _ATTRIBUTE: Final = re.compile(r'[^"<>&\x00-\x1f]*')
-#: A relative Windows path to a Python file, as pytest prints a location (``tests\a\b.py:3``).
-_WINDOWS_PY_PATH: Final = re.compile(r"(?<![\w\\/:.])(?:[\w.-]+\\)+[\w.-]+\.py(?=[:\s\"')]|$)")
 
 
 def neutralise(text: str) -> str:
@@ -36,26 +33,7 @@ def neutralise(text: str) -> str:
     return _DELIMITER.sub(lambda m: f"&lt;{m.group(1)}{m.group(2)}", text)
 
 
-def _homes() -> list[str]:
-    home = str(Path.home())
-    if len(home) < MIN_HOME:  # a root "home" would swallow every absolute path
-        return []
-    forms = {home, home.replace("\\", "/"), home.replace("/", "\\")}
-    return sorted(forms, key=len, reverse=True)
-
-
-def without_home(text: str) -> str:
-    """``text`` with the user's home directory, in either separator, written ``~``."""
-    for home in _homes():
-        text = text.replace(home, "~")
-    return text
-
-
-def portable(text: str) -> str:
-    """``text`` as every machine would render it: LF line ends, ``~`` for the home directory,
-    ``/`` in pytest's file locations."""
-    text = without_home(text.replace("\r\n", "\n").replace("\r", "\n"))
-    return _WINDOWS_PY_PATH.sub(lambda m: m.group(0).replace("\\", "/"), text)
+__all__ = ["block", "neutralise", "portable", "without_home"]
 
 
 def block(kind: str, text: str, **attributes: str) -> str:

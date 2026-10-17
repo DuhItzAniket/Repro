@@ -65,8 +65,8 @@ def _missing(card: Mapping[str, Any]) -> list[str]:
     rows = []
     for item in card["missing"]:
         targets = ", ".join(str(next(iter(t.values()))) for t in item["targets"] if t)
-        rows.append([item["reason"], targets or None, item["detail"]])
-    return _table(["Reason", "Targets", "Detail"], rows)
+        rows.append([item["reason"], targets or None, item["detail"], item.get("resolution")])
+    return _table(["Reason", "Targets", "Detail", "What would resolve it"], rows)
 
 
 def _conditions(card: Mapping[str, Any]) -> list[str]:

@@ -294,7 +294,8 @@ def not_assessable(tests: Sequence[str], timing_floor_s: float = TIMING_FLOOR_S)
             "reason": "perf_not_assessable",
             "targets": [{"test": test} for test in tests],
             "detail": (
-                f"{len(tests)} tests run in under {timing_floor_s * 1000:g} ms on both sides, "
+                f"{len(tests)} {'test runs' if len(tests) == 1 else 'tests run'} in under "
+                f"{timing_floor_s * 1000:g} ms on both sides, "
                 f"too fast to time: {shown}"
             )[:1000],
             "resolution": "A benchmark that runs the changed code long enough to time",

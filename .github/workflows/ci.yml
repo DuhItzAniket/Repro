@@ -95,7 +95,7 @@ jobs:
       - name: Install Python environment
         run: uv sync --locked
       - name: Python tests (the agent evals run in their own job)
-        run: uv run --locked pytest -m "not agent_eval"
+        run: uv run --locked pytest -m "not agent_eval and not chaos"
         env:
           # The L3 escape suite (D02) must run where Docker has Linux containers: Ubuntu.
           REPRO_REQUIRE_DOCKER: ${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}
@@ -122,6 +122,31 @@ jobs:
         run: uv sync --locked
       - name: Agent evals
         run: uv run --locked pytest -m agent_eval
+
+  # H01: the chaos tests. Each catalogued failure (docs/FAILURES.md) met for real by `repro run`:
+  # a test module that no longer imports, a hang, memory exhausted, a build that cannot work
+  # offline, an API nobody answers, Docker or git missing. Both operating systems, because the
+  # sandbox enforces limits differently on each.
+  chaos:
+    name: chaos (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Install Python environment
+        run: uv sync --locked
+      - name: Chaos tests
+        run: uv run --locked pytest -m chaos
 
   # Gate C (C08): `repro run` on a real repository shows its import graph and blast radius in the
   # cockpit live, and `repro replay` reproduces the same state (apps/web/gate/gate-c.spec.ts).

@@ -6,6 +6,34 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The failure catalogue (`docs/FAILURES.md`). Each way a run can fail is listed with what the
+  run records, its effect on the card, what resolves it, and its test. Chaos tests meet each
+  one end to end through `repro run`, in a CI job of their own on Ubuntu and Windows. [H01]
+- Settings `test_timeout_s` (900) and `memory_limit_mb` (4096) for each sandboxed run's
+  limits. [H01]
+- A missing reason, `memory_limit`: a run that reached its memory limit says so (Docker
+  stopped it, its peak reached the limit, or tests failed with `MemoryError`). [H01]
+
+### Changed
+- A selected test that no run reported leaves the change UNVERIFIABLE (`tests_not_run`). Until
+  now only a run with no outcome at all did, so a run that timed out part way could pass the
+  rest. [H01]
+- Missing items read as something to act on:
+  - a failed job names its error, by type and first line, with the home directory written
+    `~`;
+  - a collection error gives the line that names the error;
+  - a timed-out run says how long it ran;
+  - a sandbox that cannot start says to start Docker or use the process sandbox.
+
+  The Markdown card shows what would resolve each item. [H01]
+- The OpenAI-compatible backend retries an API it cannot reach and an answer it cannot use,
+  as it retries rate limits and server errors; an unusable answer no longer crashes the job.
+  Any failure of the probe writer leaves Hypothesis's probes running. [H01]
+
+### Fixed
+- `repro run` without git installed prints a message and exits 2, not a traceback. [H01]
+
 ## [0.7.0] - 2026-10-17
 
 Stage G — Agents. Gate record: `docs/phases/G-gate.md`.

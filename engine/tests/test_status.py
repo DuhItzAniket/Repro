@@ -130,6 +130,9 @@ CASES: list[tuple[str, Inputs, str, list[str]]] = [
     ("the change not analysed", Inputs(analysed=False), "UNVERIFIABLE", ["not_analysed"]),
     ("a job skipped", Inputs(incomplete_stages=("diff",)), "UNVERIFIABLE", ["job_incomplete"]),
     ("no selected test ran", Inputs(selected=3, ran=0), "UNVERIFIABLE", ["tests_not_run"]),
+    # H01: a run that stopped part way leaves tests without an outcome; never a pass.
+    ("a selected test unreported", Inputs(selected=3, ran=2), "UNVERIFIABLE", ["tests_not_run"]),
+    ("every selected test reported", Inputs(selected=3, ran=3), "VERIFIED", []),
     (
         "changed symbols and no test selected",
         Inputs(changed=SYMBOLS[:2]),

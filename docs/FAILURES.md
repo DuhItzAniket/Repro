@@ -1,0 +1,46 @@
+# What can fail in a run, and what the card says
+
+A run that cannot check something never passes it (ground rule 3). The card lists the gap as a
+*missing* item with a reason, a detail and, where one exists, what would resolve it. The
+status rules then decide what the gap means: UNVERIFIABLE when the evidence is incomplete,
+FLAGGED when what was observed is itself a problem. This catalogue lists each failure Repro
+knows, what the run records, the effect on the card, and the test that makes it happen.
+
+Details are written for a person:
+- the error's type and the first line of its message, never a traceback;
+- the user's home directory written `~`.
+
+`repro export --format md` shows each item with what would resolve it.
+
+## The catalogue
+
+| Failure | What the run records | Effect on the card | What resolves it | Test |
+|---|---|---|---|---|
+| **The environment cannot be installed**: a dependency with no wheel, a requirement that names something other than the package index, or the project's own build failing offline | `environment_failed`: `head: the project's own install failed: …`, or `installing the dependencies failed: …` | UNVERIFIABLE (`environment_failed`). The other side still runs; invariants are still evaluated | Make the project installable from the package index, with wheels for its dependencies and its own build working offline | `test_failures.py::test_a_project_that_cannot_be_built_is_unverifiable`; `test_run_stage.py::test_an_environment_that_cannot_be_built_is_unverifiable` |
+| **The sandbox cannot start**: Docker asked for but not running or not installed | `environment_failed`: `base: the sandbox could not start: SandboxError: …` | UNVERIFIABLE | Start Docker, or use the process sandbox (`REPRO_SANDBOX=process`); `repro doctor` says what this machine can use | `test_failures.py::test_docker_asked_for_and_missing_says_what_to_do` |
+| **A test module cannot be collected**: an import error, a syntax error | `collection_error`: `head: tests/test_core.py could not be collected: ImportError: cannot import name 'total' from 'calc.core' …`, with the file as its target | On head, the module's tests are gone from head's run: `test_removed`, FLAGGED. On base only, head's tests are new | Make the module importable on that side: the error names what fails | `test_failures.py::test_a_test_module_that_no_longer_imports` |
+| **A test run runs past its limit**: a test that hangs or runs long (limit: `test_timeout_s`, 900 s by default) | `timeout`: `head: the H run took longer than its limit (20 s); 1 test reported before it stopped` | UNVERIFIABLE (`tests_not_run`): the selected tests it did not report have no outcome | Find the test from those reported, or raise `test_timeout_s` | `test_failures.py::test_a_test_that_hangs_leaves_the_change_unverifiable` |
+| **A run reaches its memory limit** (`memory_limit_mb`, 4096 MiB by default). Docker stops the process; the process sandbox refuses the allocation, which Python raises as `MemoryError` | `memory_limit`: `head: the H run reached its memory limit of 3 GiB; 1 test failed with MemoryError` | A test that fails only on head is a P2F: FLAGGED. A run that was stopped leaves tests without an outcome: UNVERIFIABLE | Raise `memory_limit_mb` if the change is meant to use more memory; otherwise the change's own memory use is the cause | `test_failures.py::test_a_change_that_exhausts_memory_says_so` |
+| **A run ends early**: the interpreter crashes, the process is killed | `environment_failed`: `head: the H run ended early, with exit status 3; 4 tests reported before it stopped` | UNVERIFIABLE (`tests_not_run`) for the tests it did not report | The run's output says why; run the side's tests on their own to see it | `test_pytest_plugin.py::test_a_run_that_dies_is_incomplete_not_passing`; the rule in `test_status.py` (*a selected test unreported*) |
+| **Values cannot be encoded completely**: too deep, too large, or slower than the encoder's budget | `encoding_failed`: `calls of S in K tests have arguments that could not be encoded completely: they were not compared` | Those calls are not compared. When more than `missing.max_uncovered_changed_symbols` (25 %) of the changed symbols go unverified: UNVERIFIABLE (`coverage`) | Smaller values in the calls the tests make, or a test that calls the function directly | `test_run_stage.py`'s `perf-regress` run; `test_observations.py`, `test_encode.py` |
+| **The model's API fails**: rate limits, server errors, a connection refused, an answer that is not usable | Retried (each endpoint's retries, waiting for `retry-after`), then `agent_failed`. The reader: `the pull request's claims could not be read: claims failed (AgentFailedError: the reader ended error: HTTP 0: cannot reach the API: …)` | The reader, gap reviewer or QA failing: the job did not complete, UNVERIFIABLE (`job_incomplete`). A reviewer failing: its claim is not supported, UNVERIFIABLE. The probe writer failing: Hypothesis's probes run anyway | Check the agent settings, the API and the key, or the cassettes, then run again | `test_failures.py::test_an_api_nobody_answers_is_an_agent_failure`; `test_agents_openai.py` (retries, unusable answers, unreachable API) |
+| **A job fails unexpectedly** (any other error) | The job's own reason: `the base environment could not be provisioned: sandbox-base failed (OSError: …)`. The jobs that need it are skipped, each said so | UNVERIFIABLE (`job_incomplete`) | Depends on the error; the run's log has its whole message | `test_orchestrator.py::test_a_failure_is_recorded_and_its_dependants_are_skipped` |
+| **A job runs past its own deadline** (600 s; tests and probes 3600 s; provisioning 1800 s) | `timeout`: `…: tests took over 3600 s` | UNVERIFIABLE (`job_incomplete`) | Raise `test_timeout_s` or narrow the change | `test_orchestrator.py::test_a_job_that_overruns_is_abandoned_and_recorded_as_a_timeout` |
+| **A probe run does not finish** (300 s) | `timeout` or `memory_limit`: `head (H): the probe run took longer than its limit; its later calls are missing` | None: probes add evidence and are never required | — | `test_probes.py::test_a_run_cut_short_or_an_import_that_fails_is_said_so` |
+| **No test map**: no free `sys.monitoring` tool ID in the target's interpreter | `trace_unavailable`: `base: no test map (…)` | The changed symbols go unverified: the `coverage` rule | Remove the other tool that holds the monitoring IDs (a coverage or debugging plugin) from the run | `test_selection_fixtures.py::test_no_free_tool_id_is_reported` |
+| **git is not installed** | `repro run` exits 2: `repro run: git is not installed (repro doctor checks it)` | No run | Install git; `repro doctor` checks it | `test_failures.py::test_git_missing_is_a_message_not_a_traceback` |
+| **The run is cancelled** (Ctrl+C) | `run.finished` with outcome `cancelled`; no missing items | No card: a cancelled run is not a result | Run again | `test_orchestrator.py::test_a_cancelled_run_ends_cleanly_with_a_final_event` |
+
+Missing items that do not fail a run but limit what it shows are listed in
+ARCHITECTURE §6.1 (`no_covering_test`, `unstable_observation`, `perf_not_assessable`,
+`network_not_enforced` and the agents' `claim_unverifiable`, `verdict_rejected`,
+`judge_is_author`).
+
+## Not yet covered (residual)
+
+- **The disk fills, or the run store cannot be written.** Events that cannot be stored are
+  logged and dropped. A run whose final event cannot be stored ends with an error from
+  `repro run`. No test fills a disk.
+- **The tracer itself fails** inside the target's process (a bug in Repro's monitoring
+  callbacks). The error would reach the target's test and could make it fail. The callbacks
+  are small and tested, but not yet isolated from the test they observe (H03).

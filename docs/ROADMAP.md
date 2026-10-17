@@ -547,7 +547,7 @@ complete. The user documentation is complete. `v1.0.0` is tagged and published.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
-| H01 | Robustness & failure modes | M | G09 | planned |
+| H01 | Robustness & failure modes | M | G09 | done |
 | H02 | Performance & scale | M | H01 | planned |
 | H03 | Security hardening | M | H01 | planned |
 | H04 | Exports: in-toto, JUnit, SARIF | M | F05 | planned |
@@ -739,3 +739,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | G08 | 2026-10-17 | [#68](https://github.com/DuhItzAniket/Repro/pull/68) | Contradicted verdicts judged again with the evidence, other claims and ID enum reversed (agent_order_swap), degrading to unverifiable on disagreement; agreement on every verdict; optional 2-of-3 panel (agent_panel); judge_is_author on the card; QA agent (qa/1) withholds supported verdicts that cannot hold together; cassette keys now normalise IDs at line starts; recorded live: honest-fix and injection VERIFIED, silent-change, false-claim and probe-semantic FLAGGED; flip rate 0 of 13 |
 | G09 | 2026-10-17 | [#69](https://github.com/DuhItzAniket/Repro/pull/69) | Verdict labels (13) in the claim set; repro_bench.runs runs the five reviewed PRs end to end (replay, record, live); repro_bench.verdicts measures verdict accuracy, unsafe verdicts, status accuracy, citation validity and rejection rate per answer, flip rate, cost; agent-evals.csv one row per metric; every refused answer a verdict.rejected; agent evals CI job against proposed [verdicts] thresholds; measured: 10/13 verdicts, 0 unsafe, 5/5 cards, 28/28 citations valid, 0/13 flips, $0.0089 per PR |
 | Gate G | 2026-10-17 | [#70](https://github.com/DuhItzAniket/Repro/pull/70) | Stage G complete; release v0.7.0 ([gate record](phases/G-gate.md)); replayed offline with every agent on, the honest fix is VERIFIED and the unclaimed change and the false claim FLAGGED, each verdict citing engine evidence; the eval set meets the owner-approved thresholds (claims P 0.958 / R 1.000; verdicts 10/13, 0 unsafe, cards 5/5, citations 28/28, flips 0/13) |
+| H01 | 2026-10-17 | [#71](https://github.com/DuhItzAniket/Repro/pull/71) | The failure catalogue (docs/FAILURES.md) with chaos tests through repro run on Ubuntu and Windows (a broken import, a hang, memory exhausted, a build that cannot work offline, an unreachable API, Docker or git missing); a selected test no run reported makes the change UNVERIFIABLE; memory_limit missing reason; test_timeout_s and memory_limit_mb settings; readable reasons (the error's first line, home written ~, resolutions on the Markdown card); retries for an unreachable API and unusable answers |

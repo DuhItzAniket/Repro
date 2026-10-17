@@ -37,6 +37,7 @@ from repro.orchestrator.jobs import (
     JobStatus,
     Stage,
 )
+from repro.readable import reason
 from repro.store import RunRecord, StoredEvent
 
 log = get_logger("orchestrator")
@@ -401,7 +402,9 @@ class _Execution:
         else:
             what = f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
             self._log(job.stage, f"{job.name} failed: {what}", status="fail", level="error")
-            detail = f"{job.on_failure.detail}: {job.name} failed ({type(error).__name__})"
+            # The card says what failed in a line (H01): the type and its message's first line,
+            # free of the machine; the whole message stays in the log.
+            detail = f"{job.on_failure.detail}: {job.name} failed ({reason(error)})"
             self._missing(job, job.on_failure.reason, detail)
             self._settled(job, "failed")
 

@@ -115,6 +115,18 @@ CI runs on `ubuntu-latest` and `windows-latest`. Tests cover:
 - worktree creation and cleanup when files are locked (Windows),
 - subprocess termination on timeout (Job Objects on Windows, process groups on POSIX).
 
+## 4a. Failure modes (H01)
+
+`docs/FAILURES.md` catalogues what can fail in a run. `test_failures.py` (marker `chaos`) meets
+each failure for real through `repro run`:
+- fixture repositories whose head breaks something (`fixtures/failures.py`);
+- an API nobody answers;
+- Docker or git missing.
+
+Each test checks the missing item's reason, that its detail is one line with no traceback and
+no home directory, and the card's status. CI runs them in the `chaos` job on Ubuntu and
+Windows, apart from the test matrix.
+
 ## 5. Agent evaluation (summary)
 
 Detailed in `docs/ARCHITECTURE.md` §Agents and `docs/paper/README.md`.

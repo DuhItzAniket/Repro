@@ -60,7 +60,7 @@
   ],
   "missing": [
     {
-      "detail": "1 tests run in under 5 ms on both sides, too fast to time: tests/test_count.py::test_count",
+      "detail": "1 test runs in under 5 ms on both sides, too fast to time: tests/test_count.py::test_count",
       "reason": "perf_not_assessable",
       "resolution": "A benchmark that runs the changed code long enough to time",
       "targets": [

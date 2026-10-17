@@ -24,8 +24,15 @@ class Failure:
     headers: Mapping[str, str] = field(default_factory=dict)
 
 
-#: Given a request body, the assistant message to answer with, or a failure.
-Script = Callable[[Mapping[str, Any]], "dict[str, Any] | Failure"]
+@dataclass(frozen=True, slots=True)
+class Raw:
+    """A 200 response whose body is these bytes as they are (H01: an unusable answer)."""
+
+    body: bytes
+
+
+#: Given a request body, the assistant message to answer with, a failure, or raw bytes.
+Script = Callable[[Mapping[str, Any]], "dict[str, Any] | Failure | Raw"]
 
 
 def say(text: str) -> dict[str, Any]:
@@ -99,6 +106,12 @@ class FakeOpenAIApi:
                 reply = api.script(body)
                 if isinstance(reply, Failure):
                     self._send(reply.status, {"error": {"message": reply.message}}, reply.headers)
+                    return
+                if isinstance(reply, Raw):
+                    self.send_response(200)
+                    self.send_header("content-length", str(len(reply.body)))
+                    self.end_headers()
+                    self.wfile.write(reply.body)
                     return
                 self._send(
                     200,

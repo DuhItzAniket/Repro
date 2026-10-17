@@ -123,7 +123,7 @@ CardStatus = Literal['VERIFIED', 'FLAGGED', 'UNVERIFIABLE']
 
 EvidenceType = Literal['test_outcome', 'test_change', 'behaviour_diff', 'probe_diff', 'api_diff', 'dep_diff', 'lock_drift', 'perf_diff', 'invariant', 'selection', 'network_attempt', 'subprocess_attempt', 'file_attempt', 'environment', 'static_change', 'policy_change', 'policy']
 
-MissingReason = Literal['no_covering_test', 'environment_failed', 'collection_error', 'timeout', 'unstable_observation', 'trace_unavailable', 'trace_truncated', 'subprocess_untraced', 'encoding_failed', 'network_not_enforced', 'perf_not_assessable', 'unsupported_project', 'verdict_rejected', 'claim_unverifiable', 'agent_failed', 'judge_is_author']
+MissingReason = Literal['no_covering_test', 'environment_failed', 'collection_error', 'timeout', 'unstable_observation', 'trace_unavailable', 'trace_truncated', 'subprocess_untraced', 'encoding_failed', 'network_not_enforced', 'perf_not_assessable', 'unsupported_project', 'verdict_rejected', 'claim_unverifiable', 'agent_failed', 'judge_is_author', 'memory_limit']
 
 # Highest isolation layer actually achieved (ARCHITECTURE §8).
 IsolationLevel = Literal['L0', 'L1', 'L2', 'L3', 'L4']

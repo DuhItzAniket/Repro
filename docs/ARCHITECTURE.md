@@ -397,7 +397,7 @@ rendered evidence (§10.3).
 `encoding_failed` · `network_not_enforced` · `perf_not_assessable` · `unsupported_project` ·
 `verdict_rejected` · `claim_unverifiable` · `agent_failed` (an agent call ended without a usable
 answer, G04) · `judge_is_author` (the reviewers are of the model family the change names as its
-author, G08). Every item has a reason, the affected targets, and
+author, G08) · `memory_limit` (a side's run reached its sandbox memory limit, H01). Every item has a reason, the affected targets, and
 where possible what would resolve it. For the status (F04), `no_covering_test`,
 `unstable_observation`, `encoding_failed` and `trace_unavailable` leave the symbols they name
 unverified (every changed symbol when they name none); the others are listed on the card and
