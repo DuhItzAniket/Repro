@@ -119,6 +119,7 @@ uv run repro symbolic --repo <path> --base <ref> --head <ref>  # K04, experiment
 
 uv run python scripts/build_wheels.py      # H05: the release's two wheels in dist/wheels (pnpm build first)
 uv run python scripts/install_check.py dist/wheels   # H05: the README's install + a first run, timed
+uv run python scripts/kick_the_tires.py --work <dir>  # J09: the study's pipeline on one task, ~30 min
 
 pnpm lint               # Biome lint + format check (TS/JSON); pnpm lint:fix to apply
 uv run ruff check       # Python lint (rules: pyproject.toml, ADR-0013)

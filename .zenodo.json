@@ -1,0 +1,21 @@
+{
+  "title": "Repro: every agent-written change, reproduced and verified before it merges",
+  "upload_type": "software",
+  "description": "Repro checks out a change's base and head as isolated snapshots, runs them, records what each side does (test outcomes and function-level behaviour traces), diffs that behaviour, checks declared invariants, and has reviewer agents judge the change's claims against that evidence. The result is a Reproduction Card per change: VERIFIED, FLAGGED or UNVERIFIABLE, with the evidence and an explicit list of what could not be checked.",
+  "creators": [{ "name": "DuhItzAniket" }],
+  "license": "Apache-2.0",
+  "keywords": [
+    "software engineering",
+    "code review",
+    "AI coding agents",
+    "differential testing",
+    "verification"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/DuhItzAniket/Repro",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ]
+}
