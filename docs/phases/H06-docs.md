@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | H — Hardening & first release |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | H05 |
-| **Branch / PR** | `phase/H06-docs` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/H06-docs` · [#76](https://github.com/DuhItzAniket/Repro/pull/76) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 Someone who has never seen Repro installs it, runs it on their own repository and reads the
@@ -145,7 +145,7 @@ and explained each row correctly. What it found was fixed here too:
   stricter check also passed from its own temporary directory: the failure depended on where
   the tool was installed, which is why the hook no longer depends on the host at all.
 - **The demo**: recorded from one run of `silent-change` at L3 (`docs/guide/demo/`).
-- CI run: linked in the PR.
+- CI run: linked in the PR (#76).
 
 ## Deviations from spec
 - **Engine fixes in a documentation phase.** H06's acceptance test found them; v1.0.0 could not
