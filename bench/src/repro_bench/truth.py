@@ -40,7 +40,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, Protocol
 
 PASSED: Final = "PASSED"
 FAILED: Final = "FAILED"
@@ -227,23 +227,47 @@ def _b64(text: str) -> str:
     return base64.b64encode(text.encode("utf-8")).decode("ascii")
 
 
-def script(oracle: Oracle, patches: Sequence[str], command: str, repeat: int = 1) -> str:
+class Target(Protocol):
+    """Where tests run: a task's image, its base commit, and the files reset to base first."""
+
+    @property
+    def image(self) -> str: ...
+    @property
+    def base_commit(self) -> str: ...
+    @property
+    def test_files(self) -> tuple[str, ...]: ...
+
+
+@dataclass(frozen=True)
+class Environment:
+    """A task's image and base commit alone: what a system under evaluation may run in (J03's
+    CI-only baseline), with nothing of the ground truth."""
+
+    image: str
+    base_commit: str
+    test_files: tuple[str, ...] = ()
+
+
+def script(target: Target, patches: Sequence[str], command: str, repeat: int = 1) -> str:
     """The bash script a container runs: reset the test files, apply the patches in order (the
     candidate first, then test patches), then run ``command`` ``repeat`` times."""
-    files = " ".join(shlex.quote(f) for f in oracle.test_files)
     lines = [
         "set -u",
         "cd /testbed",
         "git config --global --add safe.directory /testbed",
-        f"git checkout -q {shlex.quote(oracle.base_commit)} -- {files} 2>/dev/null || true",
         f"mkdir -p {WORK}",
     ]
+    if target.test_files:
+        files = " ".join(shlex.quote(f) for f in target.test_files)
+        lines.append(
+            f"git checkout -q {shlex.quote(target.base_commit)} -- {files} 2>/dev/null || true"
+        )
     for number, patch in enumerate(patches):
-        target = f"{WORK}/{number}.diff"
+        diff = f"{WORK}/{number}.diff"
         lines += [
-            f"echo {_b64(patch)} | base64 -d > {target}",
-            f"if ! git apply -v {target} >{WORK}/apply.log 2>&1; then",
-            f"  if ! patch --batch --fuzz=5 -p1 -i {target} >>{WORK}/apply.log 2>&1; then",
+            f"echo {_b64(patch)} | base64 -d > {diff}",
+            f"if ! git apply -v {diff} >{WORK}/apply.log 2>&1; then",
+            f"  if ! patch --batch --fuzz=5 -p1 -i {diff} >>{WORK}/apply.log 2>&1; then",
             f'    echo ">>>>> Patch {number} failed"; tail -5 {WORK}/apply.log; exit 3',
             "  fi",
             "fi",
@@ -279,7 +303,7 @@ def _problem(statuses: Mapping[str, str], exit_code: int | None, body: str) -> s
 
 
 def run_tests(
-    oracle: Oracle,
+    target: Target,
     patches: Sequence[str],
     command: str,
     *,
@@ -288,17 +312,17 @@ def run_tests(
     docker: str = "docker",
     memory: str = "4g",
 ) -> ContainerRun:
-    """Runs ``command`` in a fresh container of the task's image, with no network."""
+    """Runs ``command`` in a fresh container of ``target``'s image, with no network."""
     name = f"repro-truth-{uuid.uuid4().hex[:12]}"
     argv = [
         docker, "run", "--rm", "-i", "--name", name, "--network", "none",
-        "--memory", memory, "--pids-limit", "4096", "--entrypoint", "bash", oracle.image, "-s",
+        "--memory", memory, "--pids-limit", "4096", "--entrypoint", "bash", target.image, "-s",
     ]  # fmt: skip
     started = time.monotonic()
     try:
         done = subprocess.run(  # noqa: S603 - docker, with the task's image and our script
             argv,
-            input=script(oracle, patches, command, repeat).encode("utf-8"),
+            input=script(target, patches, command, repeat).encode("utf-8"),
             capture_output=True,
             timeout=timeout_s,
             check=False,
