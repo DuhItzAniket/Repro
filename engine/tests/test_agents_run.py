@@ -113,12 +113,12 @@ def every_verdict_is_cited(events: list[dict[str, Any]]) -> None:
 
 @pytest.fixture(scope="module")
 def reviewed(tmp_path_factory: pytest.TempPathFactory) -> dict[str, list[dict[str, Any]]]:
-    """Gate G's three pull requests and the injection twin, run in full, reviewed from the
-    cassettes recorded live (Groq, gpt-oss-120b). They were recorded before the probe writer
-    (G07), which is off here: its inputs would add evidence the recorded reviewers never saw."""
+    """Gate G's three pull requests, the injection twin and G07's probe-semantic, run in full
+    with every agent (the probe writer, the reviewers with the order swap, the gap reviewer,
+    QA), replayed from the cassettes recorded live (Groq, gpt-oss-120b, G08)."""
     runs = {}
-    for name in ("honest-fix", "injection", "silent-change", "false-claim"):
-        runs[name] = run_with_agents(name, tmp_path_factory.mktemp(name), REPRO_AGENT_PROBES="off")
+    for name in ("honest-fix", "injection", "silent-change", "false-claim", "probe-semantic"):
+        runs[name] = run_with_agents(name, tmp_path_factory.mktemp(name))
     return runs
 
 
@@ -129,6 +129,7 @@ def reviewed(tmp_path_factory: pytest.TempPathFactory) -> dict[str, list[dict[st
         ("injection", "VERIFIED"),
         ("silent-change", "FLAGGED"),
         ("false-claim", "FLAGGED"),
+        ("probe-semantic", "FLAGGED"),
     ],
 )
 def test_the_reviewed_card_of_each_pull_request(
@@ -174,3 +175,46 @@ def test_an_unclaimed_change_and_a_false_claim_are_flagged(
     assert unexplained
     assert all(g["resolution"] == "flagged" for g in unexplained)
     assert verdicts_of(reviewed["false-claim"])["C1"] == "contradicted"
+
+
+def test_a_contradiction_stands_only_when_both_orders_give_it(
+    reviewed: dict[str, list[dict[str, Any]]],
+) -> None:
+    """G08: each contradicted verdict was judged again with the evidence reversed, and agreed."""
+    for name in ("false-claim", "probe-semantic"):
+        issued = [e["payload"]["verdict"] for e in reviewed[name] if e["kind"] == "verdict.issued"]
+        contradicted = [v for v in issued if v["verdict"] == "contradicted"]
+        assert contradicted, name
+        assert all(v["agreement"] == {"runs": 2, "agreeing": 2} for v in contradicted)
+
+
+def test_the_probe_writer_s_input_flags_a_claim_of_no_behaviour_change(
+    reviewed: dict[str, list[dict[str, Any]]],
+) -> None:
+    """G07 end to end: the claim that nothing changes is contradicted by a probe difference
+    that only the probe writer's inputs found."""
+    events = reviewed["probe-semantic"]
+    found = {
+        e["payload"]["evidence"]["id"]: e["payload"]["evidence"]
+        for e in events
+        if e["kind"] == "evidence.created"
+    }
+    (no_change,) = [
+        e["payload"]["verdict"]
+        for e in events
+        if e["kind"] == "verdict.issued" and e["payload"]["verdict"]["verdict"] == "contradicted"
+    ]
+    cited = [found[i] for i in no_change["cited_evidence"]]
+    assert [c["type"] for c in cited] == ["probe_diff"]
+    assert cited[0]["data"]["found_by"] == ["agent"]
+
+
+def test_qa_reads_the_verdicts_together(reviewed: dict[str, list[dict[str, Any]]]) -> None:
+    """G08: QA runs where two or more judged claims include a supported one, and finds the
+    honest fix's verdicts consistent."""
+    for name in ("honest-fix", "injection"):
+        events = reviewed[name]
+        roles = [e["payload"]["role"] for e in events if e["kind"] == "agent.spawned"]
+        assert roles.count("qa") == 1, name
+        logged = [e["payload"]["message"] for e in events if e["kind"] == "log.line"]
+        assert "QA: 0 inconsistencies among 4 judged claims" in logged

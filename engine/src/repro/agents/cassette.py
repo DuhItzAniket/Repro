@@ -120,9 +120,24 @@ def _input(request: AgentRequest) -> dict[str, Any]:
     }
 
 
+def _normalised(value: Any, ids: Ids) -> Any:
+    """``value`` with the IDs in its strings normalised, keys and values in the order the
+    canonical JSON writes them. Each string is normalised as it is, not as JSON writes it: an
+    ID right after a line break would follow the ``\\n`` escape's ``n``, where the pattern's
+    word boundary does not match, and stay as it is."""
+    if isinstance(value, str):
+        return ids.normalise(value)
+    if isinstance(value, dict):
+        return {ids.normalise(key): _normalised(value[key], ids) for key in sorted(value)}
+    if isinstance(value, list):
+        return [_normalised(item, ids) for item in value]
+    return value
+
+
 def input_digest(request: AgentRequest, ids: Ids | None = None) -> str:
     """The SHA-256 of the call's input, its run-specific IDs normalised (into ``ids``)."""
-    return _sha256((ids if ids is not None else Ids()).normalise(_canonical(_input(request))))
+    found = ids if ids is not None else Ids()
+    return _sha256(_canonical(_normalised(_input(request), found)))
 
 
 @dataclass(frozen=True, slots=True)
