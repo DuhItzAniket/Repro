@@ -5,7 +5,7 @@
 | **Stage** | J — Evaluation & research |
 | **Status** | paused: prepared; waiting for the owner (the budget, then two people's labels) |
 | **Depends on** | J05 |
-| **Branch / PR** | `phase/J06-prereg` · PR pending |
+| **Branch / PR** | `phase/J06-prereg` · [#87](https://github.com/DuhItzAniket/Repro/pull/87) |
 | **Started / finished** | 2026-10-18 / — |
 
 ## Objective
@@ -56,7 +56,7 @@ annotation pages, κ per source, adjudication, the label lock.
 
 ## Evidence
 - `test_bench_analysis.py` 6 passed: values worked out by hand in its comments.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#87).
 
 ## How to try the annotation page now
 `python -m repro_bench.groundtruth` writes `items.jsonl` for any sealed patches.
