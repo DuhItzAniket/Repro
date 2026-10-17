@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion backlog |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | — |
-| **Branch / PR** | `phase/K03-mcp` · PR pending |
-| **Started / finished** | 2026-10-18 / — |
+| **Branch / PR** | `phase/K03-mcp` · [#90](https://github.com/DuhItzAniket/Repro/pull/90) |
+| **Started / finished** | 2026-10-18 / 2026-10-18 |
 
 ## Objective
 Agents can request verification and receive evidence, while the verifier stays independent
@@ -57,7 +57,7 @@ Agents can request verification and receive evidence, while the verifier stays i
   card as Markdown and as JSON, and its evidence were read back through the tools.
 - `test_run_command.py`, `test_github_action.py` and `test_cli.py` (32) pass with the new
   start line.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#90).
 
 ## Deviations from spec
 None.
