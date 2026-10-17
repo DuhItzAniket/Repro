@@ -18,7 +18,7 @@
 | **D** | Sandboxed two-sided execution | D01–D07 | v0.4.0 | Selected tests run on base and head in isolation, with outcome, test-change and perf evidence |
 | **E** | Behaviour evidence | E01–E07 | v0.5.0 | A silent behaviour change is caught with no failing test |
 | **F** | Policy & deterministic card | F01–F05 | v0.6.0 | Invariants and a complete card with no LLM involved |
-| **G** | Agents | G01–G09 | v0.7.0 | Claims extracted, verdicts judged against cited evidence, generated probes |
+| **G** | Agents | G01–G10 | v0.7.0 | Claims extracted, verdicts judged against cited evidence, generated probes |
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
 | **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
 | **J** | Evaluation & research | J01–J10 | v1.2.0 | Reproducible benchmark results and paper submission |
@@ -473,9 +473,10 @@ over all rule combinations.
 **Goal:** claims extracted from PR text, judged strictly against cited evidence. Generated
 probes close the test-adequacy gap.
 
-**Gate G:** on three handmade PRs (honest; unclaimed behaviour change; false claim) the cards come
-out VERIFIED / FLAGGED / FLAGGED with correct cited evidence, reproducibly from cassettes. The
-agent eval set meets the thresholds set in G09.
+**Gate G (passed 2026-10-17, v0.7.0, record: [`phases/G-gate.md`](phases/G-gate.md)):** on three
+handmade PRs (honest; unclaimed behaviour change; false claim) the cards come out VERIFIED /
+FLAGGED / FLAGGED with correct cited evidence, reproducibly from cassettes. The agent eval set
+meets the thresholds set in G09.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
@@ -737,3 +738,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | G07 | 2026-10-16 | [#67](https://github.com/DuhItzAniket/Repro/pull/67) | With agents on, a claim-blind probe writer (probe/1) proposes inputs as data for the functions E06 can probe; proposals that do not fit the signature are dropped and counted, the rest run beside Hypothesis's on base, base again and head, and each probe_diff says which inputs found it (found_by); agent_probes switches it off; new fixture probe-semantic (VERIFIED without agents); live: 8 proposed, 0 dropped, 3 differ (+05:30, -04:45, +02:15); the Gate G runs replay with the probe writer off until re-recorded |
 | G08 | 2026-10-17 | [#68](https://github.com/DuhItzAniket/Repro/pull/68) | Contradicted verdicts judged again with the evidence, other claims and ID enum reversed (agent_order_swap), degrading to unverifiable on disagreement; agreement on every verdict; optional 2-of-3 panel (agent_panel); judge_is_author on the card; QA agent (qa/1) withholds supported verdicts that cannot hold together; cassette keys now normalise IDs at line starts; recorded live: honest-fix and injection VERIFIED, silent-change, false-claim and probe-semantic FLAGGED; flip rate 0 of 13 |
 | G09 | 2026-10-17 | [#69](https://github.com/DuhItzAniket/Repro/pull/69) | Verdict labels (13) in the claim set; repro_bench.runs runs the five reviewed PRs end to end (replay, record, live); repro_bench.verdicts measures verdict accuracy, unsafe verdicts, status accuracy, citation validity and rejection rate per answer, flip rate, cost; agent-evals.csv one row per metric; every refused answer a verdict.rejected; agent evals CI job against proposed [verdicts] thresholds; measured: 10/13 verdicts, 0 unsafe, 5/5 cards, 28/28 citations valid, 0/13 flips, $0.0089 per PR |
+| Gate G | 2026-10-17 | [#70](https://github.com/DuhItzAniket/Repro/pull/70) | Stage G complete; release v0.7.0 ([gate record](phases/G-gate.md)); replayed offline with every agent on, the honest fix is VERIFIED and the unclaimed change and the false claim FLAGGED, each verdict citing engine evidence; the eval set meets the owner-approved thresholds (claims P 0.958 / R 1.000; verdicts 10/13, 0 unsafe, cards 5/5, citations 28/28, flips 0/13) |
