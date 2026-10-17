@@ -133,6 +133,19 @@ CASES: list[tuple[str, Inputs, str, list[str]]] = [
     # H01: a run that stopped part way leaves tests without an outcome; never a pass.
     ("a selected test unreported", Inputs(selected=3, ran=2), "UNVERIFIABLE", ["tests_not_run"]),
     ("every selected test reported", Inputs(selected=3, ran=3), "VERIFIED", []),
+    # H06: a run that did not finish (base's map, head's listing), even with nothing selected.
+    (
+        "a test run unfinished, nothing selected",
+        Inputs(unfinished=("base: the A run ended early, with exit status 1",)),
+        "UNVERIFIABLE",
+        ["tests_not_run"],
+    ),
+    (
+        "a test run unfinished, every selected test reported",
+        Inputs(selected=3, ran=3, unfinished=("head: the H run took longer than its limit",)),
+        "UNVERIFIABLE",
+        ["tests_not_run"],
+    ),
     (
         "changed symbols and no test selected",
         Inputs(changed=SYMBOLS[:2]),

@@ -88,9 +88,26 @@ def test_a_test_module_that_no_longer_imports(tmp_path: Path) -> None:
     assert found["card"]["status"] == "FLAGGED"  # its test is gone from head's run
 
 
+def test_a_test_run_that_cannot_start_leaves_the_change_unverifiable(tmp_path: Path) -> None:
+    """H06: no code changed, so no test is selected, and neither side's suite can start. The
+    card stands only if every run Repro made finished, whatever was selected."""
+    found = run("suite-cannot-start", tmp_path, exit_code=0)
+    unfinished = items(found, "run_incomplete")
+    assert {item["detail"].split(":", 1)[0] for item in unfinished} == {"base", "head"}
+    for item in unfinished:
+        readable(item)
+        assert "ended early, with exit status" in item["detail"]
+        # What the run said last, by the line that names its error.
+        assert "No module named 'repro_fixture_no_such_plugin'" in item["detail"]
+        assert item["resolution"]
+    assert found["card"]["conditions"]["selected_tests"] == 0
+    assert found["card"]["status"] == "UNVERIFIABLE"
+    assert rules(found) == ["tests_not_run"]
+
+
 def test_a_test_that_hangs_leaves_the_change_unverifiable(tmp_path: Path) -> None:
     found = run("slow-head", tmp_path, exit_code=0, REPRO_TEST_TIMEOUT_S="20")
-    timeouts = items(found, "timeout")
+    timeouts = items(found, "run_incomplete")
     assert timeouts
     for item in timeouts:
         readable(item)
