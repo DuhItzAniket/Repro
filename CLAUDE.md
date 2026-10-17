@@ -107,6 +107,9 @@ uv run repro run --pr https://github.com/<owner>/<repo>/pull/<n>  # a GitHub PR 
                                           # from GITHUB_TOKEN or GH_TOKEN, if set)
 uv run repro replay <run id | log.jsonl>                    # replayed from the start
 uv run repro export <run id | log.jsonl> --format md|json|in-toto|sarif|junit  # the card, checked against the log (F05, H04)
+uv run repro report <run id | log.jsonl> [--pr <url>]  # the card on its GitHub PR: check run,
+                                          # comment, job summary (I02; token needs checks and
+                                          # pull-requests write)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
 
 uv run python scripts/build_wheels.py      # H05: the release's two wheels in dist/wheels (pnpm build first)

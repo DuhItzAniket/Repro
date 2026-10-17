@@ -10,8 +10,10 @@ The import package is `repro` (src layout: `engine/src/repro/`). The console scr
 uv run repro --version
 uv run repro doctor          # Python, SQLite, git, uv, Docker and the data paths (--json)
 uv run repro run --repo <path> --base <ref> --head <ref>   # the cockpit shows it live
+uv run repro run --pr https://github.com/<owner>/<repo>/pull/<n>  # a GitHub pull request
 uv run repro replay <run id | log.jsonl>                    # from the start
 uv run repro export <run id | log.jsonl> --format md|json|in-toto|sarif|junit  # the Reproduction Card
+uv run repro report <run id | log.jsonl>                    # the card on its pull request
 uv run repro serve           # the cockpit, the read-only API and the event stream
 uv run pytest
 ```
@@ -21,8 +23,12 @@ open the browser, `--allow-origin` for a dev server) and serve the built cockpit
 the `ui_dir` setting points elsewhere). `run --no-serve` waits for the run and exits 0 if it
 completed, 1 if not. Every run ends with its card (F05): `export` assembles it again from the
 log, as Markdown or canonical JSON (`-o FILE` to write a file), and exits 1 if it differs from
-the card the run published; `replay` reports the same check before serving. The in-toto, SARIF
-and JUnit formats exit with status 2, naming their phase (H04).
+the card the run published; `replay` reports the same check before serving. Since H04 it also
+writes an unsigned in-toto Statement, SARIF 2.1.0 and JUnit XML. `report` (I02) puts the card,
+checked the same way, on the GitHub pull request the run read (`--pr` names another): the
+check run `Repro` on its head commit, one comment that each report updates, and, in GitHub
+Actions, the job's summary. It runs none of the target's code; a target it cannot update is
+named, the others are still made, and it exits 1.
 
 ## Store
 

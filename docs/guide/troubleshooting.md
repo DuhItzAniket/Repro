@@ -95,6 +95,12 @@ read from that server's API: set `REPRO_GITHUB_API_URL` to `https://<host>/api/v
 **`… does not hold the pull request's commits`.** With `--repo`, Repro uses your clone as it
 is. Run the `git fetch` the message gives, or leave out `--repo`.
 
+**`repro report`: `could not update the check run` or `the comment`.** The token may not write
+them: a workflow's `GITHUB_TOKEN` needs `checks: write` for the check run and
+`pull-requests: write` for the comment, and a pull request from a fork gets a read-only one.
+Check runs can only be written by a GitHub App's token, which `GITHUB_TOKEN` is; a personal
+token cannot. What could be made still is.
+
 ## Agents
 **Agents are on but no claim is read.** Claims come from `--pr-title` and `--pr-body`
 (or `--pr-file`), else from the commit messages. A change described nowhere has none.

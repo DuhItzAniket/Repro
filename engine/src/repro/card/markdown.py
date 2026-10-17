@@ -54,6 +54,16 @@ def verified_why(card: Mapping[str, Any]) -> str:
     return "Nothing flags, and everything was checked."
 
 
+def headline(card: Mapping[str, Any]) -> str:
+    """``**STATUS**: what it means.``, the card's first line."""
+    return f"**{card['status']}**: {_HEADLINE[card['status']]}."
+
+
+def why(card: Mapping[str, Any]) -> list[str]:
+    """The card's Why: the rules that decided its status, each with its detail."""
+    return _why(card)
+
+
 def _why(card: Mapping[str, Any]) -> list[str]:
     reasons = [r for r in card["status_reasons"] if r["decides"]]
     also = [r for r in card["status_reasons"] if not r["decides"]]
@@ -131,7 +141,7 @@ def render(card: Mapping[str, Any]) -> str:
     lines = [
         f"# Reproduction Card: {card['status']}",
         "",
-        f"**{card['status']}**: {_HEADLINE[card['status']]}.",
+        headline(card),
         "",
         f"- Repository: {_link(_cell(card['repo']['name']), card['repo']['url'])}",
         f"- Change: {_ref(c['base'])} to {_ref(c['head'])}",

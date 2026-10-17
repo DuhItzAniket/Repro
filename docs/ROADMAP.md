@@ -589,7 +589,7 @@ and (on public repos) a signed attestation, and re-running updates rather than d
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | I01 | PR ingestion | M | H05 | done |
-| I02 | Check run, sticky comment & job summary | M | I01 | planned |
+| I02 | Check run, sticky comment & job summary | M | I01 | done |
 | I03 | GitHub Action & attestation signing | M | I02, H04 | planned |
 | I04 | GitHub App (optional) | L | I03 | planned |
 
@@ -748,3 +748,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | H06 | 2026-10-17 | [#76](https://github.com/DuhItzAniket/Repro/pull/76) | The user guide (quickstart, reading a card, repro.yml, troubleshooting, for contributors) and a recorded demo (silent-change, stills from its replay); two reviewer dry runs from the docs alone, the second with no blocker; found and fixed: an installed Repro ran no test in Docker on Windows (hook now in a volume), a card VERIFIED with no test run (run_incomplete, UNVERIFIABLE), the session token in uvicorn's log, class-body changes selecting no test; install check requires a VERIFIED run |
 | Gate H | 2026-10-17 | [#77](https://github.com/DuhItzAniket/Repro/pull/77) | Stage H complete; release v1.0.0 ([gate record](phases/H-gate.md)); the release's wheels install and make a first run, VERIFIED with a test run, on Ubuntu (L3, 27.2 s) and Windows (L2, 30.1 s) in CI; every threat traced to tests or a residual (H03); the user guide completed from the docs alone by a reviewer new to the project (H06) |
 | I01 | 2026-10-17 | [#78](https://github.com/DuhItzAniket/Repro/pull/78) | repro run --pr <url>: the pull request read from GitHub's REST API (2026-03-10; token from GITHUB_TOKEN or GH_TOKEN, dropped on a cross-host redirect), its base branch and refs/pull/<n>/head (forks included) fetched into Repro's own bare mirror with the token in GIT_CONFIG_* only, head compared with the merge base; run.started records repo and PR; --repo uses a user's clone as is; failures exit 2 in words; checked on pallets/itsdangerous#378 |
+| I02 | 2026-10-17 | [#79](https://github.com/DuhItzAniket/Repro/pull/79) | repro report <run>: the card on its GitHub pull request, checked against its log, no target code run; the check run Repro on the head commit (VERIFIED success, FLAGGED failure, UNVERIFIABLE neutral; annotations at the changed code, 50 a request), one comment found by a hidden marker and its author, updated in place, the job summary in Actions; a rerun updates; a target it cannot update is named and the others made |
