@@ -1100,7 +1100,7 @@ wheels = [
 
 [[package]]
 name = "repro-bench"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "bench" }
 dependencies = [
     { name = "repro-engine" },
@@ -1111,7 +1111,7 @@ requires-dist = [{ name = "repro-engine", editable = "engine" }]
 
 [[package]]
 name = "repro-engine"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "engine" }
 dependencies = [
     { name = "claude-agent-sdk" },
@@ -1148,7 +1148,7 @@ requires-dist = [
 
 [[package]]
 name = "repro-events"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/events/python" }
 dependencies = [
     { name = "jsonschema" },

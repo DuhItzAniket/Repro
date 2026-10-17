@@ -101,8 +101,8 @@ Recorded live on 2026-10-16 (Groq, `openai/gpt-oss-120b`, `reader/1`), replayed 
 
 ## Deviations from spec
 - Claims carry file targets, not symbols (see Design notes).
-- Thresholds are proposed (0.90 for both), not approved: the owner asked to see the measured
-  numbers first.
+- Thresholds were proposed (0.90 for both), not approved: the owner asked to see the
+  measured numbers first. The owner approved them on 2026-10-17, at Gate G.
 - A missing reason, `agent_failed`, was added (additive).
 
 ## Known gaps

@@ -18,7 +18,7 @@
 | **D** | Sandboxed two-sided execution | D01–D07 | v0.4.0 | Selected tests run on base and head in isolation, with outcome, test-change and perf evidence |
 | **E** | Behaviour evidence | E01–E07 | v0.5.0 | A silent behaviour change is caught with no failing test |
 | **F** | Policy & deterministic card | F01–F05 | v0.6.0 | Invariants and a complete card with no LLM involved |
-| **G** | Agents | G01–G09 | v0.7.0 | Claims extracted, verdicts judged against cited evidence, generated probes |
+| **G** | Agents | G01–G10 | v0.7.0 | Claims extracted, verdicts judged against cited evidence, generated probes |
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
 | **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
 | **J** | Evaluation & research | J01–J10 | v1.2.0 | Reproducible benchmark results and paper submission |
@@ -473,9 +473,10 @@ over all rule combinations.
 **Goal:** claims extracted from PR text, judged strictly against cited evidence. Generated
 probes close the test-adequacy gap.
 
-**Gate G:** on three handmade PRs (honest; unclaimed behaviour change; false claim) the cards come
-out VERIFIED / FLAGGED / FLAGGED with correct cited evidence, reproducibly from cassettes. The
-agent eval set meets the thresholds set in G09.
+**Gate G (passed 2026-10-17, v0.7.0, record: [`phases/G-gate.md`](phases/G-gate.md)):** on three
+handmade PRs (honest; unclaimed behaviour change; false claim) the cards come out VERIFIED /
+FLAGGED / FLAGGED with correct cited evidence, reproducibly from cassettes. The agent eval set
+meets the thresholds set in G09.
 
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|

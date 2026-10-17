@@ -121,7 +121,8 @@ appended to `bench/results/agent-evals.csv`:
 - The agent evals run in a CI job of their own, not in the test matrix.
 
 ## Known gaps
-- **Thresholds await the owner's approval.** Both `[claims]` and `[verdicts]` are proposed.
+- ~~Thresholds await the owner's approval.~~ Both `[claims]` and `[verdicts]` were approved
+  by the owner on 2026-10-17, at Gate G.
 - **The claim taxonomy.** A claim the reader types as a refactor cannot be supported by
   evidence of a change, even when the claim describes that change. Two of the three misses
   come from this.

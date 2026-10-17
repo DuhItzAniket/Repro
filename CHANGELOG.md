@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-17
+
+Stage G — Agents. Gate record: `docs/phases/G-gate.md`.
+
 ### Added
 - The LLM backend: every model call goes through an `LLMBackend` protocol, whose result says
   how the call ended (`ok`, `max_turns`, `max_budget`, `timeout`, `invalid_output`, `error`)
@@ -53,8 +57,8 @@ All notable changes to this project are documented here. The format follows
   `agent_mode` (live, record, replay), `agent_cassettes`, `agent_budget_usd` (2.0 a run). [G04]
 - The labelled claim set (`bench/data/claims.toml`: 18 pull requests, 43 claims) and its
   evaluation (`python -m repro_bench.claims`). The reader on gpt-oss-120b: precision 0.955,
-  recall 0.977, replayed in CI from its cassettes against proposed thresholds of 0.90; the
-  results in `bench/results/agent-evals.csv`. [G04]
+  recall 0.977, replayed in CI from its cassettes against thresholds of 0.90 (approved at
+  Gate G); the results in `bench/results/agent-evals.csv`. [G04]
 - Reviewer agents: after every other job, each claim is judged against the evidence about its
   files, shown in full with their diffs and the PR's other claims. A verdict must cite that
   evidence (an enum of its IDs, at least one) and quote it exactly, and is checked before it
@@ -542,7 +546,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.7.0
 [0.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.6.0
 [0.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.5.0
 [0.4.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.4.0
