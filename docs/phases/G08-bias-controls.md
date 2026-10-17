@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G05, G06 |
-| **Branch / PR** | `phase/G08-bias-controls` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G08-bias-controls` · [#68](https://github.com/DuhItzAniket/Repro/pull/68) |
+| **Started / finished** | 2026-10-16 / 2026-10-17 |
 
 ## Objective
 Verdicts that do not depend on the order the reviewer read things in, or on the reviewer's
@@ -124,7 +124,7 @@ Other observations:
 - Recording took about 130,000 tokens over two passes. Part of the second pass timed out on
   the API's daily limit; another part met a failure to reach the package index. Both were run
   again; record mode serves what was already recorded.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#68).
 
 ## Deviations from spec
 - The panel's second judge reads the order reversed, so a panel needs no separate swap pass.
