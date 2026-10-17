@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | H — Hardening & first release |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | H01 |
-| **Branch / PR** | `phase/H02-performance` · PR pending |
-| **Started / finished** | 2026-10-17 / — |
+| **Branch / PR** | `phase/H02-performance` · [#72](https://github.com/DuhItzAniket/Repro/pull/72) |
+| **Started / finished** | 2026-10-17 / 2026-10-17 |
 
 ## Objective
 Repro runs in reasonable time on real repositories of increasing size, a second run of a change
@@ -103,7 +103,7 @@ from an earlier measurement and checked by a repeatable benchmark.
   them, as before.
 
 ## Acceptance criteria
-- [ ] AC1 (roadmap): targets set from A08 and D-stage measurements are met and recorded.
+- [x] AC1 (roadmap): targets set from A08 and D-stage measurements are met and recorded.
   - T1 (D03: provisioning from a reused environment took 1.4–4.6 s a side in the process
     sandbox, about 6 s in a container with the tests' run): a warm run reuses both sides'
     dependencies' environments, within 4.6 s a side (process) or 6 s (container).
@@ -114,7 +114,7 @@ from an earlier measurement and checked by a repeatable benchmark.
     (flask: 38 to 40 in four runs): noise decides which tests near the 5 ms floor clear it.
   - T4 (H01: 900 s per run): every reference's run, cold or warm, ends with a card in under
     half that.
-- [ ] AC2: the benchmark is repeatable and checked: one command, pinned commits, results in a
+- [x] AC2: the benchmark is repeatable and checked: one command, pinned commits, results in a
   CSV, and a nightly job that fails when a target is missed.
 
 ## Test plan
@@ -182,7 +182,7 @@ from an earlier measurement and checked by a repeatable benchmark.
 - **Local suite**, Windows with Docker Desktop running (`-m "not agent_eval and not chaos"`):
   1,854 passed, 2 skipped (POSIX-only checks), 1 failed, `net-call` (Known gaps).
   `pytest -m chaos`: 7 passed. `pytest -m agent_eval`: passed.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#72).
 
 ## Deviations from spec
 - **Caching: environments and the base map, not the graph.** Both were already cached (D03,
