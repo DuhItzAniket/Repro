@@ -260,12 +260,14 @@ def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
     ) as box:
         run = box.run(["python", "bomb.py"], timeout_s=15)
         started = (box.read_file("started.txt") or b"").split()
-    assert 1 <= len(started) <= limit
     if RUNTIME == GVISOR:
         # Under gVisor the limit counts the sandbox's own threads too, and reaching it ends the
-        # whole container (measured on CI's gvisor job, H03): contained, but not by a timeout.
+        # whole container (measured on CI's gvisor job, H03): contained, but not by a timeout,
+        # and a limit this low can end it before the first process writes its line.
+        assert len(started) <= limit
         assert run.outcome == "timeout" or run.returncode != 0, run
     else:  # runc: the forks fail, and the bomb sleeps on until its timeout
+        assert 1 <= len(started) <= limit
         assert run.outcome == "timeout"
 
 

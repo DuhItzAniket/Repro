@@ -144,7 +144,9 @@ dependencies.
   vulnerabilities (2026-10-17).
 - **Under gVisor** (CI's `gvisor` job, runsc release-20261012.0): the container module and the
   end-to-end run passed but for the fork bomb, whose container gVisor ended when its tasks
-  reached the pids limit, before the timeout: the limit counts the sandbox's own threads.
+  reached the pids limit, before the timeout: the limit counts the sandbox's own threads (with
+  a limit of 16, on one run, before the first process had started). The end-to-end run, with
+  Repro's default limits, was not affected.
   The test now holds each runtime to what it does; T4's residual says so.
 - CI run: linked in the PR (#73).
 
