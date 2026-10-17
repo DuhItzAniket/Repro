@@ -18,6 +18,7 @@ import tomllib
 from collections.abc import Mapping
 from pathlib import Path, PurePath
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import (
     BaseModel,
@@ -77,6 +78,9 @@ class Settings(BaseModel):
     memory_limit_mb: int = Field(default=4096, gt=0)
     #: The Docker runtime for the target's containers: ``runsc`` (gVisor) makes them L4 (H03).
     docker_runtime: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+    #: GitHub's REST API, for `repro run --pr` (I01): github.com's, or a GitHub Enterprise
+    #: Server's (``https://<host>/api/v3``). HTTPS, or HTTP on a loopback address for tests.
+    github_api_url: str = "https://api.github.com"
     #: The built cockpit (``pnpm build``'s ``apps/web/dist``); unset: this checkout's, if built.
     ui_dir: Path | None = None
     #: The agent stages' backend; off by default, so no run reaches a model unless asked to.
@@ -118,6 +122,15 @@ class Settings(BaseModel):
         if value is not None and not value.is_absolute():
             raise ValueError("must be an absolute path")
         return value
+
+    @field_validator("github_api_url")
+    @classmethod
+    def _api_url(cls, value: str) -> str:
+        parts = urlsplit(value)
+        local = parts.hostname in {"127.0.0.1", "::1", "localhost"}
+        if parts.scheme != "https" and not (parts.scheme == "http" and local):
+            raise ValueError("must be an https:// URL (http:// only on a loopback address)")
+        return value.rstrip("/")
 
     @field_validator("agent_panel", mode="before")
     @classmethod

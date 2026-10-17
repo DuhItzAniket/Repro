@@ -88,6 +88,11 @@ class DataPaths:
         return self.data_dir / "runs"
 
     @property
+    def repos(self) -> Path:
+        """Repro's mirrors of the repositories pull requests are fetched from (I01)."""
+        return self.data_dir / "repos"
+
+    @property
     def logs(self) -> Path:
         return self.data_dir / "logs"
 

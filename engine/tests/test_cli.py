@@ -54,8 +54,8 @@ def test_module_entry_point_runs_in_a_fresh_interpreter() -> None:
 def test_run_requires_its_refs(tmp_path: Path) -> None:
     result = runner.invoke(app, ["run", "--repo", "."], env=clean_env(tmp_path))
     assert result.exit_code == 2
-    # Rich colours the usage error when colour is forced (as on CI), splitting "--base".
-    assert "Missing option '--base'" in re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    # Both refs, or a pull request (I01) that names them.
+    assert "give --repo, --base and --head, or --pr" in re.sub(r"\x1b\[[0-9;]*m", "", result.output)
 
 
 def test_a_configuration_error_stops_a_command_with_its_source(tmp_path: Path) -> None:

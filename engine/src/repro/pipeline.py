@@ -44,6 +44,11 @@ class Change:
     pr_title: str | None = None
     #: No agent stage runs (G04): the status comes from the deterministic rules alone.
     deterministic_only: bool = True
+    #: A pull request read from GitHub (I01): its repository, by name and page, and its own.
+    repo_name: str | None = None
+    repo_url: str | None = None
+    pr_number: int | None = None
+    pr_url: str | None = None
 
     @classmethod
     def resolve(cls, git: Git, repo: Path, base: str, head: str) -> "Change":
@@ -52,10 +57,13 @@ class Change:
 
     def spec(self) -> RunSpec:
         return RunSpec(
-            repo_name=self.repo.resolve().name or "repository",
+            repo_name=self.repo_name or self.repo.resolve().name or "repository",
             base=self.base,
             head=self.head,
+            repo_url=self.repo_url,
             pr_title=self.pr_title,
+            pr_number=self.pr_number,
+            pr_url=self.pr_url,
             deterministic_only=self.deterministic_only,
         )
 

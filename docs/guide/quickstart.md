@@ -61,6 +61,19 @@ without it. When the run ends, its last line gives the run's ID and the card's s
 example `repro: run_… completed (…): the card is FLAGGED`. The server keeps going until you
 press Ctrl+C.
 
+**Or give it a pull request.** With a GitHub pull request's address, Repro reads its base,
+head, title and description from GitHub and fetches its commits, a fork's included, into a
+mirror of its own in the data directory:
+
+```
+repro run --pr https://github.com/<owner>/<repo>/pull/<number>
+```
+
+It compares the pull request's head with where it left its base branch (their merge base),
+as GitHub's "Files changed" does. A public repository needs no token; a private one, or more
+than 60 requests an hour, needs one in `GITHUB_TOKEN` or `GH_TOKEN`. To use a clone you
+already have instead of the mirror, add `--repo <path>`: Repro fetches nothing into it.
+
 To run without the cockpit, as in a script or CI, add `--no-serve`: `repro run` then exits
 when the run ends, 0 if it completed and 1 if it did not, and the card is read with
 `repro export` (step 6).

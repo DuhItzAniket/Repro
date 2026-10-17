@@ -152,6 +152,7 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `agent_budget_usd` | `REPRO_AGENT_BUDGET_USD` | `2.0`: the most a run's agent calls may cost together |
 | `test_timeout_s` | `REPRO_TEST_TIMEOUT_S` | `900`: each sandboxed test run's wall-clock limit, in seconds (H01) |
 | `memory_limit_mb` | `REPRO_MEMORY_LIMIT_MB` | `4096`: the memory a sandboxed run's processes may use (H01) |
+| `github_api_url` | `REPRO_GITHUB_API_URL` | `https://api.github.com`: GitHub's REST API for `repro run --pr` (I01); a GitHub Enterprise Server's is `https://<host>/api/v3` |
 | `docker_runtime` | `REPRO_DOCKER_RUNTIME` | unset: Docker's default. `runsc` runs the target's containers under gVisor, isolation level L4 (H03) |
 | `agent_probes` | `REPRO_AGENT_PROBES` | `true`: with agents on, the probe writer proposes inputs for the probes (G07) |
 | `agent_order_swap` | `REPRO_AGENT_ORDER_SWAP` | `contradicted`: which verdicts a second reviewer judges with the evidence in the opposite order (`all`, `off`; G08) |

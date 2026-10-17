@@ -81,6 +81,20 @@ reached it.
 **A run is slow the first time.** The first run builds both sides' environments and a map of
 which test runs which code. The next run of a change on the same base reuses both.
 
+## Pull requests (`--pr`)
+**`… not found. A private repository needs a token`.** GitHub answers "not found" for a
+private repository it is not shown. Set `GITHUB_TOKEN` (or `GH_TOKEN`) to a token that can
+read it; with a token, the message says the token cannot see it.
+
+**`GitHub's rate limit is spent until …`.** Without a token, GitHub allows 60 requests an hour
+from one address; a token raises that. The time is when it resets, in UTC.
+
+**`… is not github.com: set github_api_url`.** A pull request on GitHub Enterprise Server is
+read from that server's API: set `REPRO_GITHUB_API_URL` to `https://<host>/api/v3`.
+
+**`… does not hold the pull request's commits`.** With `--repo`, Repro uses your clone as it
+is. Run the `git fetch` the message gives, or leave out `--repo`.
+
 ## Agents
 **Agents are on but no claim is read.** Claims come from `--pr-title` and `--pr-body`
 (or `--pr-file`), else from the commit messages. A change described nowhere has none.
@@ -120,4 +134,6 @@ them all.
 | `REPRO_MEMORY_LIMIT_MB` | Each test run's memory limit | `4096` |
 | `REPRO_DATA_DIR`, `REPRO_RUN_ROOT` | Where runs and scratch copies go | above |
 | `REPRO_AGENTS` | `claude`, `groq` or `openai` to judge claims | `off` |
+| `GITHUB_TOKEN`, `GH_TOKEN` | A token for `--pr`: private repositories, higher rate limits | none |
+| `REPRO_GITHUB_API_URL` | GitHub's API, for GitHub Enterprise Server | `https://api.github.com` |
 | `REPRO_LOG_FORMAT`, `REPRO_LOG_LEVEL` | The logs: `json` or `text`, and how much | `json`, `info` |

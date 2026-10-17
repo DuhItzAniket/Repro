@@ -428,13 +428,67 @@ def _resolve(repo: Path, base: str, head: str) -> "tuple[Git, Change]":
         raise typer.Exit(2) from None
 
 
+def _from_pull_request(
+    address: str,
+    settings: Settings,
+    local: Path | None,
+    *,
+    given: tuple[str | None, ...],
+) -> "tuple[Git, Change, str | None, str | None]":
+    """A GitHub pull request read and fetched (I01), or exit 2 saying why not."""
+    from repro.integrations.github import GitHubError, ingest  # noqa: PLC0415
+    from repro.orchestrator import GitRef  # noqa: PLC0415
+    from repro.pipeline import Change  # noqa: PLC0415
+
+    if any(value is not None for value in given):
+        typer.echo(
+            "repro run: --pr reads the base, head, title and description from GitHub; "
+            "leave out --base, --head and --pr-title, --pr-body, --pr-file",
+            err=True,
+        )
+        raise typer.Exit(2)
+    settings.paths.data_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        found = ingest(
+            address, api_url=settings.github_api_url, mirrors=settings.paths.repos, local=local
+        )
+    except GitHubError as exc:
+        typer.echo(f"repro run: {exc}", err=True)
+        raise typer.Exit(2) from None
+    pr = found.pr
+    source = " from a fork" if pr.fork else ""
+    typer.echo(
+        f"repro: {pr.repo_full_name}#{pr.number} ({pr.state}{source}): head {pr.head_label} at "
+        f"{pr.head_sha[:12]}, against {pr.base_ref} where it branched, {found.base[:12]}",
+        err=True,
+    )
+    change = Change(
+        found.git.repo,
+        GitRef(pr.base_ref, found.base),
+        GitRef(pr.head_label, pr.head_sha),
+        repo_name=pr.repo_full_name,
+        repo_url=pr.repo_url,
+        pr_number=pr.number,
+        pr_url=pr.url,
+    )
+    return found.git, change, pr.title, pr.body
+
+
 @app.command()
 def run(
     ctx: typer.Context,
-    repo: Annotated[Path, typer.Option("--repo", help="The target repository.")],
-    base: Annotated[str, typer.Option("--base", help="The base ref.")],
-    head: Annotated[str, typer.Option("--head", help="The head ref.")],
+    repo: Annotated[Path | None, typer.Option("--repo", help="The target repository.")] = None,
+    base: Annotated[str | None, typer.Option("--base", help="The base ref.")] = None,
+    head: Annotated[str | None, typer.Option("--head", help="The head ref.")] = None,
     *,
+    pr_address: Annotated[
+        str | None,
+        typer.Option(
+            "--pr",
+            help="A GitHub pull request's address: its commits, title and description are read "
+            "from GitHub (a token from GITHUB_TOKEN or GH_TOKEN, if set).",
+        ),
+    ] = None,
     serve: Annotated[
         bool, typer.Option("--serve/--no-serve", help="Show the run live in the cockpit.")
     ] = True,
@@ -464,11 +518,13 @@ def run(
     """Reproduce a change: analyse base and head, run the tests the change can affect on both
     sides, and record what differs.
 
-    With agents on (the agents setting), the pull request's claims are read from its title and
-    description, or from the commit messages when neither is given, and judged against what the
-    run found. With --serve (the default) the cockpit shows the run live, and keeps serving after
-    it ends until Ctrl+C. With --no-serve the command waits for the run and exits: status 0 if it
-    completed, 1 if it did not.
+    Give --repo, --base and --head; or --pr with a GitHub pull request's address, whose head is
+    compared with where it left its base branch (their merge base), fetched into Repro's own
+    mirror, or found in --repo if given. With agents on (the agents setting), the pull request's
+    claims are read from its title and description, or from the commit messages when neither is
+    given, and judged against what the run found. With --serve (the default) the cockpit shows
+    the run live, and keeps serving after it ends until Ctrl+C. With --no-serve the command waits
+    for the run and exits: status 0 if it completed, 1 if it did not.
     """
     pr_title, pr_body = _pr_options(pr_title, pr_body, pr_file)
     settings = _session(ctx).settings()
@@ -483,7 +539,15 @@ def run(
     from repro.sandbox.limits import MIB, Limits  # noqa: PLC0415
     from repro.store import ArtifactStore, StoreWriter  # noqa: PLC0415
 
-    git, change = _resolve(repo, base, head)
+    if pr_address is not None:
+        git, change, pr_title, pr_body = _from_pull_request(
+            pr_address, settings, repo, given=(base, head, pr_title, pr_body)
+        )
+    elif repo is None or base is None or head is None:
+        typer.echo("repro run: give --repo, --base and --head, or --pr", err=True)
+        raise typer.Exit(2)
+    else:
+        git, change = _resolve(repo, base, head)
     sock = _bind(host, port) if serve else None
     settings.paths.data_dir.mkdir(parents=True, exist_ok=True)
     run_id = new_run_id()

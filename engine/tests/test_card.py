@@ -336,3 +336,18 @@ def test_a_missing_item_shows_five_targets_and_counts_the_rest() -> None:
     text = render({**card, "missing": [item]})
     assert "tests/test_a.py::t4 and 2 more |" in text
     assert "t5" not in text
+
+
+def test_a_pull_request_is_linked_and_its_title_shown_as_text() -> None:
+    """I01: the card names the pull request; its title is its author's, never Markdown."""
+    card = assemble(run_log().events)
+    pr = {"title": "Fix [it](https://evil.example) *now* | a", "number": 7,
+          "url": "https://github.com/o/r/pull/7"}  # fmt: skip
+    repo = {"name": "o/r", "url": "https://github.com/o/r"}
+    text = render({**card, "repo": repo, "pr": pr})
+    assert "- Repository: [o/r](https://github.com/o/r)" in text
+    assert "- Pull request: [#7](https://github.com/o/r/pull/7) Fix \\[it\\]" in text
+    assert "](https://evil.example)" not in text
+    assert "\\*now\\* \\| a" in text  # one escape each, the pipe's included
+    unsafe = render({**card, "pr": {**pr, "url": "javascript:alert(1)"}})
+    assert "- Pull request: #7 Fix" in unsafe
