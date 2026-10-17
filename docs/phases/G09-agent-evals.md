@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | G — Agents |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | G04–G08 |
-| **Branch / PR** | `phase/G09-agent-evals` · PR pending |
-| **Started / finished** | 2026-10-16 / — |
+| **Branch / PR** | `phase/G09-agent-evals` · [#69](https://github.com/DuhItzAniket/Repro/pull/69) |
+| **Started / finished** | 2026-10-16 / 2026-10-17 |
 
 ## Objective
 The agents measured on labelled pull requests, every time a prompt or a model changes, with
@@ -115,7 +115,7 @@ appended to `bench/results/agent-evals.csv`:
   validity ≥ 0.95, flip rate ≤ 0.10. Each leaves room for one more miss on sets this small,
   except the two that must not slip.
 - **Local runs.** The gate passed (5 m 14 s); the agent, probe and settings suites: 405 passed.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#69).
 
 ## Deviations from spec
 - The agent evals run in a CI job of their own, not in the test matrix.
