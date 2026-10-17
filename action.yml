@@ -1,0 +1,114 @@
+# Repro's GitHub Action (I03): reproduce a pull request on both sides and report its card.
+#
+# A composite action: Repro runs on the runner, from this Action's own checkout, and its sandbox
+# uses the runner's Docker (L3; L4 with docker-runtime: runsc). The steps are thin; what they
+# decide is repro.integrations.github.action, tested with the engine. Usage, permissions and
+# forks: docs/guide/github-action.md.
+name: Repro
+description: Reproduce a pull request on both sides, and report its Reproduction Card.
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  token:
+    description: The token Repro reads the pull request with and reports with.
+    default: ${{ github.token }}
+  post-on-forks:
+    description: >
+      Post the card (check run, comment) for a fork's pull request too. Needs the workflow to run
+      on pull_request_target, which has a write token where the fork's code runs, in Repro's
+      sandbox. Off: a fork's card goes to the job's summary and an artifact.
+    default: "false"
+  attest:
+    description: Sign the card as an attestation (public repositories; needs id-token, attestations and artifact-metadata write).
+    default: "true"
+  agents:
+    description: The agents that judge the pull request's claims (off, claude, groq, openai); their key comes from the job's environment.
+    default: "off"
+  docker-runtime:
+    description: runsc runs the target's containers under gVisor (L4), if the runner has it.
+    default: ""
+  analyse-only:
+    description: Only analyse the change, running none of the target's code.
+    default: "false"
+
+outputs:
+  status:
+    description: The card's status (VERIFIED, FLAGGED or UNVERIFIABLE).
+    value: ${{ steps.run.outputs.status }}
+  run-id:
+    description: The run's ID.
+    value: ${{ steps.run.outputs.run-id }}
+  card:
+    description: The card as canonical JSON (the attestation's subject when signed).
+    value: ${{ steps.run.outputs.card }}
+  attestation-url:
+    description: The signed attestation's page, when the card was signed.
+    value: ${{ steps.sign.outputs.attestation-url }}
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      with:
+        version: "0.13.0"
+
+    - name: Install Repro
+      shell: bash
+      run: uv sync --project "$GITHUB_ACTION_PATH" --frozen --no-dev
+
+    - name: Plan
+      id: plan
+      shell: bash
+      env:
+        INPUT_POST_ON_FORKS: ${{ inputs.post-on-forks }}
+        INPUT_ATTEST: ${{ inputs.attest }}
+      run: uv run --project "$GITHUB_ACTION_PATH" --frozen --no-dev python -m repro.integrations.github.action plan
+
+    - name: Restore Repro's mirror and test maps
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ runner.temp }}/repro-data/repos
+          ${{ runner.temp }}/repro-data/maps
+        key: repro-1-${{ runner.os }}-${{ github.repository }}-${{ github.event.pull_request.base.sha }}
+        restore-keys: repro-1-${{ runner.os }}-${{ github.repository }}-
+
+    - name: Reproduce
+      id: run
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        REPRO_DATA_DIR: ${{ runner.temp }}/repro-data
+        # Containers only: a contained process (L2) would run as the job's user, beside the token.
+        REPRO_SANDBOX: docker
+        REPRO_AGENTS: ${{ inputs.agents }}
+        REPRO_DOCKER_RUNTIME: ${{ inputs.docker-runtime }}
+        REPRO_PR: ${{ steps.plan.outputs.pr }}
+        INPUT_ANALYSE_ONLY: ${{ inputs.analyse-only }}
+      run: uv run --project "$GITHUB_ACTION_PATH" --frozen --no-dev python -m repro.integrations.github.action run
+
+    - name: Keep the card
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: repro-card
+        path: ${{ runner.temp }}/repro-card/
+
+    - name: Report
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        REPRO_DATA_DIR: ${{ runner.temp }}/repro-data
+        REPRO_RUN_ID: ${{ steps.run.outputs.run-id }}
+        REPRO_POST: ${{ steps.plan.outputs.post }}
+      run: uv run --project "$GITHUB_ACTION_PATH" --frozen --no-dev python -m repro.integrations.github.action report
+
+    - name: Sign the card
+      id: sign
+      if: steps.plan.outputs.attest == 'true'
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-path: ${{ steps.run.outputs.card }}
+        predicate-type: ${{ steps.run.outputs.predicate-type }}
+        predicate-path: ${{ steps.run.outputs.predicate }}

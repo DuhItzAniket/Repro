@@ -77,7 +77,8 @@ from a checkout: `uv sync`, `pnpm install` and `pnpm build`, then `uv run repro 
 ([CONTRIBUTING](CONTRIBUTING.md)).
 
 New to Repro? The [quickstart](docs/guide/quickstart.md) goes from nothing to a first card, and
-[the demo](docs/guide/demo.md) shows one run, from the command to the card.
+[the demo](docs/guide/demo.md) shows one run, from the command to the card. To run it on every
+pull request: [the GitHub Action](docs/guide/github-action.md).
 
 ## Documentation
 

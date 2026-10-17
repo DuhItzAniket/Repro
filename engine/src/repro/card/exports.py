@@ -130,8 +130,12 @@ def card_from_attestation(statement: Mapping[str, Any]) -> dict[str, Any]:
     if predicate.get("cardDigest", {}).get("sha256") != digest(canonical(card)):
         raise AttestationError("the card does not match its digest")
     head = card["conditions"]["head"]["sha"]
-    if not any(s.get("digest", {}).get("gitCommit") == head for s in statement.get("subject", [])):
-        raise AttestationError(f"no subject is the card's head commit {head}")
+    own = predicate["cardDigest"]["sha256"]
+    subjects = [s.get("digest", {}) for s in statement.get("subject", [])]
+    # Repro's export names the head commit; signed through GitHub (I03), whose attestations take
+    # sha256 subjects, the subject is the card itself, as canonical JSON.
+    if not any(d.get("gitCommit") == head or d.get("sha256") == own for d in subjects):
+        raise AttestationError(f"no subject is the card's head commit {head} or the card itself")
     conditions = card["conditions"]
     copies = {
         "status": card["status"],

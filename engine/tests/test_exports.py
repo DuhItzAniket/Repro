@@ -119,6 +119,19 @@ def test_card_to_attestation_to_card_is_exact(
     assert canonical(back) == canonical(card)
 
 
+def test_a_statement_signed_through_github_names_the_card_itself(
+    demo: tuple[dict[str, Any], dict[str, dict[str, Any]]],
+) -> None:
+    """I03: GitHub's attestations take sha256 subjects, so the signed subject is the card."""
+    card, evidence = demo
+    statement = copy.deepcopy(attestation(card, evidence))
+    statement["subject"] = [{"name": "card.json", "digest": {"sha256": digest(canonical(card))}}]
+    assert canonical(card_from_attestation(statement)) == canonical(card)
+    statement["subject"][0]["digest"]["sha256"] = "0" * 64
+    with pytest.raises(AttestationError, match="or the card itself"):
+        card_from_attestation(statement)
+
+
 @pytest.mark.parametrize(
     ("tamper", "error"),
     [
