@@ -622,7 +622,7 @@ artifact is archived with a DOI. The paper is submitted.
 | J07 | S2 main study | M | J06 | planned |
 | J08 | Ablations, S3 in-the-wild & S4 synthetic | M | J07 | planned |
 | J09 | Artifact package | M | J08 | paused: prepared (kick-the-tires, AE guide, metadata); results and DOI wait |
-| J10 | Paper writing & submission | L | J08 | planned |
+| J10 | Paper writing & submission | L | J08 | paused: draft 0 prepared; results, review and submission wait |
 
 **J01** SWE-format adapter (instance + image + patch → base/head), image management by digest,
 manifest format, input-contract enforcement with a test proving withheld fields never reach the

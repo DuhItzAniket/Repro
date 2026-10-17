@@ -10,6 +10,12 @@ reconstructed at the end.
 | [`EVALUATION_PROTOCOL.md`](EVALUATION_PROTOCOL.md) | Draft pre-registration of the study (frozen before S2, phase J06) |
 | [`LOG.md`](LOG.md) | Append-only, dated research log, including negative results |
 | [`references.bib`](references.bib) | Verified bibliography (about 120 entries; see `../research/02-literature.md`) |
+| [`PREREGISTRATION.md`](PREREGISTRATION.md) | What the freeze fixes, and the owner's checklist (J06) |
+| [`BASELINES.md`](BASELINES.md) | Each baseline's input and answer rule (J03) |
+| [`ANNOTATION_GUIDELINE.md`](ANNOTATION_GUIDELINE.md) | How people label (J02) |
+| [`ARTIFACT.md`](ARTIFACT.md) | How evaluators check the artifact (J09) |
+| [`draft.md`](draft.md) | The paper, draft 0: results pending (J10) |
+| [`SUBMISSION.md`](SUBMISSION.md) | The owner's submission checklist (J10) |
 
 ## Working title
 *Did It Say So? Execution-Grounded Verification of AI-Agent Pull Requests against Their Claims*
