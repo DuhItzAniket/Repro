@@ -13,6 +13,14 @@ All notable changes to this project are documented here. The format follows
   and writes a manifest pinning each instance's source, base commit, image digest and patch
   SHA-256; `run` makes head without a working tree, runs Repro and logs the input's SHA-256
   with each card. [J01]
+- Ground truth for the evaluation (`bench`): tier A runs a task's hidden tests and full suite
+  in its own image (no network, nothing mounted) and grades them as SWE-bench does; tier B runs
+  UTBoost's augmented tests and model-written differential tests against the gold patch and
+  the candidate, 20 times each, counting only stable tests; `python -m repro_bench.groundtruth`
+  labels what it can and writes the rest, with 15% audits, as the annotators' batch. [J02]
+- A blinded annotation page per annotator (`python -m repro_bench.annotate`), Cohen's κ per
+  source, adjudication and a frozen label file (`python -m repro_bench.labels`), and the
+  annotation guideline (`docs/paper/ANNOTATION_GUIDELINE.md`). [J02]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported

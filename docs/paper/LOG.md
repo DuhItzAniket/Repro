@@ -507,3 +507,19 @@ entry. If something turns out wrong, add a correcting entry.
 - **For the paper.** An execution-based reviewer inherits its interpreter's constraints:
   older tasks' pinned tools may not run on it. That is a selection effect on any benchmark of
   such a tool, to be fixed before S2 (J04) and stated as a threat to validity.
+
+## 2026-10-18 · J02 · Ground truth, run in the task's own image
+- **Two automatic tiers and a blinded annotation tool** ([phase record](../phases/J02-ground-truth.md)).
+  Tier A grades a patch as SWE-bench does, in the task's image, and adds the full suite. Tier
+  B runs tests against the gold patch and the candidate 20 times each, counting only stable
+  tests. People get what neither tier settles, plus 15% audits of each automatic label.
+- **On a real task** (SWE-rebench `pypa__twine-1309`, hand-written candidates, never reported):
+  the gold patch and a behaviour-preserving rewrite were CORRECT_auto, and a seeded wrong patch
+  was INCORRECT_auto. A variant with a different message diverged on a model-written test.
+- **The S2 pool fits Repro's interpreter**: 351 of 411 SWE-rebench leaderboard tasks
+  (2025_09 to 2026_03) pin Python 3.12 or 3.13, and all use pytest.
+- **For the paper.** Differential tests written by a model that sees both patches can aim at
+  surface differences (one asserted the candidate's wording was absent). Such tests are
+  evidence for annotators, never a label. This is a design choice the threats to validity
+  should state, since PatchDiff-style oracles are often read as labels.
+

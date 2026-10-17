@@ -614,7 +614,7 @@ artifact is archived with a DOI. The paper is submitted.
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | J01 | Benchmark infrastructure & input contract | L | H05 | done |
-| J02 | Ground-truth pipeline & annotation tooling | L | J01 | planned |
+| J02 | Ground-truth pipeline & annotation tooling | L | J01 | done |
 | J03 | Baselines | L | J01 | planned |
 | J04 | S0 dev set & S1 pilot | M | J02, J03 | planned |
 | J05 | S2 patch generation on fresh tasks | M | J04 | planned |
@@ -753,3 +753,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | I03 | 2026-10-17 | [#80](https://github.com/DuhItzAniket/Repro/pull/80) | action.yml (composite): Repro from the Action's own checkout on the runner, containers only (REPRO_SANDBOX=docker), card kept as an artifact, reported, and on public repositories signed with actions/attest (card.json, the card's canonical bytes, as subject; Repro's predicate); actions pinned to commits; mirror and maps cached; forks not posted to unless opted in under pull_request_target (owner's decisions); plan/run/report in repro.integrations.github.action, tested; THREAT_MODEL T20 |
 | Gate I | 2026-10-18 | [#81](https://github.com/DuhItzAniket/Repro/pull/81) | Stage I complete; release v1.1.0 ([gate record](phases/I-gate.md)); on the public test repository DuhItzAniket/repro-gate-i, opening a pull request made the check run (FLAGGED, one annotation), one comment and a signed attestation of the card (gh attestation verify passes), and re-running left one of each; I04 deferred |
 | J01 | 2026-10-18 | [#82](https://github.com/DuhItzAniket/Repro/pull/82) | SWE-format adapter and sealed inputs, manifest by digest, canary input-contract test; first real instance found an interpreter constraint for J04 |
+| J02 | 2026-10-18 | [#83](https://github.com/DuhItzAniket/Repro/pull/83) | Tier A (hidden tests and full suite in the task's image, SWE-bench grading) and tier B (UTBoost and written differential tests, 20 stable reruns); pipeline with 15% audits; blinded annotation page; kappa per source, adjudication, label freeze; guideline v1 |
