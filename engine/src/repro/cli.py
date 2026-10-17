@@ -820,3 +820,45 @@ def report(
         typer.echo(f"repro report: {where}: could not update {line}", err=True)
     if result.failed:
         raise typer.Exit(1)
+
+
+@app.command("js-run")
+def js_run(
+    ctx: typer.Context,
+    *,
+    repo: Annotated[Path, typer.Option("--repo", help="The target repository.")],
+    base: Annotated[str, typer.Option("--base", help="The base commit or ref.")],
+    head: Annotated[str, typer.Option("--head", help="The head commit or ref.")],
+    install: Annotated[
+        bool,
+        typer.Option("--install/--no-install", help="Install dependencies from the lockfile."),
+    ] = True,
+    output: Annotated[
+        Path | None, typer.Option("--json", help="Also write the summary to this file.")
+    ] = None,
+) -> None:
+    """Compare a JavaScript or TypeScript change's test outcomes, base against head (K01).
+
+    Experimental. Vitest or Jest projects with a lockfile: each side is a snapshot of its
+    commit, its dependencies installed with lifecycle scripts off, its tests run in a contained
+    process. Prints the regressions, fixes and new tests; makes no card (no tracer for
+    JavaScript yet, ADR-0017). Exit status 1 if a side could not run.
+    """
+    import tempfile  # noqa: PLC0415
+
+    from repro import jsts  # noqa: PLC0415
+
+    settings = _session(ctx).settings()
+    git, change = _resolve(repo, base, head)
+    settings.paths.run_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="js-", dir=settings.paths.run_root, ignore_cleanup_errors=True
+    ) as work:
+        found = jsts.run_change(git, change.base.sha, change.head.sha, Path(work), install=install)
+    text = json.dumps(found, indent=2)
+    if output is not None:
+        output.write_bytes((text + "\n").encode("utf-8"))
+    typer.echo(text)
+    problems = [found[side]["problem"] for side in ("base", "head")]  # type: ignore[index]
+    if any(problems):
+        raise typer.Exit(1)

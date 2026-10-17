@@ -645,7 +645,7 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 
 | ID | Phase | Notes |
 |---|---|---|
-| K01 | TypeScript/JavaScript targets | Vitest/Jest. Needs a V8-side tracer design |
+| K01 | TypeScript/JavaScript targets | Vitest/Jest. Needs a V8-side tracer design. **In progress (K01):** outcomes built (`repro js-run`); tracer and card proposed in ADR-0017 |
 | K02 | Fleet dashboard | Many PRs and agents at once (the "64 papers" view) |
 | K03 | Repro as an MCP server | Agents can request verification and receive evidence, while the verifier stays independent |
 | K04 | Symbolic deep checks | CrossHair `diffbehavior` on small pure functions in the blast radius |

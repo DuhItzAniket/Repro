@@ -1,0 +1,71 @@
+# ADR-0017: JavaScript and TypeScript targets
+
+- **Status:** proposed. Phase 1 is built (K01). Phases 2 to 4 need the owner's approval:
+  they add a Node.js runtime to the sandbox image and a language field to the event schema's
+  core.
+- **Date:** 2026-10-18
+- **Phase:** K01
+
+## Context
+Repro reproduces Python changes: snapshots, provisioning with uv, pytest with Repro's plugin,
+a `sys.monitoring` tracer, griffe and grimp for symbols and imports. Agent-written changes are
+just as common in JavaScript and TypeScript, where the test runners are Vitest and Jest. The
+roadmap's K01 asks for those targets and notes they need "a V8-side tracer design".
+
+What the platform offers, read on 2026-10-18:
+- **Vitest's JSON reporter** "generates a report of the test results in a JSON format
+  compatible with Jest's `--json` option" [V vitest.dev/guide/reporters]. Per test it gives
+  the file, `fullName`, `ancestorTitles` and `status` (seen in K01's run of Vitest 5.0.4).
+- **Node's module customization hooks.** `module.registerHooks()` takes synchronous `resolve`
+  and `load` hooks, and `load` may return different source for a module (the docs' example
+  rewrites it) [V nodejs.org/api/module.html]. Its stability is 1.2, release candidate. The
+  asynchronous `module.register()` is deprecated.
+- **V8's precise coverage**, through the inspector protocol:
+  - `Profiler.startPreciseCoverage` (with `callCount` and `detailed`) "resets execution
+    counters";
+  - `Profiler.takePreciseCoverage` "collect[s] coverage data for the current isolate, and
+    resets execution counters" [V ChromeDevTools/devtools-protocol, `js_protocol.json`].
+
+  Taking it between tests gives each test's executed functions.
+
+## Decision (proposed)
+JavaScript and TypeScript targets in four phases, each usable on its own:
+
+1. **Outcomes (built, K01).** `repro.jsts`, and `repro js-run`:
+   - a Vitest or Jest project with a lockfile;
+   - dependencies installed with lifecycle scripts off, so no code runs while the network is
+     reachable (the D03 rule);
+   - the suite run on base and on head in the process sandbox, read from the runner's JSON
+     report and compared test by test.
+
+   It makes no card; it says what is missing.
+2. **The test → function map.** A setup file (Vitest `setupFiles`, Jest `setupFilesAfterEnv`)
+   opens an in-process inspector session, starts precise coverage, and takes it after each
+   test. Functions with a count above zero are what the test ran, by file and range. This is
+   the map that selection (D06) needs, with the same rule: a changed function selects the
+   tests that ran it.
+3. **Function-level traces.** A synchronous `load` hook rewrites the modules that hold
+   changed functions, wrapping each changed function to record its arguments, result or
+   exception with an encoder ported from `repro_encode`. The same plan is used on base and on
+   head. TypeScript is handled where the runner already compiles it (Vitest through Vite,
+   Jest through its transform): the hook sees JavaScript.
+4. **The card.** The event schema gains the target's language. Symbols and changes come from
+   the TypeScript compiler API (which also reads JavaScript); the API diff reads exported
+   declarations. Isolation is L3 in a container with Node (`sandbox_image`, J04), and Node's
+   network use is cut off there. Repro's L1 guard is a Python audit hook and does not see Node.
+
+## Consequences
+- Phase 1 runs on the host's Node in the process sandbox (L2). A Node process's network
+  attempts are not detected there, and the output says so.
+- Phases 2 and 3 run Repro's code inside the target's runner, as the pytest plugin does for
+  Python. Their correctness depends on the runner's hooks, which differ between Vitest and
+  Jest. Each needs its own fixture suite (as D04 did for pytest).
+- Phase 4 changes the event schema's core (a language for the run). CLAUDE.md requires the
+  owner's approval for that.
+
+## Alternatives considered
+- **Istanbul-style instrumentation of every file** (coverage counters inserted at build). It
+  is heavier than V8's own coverage, and it changes every module rather than only those with a
+  changed function.
+- **Running `node --cpu-prof`.** A sampling profile, not exact: a test that runs a function
+  briefly can miss it. Selection needs exact membership.
