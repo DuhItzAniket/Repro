@@ -260,8 +260,13 @@ def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
     ) as box:
         run = box.run(["python", "bomb.py"], timeout_s=15)
         started = (box.read_file("started.txt") or b"").split()
-    assert run.outcome == "timeout"
     assert 1 <= len(started) <= limit
+    if RUNTIME == GVISOR:
+        # Under gVisor the limit counts the sandbox's own threads too, and reaching it ends the
+        # whole container (measured on CI's gvisor job, H03): contained, but not by a timeout.
+        assert run.outcome == "timeout" or run.returncode != 0, run
+    else:  # runc: the forks fail, and the bomb sleeps on until its timeout
+        assert run.outcome == "timeout"
 
 
 def test_the_ready_payload_reports_the_network_enforced(box: DockerSandbox) -> None:

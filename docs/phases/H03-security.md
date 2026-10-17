@@ -142,6 +142,10 @@ dependencies.
     6,159 events streamed in full, and the address bar lost the fragment.
 - **Audits.** pip-audit 2.10.1 over the 59 locked Python packages and `pnpm audit`: no known
   vulnerabilities (2026-10-17).
+- **Under gVisor** (CI's `gvisor` job, runsc release-20261012.0): the container module and the
+  end-to-end run passed but for the fork bomb, whose container gVisor ended when its tasks
+  reached the pids limit, before the timeout: the limit counts the sandbox's own threads.
+  The test now holds each runtime to what it does; T4's residual says so.
 - CI run: linked in the PR (#73).
 
 ## Deviations from spec
