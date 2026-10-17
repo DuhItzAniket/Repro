@@ -523,3 +523,21 @@ entry. If something turns out wrong, add a correcting entry.
   evidence for annotators, never a label. This is a design choice the threats to validity
   should state, since PatchDiff-style oracles are often read as labels.
 
+## 2026-10-18 · J03 · Baselines, and what they missed on one task
+- **Four baselines on the same sealed inputs, answering by rules fixed in advance**
+  ([BASELINES.md](BASELINES.md), [phase record](../phases/J03-baselines.md)):
+  - B0, CI-only, in the task's image;
+  - B1, a diff-only reviewer, and B2, a reviewer with read-only repository tools, each with
+    Repro's reviewer model and budget;
+  - B3, PR-Agent v0.48.0, pinned.
+
+  Testora is not run, for stated reasons.
+- **On one task (SWE-rebench `pypa__twine-1309`), no baseline that answered flagged a seeded
+  wrong patch** whose hidden test fails. CI-only passed it, since no existing test covers the
+  case. The diff-only reviewer accepted it and called the defect harmless. One task, never
+  reported: it shows the class of patch the study is about, not a result.
+- **For the paper.** An agentic baseline's fairness depends on details that are easy to miss.
+  Tool names collided with the model's built-in browser tool, and the provider's validation
+  refused the calls. The free tier's per-request cap forced reading in small pieces. Latency
+  on tool-enabled requests dominated. All of these are stated, with the limits chosen.
+

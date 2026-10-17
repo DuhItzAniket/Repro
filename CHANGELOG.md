@@ -21,6 +21,11 @@ All notable changes to this project are documented here. The format follows
 - A blinded annotation page per annotator (`python -m repro_bench.annotate`), Cohen's κ per
   source, adjudication and a frozen label file (`python -m repro_bench.labels`), and the
   annotation guideline (`docs/paper/ANNOTATION_GUIDELINE.md`). [J02]
+- The evaluation's baselines (`python -m repro_bench.baselines`), on J01's sealed inputs and by
+  rules fixed before any study data (`docs/paper/BASELINES.md`): B0 runs the project's suite on
+  base and head in the task's image; B1 reviews the claim and diff with Repro's reviewer model
+  and budget; B2 adds read-only tools over the repository; B3 is PR-Agent v0.48.0, pinned,
+  with the same model. Testora is not run, for stated reasons. [J03]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
