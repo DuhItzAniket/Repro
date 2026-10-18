@@ -126,7 +126,7 @@ def guarded(tmp_path: Path, writer: StoreWriter) -> Iterator[TestClient]:
 
 
 def test_with_a_token_the_engines_data_needs_it(guarded: TestClient, run_id: str) -> None:
-    for path in ("/runs", f"/runs/{run_id}", f"/runs/{run_id}/card", "/replay.jsonl"):
+    for path in ("/runs", "/fleet", f"/runs/{run_id}", f"/runs/{run_id}/card", "/replay.jsonl"):
         refused = guarded.get(path)
         assert refused.status_code == 401, path
         assert refused.headers["www-authenticate"] == "Bearer"
