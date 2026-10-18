@@ -648,7 +648,7 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 | K01 | TypeScript/JavaScript targets | Vitest/Jest. Needs a V8-side tracer design. **Done (K01, [#88](https://github.com/DuhItzAniket/Repro/pull/88)):** outcomes built (`repro js-run`); tracer and card proposed in ADR-0017 |
 | K02 | Fleet dashboard | Many PRs and agents at once (the "64 papers" view). **Done (K02, [#89](https://github.com/DuhItzAniket/Repro/pull/89)):** `/fleet.html` |
 | K03 | Repro as an MCP server | Agents can request verification and receive evidence, while the verifier stays independent. **Done (K03, [#90](https://github.com/DuhItzAniket/Repro/pull/90)):** `repro mcp` |
-| K04 | Symbolic deep checks | CrossHair `diffbehavior` on small pure functions in the blast radius |
+| K04 | Symbolic deep checks | CrossHair `diffbehavior` on small pure functions in the blast radius. **Done (K04, [#91](https://github.com/DuhItzAniket/Repro/pull/91)):** `repro symbolic` |
 | K05 | Remote sandbox backends | Self-hosted E2B / Firecracker for teams |
 
 ---
@@ -761,3 +761,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K01 | 2026-10-18 | [#88](https://github.com/DuhItzAniket/Repro/pull/88) | JavaScript/TypeScript outcomes (repro js-run: Vitest/Jest, lockfile installs with scripts off, process sandbox); ADR-0017 proposed for the V8 map, tracer and card |
 | K02 | 2026-10-18 | [#89](https://github.com/DuhItzAniket/Repro/pull/89) | Fleet view (/fleet.html, GET /fleet): live tiles per run, motion only for events, opens the cockpit; checked in a browser |
 | K03 | 2026-10-18 | [#90](https://github.com/DuhItzAniket/Repro/pull/90) | repro mcp: MCP server on stdio (official SDK); start a verification by commits, read status, card and evidence; run --no-serve prints its run ID at start |
+| K04 | 2026-10-18 | [#91](https://github.com/DuhItzAniket/Repro/pull/91) | repro symbolic: CrossHair diffbehavior on small pure annotated functions a change edits, base body vs head's in head's environment; card evidence needs a schema change |
