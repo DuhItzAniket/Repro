@@ -47,6 +47,10 @@ All notable changes to this project are documented here. The format follows
 - The fleet view (`/fleet.html`, and `GET /fleet` in the API): every run of the engine's data
   directory as a tile, live. A tile shows running, then the card's status, and flashes only
   when its run writes events. A tile opens its run in the cockpit. [K02]
+- `repro mcp`: Repro as an MCP server on stdio, for coding agents. The agent names a repository
+  and two commits; Repro runs them in its sandbox, and the agent reads the status, the card
+  and the evidence. Every other tool only reads. See `docs/guide/mcp.md`. [K03]
+- `repro run --no-serve` prints `repro: <run id> started` when the run begins. [K03]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported

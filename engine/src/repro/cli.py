@@ -589,6 +589,8 @@ def run(
     )
     try:
         if sock is None:
+            # Its ID now, for a caller that follows the run while it goes (K03's MCP server).
+            typer.echo(f"repro: {run_id} started", err=True)
             if job_run.run_to_end().outcome != "completed":
                 raise typer.Exit(1)
             return
@@ -862,3 +864,18 @@ def js_run(
     problems = [found[side]["problem"] for side in ("base", "head")]  # type: ignore[index]
     if any(problems):
         raise typer.Exit(1)
+
+
+@app.command()
+def mcp(ctx: typer.Context) -> None:
+    """Serve Repro to agents as an MCP server, on stdio (K03).
+
+    An agent's host starts it (for example `repro mcp` as a stdio server in its MCP
+    configuration). The agent names a repository and two commits; Repro runs them in its own
+    sandbox and the agent reads the card and the evidence. The agent can start runs and read
+    them, nothing else: it cannot give Repro a result.
+    """
+    settings = _session(ctx).settings()
+    from repro.integrations.mcp_server import Verifier, server  # noqa: PLC0415
+
+    server(Verifier(settings)).run("stdio")

@@ -12,6 +12,7 @@ dependencies = [
     "grimp>=3.17,<3.18",  # the grimp worker uses its package-finder setting, not public API
     "hypothesis>=6.169.0",
     "jsonschema>=4.26.0",
+    "mcp>=2.3.0,<3",  # `repro mcp` (K03); already required by claude-agent-sdk
     "packaging>=26.3",
     "pydantic>=2.14.1",
     "pyyaml>=6.0.3",
