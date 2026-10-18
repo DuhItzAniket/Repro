@@ -101,6 +101,10 @@ None.
   decides, before any S2 data exists, between S2 tasks whose environment runs on Python ≥ 3.12
   and running older ones without traces, and records it in the protocol.
 - **Mirrors are kept** under `--mirrors` and never pruned.
+- **Images, fixed later** ([#95](https://github.com/DuhItzAniket/Repro/pull/95)): sealing pulled
+  every image to pin it, nothing removed one, and `swe run` used one image for every task.
+  Images are now pinned by their registry, each stage runs in the manifest's image, and
+  `--image-budget-gb` keeps them within a disk budget (`repro_bench.images`).
 
 ## Dependencies added
 None.

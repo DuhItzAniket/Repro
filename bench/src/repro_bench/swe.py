@@ -25,11 +25,15 @@ the base commit and written as a tree, so nothing of the target is checked out o
 
 **The manifest** pins what an evaluation ran on: each instance's source (dataset, split and
 revision), base commit, environment image by digest, and the SHA-256 of the patch under test.
+An image that is not on this machine is pinned by its registry, so sealing pulls nothing.
+``run --manifest`` runs each task in the image pinned for it; with ``--image-budget-gb``, each
+image is pulled when its task comes and the least recently used ones go (``repro_bench.images``).
 
     uv run python -m repro_bench.swe seal --instances <jsonl> --predictions <jsonl>
-        --dataset <name> --split <split> --revision <rev> --out <dir> [--pin-images]
+        --dataset <name> --split <split> --revision <rev> --out <dir> [--pin-images [--pull]]
     uv run python -m repro_bench.swe run --sealed <dir>/sealed.jsonl --mirrors <dir>
-        --out <dir> [--sandbox process|docker] [--limit N] [-- <repro run options>]
+        --out <dir> [--sandbox process|docker] [--limit N]
+        [--manifest <dir>/manifest.jsonl [--image-budget-gb N]] [-- <repro run options>]
 """
 
 import argparse
@@ -48,6 +52,7 @@ from typing import Any, Final
 
 from repro import __version__
 from repro.gitops import Git, GitError
+from repro_bench import images as task_images
 
 #: Ground truth: what the dataset knows about the right answer, never a system's input.
 WITHHELD: Final = ("patch", "test_patch", "FAIL_TO_PASS", "PASS_TO_PASS", "hints_text")
@@ -464,10 +469,40 @@ def repository(image: str) -> str:
     return name.removeprefix("library/")
 
 
-def pinned(image: str, *, pull: bool = False, docker: str = "docker") -> str:
+def registry_digest(image: str, *, docker: str = "docker") -> str:
+    """``image`` as ``repository@sha256:...``, by the digest its registry names now, without
+    pulling it. It is the digest Docker records when it pulls the same reference (checked on
+    two SWE-rebench images: 3 s against a 4.5 GB pull)."""
+    done = subprocess.run(  # noqa: S603 - docker, with a name from the dataset
+        [docker, "buildx", "imagetools", "inspect", "--format", "{{json .Manifest}}", "--", image],
+        capture_output=True,
+        check=False,
+        timeout=120,
+    )
+    if done.returncode != 0:
+        said = done.stderr.decode("utf-8", "replace").strip().splitlines()[-1:]
+        raise ContractError(f"the registry has no {image}: {said[0][:200] if said else ''}")
+    try:
+        digest = str(json.loads(done.stdout)["digest"])
+    except (ValueError, KeyError, TypeError):
+        raise ContractError(f"the registry's answer for {image} names no digest") from None
+    if not _DIGEST.match(digest):
+        raise ContractError(f"the registry's digest for {image} is not a SHA-256: {digest!r}")
+    given = image.rpartition("@")[2]
+    if _DIGEST.match(given) and given != digest:
+        raise ContractError(f"{image}: the registry has another digest")
+    return f"{repository(image)}@{digest}"
+
+
+def pinned(
+    image: str, *, pull: bool = False, registry: bool = False, docker: str = "docker"
+) -> str:
     """``image`` as ``repository@sha256:...``, by the registry digest Docker recorded when it
     pulled it: a tag can move, a digest names one image. With ``pull`` it is pulled first; a
-    reference already pinned is checked against the image on this machine."""
+    reference already pinned is checked against the image on this machine. With ``registry``,
+    an image that is not on this machine is pinned by its registry, without pulling it."""
+    if registry and not pull and not _present(image, docker):
+        return registry_digest(image, docker=docker)
     if pull:
         done = subprocess.run(  # noqa: S603 - docker, with a name from the dataset
             [docker, "pull", "--quiet", "--", image], capture_output=True, check=False, timeout=3600
@@ -495,6 +530,27 @@ def pinned(image: str, *, pull: bool = False, docker: str = "docker") -> str:
     return mine[0]
 
 
+def _present(image: str, docker: str) -> bool:
+    done = subprocess.run(  # noqa: S603 - docker, with a name from the dataset
+        [docker, "image", "inspect", "--format", "{{.Id}}", "--", image],
+        capture_output=True,
+        check=False,
+        timeout=60,
+    )
+    return done.returncode == 0
+
+
+def manifest_images(path: Path) -> dict[str, str]:
+    """Each instance's environment image, pinned, as the manifest recorded it at sealing."""
+    found: dict[str, str] = {}
+    for made in read_manifest(path):
+        if made.image is None:
+            continue
+        if found.setdefault(made.instance_id, made.image) != made.image:
+            raise ContractError(f"{made.instance_id}: the manifest names two images")
+    return found
+
+
 # -- the command ----------------------------------------------------------------------------------
 
 
@@ -511,7 +567,9 @@ def _seal_command(args: argparse.Namespace) -> int:
             raise ContractError(f"{prediction.instance_id} is not in {args.instances.name}")
         sealed = seal(instance, prediction)
         image = (
-            pinned(instance.image, pull=args.pull) if args.pin_images and instance.image else None
+            pinned(instance.image, pull=args.pull, registry=True)
+            if args.pin_images and instance.image
+            else None
         )
         entries.append(
             entry(
@@ -532,17 +590,48 @@ def _seal_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_in_image(
+    task: Task,
+    args: argparse.Namespace,
+    env: Mapping[str, str],
+    extra: Sequence[str],
+    *,
+    image: str | None,
+    cache: task_images.ImageCache | None,
+) -> Outcome:
+    """One task, in its own image when the manifest pins one (made ready within the budget)."""
+    if image is not None:
+        try:
+            if cache is not None:
+                cache.ready(image)
+        except task_images.ImageError as exc:
+            sealed = task.input
+            return Outcome(
+                task.instance_id, task.model, task.patch_sha256, sealed.digest, None, None,
+                f"no run: {exc}", 0.0,
+            )  # fmt: skip
+        env = {**env, "REPRO_SANDBOX_IMAGE": image}
+    return run_task(task, args.mirrors, args.out / "cards", env=env, extra=extra)
+
+
 def _run_command(args: argparse.Namespace, extra: Sequence[str]) -> int:
-    tasks = [Task.from_row(row) for row in read_jsonl(args.sealed)]
+    tasks = [Task.from_row(row) for row in read_jsonl(args.sealed)][: args.limit]
     env = dict(os.environ)
     if args.data:
         env["REPRO_DATA_DIR"] = str(args.data)
     if args.sandbox:
         env["REPRO_SANDBOX"] = args.sandbox
+    images = manifest_images(args.manifest) if args.manifest else {}
+    unpinned = sorted({t.instance_id for t in tasks} - images.keys()) if args.manifest else []
+    if unpinned:
+        raise ContractError(f"the manifest pins no image for {', '.join(unpinned[:3])}")
+    cache = task_images.from_arguments(args)
     args.out.mkdir(parents=True, exist_ok=True)
     with (args.out / "results.jsonl").open("a", encoding="utf-8") as results:
-        for task in tasks[: args.limit]:
-            outcome = run_task(task, args.mirrors, args.out / "cards", env=env, extra=extra)
+        for task in tasks:
+            outcome = _run_in_image(
+                task, args, env, extra, image=images.get(task.instance_id), cache=cache
+            )
             results.write(json.dumps(asdict(outcome), sort_keys=True) + "\n")
             results.flush()
             sys.stdout.write(f"{task.instance_id} ({task.model}): {outcome.status}\n")
@@ -564,7 +653,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     sealing.add_argument("--revision", required=True, help="the dataset's commit")
     sealing.add_argument("--out", type=Path, required=True)
     sealing.add_argument("--pin-images", action="store_true", help="record images by digest")
-    sealing.add_argument("--pull", action="store_true", help="pull each image to pin it")
+    sealing.add_argument(
+        "--pull",
+        action="store_true",
+        help="pull each image to pin it (without it, an image not on this machine is pinned by "
+        "its registry, and not pulled)",
+    )
     running = commands.add_parser("run", help="repro run on sealed inputs")
     running.add_argument("--sealed", type=Path, required=True)
     running.add_argument("--mirrors", type=Path, required=True, help="bare mirrors, kept")
@@ -572,10 +666,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     running.add_argument("--data", type=Path, help="Repro's data directory for these runs")
     running.add_argument("--sandbox", choices=("process", "docker"))
     running.add_argument("--limit", type=int)
+    running.add_argument(
+        "--manifest", type=Path, help="run each task in the image the manifest pinned for it"
+    )
+    task_images.add_arguments(running)
     args = parser.parse_args(given)
     try:
         return _seal_command(args) if args.command == "seal" else _run_command(args, extra)
-    except ContractError as exc:
+    except (ContractError, task_images.ImageError) as exc:
         sys.stderr.write(f"repro_bench.swe: {exc}\n")
         return 1
 
