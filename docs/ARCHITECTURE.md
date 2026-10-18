@@ -514,6 +514,10 @@ Rules:
   a new session with resource limits set by a launcher before `exec`; a wall-clock timeout that
   kills the tree, and processes left behind killed and reported. `sandbox.ready` states the
   level reached and `network: detected-only`.
+- **Another machine's engine (K05, `docker_context`).** Every container command goes to the
+  Docker context named. Since nothing is bind-mounted from the host (H06), a team's engine
+  over SSH runs the same sandbox. Isolation is that engine's: L3, or L4 with gVisor there.
+  Hardware isolation (microVMs) is ADR-0018, proposed.
 - **An image's own environment (J04, `sandbox_image`).** The containers run in that image, at
   L3 as above, and nothing is installed: the tests run with the image's interpreter (its named
   conda environment's, as SWE-bench-style task images have, else `python3`), with that

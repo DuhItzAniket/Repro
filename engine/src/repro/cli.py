@@ -115,6 +115,9 @@ class Session:
                 typer.echo(f"repro: configuration error: {exc}", err=True)
                 raise typer.Exit(2) from None
             configure_logging(self._settings.log_level, self._settings.log_format)
+            if self._settings.docker_context is not None:
+                # Every docker command Repro runs, in this process and the ones it starts (K05).
+                os.environ["DOCKER_CONTEXT"] = self._settings.docker_context
         return self._settings
 
 

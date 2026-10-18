@@ -78,6 +78,9 @@ class Settings(BaseModel):
     memory_limit_mb: int = Field(default=4096, gt=0)
     #: The Docker runtime for the target's containers: ``runsc`` (gVisor) makes them L4 (H03).
     docker_runtime: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+    #: The Docker context every container command uses (K05): a team's own engine elsewhere,
+    #: such as ``ssh://builder@host`` behind a context. Unset: Docker's own choice.
+    docker_context: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}$")
     #: An image whose own Python environment the Docker sandbox runs the tests in, as it is, in
     #: place of Repro's (J04): a benchmark task's image, or a team's CI image. Pinned by digest.
     sandbox_image: str | None = Field(
