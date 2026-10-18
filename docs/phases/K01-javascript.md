@@ -54,13 +54,23 @@ image and the event schema's core.
 ## What shipped
 - `docs/adr/0017-javascript-targets.md` (proposed).
 - `repro.jsts`, `repro js-run`.
-- Tests: `test_jsts.py` (8, one of them a real Vitest run).
+- Tests: `test_jsts.py` (9: one a real Vitest run, one Node's WebAssembly within the
+  sandbox's limits).
 
 ## Evidence
 - **A real run**: a tiny repository whose head changes `add(a, b)` from `a + b` to `a - b`.
   Each side was snapshotted and run with Vitest 5.0.4 in the process sandbox. Base had two
   tests passing. The comparison found `test/m.test.js::m adds` regressed and one test the
   same: `add(0, 0)` is 0 either way.
+- **Linux, found by CI**: Vitest wrote no report on one side or the other on Ubuntu. Node
+  died with `RangeError: WebAssembly.instantiate(): Out of memory` under the POSIX sandbox's
+  4 GiB address-space limit (`RLIMIT_AS`). V8's WebAssembly trap handler reserves a 10 GB
+  address-space cage per memory [nodejs.org, CLI docs, `--disable-wasm-trap-handler`,
+  checked 2026-10-18]. Measured in `node:22-bookworm` (Node 22.23.3) through Repro's own
+  launcher, Vitest 5.0.4 needs 48 GiB with the trap handler on, and 8 GiB with it off (and
+  aborts at 4 GiB either way). The fix: `NODE_OPTIONS=--disable-wasm-trap-handler
+  --max-old-space-size=4096` and, on POSIX only, a 16 GiB address-space limit for Node
+  sides. Windows limits committed memory, which a reservation does not use, so it keeps 4 GiB.
 - CI run: linked in the PR (#88).
 
 ## Deviations from spec

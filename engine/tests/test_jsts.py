@@ -9,6 +9,7 @@ import pytest
 from gitrepo import Repo
 from repro import jsts
 from repro.gitops import Git
+from repro.sandbox import Limits, ProcessSandbox
 
 ROOT = Path(__file__).resolve().parents[2]
 #: The monorepo's own Vitest (pnpm install), for the real run: no network needed.
@@ -130,8 +131,25 @@ def test_a_real_change_is_run_on_both_sides(tmp_path: Path) -> None:
         Git(repo.path), base, head, tmp_path / "work", install=False, entry=str(VITEST)
     )
     assert found["base"] == {"commit": base, "tests": 2, "problem": ""}
+    assert found["head"] == {"commit": head, "tests": 2, "problem": ""}
     comparison = found["comparison"]
     assert isinstance(comparison, dict)
     assert comparison["regressions"] == ["test/m.test.js::m adds"]
     assert comparison["same"] == 1  # 0 - 0 is still 0
     assert "no JavaScript tracer yet" in str(found["missing"])
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
+def test_node_runs_webassembly_within_the_sandbox_limits(tmp_path: Path) -> None:
+    # With V8's trap handler on, each WebAssembly memory reserves a 10 GB cage: four do not fit
+    # the POSIX sandbox's address-space limit. That stopped Vitest on Linux (undici is Wasm).
+    node = shutil.which("node")
+    assert node is not None
+    box = ProcessSandbox(tmp_path / "box", Limits(timeout_s=120, memory_bytes=jsts.MEMORY_BYTES))
+    script = "const m = [1, 2, 3, 4].map(() => new WebAssembly.Memory({ initial: 1 }));"
+    run = box.run(
+        [node, "-e", script + " console.log(m.length);"],
+        cwd=tmp_path,
+        env={"NODE_OPTIONS": jsts.NODE_OPTIONS},
+    )
+    assert run.stdout.strip() == b"4", run.stderr.decode("utf-8", "replace")

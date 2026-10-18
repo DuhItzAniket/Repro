@@ -18,6 +18,8 @@ card, is ADR-0017, proposed and awaiting the owner's approval.
   Jest's ``--json`` option" [vitest.dev, "Reporters", checked 2026-10-18], so one reader serves
   both. Repro's network guard is a Python audit hook, so it does not see a Node process: the
   run is ``network: none-detected`` only at L3, in a container (``sandbox_image`` with Node).
+  Node runs with WebAssembly's trap handler off and its heap capped (``NODE_OPTIONS``): the
+  trap handler's address-space reservations do not fit the POSIX sandbox's memory limit.
 - **A test's identity** is its file, relative to the project, and its full name:
   ``test/m.test.js::m adds``, the counterpart of a pytest node ID.
 
@@ -27,13 +29,14 @@ card, is ADR-0017, proposed and awaiting the owner's approval.
 import json
 import shutil
 import subprocess
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Final, Literal
 
 from repro.gitops import Git, snapshot
-from repro.sandbox import Limits, ProcessSandbox
+from repro.sandbox import GIB, Limits, ProcessSandbox
 
 Runner = Literal["vitest", "jest"]
 Manager = Literal["npm", "pnpm", "yarn"]
@@ -49,6 +52,19 @@ ENTRY: Final[Mapping[Runner, str]] = {
 }
 REPORT: Final = "repro-report.json"
 INSTALL_TIMEOUT_S: Final = 900.0
+#: Node's options in the sandbox. V8 bounds-checks WebAssembly memory with a trap handler that
+#: "requires allocating a big virtual memory cage (currently 10GB)" [nodejs.org, CLI docs,
+#: ``--disable-wasm-trap-handler``, checked 2026-10-18], and the POSIX sandbox caps address
+#: space. Measured on Linux with Node 22.23 and Vitest 5.0.4: with the trap handler, no report
+#: below 48 GiB; without it, a report from 8 GiB. So it is off, and the heap has its own cap.
+NODE_OPTIONS: Final = "--disable-wasm-trap-handler --max-old-space-size=4096"
+if sys.platform == "win32":
+    #: Windows limits committed memory, which a reservation does not use.
+    MEMORY_BYTES: Final = 4 * GIB
+else:
+    #: POSIX limits address space, which V8 reserves far beyond what it commits: Vitest aborted
+    #: at 4 GiB and ran from 8 GiB in the measurement above.
+    MEMORY_BYTES: Final = 16 * GIB
 #: The report's statuses, as Repro's outcomes. ``pending`` and ``todo`` are Jest's skips.
 STATUS: Final = {
     "passed": "passed",
@@ -198,15 +214,22 @@ def run_side(
             if done.returncode != 0:
                 said = done.stderr.decode("utf-8", "replace").strip().splitlines()[-1:]
                 raise JsError(f"the install failed: {said[0][:300] if said else done.returncode}")
-        box = ProcessSandbox(work / "box", limits or Limits(timeout_s=900))
+        box = ProcessSandbox(
+            work / "box", limits or Limits(timeout_s=900, memory_bytes=MEMORY_BYTES)
+        )
         report = work / "box" / REPORT
         run = box.run(
-            runner_argv(project, str(report), entry=entry), cwd=tree, writable=(work / "box",)
+            runner_argv(project, str(report), entry=entry),
+            cwd=tree,
+            env={"NODE_OPTIONS": NODE_OPTIONS},
+            writable=(work / "box",),
         )
         if not report.is_file():
-            said = run.stderr.decode("utf-8", "replace").strip().splitlines()[-1:]
+            # Node ends a crash with its version: the error is the line that names one.
+            lines = run.stderr.decode("utf-8", "replace").strip().splitlines()
+            error = ([line for line in lines if "Error" in line] or lines or [""])[-1].strip()
             raise JsError(
-                f"the tests wrote no report ({run.outcome}): {said[0][:300] if said else ''}"
+                f"the tests wrote no report ({run.outcome}, exit {run.returncode}): {error[:300]}"
             )
         side.outcomes = read_report(report.read_bytes(), tree)
     except JsError as exc:
