@@ -574,3 +574,16 @@ entry. If something turns out wrong, add a correcting entry.
   that resends its conversation cannot run there at all. The study's patches come from what
   the budget allows, and that is stated with them.
 
+## 2026-10-18 · fix · Task images and disk
+- **Measured:** two SWE-rebench task images are 4.53 GB (`pypa__twine-1309`) and 4.85 GB
+  (`delgan__loguru-1451`), as `docker images` reports them. S2 has 351 candidates: kept all at
+  once, its images would need far more than this machine's free 130 GB.
+- **Three faults in the harness, fixed** (`repro_bench.images`, `bench/README.md`):
+  - sealing pulled every image just to read its digest;
+  - nothing removed an image once pulled;
+  - `swe run` ran every task in one image, and B0 in the dataset's tag, not the pinned digest.
+- **Pinning without pulling:** the registry's digest (`docker buildx imagetools inspect`) equals
+  the digest Docker records on a pull, for both images above, in about 3 s.
+- **For the paper.** Disk and download time are part of the study's cost, like tokens. The
+  order of work matters: every stage on one task before the next pulls each image once.
+

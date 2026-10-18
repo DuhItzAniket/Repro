@@ -70,6 +70,12 @@ All notable changes to this project are documented here. The format follows
 - A selection of tests too long for a command line (889 node IDs on Windows,
   `WinError 206`) no longer fails every test step: past 8,000 characters the IDs go in a file
   Repro's pytest plugin reads, in the order given. [J04]
+- The evaluation's task images no longer need all of S2's disk at once. Sealing pins an image
+  that is not on the machine by its registry, without pulling it. Ground truth, B0 and
+  `swe run` take `--manifest` and run each task in the image pinned for it (`swe run` used one
+  image for every task, and B0 the dataset's tag). With `--image-budget-gb`, images are pulled
+  as their tasks come and the least recently used ones the harness pulled are removed; an image
+  that was on the machine before is never removed (`repro_bench.images`). [J01, J04]
 
 ## [1.1.0] - 2026-10-18
 

@@ -8,7 +8,9 @@ UNVERIFIABLE by a rule fixed here before any S2 data exists (``docs/paper/BASELI
   in the task's image. FLAGGED when a test that passes on base fails on head, or a test the
   patch adds fails; VERIFIED otherwise; UNVERIFIABLE when either side gives no valid result. The
   command is the task's test command with every file argument removed, so the hidden tests'
-  file names never reach it (J01's contract).
+  file names never reach it (J01's contract). With ``--manifest`` it runs in the image the
+  manifest pinned at sealing; with ``--image-budget-gb``, images are pulled as tasks come and
+  trimmed to the budget (``repro_bench.images``).
 - **B1, diff-only LLM reviewer.** The claim and the diff, one call, the same model, budget and
   effort as Repro's reviewer agent (``REVIEW_BUDGET``, ``high``). ``accept`` is VERIFIED,
   ``reject`` FLAGGED, ``cannot_tell`` UNVERIFIABLE; a call that fails is UNVERIFIABLE and
@@ -39,7 +41,7 @@ import tarfile
 import time
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final, Literal
 
@@ -52,6 +54,7 @@ from repro.agents.setup import GROQ_MODEL
 from repro.agents.untrusted import block
 from repro.gitops import Git, GitError
 from repro.gitops.snapshot import read_blobs, regular_files
+from repro_bench import images as task_images
 from repro_bench import swe, truth
 from repro_bench.truth import ERROR, FAILED, PASSED, XFAIL, ContainerRun, Environment
 
@@ -518,10 +521,13 @@ def answer_for(
     task: swe.Task,
     args: argparse.Namespace,
     environments: Mapping[str, tuple[Environment, str]],
+    cache: task_images.ImageCache | None = None,
 ) -> Answer:
     sealed = task.input
     if system == "b0":
         env, command = environments[task.instance_id]
+        if cache is not None:
+            cache.ready(env.image)
         return ci_only(env, command, sealed.diff)
     owner, _, name = sealed.repo.partition("/")
     git = swe.fetch_base(args.mirrors / owner / f"{name}.git", sealed.repo, sealed.base_commit)
@@ -536,6 +542,27 @@ def answer_for(
     return pr_agent(git, sealed, args.model)
 
 
+def pin_environments(
+    environments: Mapping[str, tuple[Environment, str]],
+    manifest: Path | None,
+    cache: task_images.ImageCache | None,
+) -> dict[str, tuple[Environment, str]]:
+    """B0's environments in the images the manifest pinned; without a manifest, as the dataset
+    names them, pinned by their registry when a budget lets images be pulled."""
+    pinned = swe.manifest_images(manifest) if manifest else None
+    found = {}
+    for instance_id, (given, command) in environments.items():
+        image = given.image
+        if pinned is not None:
+            if instance_id not in pinned:
+                raise swe.ContractError(f"the manifest pins no image for {instance_id}")
+            image = pinned[instance_id]
+        elif cache is not None:
+            image = swe.pinned(image, registry=True)
+        found[instance_id] = (replace(given, image=image), command)
+    return found
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--system", choices=("b0", "b1", "b2", "b3"), required=True)
@@ -547,6 +574,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--cassettes", type=Path, default=Path("bench/cassettes"))
     parser.add_argument("--model", default=GROQ_MODEL)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--manifest", type=Path, help="B0: the images pinned at sealing (J01)")
+    task_images.add_arguments(parser)
     args = parser.parse_args(argv)
     try:
         tasks = [swe.Task.from_row(row) for row in swe.read_jsonl(args.sealed)][: args.limit]
@@ -556,7 +585,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 parser.error("B0 needs --instances for the tasks' images and test commands")
             for record in swe.read_jsonl(args.instances):
                 environments[str(record["instance_id"])] = environment(record)
-    except (swe.ContractError, truth.OracleError) as exc:
+            cache = task_images.from_arguments(args)
+            environments = pin_environments(environments, args.manifest, cache)
+        else:
+            cache = None
+    except (swe.ContractError, truth.OracleError, task_images.ImageError) as exc:
         sys.stderr.write(f"repro_bench.baselines: {exc}\n")
         return 1
     args.out.mkdir(parents=True, exist_ok=True)
@@ -564,10 +597,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         for task in tasks:
             started = time.monotonic()
             try:
-                answer = answer_for(args.system, task, args, environments)
+                answer = answer_for(args.system, task, args, environments, cache)
             except (
                 swe.ContractError,
                 truth.OracleError,
+                task_images.ImageError,
                 GitError,
                 subprocess.CalledProcessError,
             ) as exc:

@@ -14,8 +14,13 @@ is given (``difftest``). The outputs, in ``--out``:
 Everything a patch is judged by is written down with it: the image by digest, the commands,
 the tests that diverged, the model's tokens.
 
+With ``--manifest``, each task runs in the image the manifest pinned at sealing; with
+``--image-budget-gb``, images are pulled as tasks come and trimmed to the budget
+(``repro_bench.images``).
+
     uv run python -m repro_bench.groundtruth --instances <jsonl> --predictions <jsonl>
         --out <dir> --seed <s> [--utboost <jsonl>] [--generate record|replay --cassettes <dir>]
+        [--manifest <jsonl>] [--image-budget-gb N]
 """
 
 import argparse
@@ -32,8 +37,9 @@ from repro.agents import CassetteBackend, LLMBackend
 from repro.agents.openai_compat import Endpoint, OpenAICompatibleBackend
 from repro.agents.setup import GROQ_MODEL
 from repro_bench import difftest, truth
+from repro_bench import images as task_images
 from repro_bench.labels import audit_sample, item_key
-from repro_bench.swe import ContractError, Prediction, pinned, read_jsonl
+from repro_bench.swe import ContractError, Prediction, manifest_images, pinned, read_jsonl
 from repro_bench.truth import Divergence, Oracle, OracleError, Verdict
 
 AUTOMATIC = ("INCORRECT_auto", "CORRECT_auto")
@@ -135,6 +141,23 @@ def _backend(mode: str | None, cassettes: Path | None) -> LLMBackend | None:
     return CassetteBackend(cassettes, "record", OpenAICompatibleBackend(Endpoint.groq()))
 
 
+def task_image(
+    instance_id: str,
+    image: str,
+    manifest: Mapping[str, str] | None,
+    cache: task_images.ImageCache | None,
+) -> str:
+    """The task's image, pinned: as the manifest recorded it at sealing, or else by digest now
+    (from the registry when a budget lets images be pulled); made ready within the budget."""
+    if manifest is not None:
+        if instance_id not in manifest:
+            raise ContractError(f"the manifest pins no image for {instance_id}")
+        image = manifest[instance_id]
+    else:
+        image = pinned(image, registry=cache is not None)
+    return cache.ready(image) if cache is not None else image
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--instances", type=Path, required=True, help="SWE-rebench-format JSONL")
@@ -146,6 +169,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--cassettes", type=Path)
     parser.add_argument("--model", default=GROQ_MODEL)
     parser.add_argument("--reruns", type=int, default=truth.RERUNS)
+    parser.add_argument("--manifest", type=Path, help="the images pinned at sealing (J01)")
+    task_images.add_arguments(parser)
     args = parser.parse_args(argv)
     try:
         tasks = {str(r["instance_id"]): r for r in read_jsonl(args.instances)}
@@ -159,11 +184,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise ContractError(f"{made.instance_id} is not in {args.instances.name}")
             by_task[made.instance_id].append(made)
         backend = _backend(args.generate, args.cassettes)
+        pinned_images = manifest_images(args.manifest) if args.manifest else None
+        cache = task_images.from_arguments(args)
         rows, patches = [], {}
         for instance_id, predictions in sorted(by_task.items()):
             task = tasks[instance_id]
             oracle = Oracle.from_record(task)
-            oracle = Oracle(**{**asdict(oracle), "image": pinned(oracle.image)})
+            image = task_image(instance_id, oracle.image, pinned_images, cache)
+            oracle = Oracle(**{**asdict(oracle), "image": image})
             gold_full = None
             for prediction in predictions:
                 row, gold_full = judge(
@@ -176,7 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 verdict = row["auto_label"] or "to people"
                 sys.stdout.write(f"{row['item']} ({prediction.model}): {verdict}\n")
                 sys.stdout.flush()
-    except (ContractError, OracleError) as exc:
+    except (ContractError, OracleError, task_images.ImageError) as exc:
         sys.stderr.write(f"repro_bench.groundtruth: {exc}\n")
         return 1
     args.out.mkdir(parents=True, exist_ok=True)
