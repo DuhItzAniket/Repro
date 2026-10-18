@@ -1,8 +1,10 @@
 # Evaluation protocol (draft pre-registration)
 
-> Status: **draft** (A01). It is refined in J01–J04 and **frozen and tagged before the S2 main
-> study (J06)**. After the freeze, every change is recorded as a dated amendment at the end of
-> this file. Rationale and sources: ADR-0010 and `../research/06-evaluation.md`.
+> Status: **draft** (A01), refined in J01–J05. Prepared for the freeze in J06
+> ([`PREREGISTRATION.md`](PREREGISTRATION.md)). It is **frozen by the tag `prereg-v1`**, made
+> once the labels are frozen and before any system runs on S2. After the freeze, every change is
+> recorded as a dated amendment at the end of this file. Rationale and sources: ADR-0010 and
+> `../research/06-evaluation.md`.
 
 ## 1. Unit of analysis and labels
 One (task instance, agent patch) pair.

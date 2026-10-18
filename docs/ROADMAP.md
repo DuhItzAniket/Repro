@@ -618,7 +618,7 @@ artifact is archived with a DOI. The paper is submitted.
 | J03 | Baselines | L | J01 | done |
 | J04 | S0 dev set & S1 pilot | M | J02, J03 | done |
 | J05 | S2 patch generation on fresh tasks | M | J04 | done |
-| J06 | Annotation, κ & label freeze; pre-registration | L | J05 | planned |
+| J06 | Annotation, κ & label freeze; pre-registration | L | J05 | paused: prepared; waiting for the owner (budget, then labels) |
 | J07 | S2 main study | M | J06 | planned |
 | J08 | Ablations, S3 in-the-wild & S4 synthetic | M | J07 | planned |
 | J09 | Artifact package | M | J08 | planned |
@@ -757,3 +757,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | J03 | 2026-10-18 | [#84](https://github.com/DuhItzAniket/Repro/pull/84) | B0 CI-only in the task's image, B1 diff-only and B2 agentic static reviewers (Repro's model and budget), B3 PR-Agent v0.48.0 pinned; rules pre-registered in BASELINES.md; Testora not reproducible, reasons recorded |
 | J04 | 2026-10-18 | [#85](https://github.com/DuhItzAniket/Repro/pull/85) | S0 shake-out on two fresh tasks in their own images (sandbox_image; three faults fixed); exact McNemar power (168 vs 155); memorisation probe and seeding tools; S2 inclusion decided (Python >= 3.12); S1 pilot not run within the free tier; budget open for the owner |
 | J05 | 2026-10-18 | [#86](https://github.com/DuhItzAniket/Repro/pull/86) | S2's 351 candidates pinned; repair2 scaffold (two calls, fits the free tier) with gpt-oss-120b and qwen3.8-27b; pilot on two tasks graded by tier A; mini-SWE-agent specified for a paid plan |
+| J06 | 2026-10-18 | [#87](https://github.com/DuhItzAniket/Repro/pull/87) | Prepared and paused: the registered analysis as code (exact McNemar with Holm, cluster bootstrap, coverage and bounding conversions) and PREREGISTRATION.md with the owner's freeze checklist; labels and budget wait for the owner |
