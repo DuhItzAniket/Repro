@@ -622,7 +622,7 @@ artifact is archived with a DOI. The paper is submitted.
 | J07 | S2 main study | M | J06 | planned |
 | J08 | Ablations, S3 in-the-wild & S4 synthetic | M | J07 | planned |
 | J09 | Artifact package | M | J08 | paused: prepared (kick-the-tires, AE guide, metadata); results and DOI wait |
-| J10 | Paper writing & submission | L | J08 | planned |
+| J10 | Paper writing & submission | L | J08 | paused: draft 0 prepared; results, review and submission wait |
 
 **J01** SWE-format adapter (instance + image + patch → base/head), image management by digest,
 manifest format, input-contract enforcement with a test proving withheld fields never reach the
@@ -764,3 +764,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K04 | 2026-10-18 | [#91](https://github.com/DuhItzAniket/Repro/pull/91) | repro symbolic: CrossHair diffbehavior on small pure annotated functions a change edits, base body vs head's in head's environment; card evidence needs a schema change |
 | K05 | 2026-10-18 | [#92](https://github.com/DuhItzAniket/Repro/pull/92) | docker_context setting (a team's engine elsewhere); ADR-0018 proposed for E2B self-hosted and Kata with Firecracker |
 | J09 | 2026-10-18 | [#93](https://github.com/DuhItzAniket/Repro/pull/93) | Prepared and paused: kick-the-tires script (2 min 10 s, four checks), AE guide, .zenodo.json and CITATION.cff; study data and DOI wait |
+| J10 | 2026-10-18 | [#94](https://github.com/DuhItzAniket/Repro/pull/94) | Prepared and paused: paper draft 0 (results pending) and the submission checklist; six verified references added |

@@ -61,6 +61,8 @@ All notable changes to this project are documented here. The format follows
 - `scripts/kick_the_tires.py`: the evaluation's deterministic pipeline on one pinned fresh task
   in about half an hour, without keys. Also the artifact guide (`docs/paper/ARTIFACT.md`) and
   the archive metadata (`.zenodo.json`, `CITATION.cff`). [J09]
+- The paper's draft 0 (`docs/paper/draft.md`), its results marked pending, and the owner's
+  submission checklist (`docs/paper/SUBMISSION.md`). [J10]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
