@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use Repro, please cite it as below."
+title: "Repro: every agent-written change, reproduced and verified before it merges"
+type: software
+authors:
+  - alias: DuhItzAniket
+repository-code: "https://github.com/DuhItzAniket/Repro"
+license: Apache-2.0
+version: 1.1.0
+date-released: 2026-10-18
+keywords:
+  - software engineering
+  - code review
+  - AI coding agents
+  - differential testing
+  - verification

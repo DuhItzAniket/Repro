@@ -58,6 +58,9 @@ All notable changes to this project are documented here. The format follows
 - Setting `docker_context` (`REPRO_DOCKER_CONTEXT`): every container command goes to the Docker
   context named, such as a team's engine on another machine over SSH. ADR-0018 (proposed)
   designs microVM sandboxes (E2B self-hosted, Kata with Firecracker). [K05]
+- `scripts/kick_the_tires.py`: the evaluation's deterministic pipeline on one pinned fresh task
+  in about half an hour, without keys. Also the artifact guide (`docs/paper/ARTIFACT.md`) and
+  the archive metadata (`.zenodo.json`, `CITATION.cff`). [J09]
 
 ### Fixed
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
