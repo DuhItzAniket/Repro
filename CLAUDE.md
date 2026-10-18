@@ -111,6 +111,8 @@ uv run repro report <run id | log.jsonl> [--pr <url>]  # the card on its GitHub 
                                           # comment, job summary (I02; token needs checks and
                                           # pull-requests write)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
+uv run repro js-run --repo <path> --base <ref> --head <ref>  # K01, experimental: a Vitest/Jest
+                                          # change's test outcomes, base against head (no card)
 
 uv run python scripts/build_wheels.py      # H05: the release's two wheels in dist/wheels (pnpm build first)
 uv run python scripts/install_check.py dist/wheels   # H05: the README's install + a first run, timed

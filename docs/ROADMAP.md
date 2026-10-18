@@ -645,7 +645,7 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 
 | ID | Phase | Notes |
 |---|---|---|
-| K01 | TypeScript/JavaScript targets | Vitest/Jest. Needs a V8-side tracer design |
+| K01 | TypeScript/JavaScript targets | Vitest/Jest. Needs a V8-side tracer design. **Done (K01, [#88](https://github.com/DuhItzAniket/Repro/pull/88)):** outcomes built (`repro js-run`); tracer and card proposed in ADR-0017 |
 | K02 | Fleet dashboard | Many PRs and agents at once (the "64 papers" view) |
 | K03 | Repro as an MCP server | Agents can request verification and receive evidence, while the verifier stays independent |
 | K04 | Symbolic deep checks | CrossHair `diffbehavior` on small pure functions in the blast radius |
@@ -758,3 +758,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | J04 | 2026-10-18 | [#85](https://github.com/DuhItzAniket/Repro/pull/85) | S0 shake-out on two fresh tasks in their own images (sandbox_image; three faults fixed); exact McNemar power (168 vs 155); memorisation probe and seeding tools; S2 inclusion decided (Python >= 3.12); S1 pilot not run within the free tier; budget open for the owner |
 | J05 | 2026-10-18 | [#86](https://github.com/DuhItzAniket/Repro/pull/86) | S2's 351 candidates pinned; repair2 scaffold (two calls, fits the free tier) with gpt-oss-120b and qwen3.8-27b; pilot on two tasks graded by tier A; mini-SWE-agent specified for a paid plan |
 | J06 | 2026-10-18 | [#87](https://github.com/DuhItzAniket/Repro/pull/87) | Prepared and paused: the registered analysis as code (exact McNemar with Holm, cluster bootstrap, coverage and bounding conversions) and PREREGISTRATION.md with the owner's freeze checklist; labels and budget wait for the owner |
+| K01 | 2026-10-18 | [#88](https://github.com/DuhItzAniket/Repro/pull/88) | JavaScript/TypeScript outcomes (repro js-run: Vitest/Jest, lockfile installs with scripts off, process sandbox); ADR-0017 proposed for the V8 map, tracer and card |
