@@ -38,7 +38,7 @@ from mcp.types import ToolAnnotations
 from repro import __version__
 from repro.card import render
 from repro.config import Settings
-from repro.store import StoreReader
+from repro.store import StoreError, StoreReader
 
 START_TIMEOUT_S: Final = 120.0
 _RUN_ID: Final = re.compile(r"\brun_[0-9A-HJKMNP-TV-Z]{26}\b")
@@ -73,8 +73,19 @@ class Verifier:
     def _reader(self) -> StoreReader:
         return StoreReader(self.settings.paths.database)
 
+    def _has(self, run_id: str) -> bool:
+        """Whether the run is in the store yet: ``repro run`` names it before its first commit."""
+        if not self._stored():
+            return False
+        try:
+            with self._reader() as store:
+                return store.run(run_id) is not None
+        except StoreError:  # the database is still being created
+            return False
+
     def start(self, repo: str, base: str, head: str, claim: str = "") -> dict[str, Any]:
-        """Starts ``repro run`` on the change; its run ID once the run has one."""
+        """Starts ``repro run`` on the change; its run ID once the run is stored, so the other
+        tools find it."""
         self.logs.mkdir(parents=True, exist_ok=True)
         stamp = f"{time.strftime('%Y%m%dT%H%M%S')}-{os.getpid()}-{time.monotonic_ns()}"
         log = self.logs / f"start-{stamp}.log"
@@ -106,7 +117,7 @@ class Verifier:
         while time.monotonic() < deadline:
             said = log.read_text(encoding="utf-8", errors="replace")
             found = _RUN_ID.search(said)
-            if found and f"{found[0]} started" in said:
+            if found and f"{found[0]} started" in said and self._has(found[0]):
                 return {"run_id": found[0], "status": "running"}
             if process.poll() is not None:
                 lines = said.strip().splitlines()

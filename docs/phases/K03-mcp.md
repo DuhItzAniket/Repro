@@ -57,6 +57,10 @@ Agents can request verification and receive evidence, while the verifier stays i
   card as Markdown and as JSON, and its evidence were read back through the tools.
 - `test_run_command.py`, `test_github_action.py` and `test_cli.py` (32) pass with the new
   start line.
+- **A race, found by CI on Windows**: `repro run` names its run before the first commit to
+  the store, so a `verification_status` call right after `start_verification` could answer
+  `no such run`. `start_verification` now answers only once the run is stored, and the
+  test checks the status at once.
 - CI run: linked in the PR (#90).
 
 ## Deviations from spec

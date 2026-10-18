@@ -66,6 +66,8 @@ def test_an_agent_starts_a_run_and_reads_its_card(tmp_path: Path) -> None:
     )
     run_id = started["run_id"]
     assert started["status"] == "running"
+    # The run is stored before start_verification answers, so the other tools find it at once.
+    assert json.loads(call(verifier, "verification_status", run_id=run_id))["run_id"] == run_id
     deadline = time.monotonic() + 120
     while (status := json.loads(call(verifier, "verification_status", run_id=run_id)))[
         "status"
