@@ -76,6 +76,21 @@ All notable changes to this project are documented here. The format follows
   image for every task, and B0 the dataset's tag). With `--image-budget-gb`, images are pulled
   as their tasks come and the least recently used ones the harness pulled are removed; an image
   that was on the machine before is never removed (`repro_bench.images`). [J01, J04]
+- A reviewer can judge a change to a real repository within a free tier's 8,000 tokens a
+  minute. With more than 10 items of evidence it is shown what differs first, alike
+  findings grouped once, and what says nothing changed only counted, and past 40 evidence
+  IDs its answer's schema no longer lists every ID. A tool's answer stops at 4,000 characters,
+  at a whole line, and says how to ask for the rest. On an itsdangerous change (304 items, 272
+  of them tests that passed on both sides) each request had been 10,786 to 19,909 tokens and
+  the reviewers saw passing tests where the 27 behaviour differences were. [G03, G05]
+- An agent asked for a structured answer through an OpenAI-compatible API is asked for it in
+  its last two turns, however many lookups it still wants, instead of ending with none; a tool
+  call where the answer was due (Groq: "Tool choice is none, but model called a tool") is
+  asked again like an answer off the schema. The review job may take 30 minutes for all its
+  claims, up from 10: a rate-limited API serves them one after another. An agent waiting on a
+  rate limit or an unanswered request says so in its state ("rate limited (429); asking again
+  in 85 s") instead of looking busy, and a wait longer than the call has left ends the call at
+  once with the reason (a spent daily limit asked for 1,287 s). [G05, G10]
 
 ## [1.1.0] - 2026-10-18
 

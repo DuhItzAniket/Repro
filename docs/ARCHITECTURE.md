@@ -634,7 +634,13 @@ pytest's file locations).
   effort high) is given its claim and the PR's other claims in untrusted blocks, the evidence
   about the claim's files rendered in full (at most 10 items; G03's tools offered only when
   more exist), and those files' diffs. Its schema's `cited_evidence` has `minItems: 1` and an
-  enum of that evidence's IDs; Groq's strict mode accepts it (measured). The answer is checked
+  enum of that evidence's IDs; Groq's strict mode accepts it (measured). A claim with more
+  than 10 items is shown what differs first: each group of alike findings (same type, kind of
+  change and first target) once in full with its other IDs, and a count of what says nothing
+  changed (tests that passed on both sides, unchanged timings), which `list_evidence` lists
+  last. Past 40 IDs the schema takes an ID as a string instead of an enum. On a real
+  repository the enum was most of each request (`docs/paper/LOG.md`), and the
+  check refuses an ID that is not the claim's evidence either way. The answer is checked
   for shape, citations (existing, about the claim), quotes (exact substrings of the evidence's
   rendering) and consistency: `supported` resting only on unstable evidence, or a claim that
   nothing changes supported by a stable introduced difference while no other claim describes

@@ -7,6 +7,8 @@ exactly quoted evidence or is rejected; and the review job, run through the orch
 answers, emits ``verdict.issued`` only for verdicts that passed.
 """
 
+import asyncio
+import json
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -26,6 +28,7 @@ from repro.agents.reviewer import relevant, reviewer_request, schema
 from repro.agents.setup import AgentSetup
 from repro.agents.sources import RepoSources
 from repro.agents.stages import review_job
+from repro.agents.tools import EvidenceTools
 from repro.agents.validate import Rejection, check
 from repro.bus import EventBus
 from repro.gitops import Git
@@ -520,6 +523,112 @@ def test_the_swapped_request_lists_everything_in_the_opposite_order(
     assert enums[True] == enums[False][::-1]
     assert made[True].prompt.index("C3 (perf)") < made[True].prompt.index("C1 (fix)")
     assert made[False].prompt.index("C1 (fix)") < made[False].prompt.index("C3 (perf)")
+
+
+def many_records() -> list[dict[str, Any]]:
+    """A real repository's shape (an itsdangerous change had 304 items, 272 of them tests that
+    passed on both sides): many alike behaviour differences, a failing test, and much that
+    says nothing changed."""
+    alike = [
+        evidence(
+            "behaviour_diff",
+            {"symbol": PARSE, "test": f"tests/test_dates.py::test_{n}", "file": "pkg/dates.py"},
+            f"parse_date('{n}') gives another result",
+            change="result_changed",
+            reproducer={"call": f"parse_date('{n}')", "base": "1", "head": "2"},
+        )
+        for n in range(27)
+    ]
+    passed = [
+        evidence(
+            "test_outcome",
+            {"test": f"tests/test_other.py::test_{n}"},
+            f"P2P: tests/test_other.py::test_{n} (base passed, head passed)",
+            **{"class": "P2P", "base_outcome": "passed", "head_outcome": "passed"},
+        )
+        for n in range(50)
+    ]
+    timed = [
+        evidence(
+            "perf_diff",
+            {"test": f"tests/test_other.py::test_{n}"},
+            "no_change",
+            verdict="no_change",
+        )
+        for n in range(3)
+    ]
+    failing = evidence(
+        "test_outcome",
+        {"test": "tests/test_dates.py::test_old"},
+        "P2F: tests/test_dates.py::test_old (base passed, head failed)",
+        **{"class": "P2F", "base_outcome": "passed", "head_outcome": "failed"},
+    )
+    return [*passed, *alike, *timed, failing]
+
+
+def shown_ids(prompt: str) -> list[str]:
+    return [line.split()[1] for line in prompt.split("\n") if line.startswith("evidence ")]
+
+
+def test_much_evidence_is_shown_findings_first_grouped_and_fits_a_small_request(
+    repo: tuple[Git, str, str],
+) -> None:
+    git, base, head = repo
+    view = EvidenceView.from_events(as_events(many_records()))
+    items = relevant(view, SAME)
+    assert len(items) == 81
+    request = reviewer_request(
+        SAME,
+        items,
+        RepoSources(git, base, head),
+        tools=(),
+        prompt=load_prompt("reviewer"),
+        model="m",
+    )
+    by_id = {item.id: item for item in items}
+    shown = [by_id[i] for i in shown_ids(request.prompt)]
+    assert [(i.type, i.data.get("class") or i.data.get("change")) for i in shown] == [
+        ("test_outcome", "P2F"),
+        ("behaviour_diff", "result_changed"),
+    ]
+    assert "26 more like it (the same type, change and target): ev_" in request.prompt
+    assert "53 items say nothing changed" in request.prompt
+    assert "P2P: tests/test_other.py" not in request.prompt
+    made = request.output_schema or {}
+    cited = made["properties"]["cited_evidence"]["items"]
+    assert "enum" not in cited
+    assert cited["type"] == "string"
+    assert strict_allowed(made)
+    assert len(json.dumps(made)) < 1000  # an enum of 81 IDs, listed twice, was over 5,000
+
+
+def test_much_evidence_swapped_shows_its_groups_in_the_opposite_order(
+    repo: tuple[Git, str, str],
+) -> None:
+    git, base, head = repo
+    view = EvidenceView.from_events(as_events(many_records()))
+    made = [
+        reviewer_request(
+            SAME,
+            relevant(view, SAME),
+            RepoSources(git, base, head),
+            tools=(),
+            prompt=load_prompt("reviewer"),
+            model="m",
+            reverse=reverse,
+        )
+        for reverse in (False, True)
+    ]
+    assert shown_ids(made[1].prompt) == shown_ids(made[0].prompt)[::-1]
+
+
+def test_the_evidence_list_puts_what_differs_first(repo: tuple[Git, str, str]) -> None:
+    git, base, head = repo
+    view = EvidenceView.from_events(as_events(many_records()))
+    listing = asyncio.run(EvidenceTools(view, RepoSources(git, base, head)).list_evidence({}))
+    lines = [line for line in listing.split("\n") if line.startswith("ev_")]
+    assert "P2F" in lines[0]
+    assert all("P2P" not in line for line in lines[:28])  # the failing test, 27 differences
 
 
 class Scripted:

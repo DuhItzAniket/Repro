@@ -3,8 +3,8 @@
 Four tools (research/04, recommendation A.2), each a ``ReproTool`` that reads only the run's
 evidence (``repro.agents.evidence``) and the two commits (``repro.agents.sources``):
 
-- ``list_evidence``: the citable evidence, one line each, optionally only what is about a
-  file, symbol or test;
+- ``list_evidence``: the citable evidence, one line each, what differs before what did not,
+  optionally only what is about a file, symbol or test;
 - ``get_evidence``: one item in full; the text a quote must come from;
 - ``read_snippet``: up to ``MAX_SNIPPET_LINES`` lines of a file on one side;
 - ``get_diff``: a file's diff from base to head, up to ``MAX_DIFF_LINES`` lines.
@@ -21,7 +21,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 from repro.agents.backend import ReproTool
-from repro.agents.evidence import EvidenceView
+from repro.agents.evidence import EvidenceView, findings_first
 from repro.agents.sources import RepoSources, SourceError, checked_path
 from repro.agents.untrusted import block
 
@@ -30,6 +30,12 @@ MAX_SNIPPET_LINES: Final = 80
 MAX_LINE: Final = 240
 MAX_DIFF_LINES: Final = 160
 MAX_ARGUMENT: Final = 1024
+#: The most characters of lines one tool answer holds, cut at a whole line. An agent's
+#: conversation is sent again each turn; on a free tier that counts the answer's allowance too
+#: (8,000 tokens a minute, 3,000 of them reserved for the answer), a listing of 60 items in a
+#: reviewer's second turn was enough to refuse the call (8,819 tokens, on an itsdangerous
+#: change).
+MAX_ANSWER_CHARS: Final = 4000
 _EVIDENCE_ID: Final = re.compile(r"ev_[0-9A-HJKMNP-TV-Z]{26}")
 _TARGET_KEYS: Final = ("file", "symbol", "test")
 _SNIPPET_KEYS: Final = ("side", "path", "start", "end")
@@ -104,6 +110,18 @@ def _clip(line: str) -> str:
     return line if len(line) <= MAX_LINE else f"{line[: MAX_LINE - 12]} ...[cut]"
 
 
+def _fit(lines: list[str]) -> list[str]:
+    """The first of ``lines`` that fit ``MAX_ANSWER_CHARS`` together, at least one."""
+    kept: list[str] = []
+    used = 0
+    for line in lines:
+        used += len(line) + 1
+        if kept and used > MAX_ANSWER_CHARS:
+            break
+        kept.append(line)
+    return kept
+
+
 class EvidenceTools:
     """The four tools over one run's evidence and commits."""
 
@@ -118,14 +136,19 @@ class EvidenceTools:
                 checked_path(target["file"])
             except SourceError as exc:
                 raise ToolInputError(str(exc)) from None
-        items = self.view.relevant([target] if target else [])
+        items = findings_first(self.view.relevant([target] if target else []))
         about = f" about {', '.join(f'{k} {v}' for k, v in target.items())}" if target else ""
         if not items:
             return f"no evidence{about}"
-        shown = items[:MAX_LISTED]
-        more = f"\n...and {len(items) - len(shown)} more" if len(items) > len(shown) else ""
+        shown = _fit([item.line() for item in items[:MAX_LISTED]])
+        more = (
+            f"\n...and {len(items) - len(shown)} more; a file, symbol or test lists only what "
+            "is about it"
+            if len(items) > len(shown)
+            else ""
+        )
         head = f"{len(items)} evidence items{about} (id, type, stability, origin, summary):"
-        listing = "\n".join(item.line() for item in shown) + more
+        listing = "\n".join(shown) + more
         return f"{head}\n{block('evidence-list', listing)}"
 
     async def get_evidence(self, arguments: Mapping[str, Any]) -> str:
@@ -154,10 +177,16 @@ class EvidenceTools:
             lines.pop()
         if start > len(lines):
             return f"{side}:{path} has {len(lines)} lines"
-        shown = range(start, min(end, len(lines)) + 1)
-        width = len(str(shown[-1]))
-        body = "\n".join(f"{n:>{width}}| {_clip(lines[n - 1])}" for n in shown)
-        head = f"{side}:{path} lines {shown[0]}-{shown[-1]} of {len(lines)}"
+        asked = range(start, min(end, len(lines)) + 1)
+        width = len(str(asked[-1]))
+        kept = _fit([f"{n:>{width}}| {_clip(lines[n - 1])}" for n in asked])
+        last = start + len(kept) - 1
+        body = "\n".join(kept)
+        head = f"{side}:{path} lines {start}-{last} of {len(lines)}" + (
+            f" (cut at {MAX_ANSWER_CHARS} characters; ask from line {last + 1} for the rest)"
+            if last < asked[-1]
+            else ""
+        )
         return f"{head}\n{block('source', body, side=str(side), path=str(path))}"
 
     async def get_diff(self, arguments: Mapping[str, Any]) -> str:
@@ -169,11 +198,9 @@ class EvidenceTools:
         if not diff:
             return f"{path} is the same on base and head"
         lines = diff.rstrip("\n").split("\n")
-        shown = [_clip(line) for line in lines[:MAX_DIFF_LINES]]
-        if len(lines) > MAX_DIFF_LINES:
-            shown.append(
-                f"...{len(lines) - MAX_DIFF_LINES} more lines; read_snippet shows any part"
-            )
+        shown = _fit([_clip(line) for line in lines[:MAX_DIFF_LINES]])
+        if len(lines) > len(shown):
+            shown.append(f"...{len(lines) - len(shown)} more lines; read_snippet shows any part")
         body = "\n".join(shown)
         return f"diff of {path}, base to head\n{block('diff', body, path=str(path))}"
 

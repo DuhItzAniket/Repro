@@ -108,6 +108,29 @@ def target_text(target: Mapping[str, str]) -> str:
     return ", ".join(f"{key} {target[key]}" for key in ("file", "symbol", "test") if key in target)
 
 
+def unchanged(item: "Item") -> bool:
+    """An item that only says nothing changed: a test that passed on base and on head, or a
+    timing that did not change."""
+    if item.type == "test_outcome":
+        return item.data.get("class") == "P2P"
+    return item.type == "perf_diff" and item.data.get("verdict") == "no_change"
+
+
+def findings_first(items: Iterable["Item"]) -> list["Item"]:
+    """``items`` with what differs before what did not, each part in its own order. On a real
+    repository the tests that passed on both sides are most of the evidence (272 of 304 items
+    on an itsdangerous change), and they come first by type."""
+    listed = list(items)
+    return [i for i in listed if not unchanged(i)] + [i for i in listed if unchanged(i)]
+
+
+def group_key(item: "Item") -> tuple[str, str, str]:
+    """Items alike enough to show as one: the same type, kind of change and first target."""
+    change = str(item.data.get("change") or item.data.get("class") or "")
+    target = item.targets[0] if item.targets else {}
+    return item.type, change, target.get("symbol") or target.get("test") or target.get("file", "")
+
+
 @dataclass(frozen=True, slots=True)
 class Item:
     """One evidence record an agent may see and cite."""

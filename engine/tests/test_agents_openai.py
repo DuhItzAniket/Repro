@@ -217,6 +217,24 @@ def test_a_structured_answer_is_asked_for_alone_and_checked(
     assert final["messages"][-1]["content"].startswith("Give your final answer now")
 
 
+def test_the_last_turn_is_kept_for_the_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    pings = Pings()
+
+    def script(body: Mapping[str, Any]) -> dict[str, Any]:  # it would look things up for ever
+        return (
+            say('{"verdict": "supported"}')
+            if "response_format" in body
+            else call_tools(("ping", {}))
+        )
+
+    result, api = run(script, monkeypatch, tools=(pings.tool(),), output_schema=STRICT)
+    assert result.outcome == "ok", result.detail
+    assert result.structured == {"verdict": "supported"}
+    assert result.turns == 3  # two lookups, then the answer (the fourth turn for its retry)
+    assert ["tools" in body for body in api.requests] == [True, True, False]
+    assert api.requests[-1]["messages"][-1]["content"].startswith("Give your final answer now")
+
+
 def test_an_answer_that_breaks_the_schema_is_retried_once_then_refused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -253,10 +271,27 @@ def test_a_rate_limit_waits_for_retry_after(monkeypatch: pytest.MonkeyPatch) -> 
 
     api_requests: list[Any] = []
     started = time.monotonic()
-    result, api = run(script, monkeypatch)
+    seen: list[Progress] = []
+    result, api = run(script, monkeypatch, progress=seen)
     assert result.outcome == "ok"
     assert len(api.requests) == 2
     assert time.monotonic() - started >= 0.2
+    said = [p.detail for p in seen if p.detail and "asking again" in p.detail]
+    assert said == ["rate limited (429); asking again in 0 s (attempt 2 of 2)"]
+
+
+def test_a_wait_past_the_calls_time_ends_it_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A spent daily limit answers "retry after" in tens of minutes (1,287 s seen on Groq): a
+    call that cannot wait so long says so now, instead of sleeping into a timeout."""
+    started = time.monotonic()
+    result, api = run(
+        lambda body: Failure(429, "Rate limit reached: tokens per day", {"retry-after": "1287"}),
+        monkeypatch,
+    )
+    assert time.monotonic() - started < 5
+    assert result.outcome == "error"
+    assert "asks to wait 1287 s, past this call's time" in (result.detail or "")
+    assert len(api.requests) == 1
 
 
 @pytest.mark.parametrize(("status", "retried"), [(500, True), (401, False), (400, False)])
@@ -419,6 +454,20 @@ def test_an_answer_the_api_refuses_as_off_schema_is_asked_again(
     assert (result.outcome, result.structured) == ("ok", {"verdict": "supported"})
     assert len(api.requests) == 2
     assert "did not match the schema" in api.requests[1]["messages"][-1]["content"]
+
+
+def test_a_tool_call_where_the_answer_was_due_is_asked_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Groq refuses a tool call on the answer's turn (a 400 "Tool choice is none, but model
+    called a tool", seen with gpt-oss): a slip, asked again, not an outage."""
+    replies: list[dict[str, Any] | Failure] = [
+        Failure(400, "Tool choice is none, but model called a tool"),
+        say('{"verdict": "supported"}'),
+    ]
+    result, api = run(lambda body: replies.pop(0), monkeypatch, output_schema=STRICT)
+    assert (result.outcome, result.structured) == ("ok", {"verdict": "supported"})
+    assert "Call no tool now" in api.requests[1]["messages"][-1]["content"]
 
 
 def test_two_answers_off_schema_are_an_invalid_output(monkeypatch: pytest.MonkeyPatch) -> None:
