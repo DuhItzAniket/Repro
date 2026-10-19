@@ -6,8 +6,11 @@ keyed by ``(test, phase, symbol, args, occurrence)``: the test and its phase, th
 (the same ID on both sides of the change), the arguments' digest, and which call with those
 arguments it was (0 for the first). The same test calling the same function with the same
 arguments on base and on head is then the same key, whatever else it called in between. A call
-whose arguments could not be encoded completely has no key (a truncated encoding is never equal
-to anything, E02): its (test, phase, symbol) is not comparable.
+whose arguments could not be encoded completely has no such key (a truncated encoding is never
+equal to anything, E02). It is matched by its position instead, the ``n``-th such call of the
+function in the test (``POSITION``), when A, A2 and H made as many of them (``align``): a
+framework's context object, too deep to encode, need not hide what the function returns.
+Otherwise its (test, phase, symbol) is not comparable.
 
 **Stability.** A (base) and A2 (base again: tests in reverse order, another ``PYTHONHASHSEED``
 and another ``REPRO_SEED``) run the same code, so whatever differs between them is not the
@@ -52,6 +55,9 @@ LISTED: Final = 5
 
 Key = tuple[str, str, str, str, int]  # test, phase, symbol, arguments' digest, occurrence
 Group = tuple[str, str, str]  # test, phase, symbol
+#: The arguments' digest of a key that matches a call by its position: the ``n``-th call of the
+#: function in the test whose arguments could not be encoded (a digest is never empty).
+POSITION: Final = ""
 StabilityLabel = Literal["stable", "unstable", "n/a"]
 
 
@@ -121,6 +127,8 @@ class RunObservations:
     tests: frozenset[str] = frozenset()
     #: Calls whose arguments could not be encoded completely, per (test, phase, symbol).
     unkeyed: Counter[Group] = field(default_factory=Counter)
+    #: Those calls by position (``POSITION`` keys), until ``align`` makes them comparable.
+    positional: dict[Key, Observation] = field(default_factory=dict)
     #: (test, symbol) pairs whose budget ran out: later calls were not recorded.
     truncated: frozenset[tuple[str, str]] = frozenset()
     #: Why part of the trace is missing altogether (its file reached its limit).
@@ -146,7 +154,10 @@ def observe(
     for call in ordered:
         symbol = names[call.target]
         if not call.args_complete:
-            result.unkeyed[(call.test, call.phase, symbol)] += 1
+            group = (call.test, call.phase, symbol)
+            at: Key = (*group, POSITION, result.unkeyed[group])
+            result.positional[at] = _observation(at, call)
+            result.unkeyed[group] += 1
             continue
         base = (call.test, call.phase, symbol, call.args)
         key: Key = (*base, seen[base])
@@ -260,8 +271,35 @@ class Behaviour:
         }
 
 
+def align(runs: Sequence[RunObservations]) -> None:
+    """Calls whose arguments could not be encoded, made comparable by their position where that
+    is sound: base and head (the first and last of ``runs``) reported the test, and every run
+    that reported it made the same number of them. Their ``POSITION`` keys join the runs' calls,
+    and they are unkeyed no more. Elsewhere they stay unkeyed (``encoding_failed``): pairing
+    calls by position when their number differs could pair the wrong ones. A and A2 then tell
+    whether the order of those calls is itself noise."""
+    first, last = runs[0], runs[-1]
+    for group in sorted(set().union(*(run.unkeyed.keys() for run in runs))):
+        test = group[0]
+        if test not in first.tests or test not in last.tests:
+            continue
+        counts = {run.unkeyed[group] for run in runs if test in run.tests}
+        if len(counts) != 1 or counts == {0}:
+            continue
+        for run in runs:
+            if test not in run.tests:
+                continue
+            for n in range(run.unkeyed[group]):
+                key: Key = (*group, POSITION, n)
+                run.calls[key] = run.positional.pop(key)
+            del run.unkeyed[group]
+
+
 def compare(base: RunObservations, again: RunObservations, head: RunObservations) -> Behaviour:
-    """A against H, for the tests both reported, with A vs A2's noise masked."""
+    """A against H, for the tests both reported, with A vs A2's noise masked. Calls whose
+    arguments could not be encoded are first matched by position where that is sound
+    (``align``, which moves them into the runs' calls)."""
+    align((base, again, head))
     measured = stability(base, again)
     tests = base.tests & head.tests
     mine, theirs = base.groups(), head.groups()

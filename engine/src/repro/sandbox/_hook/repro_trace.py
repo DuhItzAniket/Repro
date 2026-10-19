@@ -27,7 +27,8 @@ immutable scalars (numbers, strings, bytes, ``None``) cannot change them and is 
 twice.
 
 **Previews (E04).** For the calls the engine names in ``REPRO_PREVIEW_CALLS`` (test, target,
-arguments' digest), the call, its result or exception and its arguments afterwards are also
+arguments' digest, or ``#n`` for the ``n``-th call in the test's phase whose arguments could not
+be encoded), the call, its result or exception and its arguments afterwards are also
 recorded as previews (``repro_encode.preview``): the reproducer of a behaviour difference. The
 digests of the run they were found in say which calls those are; only they leave the sandbox
 as text. With ``REPRO_TRACE_SAMPLES=n`` (E07), each (test, target)'s first ``n`` calls are
@@ -128,6 +129,9 @@ class Tracer:
         self.inflight: dict[int, _Call] = {}
         self.open: dict[int, int] = {}  # id(code) -> recorded calls in flight
         self.counts: dict[tuple[str, Target], int] = {}
+        #: Calls whose arguments could not be encoded, per (test, phase, target): the engine
+        #: asks for such a call's previews as ``#n``, by its position among them.
+        self.unencoded: dict[tuple[str, str, Target], int] = {}
         self.test: str | None = None
         self.phase = "setup"
 
@@ -178,7 +182,13 @@ class Tracer:
             if type(value) not in _IMMUTABLE:
                 call.arguments = arguments  # encoded again when the call ends
                 break
-        if index < self.samples or (self.previews and (test, target, call.args) in self.previews):
+        asked = call.args
+        if not call.args_complete:
+            place = (test, self.phase, target)
+            position = self.unencoded.get(place, 0)
+            self.unencoded[place] = position + 1
+            asked = f"#{position}"
+        if index < self.samples or (self.previews and (test, target, asked) in self.previews):
             call.names = names
             call.preview = _capped(f"{target[1]}({_arguments_preview(names, arguments)})")
         self.inflight[id(frame)] = call

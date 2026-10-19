@@ -26,7 +26,17 @@ from repro.sandbox.detect import HOOK_DIR
 
 SUITE = Path(__file__).parent / "data" / "trace_suite"
 PYTHONS = ("3.12", "3.13", "3.14", "3.15")
-TRACED = ("add", "fails", "gen", "recurse", "with_kw", "Box.size", "ordered", "extend")
+TRACED = (
+    "add",
+    "fails",
+    "gen",
+    "recurse",
+    "with_kw",
+    "Box.size",
+    "ordered",
+    "extend",
+    "label",
+)
 
 
 def hook_module(name: str) -> ModuleType:
@@ -150,6 +160,18 @@ def test_input_mutation_and_previews(side: Side) -> None:
     assert shown.result_preview == "3"
     assert shown.args_after_preview == "items=[1, 2, 3], extra=[2, 3]"
     assert {c.args_preview for c in again.calls if c.target != extend} == {None}
+
+
+def test_a_call_whose_arguments_cannot_be_encoded_is_previewed_by_position(side: Side) -> None:
+    """E03/E04: a call with arguments too deep or cyclic to encode is asked for as ``#n``, the
+    n-th such call in its test's phase, and only that call is previewed."""
+    (target,) = [t for t in targets() if t[1] == "label"]
+    first = side.trace()
+    cyclic = calls(first, "test_cycle", "label")
+    assert [c.args_complete for c in cyclic] == [False, False]
+    again = side.trace(previews=[("test_calc.py::test_cycle", target, "#1")])
+    shown = calls(again, "test_cycle", "label")
+    assert [c.result_preview for c in shown] == [None, "'node b'"]
 
 
 def test_samples_preview_each_tests_first_calls(side: Side) -> None:

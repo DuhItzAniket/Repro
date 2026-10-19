@@ -248,8 +248,12 @@ digest, occurrence)`. The fields compared are `outcome`, `type`, `value` (the re
 dictionaries sorted), `order` (the result as it was) and `yields`; a field that differs between
 A and A′ is masked for that call, and a call set that differs (arguments from the clock or a
 random source) masks the calls on one side only and every field of the calls A′ did not make.
-Incomplete encodings, `unfinished` calls and spent budgets are never compared. Test code is
-traced but left out. The trace has its own file in the sandbox (`calls.jsonl`, 64 MiB at most),
+Incomplete encodings, `unfinished` calls and spent budgets are never compared. A call whose
+*arguments* could not be encoded (a framework's context object: too deep, too large or cyclic)
+has no such key; it is keyed by its position instead, the n-th such call of the function in
+the test's phase, when A, A′ and H made as many of them (`align`). Its result is compared like
+any other, A and A′ telling whether that order is noise, and the tracer previews it on request
+as `#n`. Otherwise it stays unkeyed (`encoding_failed`). Test code is traced but left out. The trace has its own file in the sandbox (`calls.jsonl`, 64 MiB at most),
 so it never crowds out the test results.
 
 As built (E07): A, A′ and H also preview each test's first four calls of each traced function

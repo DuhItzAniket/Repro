@@ -619,3 +619,27 @@ entry. If something turns out wrong, add a correcting entry.
 - **For the paper.** Evidence volume, not model quality, decided whether the reviewers could
   answer at all. The tests that pass on both sides are most of a real repository's evidence.
   How evidence is chosen and grouped for a reviewer is part of the method and is stated.
+
+## 2026-10-19 · fix · Calls whose arguments cannot be encoded
+- **Measured on a real pull request**, pallets/click#3884 (merged; base `bb695aaecdef`, head
+  `c53d3732b98c`). Its changed functions, `Option.get_error_hint` and `Option.get_help_extra`,
+  take click's `Context`, which the encoder cannot encode within its limits (depth 6, 5,000
+  values, 50 ms, no cycles). Their calls had no key, so in 16 and 58 tests they were not
+  compared at all, and the card was UNVERIFIABLE: 2 of 4 changed symbols unverified.
+- **Fixed** (`runner/observations.py`, `behaviour.py`, `_hook/repro_trace.py`):
+  - such a call is keyed by its position, the n-th such call of the function in the test's
+    phase, when A, A2 and H made as many of them;
+  - A against A2 still says whether that order is noise;
+  - the tracer previews such a call as `#n`.
+- **After the fix, deterministic only:**
+  - 395 calls of the changed functions compared, up from 244 (151 recovered), all the same,
+    none not comparable;
+  - the 12 tests the pull request adds pass;
+  - the card is VERIFIED.
+
+  The behaviour the pull request changes is exercised only by its new tests, which base does
+  not have, so it is not a difference.
+- **For the paper.** Coverage depends on what the encoder can read. Frameworks pass context
+  objects to their functions, and matching by position recovers those calls without trusting a
+  partial encoding.
+

@@ -33,6 +33,7 @@ from repro.ids import new_evidence_id
 from repro.runner.observations import (
     CALL,
     FIELDS,
+    POSITION,
     Behaviour,
     Compared,
     Key,
@@ -127,6 +128,8 @@ class Difference:
         if seen is not None and seen.args_preview:
             return seen.args_preview
         name = self.symbol.partition(":")[2].rpartition("#")[0]
+        if self.first.key[3] == POSITION:
+            return f"{name}(…), call {self.first.key[4] + 1} whose arguments could not be encoded"
         return f"{name}(… arguments {self.first.key[3][:12]})"
 
     def summary(self) -> str:
@@ -304,9 +307,15 @@ def _wanted(
     for target, symbol in names.items():
         targets[symbol].append(target)
     wanted = {
-        (d.test, target, d.first.key[3]) for d in found for target in targets.get(d.symbol, ())
+        (d.test, target, _asked(d.first.key)) for d in found for target in targets.get(d.symbol, ())
     }
     return sorted(wanted)
+
+
+def _asked(key: Key) -> str:
+    """How the tracer is asked for a call's previews: by its arguments' digest, or as ``#n``,
+    the ``n``-th call whose arguments could not be encoded (``POSITION``)."""
+    return f"#{key[4]}" if key[3] == POSITION else key[3]
 
 
 def _check(
@@ -316,8 +325,10 @@ def _check(
     if base is None or head is None or key[0] not in base.tests or key[0] not in head.tests:
         difference.reproduced = None
         return
-    difference.base_again = base.calls.get(key)
-    difference.head_again = head.calls.get(key)
+    # A run of its own is not aligned with another (``observations.align``): a call matched
+    # by position is found among its positional calls.
+    difference.base_again = base.calls.get(key) or base.positional.get(key)
+    difference.head_again = head.calls.get(key) or head.positional.get(key)
     difference.reproduced = _same(difference.first.base, difference.base_again) and _same(
         difference.first.head, difference.head_again
     )

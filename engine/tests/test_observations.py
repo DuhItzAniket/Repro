@@ -220,7 +220,12 @@ def test_a_suspended_generator_is_compared_by_what_it_yielded() -> None:
 def test_missing_items_name_the_function_and_its_tests() -> None:
     a = observed("A", call(result=2), call(target=G, args=4, args_complete=False))
     a2 = observed("A2", call(result=3), call(target=G, args=4, args_complete=False))
-    h = observed("H", call(result=3), call(target=G, args=4, args_complete=False))
+    h = observed(
+        "H",
+        call(result=3),
+        call(target=G, args=4, args_complete=False),
+        call(target=G, index=1, args=5, args_complete=False),  # one more: no positions to pair
+    )
     h.truncated = frozenset({(T2, "pkg.m:g#0")})
     behaviour = compare(a, a2, h)
     behaviour.left_out = ("pkg.n:z#0",)
@@ -241,6 +246,56 @@ def test_missing_items_name_the_function_and_its_tests() -> None:
         ("trace_unavailable", ["pkg.n:z#0"]),
     ]
     assert "differ between two runs of base (order, value)" in items[0]["missing"]["detail"]
+
+
+def unencoded(index: int, result: int, **changes: Any) -> TraceCall:
+    """A call of G whose arguments could not be encoded (a framework's context object)."""
+    return call(
+        target=G, index=index, args=50 + index, args_complete=False, result=result, **changes
+    )
+
+
+def test_calls_whose_arguments_cannot_be_encoded_are_paired_by_position() -> None:
+    a = observed("A", unencoded(0, 10), unencoded(1, 11))
+    a2 = observed("A2", unencoded(0, 10), unencoded(1, 11))
+    h = observed("H", unencoded(0, 10), unencoded(1, 99))
+    behaviour = compare(a, a2, h)
+    found = {(c.key[3], c.key[4]): c for c in behaviour.compared}
+    assert set(found) == {(observations.POSITION, 0), (observations.POSITION, 1)}
+    assert found[(observations.POSITION, 0)].differs == ()
+    assert found[(observations.POSITION, 1)].differs == ("value", "order")
+    assert found[(observations.POSITION, 1)].stability == "stable"
+    assert dict(behaviour.unkeyed) == {}
+    assert [m["missing"]["reason"] for m in observations.missing(behaviour)] == []
+
+
+def test_positions_are_paired_only_when_every_run_made_as_many_calls() -> None:
+    a = observed("A", unencoded(0, 10))
+    a2 = observed("A2", unencoded(0, 10))
+    h = observed("H", unencoded(0, 10), unencoded(1, 11))  # one more on head
+    behaviour = compare(a, a2, h)
+    assert behaviour.compared == ()
+    assert dict(behaviour.unkeyed) == {(T1, "call", "pkg.m:g#0"): (1, 2)}
+    reasons = [m["missing"]["reason"] for m in observations.missing(behaviour)]
+    assert reasons == ["encoding_failed"]
+
+
+def test_a_position_whose_result_varies_on_base_is_noise() -> None:
+    a = observed("A", unencoded(0, 10))
+    a2 = observed("A2", unencoded(0, 12))  # base twice disagrees: the order or the value is noise
+    h = observed("H", unencoded(0, 13))
+    (only,) = compare(a, a2, h).compared
+    assert only.differs == ()
+    assert only.stability == "unstable"
+
+
+def test_positional_calls_round_trip_once_compared() -> None:
+    a, a2, h = (observed(label, unencoded(0, 10), unencoded(1, 11)) for label in ("A", "A2", "H"))
+    compare(a, a2, h)
+    data = observations.dump_observations(a)
+    back = observations.load_observations(data)
+    assert back.calls == a.calls
+    assert observations.dump_observations(back) == data
 
 
 # -- artifacts -----------------------------------------------------------------------------------

@@ -161,6 +161,23 @@ def test_a_difference_that_does_not_come_back_is_unstable() -> None:
     assert (unseen.reproduced, unseen.stability) == (None, "stable")  # its test did not run
 
 
+def test_a_call_matched_by_position_says_so_and_is_previewed_by_position() -> None:
+    def runs(result: int) -> list[Any]:
+        return [
+            call(target=G, index=i, args=60 + i, args_complete=False, result=r)
+            for i, r in enumerate((7, result))
+        ]
+
+    (difference,) = diffs.differences(
+        compare(observed("A", *runs(8)), observed("A2", *runs(8)), observed("H", *runs(9)))
+    )
+    assert difference.summary().startswith(
+        "g(…), call 2 whose arguments could not be encoded gives another result"
+    )
+    names = {G: "pkg.m:g#0"}
+    assert diffs._wanted([difference], names) == [(T1, G, "#1")]
+
+
 def test_a_summary_without_previews_still_names_the_call() -> None:
     (difference,) = diffs.differences(
         compare(observed("A", call()), observed("A2", call()), observed("H", call(result=3)))
