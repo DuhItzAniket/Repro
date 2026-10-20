@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | K01 |
-| **Branch / PR** | `phase/K06-js-test-map` · PR pending |
-| **Started / finished** | 2026-10-20 / — |
+| **Branch / PR** | `phase/K06-js-test-map` · [#100](https://github.com/DuhItzAniket/Repro/pull/100) |
+| **Started / finished** | 2026-10-20 / 2026-10-20 |
 
 ## Objective
 ADR-0017's phase 2, accepted by the owner on 2026-10-19: which functions each JavaScript or
@@ -86,7 +86,7 @@ function selects the tests that ran it.
 
   The callback form of the inspector's `post` starts coverage before the test file is
   imported, as the Vitest file's top-level `await` does.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#100).
 
 ## Deviations from spec
 - The ADR spoke of "functions by file and range"; they are by file and name. V8's ranges are
