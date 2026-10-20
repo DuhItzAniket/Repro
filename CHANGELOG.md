@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `repro js-run` reports which tests a change reaches. For each test, the functions it ran,
+  from V8's precise coverage, are recorded by a setup file added after the project's own:
+  a wrapper config for Vitest, and `setupFilesAfterEnv` from `--showConfig` for Jest. A
+  changed function selects the tests that ran it; a change outside any function selects
+  the tests whose files loaded it (`changes`, `selected`). [K06]
+
 ## [1.2.0] - 2026-10-20
 
 Stage K's first items, the evaluation's harness (Stage J, J01 to J05; the study itself
