@@ -37,7 +37,7 @@ run carries on, and the cockpit catches up when the tab is shown.
 **`the sandbox could not start`.** Docker was asked for (`sandbox = "docker"`) but is not
 running or not installed. Start Docker Desktop (or the Docker service), or run in a contained
 process: `REPRO_SANDBOX=process`. With the default, `auto`, Repro uses Docker only when it
-answers.
+answers, and for a JavaScript project only when asked (`docker`).
 
 **`Docker has no runtime 'runsc'`.** `docker_runtime = "runsc"` asks for gVisor, which is not
 installed as Docker's runtime. Install it as [gVisor's guide](https://gvisor.dev/docs/user_guide/install/)
@@ -66,7 +66,11 @@ repository), or a build that needs the network cannot be installed.
 
 **`environment_failed` for a JavaScript project.** Its dependencies are installed from its
 lockfile, with lifecycle scripts off (`npm ci --ignore-scripts`, or pnpm or Yarn with
-`--frozen-lockfile --ignore-scripts`). Node.js and the package manager must be on `PATH`.
+`--frozen-lockfile --ignore-scripts`), and pnpm's `.pnpmfile.cjs` and Yarn's `yarn-path`
+ignored. In a contained process, Node.js and the package manager must be on `PATH`. With
+`REPRO_SANDBOX=docker`, the install runs in a container of its own on Repro's Node.js image
+(npm, pnpm 10 and Yarn 1, or the version the project's `packageManager` names), the only one
+with the network.
 - **The runner is not found after the install** ("`node_modules/vitest/vitest.mjs` cannot be
   read"). Repro runs Vitest or Jest from `node_modules`, so Yarn's Plug'n'Play is not
   supported.
@@ -140,8 +144,8 @@ What Repro keeps, and where:
   `~/.repro` (`%USERPROFILE%\.repro` on Windows), or `REPRO_DATA_DIR`.
 - **Scratch copies of the code**, removed after each run: the run root, `%LOCALAPPDATA%\repro\r`
   on Windows and `<data directory>/r` elsewhere, or `REPRO_RUN_ROOT`. `repro doctor` shows both.
-- **With Docker:** the sandbox image (`repro-sandbox:<digest>`) and the environments' volumes
-  (`repro-env-…`).
+- **With Docker:** the sandbox images (`repro-sandbox:<digest>`, and `repro-sandbox-node:<digest>`
+  for JavaScript) and the environments' volumes (`repro-env-…`).
 
 To start afresh, delete the data directory and, with Docker, those volumes and the image
 (`docker volume rm`, `docker image rm`).
