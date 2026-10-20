@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-20
+
+JavaScript and TypeScript, end to end: the rest of ADR-0017 (K06, K07, K08, K11) and the
+fixes the work around it found. Release record: `docs/phases/release-1.3.0.md`.
+
 ### Added
 - `repro js-run` reports which tests a change reaches. For each test, the functions it ran,
   from V8's precise coverage, are recorded by a setup file added after the project's own:
@@ -51,6 +56,9 @@ All notable changes to this project are documented here. The format follows
   `base_test_fails_on_head`. [K11]
 
 ### Changed
+- The Action's name is `Repro Reproduction Card`, so it can be listed on GitHub Marketplace,
+  whose names may not match a GitHub user's (one is named `repro`). Workflows refer to it as
+  before, `uses: DuhItzAniket/Repro@<ref>`, and its check run is still named `Repro`. [I03]
 - The event schema: `run.started.language`, optional, so older logs still validate and replay
   to the same card. `env.provisioned` takes npm, pnpm and Yarn projects and a Node.js version;
   the card's conditions add the language, Node.js and the shuffled run's seed when the log
