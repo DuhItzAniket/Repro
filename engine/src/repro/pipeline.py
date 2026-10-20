@@ -299,7 +299,7 @@ def pipeline_jobs(
             artifacts=artifacts,
             limits=limits,
             env_image=env_image,
-            options=js,
+            options=js or JsOptions(tools=cache / "tools"),
         )
     elif not analyse_only:
         base, head = change.base.sha, change.head.sha

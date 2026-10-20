@@ -19,6 +19,7 @@
         "parameter_changed_default",
         "parameter_changed_required",
         "parameter_added_required",
+        "parameter_changed_type",
         "return_changed_type",
         "object_removed",
         "object_changed_kind",

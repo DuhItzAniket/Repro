@@ -836,7 +836,7 @@ export interface DiffProbePayload {
 export interface DiffApiPayload {
   evidence_id: EvidenceId;
   symbol_id: SymbolId;
-  breakage: "parameter_moved" | "parameter_removed" | "parameter_changed_kind" | "parameter_changed_default" | "parameter_changed_required" | "parameter_added_required" | "return_changed_type" | "object_removed" | "object_changed_kind" | "attribute_changed_type" | "attribute_changed_value" | "class_removed_base";
+  breakage: "parameter_moved" | "parameter_removed" | "parameter_changed_kind" | "parameter_changed_default" | "parameter_changed_required" | "parameter_added_required" | "parameter_changed_type" | "return_changed_type" | "object_removed" | "object_changed_kind" | "attribute_changed_type" | "attribute_changed_value" | "class_removed_base";
   explanation: ShortText;
 }
 
