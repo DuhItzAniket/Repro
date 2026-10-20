@@ -111,8 +111,9 @@ uv run repro report <run id | log.jsonl> [--pr <url>]  # the card on its GitHub 
                                           # comment, job summary (I02; token needs checks and
                                           # pull-requests write)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
-uv run repro js-run --repo <path> --base <ref> --head <ref>  # K01, experimental: a Vitest/Jest
-                                          # change's test outcomes, base against head (no card)
+uv run repro js-run --repo <path> --base <ref> --head <ref>  # K01, K06, K07, experimental: a
+                                          # Vitest/Jest change's test outcomes, the tests it
+                                          # reaches, and its functions' calls compared (no card)
 uv run repro mcp        # K03: Repro as an MCP server on stdio (docs/guide/mcp.md)
 uv run repro symbolic --repo <path> --base <ref> --head <ref>  # K04, experimental: CrossHair
                                           # diffbehavior on the small pure functions a change edits
