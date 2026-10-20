@@ -46,6 +46,15 @@ All notable changes to this project are documented here. The format follows
 - A JavaScript function's symbol in `repro js-run`'s `behaviour` is a `SymbolId`
   (`src/m.js:add#0`), as on the card. [K08]
 
+### Fixed
+- `run.started` named the process sandbox (`mode.sandbox_backend: "process"`) for every
+  `repro run`, even when its tests ran in Docker. It now names the sandbox the run uses:
+  `docker`, `gvisor` under `docker_runtime = "runsc"`, or `process`. With `auto`, Docker is
+  asked once per run, and the sandbox jobs use that answer; they used to ask once per side.
+  An `--analyse-only` run starts no sandbox, so Docker is not asked and `auto` is recorded as
+  `process`. A JavaScript run takes the process sandbox under `auto` until K11's container, and
+  says so. The card was not affected, because it takes its isolation level from `sandbox.ready`. [C08]
+
 ## [1.2.0] - 2026-10-20
 
 Stage K's first items, the evaluation's harness (Stage J, J01 to J05; the study itself

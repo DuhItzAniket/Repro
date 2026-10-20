@@ -28,11 +28,12 @@ from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
 from repro.js_stage import JsOptions, JsState
 from repro.language import Language
-from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
+from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec, SandboxBackend
 from repro.policy import FILE as POLICY_FILE
 from repro.policy.stage import read_policy
-from repro.run_stage import Backend, RunState, run_jobs
+from repro.run_stage import Backend, RunState, run_jobs, use_docker
 from repro.sandbox import Limits
+from repro.sandbox.docker import GVISOR
 from repro.store import ArtifactStore
 
 #: A run's log lists at most this many skipped entries or problems one by one.
@@ -54,6 +55,8 @@ class Change:
     repo_url: str | None = None
     pr_number: int | None = None
     pr_url: str | None = None
+    #: The sandbox the run's jobs use, as ``run.started`` names it (``run_backend``).
+    sandbox_backend: SandboxBackend = "process"
     #: The target's language (K08): Python's pipeline, or JavaScript's (``repro.js_stage``).
     language: Language = "python"
 
@@ -72,8 +75,27 @@ class Change:
             pr_number=self.pr_number,
             pr_url=self.pr_url,
             deterministic_only=self.deterministic_only,
+            sandbox_backend=self.sandbox_backend,
             language=self.language,
         )
+
+
+def run_backend(
+    backend: Backend,
+    docker_runtime: str | None,
+    *,
+    runs_code: bool,
+    language: Language = "python",
+) -> SandboxBackend:
+    """The sandbox a run uses, decided once for its jobs and ``run.started``: ``gvisor`` when its
+    containers run under gVisor. ``auto`` asks Docker only if the run will run the target's code;
+    a run that only analyses records it as ``process``. A JavaScript run takes the process
+    sandbox under ``auto``: a container with Node is K11, and its jobs refuse ``docker``."""
+    if language == "javascript" and backend != "docker":
+        return "process"
+    if not (use_docker(backend) if runs_code else backend == "docker"):
+        return "process"
+    return "gvisor" if docker_runtime == GVISOR else "docker"
 
 
 def _snapshot_job(git: Git, side: str, sha: str, work: Path) -> Job:
@@ -234,7 +256,6 @@ def pipeline_jobs(
     change: Change,
     work: Path,
     *,
-    backend: Backend,
     cache: Path,
     analyse_only: bool,
     artifacts: ArtifactStore | None = None,
@@ -246,11 +267,12 @@ def pipeline_jobs(
     env_image: str | None = None,
     js: JsOptions | None = None,
 ) -> tuple[Sequence[Job], RunState]:
-    """Every job of a run, and the state they share (close it when the run is over). With
-    ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04).
-    A JavaScript change's run and diff stages are ``repro.js_stage``'s (K08), made as ``js``
-    says."""
+    """Every job of a run, and the state they share (close it when the run is over). The
+    sandboxes are ``change.sandbox_backend``'s (``run_backend``). With ``cards``, the card stage
+    ends the run (F05); with ``agents``, the agent stages run (G04). A JavaScript change's run
+    and diff stages are ``repro.js_stage``'s (K08), made as ``js`` says."""
     state = JsState() if change.language == "javascript" else RunState()
+    backend: Backend = "process" if change.sandbox_backend == "process" else "docker"
     jobs: list[Job] = []
     if agents is not None:
         text = pr if pr is not None else PrText(())

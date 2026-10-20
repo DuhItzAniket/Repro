@@ -24,7 +24,7 @@ from repro.gitops import Git
 from repro.ids import new_run_id
 from repro.js_stage import JsOptions
 from repro.orchestrator import Orchestrator
-from repro.pipeline import Change, pipeline_jobs
+from repro.pipeline import Change, pipeline_jobs, run_backend
 from repro.store import ArtifactStore, StoreReader, StoreWriter
 from repro_events.log import read_log, validate_log
 from repro_events.schemas import load_schema_set
@@ -77,7 +77,6 @@ def reproduce(
             git,
             change,
             tmp_path / "work",
-            backend="auto",
             cache=tmp_path / "cache",
             analyse_only=False,
             artifacts=ArtifactStore(tmp_path / "runs", writer),
@@ -189,6 +188,22 @@ def test_a_change_that_keeps_behaviour_is_verified(tmp_path: Path) -> None:
     assert card["status"] == "VERIFIED", card["status_reasons"]
     # Verified, and what was not checked is on the card.
     assert {"unsupported_project", "perf_not_assessable"} <= reasons(card)
+
+
+def test_a_javascript_run_takes_the_process_sandbox_under_auto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Until K11's container, ``auto`` does not ask Docker for a JavaScript run, and
+    ``run.started`` names the sandbox its jobs use; ``docker``, asked for, is named and refused
+    by the jobs (``environment_failed``)."""
+
+    def no_docker_question() -> bool:
+        raise AssertionError("a JavaScript run does not ask Docker")
+
+    monkeypatch.setattr("repro.run_stage.docker_available", no_docker_question)
+    assert run_backend("auto", None, runs_code=True, language="javascript") == "process"
+    assert run_backend("process", None, runs_code=True, language="javascript") == "process"
+    assert run_backend("docker", None, runs_code=True, language="javascript") == "docker"
 
 
 def test_the_target_language_is_read_from_the_root(tmp_path: Path) -> None:

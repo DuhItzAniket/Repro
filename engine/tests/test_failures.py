@@ -176,6 +176,8 @@ def test_docker_asked_for_and_missing_says_what_to_do(tmp_path: Path) -> None:
         m for m in items(found, "environment_failed") if "sandbox could not start" in m["detail"]
     ]
     assert {m["detail"].split(":", 1)[0] for m in sandbox} == {"base", "head"}
+    (started,) = [e["payload"] for e in found["events"] if e["kind"] == "run.started"]
+    assert started["mode"]["sandbox_backend"] == "docker"
     for item in sandbox:
         readable(item)
         assert "REPRO_SANDBOX=process" in item["resolution"]
