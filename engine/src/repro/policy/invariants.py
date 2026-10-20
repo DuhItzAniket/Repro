@@ -264,11 +264,18 @@ def no_network(
     *,
     network: str | None,
     complete: bool = True,
+    unseen: str | None = None,
 ) -> InvariantResult:
     """``attempts``: what head's test runs were seen to attempt, None if they did not run;
     ``network``: head's sandbox's ``enforced`` or ``detected-only``; ``complete``: whether every
-    detection was read (a process's log can be cut, or hold lines that are not records)."""
+    detection was read (a process's log can be cut, or hold lines that are not records);
+    ``unseen``: why head's network use could be neither blocked nor seen (K08: a Node process
+    in the process sandbox), which leaves the invariant not evaluated."""
     name, options = invariant.name, invariant.options
+    if unseen is not None and network != "enforced":
+        return InvariantResult(
+            name, "not_evaluated", unseen, details={"network": network}, options=options
+        )
     if attempts is None:
         return InvariantResult(name, "not_evaluated", "head's tests did not run", options=options)
     outside = [a for a in attempts if leaves_host(a.event, a.detail)]

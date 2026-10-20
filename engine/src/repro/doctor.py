@@ -183,6 +183,26 @@ def check_uv(probe: Probe) -> Check:
     return Check("uv", "ok", found)
 
 
+def check_node(probe: Probe) -> Check:
+    """Node.js, for JavaScript and TypeScript targets (K08); Python's need none."""
+    hint = (
+        "Install Node.js, and the project's package manager (npm, pnpm or Yarn), to reproduce "
+        "JavaScript and TypeScript changes; Python changes do not need them"
+    )
+    try:
+        result = probe.run(["node", "--version"], timeout=TIMEOUT_S)
+    except ProbeTimeoutError:
+        return Check("node", "warn", "node --version timed out", hint=hint)
+    if result is None:
+        return Check("node", "warn", "not found on PATH", hint=hint)
+    version = parse_version(result.stdout, r"v(\d+)\.(\d+)\.(\d+)")
+    if result.returncode != 0 or version is None:
+        problem = _first_line(result.stderr) or _first_line(result.stdout) or "no output"
+        return Check("node", "warn", f"node --version failed: {problem}", hint=hint)
+    detail = "JavaScript and TypeScript targets run in the process sandbox (L2) until K11"
+    return Check("node", "ok", f"Node.js {show(version)}", detail=detail)
+
+
 def check_docker(probe: Probe, *, windows: bool) -> Check:
     without = (
         "without it Repro runs target code in a process sandbox and reports isolation: process"
@@ -447,6 +467,7 @@ def diagnose(
         check_sqlite(machine.sqlite),
         check_git(machine.probe),
         check_uv(machine.probe),
+        check_node(machine.probe),
         docker,
         contained,
         check_isolation(docker, contained, sandbox),

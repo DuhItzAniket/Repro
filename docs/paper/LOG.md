@@ -643,3 +643,30 @@ entry. If something turns out wrong, add a correcting entry.
   objects to their functions, and matching by position recovers those calls without trusting a
   partial encoding.
 
+
+## 2026-10-20 · K08 · A JavaScript change on a real library
+- **Target:** unjs/defu at `82632b66f591` (TypeScript, Vitest 4.1.6, pnpm, 23 tests). Two
+  one-line changes, written as an agent might, on local branches (not pushed):
+  - "simplify the key guard in _defu (no behaviour change)": `"constructor"` dropped from the
+    keys `_defu` skips;
+  - "shorter null check in _defu": `value === null || value === undefined` became
+    `value == null`.
+- **Command:** `repro run --repo <defu> --base main --head <branch> --no-serve`,
+  deterministic only, process sandbox (L2), Node.js 25.9.0, Windows 11. Each run took about
+  22 s, the two installs included.
+- **The guard change:** every test passes on both sides (21 selected of 23, all P2P). 103
+  calls of `_defu` compared, 3 differ, in the test "should not override Object prototype".
+  `_defu({constructor: {prototype: {isAdmin: …}}}, {})` gives `{}` on base and
+  `{constructor: {prototype: {isAdmin: …}}}` on head. The card is FLAGGED.
+- **The refactor:** 101 calls compared, all the same; the card is VERIFIED. Its missing items:
+  the public API, timing, and the network.
+- **Found on the way, and fixed:**
+  - two installs at once failed once on a machine's first run (pnpm fetching the pnpm version
+    the project pins); the sides now install one after the other;
+  - inside a packaged Windows app, pnpm's links in the redirected `AppData\Local` do not
+    resolve. The install is now checked for the runner, and the troubleshooting guide says to
+    set `REPRO_RUN_ROOT` elsewhere.
+- **For the paper.** The prototype-pollution test passes on head because the payload lands as
+  an own key, not on `Object.prototype`. The test checks the attack it was written for; the
+  trace shows what else the change did to the merged object. A change a reviewer would read as
+  a harmless simplification is the kind function-level evidence is for.

@@ -4,7 +4,9 @@ The build stage: both sides' snapshots (``snapshot.ready``), the static analysis
 change (``graph.node``, ``graph.edge``, ``symbol.changed``, ``blast.computed``), and the policy
 (``repro.yml`` from base; head's change to it as ``policy_change`` evidence, F01). Then, unless the
 run only analyses, the run and diff stages (``repro.run_stage``, D06): each side's sandbox and
-environment, the selected tests on both sides, and the evidence of what differs. What could not
+environment, the selected tests on both sides, and the evidence of what differs. A JavaScript or
+TypeScript change (``Change.language``, K08) has its own analysis (``repro.analysis.javascript``)
+and run and diff stages (``repro.js_stage``), with the same events. What could not
 be read or run becomes a ``missing.recorded`` item, never a silent gap. With agents (G04), the
 read stage first: the reader agent's claims; after every other job, the review stage: each
 claim judged against the run's evidence (``repro.agents.stages``, G05). Last, the card stage
@@ -16,13 +18,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
+from repro import js_stage
 from repro.agents.reader import PrText
 from repro.agents.setup import AgentSetup
 from repro.agents.stages import claims_job, gap_job, qa_job, review_job
-from repro.analysis import StaticAnalysis, analyse, graph_payloads
+from repro.analysis import StaticAnalysis, analyse, graph_payloads, javascript
 from repro.card.job import CardStore, card_job
 from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
+from repro.js_stage import JsOptions, JsState
+from repro.language import Language
 from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
 from repro.policy import FILE as POLICY_FILE
 from repro.policy.stage import read_policy
@@ -49,6 +54,8 @@ class Change:
     repo_url: str | None = None
     pr_number: int | None = None
     pr_url: str | None = None
+    #: The target's language (K08): Python's pipeline, or JavaScript's (``repro.js_stage``).
+    language: Language = "python"
 
     @classmethod
     def resolve(cls, git: Git, repo: Path, base: str, head: str) -> "Change":
@@ -65,6 +72,7 @@ class Change:
             pr_number=self.pr_number,
             pr_url=self.pr_url,
             deterministic_only=self.deterministic_only,
+            language=self.language,
         )
 
 
@@ -154,12 +162,19 @@ def emit_analysis(ctx: JobContext, analysis: StaticAnalysis) -> None:
 
 def _analysis_job(git: Git, change: Change, work: Path, state: RunState | None) -> Job:
     def run(ctx: JobContext) -> None:
-        ctx.log("static analysis: modules, symbols, imports")
-        analysis = analyse(git, change.base.sha, change.head.sha, work / "analysis")
+        if change.language == "javascript":
+            ctx.log("static analysis (JavaScript): modules, functions, imports")
+            analysis, changes = javascript.analyse(git, change.base.sha, change.head.sha)
+        else:
+            ctx.log("static analysis: modules, symbols, imports")
+            analysis = analyse(git, change.base.sha, change.head.sha, work / "analysis")
+            changes = []
         ctx.check()
         emit_analysis(ctx, analysis)
         if state is not None:
             state.analysis = analysis
+        if isinstance(state, JsState):
+            state.changes = changes
 
     return Job(
         "static-analysis",
@@ -229,10 +244,13 @@ def pipeline_jobs(
     limits: Limits | None = None,
     docker_runtime: str | None = None,
     env_image: str | None = None,
+    js: JsOptions | None = None,
 ) -> tuple[Sequence[Job], RunState]:
     """Every job of a run, and the state they share (close it when the run is over). With
-    ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04)."""
-    state = RunState()
+    ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04).
+    A JavaScript change's run and diff stages are ``repro.js_stage``'s (K08), made as ``js``
+    says."""
+    state = JsState() if change.language == "javascript" else RunState()
     jobs: list[Job] = []
     if agents is not None:
         text = pr if pr is not None else PrText(())
@@ -247,7 +265,21 @@ def pipeline_jobs(
             )
         )
     jobs += build_jobs(git, change, work, state)
-    if not analyse_only:
+    if not analyse_only and isinstance(state, JsState):
+        base, head = change.base.sha, change.head.sha
+        jobs += js_stage.run_jobs(
+            git,
+            base,
+            head,
+            work,
+            state,
+            backend=backend,
+            artifacts=artifacts,
+            limits=limits,
+            env_image=env_image,
+            options=js,
+        )
+    elif not analyse_only:
         base, head = change.base.sha, change.head.sha
         jobs += run_jobs(
             git,

@@ -64,6 +64,17 @@ package index, from wheels only, and builds the project itself offline in the sa
 dependency with no wheel, a requirement that points elsewhere (a URL, a path, a git
 repository), or a build that needs the network cannot be installed.
 
+**`environment_failed` for a JavaScript project.** Its dependencies are installed from its
+lockfile, with lifecycle scripts off (`npm ci --ignore-scripts`, or pnpm or Yarn with
+`--frozen-lockfile --ignore-scripts`). Node.js and the package manager must be on `PATH`.
+- **The runner is not found after the install** ("`node_modules/vitest/vitest.mjs` cannot be
+  read"). Repro runs Vitest or Jest from `node_modules`, so Yarn's Plug'n'Play is not
+  supported.
+- **On Windows, inside a packaged app.** Windows redirects such an app's writes under
+  `AppData\Local` into its own folder. pnpm's links then point at the path before redirection,
+  and do not resolve. This was seen running Repro from the Claude desktop app. Set
+  `REPRO_RUN_ROOT` to a short directory outside `AppData\Local`.
+
 **`run_incomplete`: a test run ended early.** The run stopped before pytest finished: the
 suite could not start (a `conftest.py` or a plugin that does not import), the interpreter
 crashed, or the process was killed. The detail gives the exit status and ends with the line of
