@@ -847,9 +847,10 @@ def js_run(
 
     Experimental. Vitest or Jest projects with a lockfile: each side is a snapshot of its
     commit, its dependencies installed with lifecycle scripts off, its tests run in a contained
-    process. Prints the regressions, fixes and new tests, and the tests that ran a changed
-    function (each test's functions, from V8's coverage); makes no card (no tracer for
-    JavaScript yet, ADR-0017). Exit status 1 if a side could not run.
+    process. Prints the regressions, fixes and new tests, the tests that ran a changed
+    function (each test's functions, from V8's coverage), and how the changed functions'
+    calls differ (base twice, then head, compared). Makes no card yet (ADR-0017, K08).
+    Exit status 1 if a side could not run.
     """
     import tempfile  # noqa: PLC0415
 

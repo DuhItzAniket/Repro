@@ -37,6 +37,9 @@ MAP_FILE: Final = "repro-map.jsonl"
 VITEST_SETUP: Final = "repro_map_vitest.mjs"
 JEST_SETUP: Final = "repro_map_jest.cjs"
 WRAPPER: Final = "repro.vitest.config.mts"
+#: The tracer runtime and Vitest's plugin (K07), copied beside the setup file when tracing.
+TRACE_RUNTIME: Final = "repro_trace_js.cjs"
+TRACE_PLUGIN: Final = "repro_trace_vite.mjs"
 #: The configs Vitest reads, in the order it looks for them.
 VITEST_CONFIGS: Final = tuple(
     f"{stem}.config.{ext}"
@@ -94,29 +97,36 @@ def read_map(data: bytes) -> TestMap:
     )
 
 
-def vitest_setup(root: Path) -> list[str]:
+def vitest_setup(root: Path, *, trace: bool = False) -> list[str]:
     """Copies the setup file into ``root`` with a config that adds it to the project's own;
-    the runner's extra arguments."""
+    the runner's extra arguments. With ``trace`` (K07), the tracer runtime and Vitest's plugin
+    are copied too, and the plugin comes after the project's own."""
     shutil.copyfile(HOOKS / VITEST_SETUP, root / VITEST_SETUP)
+    if trace:
+        for name in (TRACE_RUNTIME, TRACE_PLUGIN):
+            shutil.copyfile(HOOKS / name, root / name)
     base = next((name for name in VITEST_CONFIGS if (root / name).is_file()), None)
-    if base is None:
-        source = f'export default {{ test: {{ setupFiles: ["./{VITEST_SETUP}"] }} }};\n'
-    else:
-        source = (
-            f'import base from "./{base}";\n'
-            'const resolved = typeof base === "function"\n'
-            '  ? await base({ command: "serve", mode: "test" })\n'
-            "  : base;\n"
-            "const own = resolved?.test?.setupFiles ?? [];\n"
-            "export default {\n"
-            "  ...resolved,\n"
-            "  test: {\n"
-            "    ...resolved?.test,\n"
-            f'    setupFiles: [...(Array.isArray(own) ? own : [own]), "./{VITEST_SETUP}"],\n'
-            "  },\n"
-            "};\n"
-        )
-    (root / WRAPPER).write_bytes(source.encode("utf-8"))
+    lines = [f'import base from "./{base}";'] if base else ["const base = {};"]
+    if trace:
+        lines.append(f'import reproTrace from "./{TRACE_PLUGIN}";')
+    lines += [
+        'const resolved = typeof base === "function"',
+        '  ? await base({ command: "serve", mode: "test" })',
+        "  : base;",
+        "const own = resolved?.test?.setupFiles ?? [];",
+        "export default {",
+        "  ...resolved,",
+    ]
+    if trace:
+        lines.append("  plugins: [...(resolved?.plugins ?? []), reproTrace()],")
+    lines += [
+        "  test: {",
+        "    ...resolved?.test,",
+        f'    setupFiles: [...(Array.isArray(own) ? own : [own]), "./{VITEST_SETUP}"],',
+        "  },",
+        "};",
+    ]
+    (root / WRAPPER).write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
     return ["--config", WRAPPER]
 
 
@@ -132,10 +142,12 @@ def jest_own_setup(shown: bytes) -> list[str]:
     return [str(path) for path in configs[0].get("setupFilesAfterEnv") or []]
 
 
-def jest_setup(root: Path, own: Sequence[str]) -> list[str]:
-    """Copies the setup file into ``root``; the runner's extra arguments, the project's own
-    setup files first."""
+def jest_setup(root: Path, own: Sequence[str], *, trace: bool = False) -> list[str]:
+    """Copies the setup file into ``root`` (and the tracer runtime, with ``trace``); the
+    runner's extra arguments, the project's own setup files first."""
     shutil.copyfile(HOOKS / JEST_SETUP, root / JEST_SETUP)
+    if trace:
+        shutil.copyfile(HOOKS / TRACE_RUNTIME, root / TRACE_RUNTIME)
     return ["--setupFilesAfterEnv", *own, str(root / JEST_SETUP)]
 
 
