@@ -8,7 +8,8 @@ K06, K07, K08, K11; ADR-0017).
   script name Vitest or Jest. The package manager is read from the lockfile (npm, pnpm or
   Yarn); without one, dependencies cannot be installed reproducibly and the project is refused.
 - **Dependencies** are installed from the lockfile with lifecycle scripts disabled
-  (``--ignore-scripts``), so no code of the target or of its dependencies runs while the
+  (``--ignore-scripts``), and pnpm's hooks file and Yarn's ``yarn-path`` ignored
+  (``INSTALL_ENV``), so no code of the target or of its dependencies runs while the
   network is reachable [npm docs, "npm ci"; pnpm docs, "pnpm install"; checked 2026-10-18].
   This is the same rule as Python's provisioning (D03). On the host (``install_dependencies``)
   or, at L3 (K11), in a container of their own on the sandbox's volume, the only one with the
@@ -36,6 +37,7 @@ K06, K07, K08, K11; ADR-0017).
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -68,9 +70,17 @@ INSTALL_TIMEOUT_S: Final = 900.0
 #: The install from the lockfile, lifecycle scripts off: the package manager's arguments.
 INSTALL: Final[Mapping[Manager, tuple[str, ...]]] = {
     "npm": ("ci", "--ignore-scripts", "--no-audit", "--no-fund"),
-    "pnpm": ("install", "--frozen-lockfile", "--ignore-scripts"),
+    "pnpm": ("install", "--frozen-lockfile", "--ignore-scripts", "--ignore-pnpmfile"),
     "yarn": ("install", "--frozen-lockfile", "--ignore-scripts"),
 }
+#: What else keeps the project's own code from running during an install, with the network on
+#: (K11; measured in the Node.js image on 2026-10-20, each wrote a file when allowed):
+#: - pnpm loads the project's ``.pnpmfile.cjs`` whatever ``--ignore-scripts`` says:
+#:   ``--ignore-pnpmfile`` (above; "Disable pnpm hooks defined in .pnpmfile.cjs", pnpm 10.34.7's
+#:   ``pnpm install --help``);
+#: - Yarn classic runs the file ``.yarnrc``'s ``yarn-path`` names in place of itself, unless
+#:   ``YARN_IGNORE_PATH`` is set (Yarn 1.22.22's ``lib/cli.js``).
+INSTALL_ENV: Final[Mapping[str, str]] = {"YARN_IGNORE_PATH": "1"}
 #: Where a container's install keeps the package managers' caches (K11): in the volume, not in
 #: the memory-backed ``/tmp``, and removed when it ends (they are not the project's, and Jest
 #: would index them).
@@ -192,6 +202,7 @@ def install_dependencies(project: JsProject) -> None:
         done = subprocess.run(  # noqa: S603 - the package manager, scripts off
             install_argv(project),
             cwd=project.root,
+            env={**os.environ, **INSTALL_ENV},
             capture_output=True,
             timeout=INSTALL_TIMEOUT_S,
             check=False,
@@ -230,6 +241,7 @@ def install_in_container(box: DockerSandbox, project: JsProject) -> None:
         "-e", f"HOME={TMP}", "-e", f"TMPDIR={TMP}",
         "-e", f"npm_config_cache={cache}/npm", "-e", f"npm_config_store_dir={cache}/pnpm",
         "-e", f"YARN_CACHE_FOLDER={cache}/yarn",
+        *[flag for key, value in INSTALL_ENV.items() for flag in ("-e", f"{key}={value}")],
         "--entrypoint", "sh", box.image, "-c", script,
     ]  # fmt: skip
     try:

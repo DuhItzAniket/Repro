@@ -3,15 +3,18 @@ Node.js and no network.
 
 Without Docker: a container's paths and the tests' IDs, the install's own container, the
 environment read in the sandbox, and an image of the user's refused. With Docker (skipped where
-it is missing, except where ``REPRO_REQUIRE_DOCKER=1``, as in ``test_run_stage``): a real Vitest
-change through ``repro run``'s pipeline in containers on Repro's Node.js image. Its
-dependencies are installed with ``npm ci`` from a real lockfile (``data/js/vitest-npm``), in
-the install's container, the only one with the network.
+it is missing, except where ``REPRO_REQUIRE_DOCKER=1``, as in ``test_run_stage``):
+- a real Vitest change through ``repro run``'s pipeline in containers on Repro's Node.js image,
+  its dependencies installed with ``npm ci`` from a real lockfile (``data/js/vitest-npm``) in
+  the install's container, the only one with the network;
+- pnpm's and Yarn's installs there (``data/js/vitest-pnpm``, ``vitest-yarn``), with none of
+  the project's own code run.
 """
 
 import json
 import os
 import posixpath
+import shutil
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
@@ -32,14 +35,16 @@ from repro.js_stage import NO_ENV_IMAGE, NODE_UNDETECTED, JsOptions
 from repro.orchestrator import Orchestrator
 from repro.pipeline import Change, pipeline_jobs
 from repro.run_stage import Backend
-from repro.sandbox import DockerSandbox, docker_available
+from repro.sandbox import DockerSandbox, Limits, docker_available
 from repro.sandbox.detect import Detections
+from repro.sandbox.image import node_image
 from repro.sandbox.process import Execution
 from repro.store import ArtifactStore, StoreReader, StoreWriter
 from repro_events.log import read_log, validate_log
 from repro_events.schemas import load_schema_set
 
-DATA = Path(__file__).parent / "data" / "js" / "vitest-npm"
+#: Vitest projects with real lockfiles: npm's, pnpm's and Yarn classic's.
+DATA = Path(__file__).parent / "data" / "js"
 docker = pytest.mark.skipif(
     not docker_available() and os.environ.get("REPRO_REQUIRE_DOCKER") != "1",
     reason="Docker with Linux containers is not available",
@@ -165,6 +170,7 @@ def test_the_install_has_a_container_of_its_own_with_the_network(
     assert "--network" not in flags  # the only container with the network: no target code runs
     for flag in ("--read-only", "ALL", "no-new-privileges", "1000:1000", "runsc"):
         assert flag in flags
+    assert "YARN_IGNORE_PATH=1" in flags
     assert flags[flags.index("-v") + 1] == "repro-0123456789ab:/work"
     assert script.endswith("; npm ci --ignore-scripts --no-audit --no-fund")
     assert "trap 'rm -rf /work/.repro/cache' EXIT" in script  # the caches are not the project's
@@ -193,7 +199,9 @@ def test_an_install_that_fails_or_hangs_is_named(
 
     def hangs(argv: list[str], **_: Any) -> subprocess.CompletedProcess[bytes]:
         if argv[1] == "run":
-            assert "pnpm install --frozen-lockfile --ignore-scripts" in argv[-1]
+            assert argv[-1].endswith(
+                "; pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile"
+            )
             raise subprocess.TimeoutExpired(argv, 1)
         removed.append(argv)
         return subprocess.CompletedProcess(argv, 0, b"", b"")
@@ -204,6 +212,68 @@ def test_an_install_that_fails_or_hangs_is_named(
     ((docker, rm, force, name),) = removed  # the container is removed, not left running
     assert (docker, rm, force) == ("docker", "rm", "-f")
     assert name.startswith("repro-install-")
+
+
+def test_the_hosts_install_runs_none_of_the_projects_code_either(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = jsts.JsProject(tmp_path, "vitest", "pnpm")
+    entry = tmp_path / "node_modules" / "vitest" / "vitest.mjs"
+    entry.parent.mkdir(parents=True)
+    entry.write_text("", encoding="utf-8")
+    seen: list[tuple[list[str], Mapping[str, str]]] = []
+
+    def run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        seen.append((argv, kwargs["env"]))
+        return subprocess.CompletedProcess(argv, 0, b"", b"")
+
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(subprocess, "run", run)
+    jsts.install_dependencies(project)
+    ((argv, env),) = seen
+    assert argv == [
+        "/usr/bin/pnpm", "install", "--frozen-lockfile", "--ignore-scripts", "--ignore-pnpmfile"
+    ]  # fmt: skip
+    assert env["YARN_IGNORE_PATH"] == "1"
+
+
+#: What a project's own code would leave if it ran during the install.
+RAN = "require('node:fs').writeFileSync('/work/RAN', 'ran');\n"
+
+
+@docker
+@pytest.mark.parametrize(
+    ("fixture", "own"),
+    [
+        ("vitest-pnpm", {".pnpmfile.cjs": RAN + "module.exports = { hooks: {} };\n"}),
+        ("vitest-yarn", {".yarnrc": 'yarn-path "./own-yarn.cjs"\n', "own-yarn.cjs": RAN}),
+    ],
+)
+def test_an_install_in_a_container_runs_none_of_the_projects_code(
+    tmp_path: Path, fixture: str, own: dict[str, str]
+) -> None:
+    """pnpm's hooks file and Yarn classic's ``yarn-path`` are the project's code, which runs
+    with the install's network unless they are ignored (both ran here before they were)."""
+    files = {p.name: p.read_bytes() for p in (DATA / fixture).iterdir()}
+    files |= {name: text.encode() for name, text in own.items()}
+    repo = Repo(tmp_path / "repo")
+    sha = repo.commit(dict(files))
+    tree = tmp_path / "tree"  # the host's copy, which the project is read from
+    tree.mkdir()
+    for name, data in files.items():
+        (tree / name).write_bytes(data)
+    project = jsts.JsProject.detect(tree)
+    limits = Limits(timeout_s=300)
+    with DockerSandbox(
+        tmp_path / "box", Git(repo.path), sha, image=node_image(), limits=limits
+    ) as box:
+        jsts.install_in_container(box, project)
+        node, installed = jsts.container_environment(box, project)
+        assert node.startswith("22.")
+        assert "vitest" in installed
+        assert box.read_file("RAN") is None
+        left = box.run(["ls", "-A", "/work/.repro"])
+        assert left.stdout.split() == []  # the caches went with the install's container
 
 
 class Probe:
@@ -261,8 +331,8 @@ NETWORK = (
 
 def project_files() -> dict[str, Entry]:
     return {
-        "package.json": (DATA / "package.json").read_bytes(),
-        "package-lock.json": (DATA / "package-lock.json").read_bytes(),
+        "package.json": (DATA / "vitest-npm" / "package.json").read_bytes(),
+        "package-lock.json": (DATA / "vitest-npm" / "package-lock.json").read_bytes(),
         "vitest.config.mjs": "export default { test: { globals: true } };\n",
         "repro.yml": "version: 1\ninvariants:\n  - no_network: true\n",
         "src/m.js": SOURCE,
