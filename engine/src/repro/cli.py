@@ -842,12 +842,15 @@ def js_run(
         Path | None, typer.Option("--json", help="Also write the summary to this file.")
     ] = None,
 ) -> None:
-    """Compare a JavaScript or TypeScript change's test outcomes, base against head (K01).
+    """Compare a JavaScript or TypeScript change's test outcomes, base against head (K01), and
+    name the tests that reach the change (K06).
 
     Experimental. Vitest or Jest projects with a lockfile: each side is a snapshot of its
     commit, its dependencies installed with lifecycle scripts off, its tests run in a contained
-    process. Prints the regressions, fixes and new tests; makes no card (no tracer for
-    JavaScript yet, ADR-0017). Exit status 1 if a side could not run.
+    process. Prints the regressions, fixes and new tests, the tests that ran a changed
+    function (each test's functions, from V8's coverage), and how the changed functions'
+    calls differ (base twice, then head, compared). Makes no card yet (ADR-0017, K08).
+    Exit status 1 if a side could not run.
     """
     import tempfile  # noqa: PLC0415
 

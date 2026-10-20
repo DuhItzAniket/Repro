@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `repro js-run` reports which tests a change reaches. For each test, the functions it ran,
+  from V8's precise coverage, are recorded by a setup file added after the project's own:
+  a wrapper config for Vitest, and `setupFilesAfterEnv` from `--showConfig` for Jest. A
+  changed function selects the tests that ran it; a change outside any function selects
+  the tests whose files loaded it (`changes`, `selected`). [K06]
+- `repro js-run` compares how a change's functions behave, base against head, and reports
+  the differences no test catches (`behaviour`), with values.
+  - **Wrapping:** for Vitest, a Vite plugin wraps the changed functions in place; for Jest,
+    they are wrapped through their modules' exports.
+  - **Recording:** each call's arguments and result are encoded by `repro_encode`'s rules,
+    ported to JavaScript; no user code runs.
+  - **Comparison:** base runs twice, the second time shuffled, then head, compared as
+    Python's traces are. [K07]
+
 ## [1.2.0] - 2026-10-20
 
 Stage K's first items, the evaluation's harness (Stage J, J01 to J05; the study itself
