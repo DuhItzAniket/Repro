@@ -41,7 +41,14 @@ MODULE_QUALNAME: Final = "<module>"
 EXPLANATION: Final = 1000
 _VALUE: Final = 200
 
-Source = Literal["griffe", "annotations"]
+#: What found a break: griffe, Repro's annotation comparison, or (K11) the TypeScript compiler
+#: API, for a JavaScript or TypeScript package (``repro.analysis.jsapi``).
+Source = Literal["griffe", "annotations", "typescript"]
+_COMPONENTS: Final[dict[str, str]] = {
+    "griffe": "repro.analysis.api",
+    "annotations": "repro.analysis.api",
+    "typescript": "repro.analysis.jsapi",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +83,7 @@ class ApiBreak:
             "artifacts": [],
             "stability": "stable",  # read from the sources: the same every run
             "origin": "introduced",
-            "produced_by": {"component": "repro.analysis.api", "version": __version__},
+            "produced_by": {"component": _COMPONENTS[self.source], "version": __version__},
         }
 
     def payload(self, evidence_id: str) -> dict[str, Any]:
