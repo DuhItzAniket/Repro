@@ -163,6 +163,9 @@ class RunState:
     head_network_complete: bool = True
     #: Why head's network use could be neither blocked nor seen, if it could not (K08).
     network_unseen: str | None = None
+    #: Why head's network attempts are not seen where the network is blocked, if they are not
+    #: (K11: a Node process in a container).
+    network_undetected: str | None = None
     #: Each timed test's comparison with its evidence, None if nothing was timed, and the tests
     #: too fast to time (D07; F03).
     perf_timed: list[invariants.Timed] | None = None
@@ -977,6 +980,7 @@ def _evaluate(
                 network=state.network.get("head"),
                 complete=state.head_network_complete,
                 unseen=state.network_unseen,
+                undetected=state.network_undetected,
             )
         case _:  # perf_budget: the schema knows no other
             return invariants.perf_budget(invariant, state.perf_timed, state.perf_too_fast)

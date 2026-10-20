@@ -1,13 +1,20 @@
-"""The run and diff stages of a JavaScript or TypeScript change (K08; ADR-0017, phase 4).
+"""The run and diff stages of a JavaScript or TypeScript change (K08, K11; ADR-0017, phase 4).
 
 What ``repro.run_stage`` does for Python, with ``repro.jsts``'s runs, emitting the same
 events: the card, the cockpit, the exports and the review stage read a JavaScript run as they
 read a Python one.
 
-- ``sandbox-<side>`` (build): the process sandbox (L2) and the dependencies, installed from the
-  lockfile with lifecycle scripts off; ``sandbox.ready``, then ``env.provisioned`` (the package
-  manager, Node.js, the lock's digest). A container with Node (L3) is K11: Docker is not used
-  for JavaScript yet, and asking for it is an ``environment_failed`` item.
+- ``sandbox-<side>`` (build): the sandbox and the dependencies, installed from the lockfile with
+  lifecycle scripts off; ``sandbox.ready``, then ``env.provisioned`` (the package manager,
+  Node.js, the lock's digest, the packages installed).
+  - With ``backend="docker"`` (K11): a container sandbox (L3, or L4 under gVisor) on Repro's
+    Node.js image (``sandbox.image.node_image``). The install runs in a container of its own,
+    the only one with the network (``jsts.install_in_container``); Node.js's version and the
+    packages are read in the sandbox, with none.
+  - Otherwise: the process sandbox (L2), the install on the host. ``auto`` stays here, as in
+    K08: a JavaScript run uses a container only when asked for one.
+
+  An image of the user's (``sandbox_image``, J04) is for Python projects, and refused.
 - ``tests`` (run): A (base, with the map and the traces), H (head, the same), then the tests
   both maps select (``jsmap.select``, ``test.selected``), A2 (base again, shuffled, traced),
   and each test that flipped, run again ``RERUNS`` times on each side. The whole suite runs, so
@@ -17,8 +24,8 @@ read a Python one.
   (``runner.outcomes.classify``; a test whose own code changed is ``modified``); ``diff.tests``
   for a test removed, an edited test skipped on head, and an edited test with fewer
   ``expect``/``assert`` calls. Missing items: flaky tests, changed functions no selected test
-  runs, test files that did not run, maps not made, runs that did not finish, and the checks of
-  edited tests that Python has and JavaScript does not yet (K11).
+  runs, test files that did not run, maps not made, runs that did not finish, the checks of
+  edited tests that Python has and JavaScript does not yet (K11), and, at L2, the network.
 - ``behaviour`` (diff): A, A2 and H's calls compared (``jstrace``) as E03 and E04 compare
   Python's: ``behaviour_diff`` evidence and ``diff.behaviour``, the masked noise and what could
   not be compared as missing items, and a changed function that ran but was never traced. A
@@ -27,9 +34,15 @@ read a Python one.
   compiler API).
 - ``deps`` (diff): ``package.json``'s dependencies and the installed packages, compared
   (``dep_diff`` evidence, ``diff.deps``).
-- ``invariants`` (check): F02's (``run_stage.invariants_job``). ``no_network`` is not evaluated:
-  a Node process's network use is neither blocked nor seen in the process sandbox. Nothing is
-  timed: ``perf_budget`` is not evaluated, and the timing is a missing item.
+- ``invariants`` (check): F02's (``run_stage.invariants_job``). Nothing is timed:
+  ``perf_budget`` is not evaluated, and the timing is a missing item. ``no_network``:
+  - at L2 it is not evaluated: a Node process's network use is neither blocked nor seen in the
+    process sandbox, and the network is a missing item;
+  - at L3 the containers have no network, so nothing head's tests did reached it, and it
+    passes on that alone. Repro's detection is a Python audit hook, which a Node process does
+    not load: an attempt is neither seen nor cited, so it cannot fail on one as a Python run
+    does, and its message says so (``NODE_UNDETECTED``). A test that needed the network fails,
+    and its outcome says that.
 """
 
 import platform
@@ -51,6 +64,8 @@ from repro.provision import environment_missing
 from repro.readable import reason
 from repro.run_stage import (
     CBOR,
+    DOCKER_FIX,
+    SANDBOX_FIX,
     TEST_RUN_TIMEOUT_S,
     TESTS_TIMEOUT_S,
     Backend,
@@ -64,7 +79,8 @@ from repro.runner.pytest import read_results
 from repro.runner.testdiff import TestChange
 from repro.runner.trace import MAX_SAMPLES
 from repro.runner.trace import samples as trace_samples
-from repro.sandbox import Limits, ProcessSandbox, SandboxError
+from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, SandboxError
+from repro.sandbox.image import BUILD_TIMEOUT_S, node_image
 from repro.store import ArtifactStore
 
 #: What would let a JavaScript side be installed.
@@ -73,10 +89,20 @@ INSTALL_FIX: Final = (
     "--ignore-scripts, or pnpm or Yarn with --frozen-lockfile), with Node.js and the package "
     "manager on PATH"
 )
-#: Why head's network use is unseen (``invariants.no_network``'s ``unseen``).
+#: Why head's network use is unseen at L2 (``invariants.no_network``'s ``unseen``).
 NETWORK_UNSEEN: Final = (
-    "a Node process's network use is neither blocked nor seen in the process sandbox (L2); a "
-    "container with Node is K11"
+    "a Node process's network use is neither blocked nor seen in the process sandbox (L2); run "
+    "with the Docker sandbox (sandbox = docker) to have it blocked"
+)
+#: Why head's attempts are not seen at L3, where the network is blocked
+#: (``invariants.no_network``'s ``undetected``).
+NODE_UNDETECTED: Final = (
+    "Repro's detection is a Python audit hook, which a Node process does not load"
+)
+#: An image of the user's is refused for JavaScript (J04's ``sandbox_image``).
+NO_ENV_IMAGE: Final = (
+    "sandbox_image is for Python projects: a JavaScript project runs in Repro's Node.js image "
+    "(sandbox = docker) or in the process sandbox"
 )
 #: An ``expect`` or ``assert`` call in a test's own code, comments and strings blanked.
 _ASSERTION: Final = re.compile(r"\b(?:expect|assert)\s*[.(]")
@@ -106,7 +132,10 @@ class JsState(RunState):
 
     changes: list[JsChange] = field(default_factory=list)
     js_projects: dict[str, jsts.JsProject] = field(default_factory=dict)
-    boxes: dict[str, ProcessSandbox] = field(default_factory=dict)
+    #: Where each side's tests run: the host's copy (L2) or a container's volume (L3, K11).
+    trees: dict[str, jsts.Tree] = field(default_factory=dict)
+    #: The packages installed on each side, by name, with their version.
+    installed: dict[str, dict[str, str]] = field(default_factory=dict)
     #: The traced runs (A, A2, H) and the reruns of flipped tests on each side.
     runs: dict[str, jsts.Side] = field(default_factory=dict)
     reruns: dict[str, list[jsts.Side]] = field(default_factory=dict)
@@ -131,12 +160,15 @@ def _snapshot(work: Path, side: str) -> Path:
 
 
 def _sandbox_job(
+    git: Git,
     side: str,
+    sha: str,
     work: Path,
     state: JsState,
     *,
     backend: Backend,
     limits: Limits | None,
+    docker_runtime: str | None,
     env_image: str | None,
     options: JsOptions,
 ) -> Job:
@@ -150,41 +182,20 @@ def _sandbox_job(
         except SandboxError as exc:  # H01: the sandbox itself, not the project
             ctx.log(f"{side}: no sandbox: {exc}", level="warning", status="warn")
             detail = f"the sandbox could not start: {reason(exc)}"
-            payload = environment_missing(side, detail, "Run repro doctor: it says what is missing")
+            fix = DOCKER_FIX if backend == "docker" else SANDBOX_FIX
+            payload = environment_missing(side, detail, fix)
             ctx.emit("missing.recorded", status="warn", payload=payload)
 
     def provision(ctx: JobContext) -> None:
-        if backend == "docker" or env_image is not None:
-            raise jsts.JsError(
-                "a container with Node is not built yet (K11): JavaScript runs in the process "
-                "sandbox (sandbox = auto or process)"
-            )
-        tree = _snapshot(work, side)
-        project = jsts.JsProject.detect(tree)
-        node = jsts.node_version()
+        if env_image is not None:
+            raise jsts.JsError(NO_ENV_IMAGE)
+        project = jsts.JsProject.detect(_snapshot(work, side))
         chosen = limits or Limits(timeout_s=TEST_RUN_TIMEOUT_S)
-        # V8 reserves address space far beyond what it commits (jsts.MEMORY_BYTES).
-        box = ProcessSandbox(
-            work / "sandboxes" / side,
-            replace(chosen, memory_bytes=max(chosen.memory_bytes, jsts.MEMORY_BYTES)),
-        )
-        ready = box.ready_payload(side)
-        ready["platform"] = f"{platform.platform()} Node.js {node}"[:200]
-        state.network[side] = ready["network"]
-        state.platform[side] = f"process {ready['platform']}"
-        ctx.emit("sandbox.ready", status="ok", payload=ready)
-        ctx.log(
-            f"{side}: installing the dependencies ({project.manager} from its lockfile, "
-            "lifecycle scripts off)"
-            if options.install
-            else f"{side}: dependencies in place, not installed"
-        )
-        took = 0.0
-        if options.install:
-            with _INSTALL:
-                started = time.monotonic()
-                jsts.install_dependencies(project)
-                took = time.monotonic() - started
+        where = _Where(side, work, state, options, chosen)
+        if backend == "docker":
+            took, node = _in_container(ctx, where, project, git, sha, runtime=docker_runtime)
+        else:
+            took, node = _on_host(ctx, where, project)
         ctx.check()
         payload = {
             "side": side,
@@ -192,12 +203,11 @@ def _sandbox_job(
             "python_version": None,
             "node_version": node,
             "lock_sha256": jsts.lock_sha256(project),
-            "installed_packages": len(jsts.installed(tree)),
+            "installed_packages": len(state.installed[side]),
             "cache_hit": False,
             "duration_ms": max(0, int(took * 1000)),
         }
         state.js_projects[side] = project
-        state.boxes[side] = box
         ctx.emit("env.provisioned", status="ok", payload=payload)
 
     return Job(
@@ -210,8 +220,91 @@ def _sandbox_job(
             resolution=INSTALL_FIX,
         ),
         needs=(f"snapshot-{side}",),
-        timeout_s=jsts.INSTALL_TIMEOUT_S + 60,
+        # At L3, the image may be built first.
+        timeout_s=jsts.INSTALL_TIMEOUT_S + (BUILD_TIMEOUT_S if backend == "docker" else 0) + 60,
     )
+
+
+@dataclass(frozen=True)
+class _Where:
+    """One side's provisioning: the side, the run's directory and state, how, the limits."""
+
+    side: str
+    work: Path
+    state: JsState
+    options: JsOptions
+    limits: Limits
+
+    def installing(self, ctx: JobContext, project: jsts.JsProject) -> None:
+        ctx.log(
+            f"{self.side}: installing the dependencies ({project.manager} from its lockfile, "
+            "lifecycle scripts off)"
+            if self.options.install
+            else f"{self.side}: dependencies in place, not installed"
+        )
+
+
+def _on_host(ctx: JobContext, where: _Where, project: jsts.JsProject) -> tuple[float, str]:
+    """The process sandbox (L2), the install on the host: the time it took, and Node.js."""
+    side, state, chosen = where.side, where.state, where.limits
+    node = jsts.node_version()
+    # V8 reserves address space far beyond what it commits (jsts.MEMORY_BYTES).
+    box = ProcessSandbox(
+        where.work / "sandboxes" / side,
+        replace(chosen, memory_bytes=max(chosen.memory_bytes, jsts.MEMORY_BYTES)),
+    )
+    ready = box.ready_payload(side)
+    ready["platform"] = f"{platform.platform()} Node.js {node}"[:200]
+    state.network[side] = ready["network"]
+    state.platform[side] = f"process {ready['platform']}"
+    ctx.emit("sandbox.ready", status="ok", payload=ready)
+    where.installing(ctx, project)
+    took = 0.0
+    if where.options.install:
+        with _INSTALL:
+            started = time.monotonic()
+            jsts.install_dependencies(project)
+            took = time.monotonic() - started
+    state.installed[side] = jsts.installed(project.root)
+    state.trees[side] = jsts.HostTree(project.root, box)
+    return took, node
+
+
+def _in_container(
+    ctx: JobContext,
+    where: _Where,
+    project: jsts.JsProject,
+    git: Git,
+    sha: str,
+    *,
+    runtime: str | None,
+) -> tuple[float, str]:
+    """A container sandbox on the Node.js image (L3, K11), the install in a container of its
+    own: the time it took, and Node.js."""
+    side, state = where.side, where.state
+    if where.options.entry is not None:
+        raise jsts.JsError("a runner on the host (JsOptions.entry) cannot run in a container")
+    image = node_image()
+    ctx.check()
+    # Docker limits the memory used, not the address space V8 reserves: no jsts.MEMORY_BYTES.
+    box = DockerSandbox(
+        where.work / "sandboxes" / side, git, sha, image=image, limits=where.limits, runtime=runtime
+    )
+    state.containers.append(box)
+    state.platform[side] = f"docker {image}"
+    ready = box.ready_payload(side)
+    state.network[side] = ready["network"]
+    ctx.emit("sandbox.ready", status="ok", payload=ready)
+    where.installing(ctx, project)
+    took = 0.0
+    if where.options.install:  # no lock: each install has its own container and caches
+        started = time.monotonic()
+        jsts.install_in_container(box, project)
+        took = time.monotonic() - started
+    ctx.check()
+    node, state.installed[side] = jsts.container_environment(box, project)
+    state.trees[side] = jsts.VolumeTree(box)
+    return took, node
 
 
 # -- tests ----------------------------------------------------------------------------------------
@@ -374,7 +467,7 @@ def _tests_job(work: Path, state: JsState, options: JsOptions, commits: Mapping[
         def tests(side: str, label: str, **how: Any) -> jsts.Side:
             found = jsts.run_tests(
                 state.js_projects[side],
-                state.boxes[side],
+                state.trees[side],
                 work / "runs" / f"{side}-{label}".replace(" ", "-"),
                 commits[side],
                 entry=options.entry,
@@ -431,7 +524,10 @@ def _tests_job(work: Path, state: JsState, options: JsOptions, commits: Mapping[
                 events.run(side, found, flips)
         state.diffs = [_classify(t, state, maps) for t in reported]
         state.test_changes = _test_changes(work, state)
-        state.network_unseen = NETWORK_UNSEEN
+        if state.network.get("head") == "enforced":  # L3: blocked, and no attempt is seen
+            state.head_network, state.network_undetected = [], NODE_UNDETECTED
+        else:
+            state.network_unseen = NETWORK_UNSEEN
 
     return Job(
         "tests",
@@ -561,14 +657,16 @@ def _outcomes_job(state: JsState) -> Job:
                 None,
             )
         )
-        missing.append(
-            _missing(
-                "network_not_enforced",
-                f"the network: {NETWORK_UNSEEN}",
-                [],
-                "Run the tests where the network is cut off: K11's container",
+        if set(state.network.values()) != {"enforced"}:  # L2; at L3 the network is cut off
+            missing.append(
+                _missing(
+                    "network_not_enforced",
+                    f"the network: {NETWORK_UNSEEN}",
+                    [],
+                    "Run with the Docker sandbox (sandbox = docker): the tests then run with no "
+                    "network",
+                )
             )
-        )
         for item in missing:
             ctx.emit("missing.recorded", status="warn", payload=item)
         counts: dict[str, int] = {}
@@ -723,9 +821,9 @@ def _deps_job(work: Path, state: JsState) -> Job:
             changes += dependencies.compare(
                 declared["base"], declared["head"], "declared", "package.json"
             )
-        if {"base", "head"} <= state.js_projects.keys():
+        if {"base", "head"} <= state.js_projects.keys():  # read where they were installed
             changes += dependencies.compare(
-                jsts.installed(trees["base"]), jsts.installed(trees["head"]), "installed", None
+                state.installed["base"], state.installed["head"], "installed", None
             )
         cited: list[tuple[str, str, str, str]] = []
         for change in changes:
@@ -776,21 +874,32 @@ def run_jobs(
     backend: Backend,
     artifacts: ArtifactStore | None = None,
     limits: Limits | None = None,
+    docker_runtime: str | None = None,
     env_image: str | None = None,
     options: JsOptions | None = None,
 ) -> Sequence[Job]:
     """The run, diff and check stages of a JavaScript change, after the build stage's
-    snapshots, analysis (``state.analysis`` and ``state.changes``) and policy."""
+    snapshots, analysis (``state.analysis`` and ``state.changes``) and policy. With
+    ``backend="docker"``, in containers (L3, K11; ``docker_runtime``: theirs, H03)."""
     how = options or JsOptions()
 
-    def sandbox(side: str) -> Job:
+    def sandbox(side: str, sha: str) -> Job:
         return _sandbox_job(
-            side, work, state, backend=backend, limits=limits, env_image=env_image, options=how
+            git,
+            side,
+            sha,
+            work,
+            state,
+            backend=backend,
+            limits=limits,
+            docker_runtime=docker_runtime,
+            env_image=env_image,
+            options=how,
         )
 
     return [
-        sandbox("base"),
-        sandbox("head"),
+        sandbox("base", base),
+        sandbox("head", head),
         _tests_job(work, state, how, {"base": base, "head": head}),
         _outcomes_job(state),
         _behaviour_job(state, artifacts),

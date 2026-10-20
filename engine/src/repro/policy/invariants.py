@@ -20,7 +20,10 @@ result is ``invariant`` evidence of its own, citing the evidence it rests on, an
 - ``no_network`` (F03): no network attempt by head's tests past this machine (the sandbox's
   detections; loopback and Unix sockets are local). Where the sandbox enforces the network (L3)
   a pass rests on that; where it only detects (L2), a pass rests on detection, which code that
-  bypasses Python's socket functions escapes: ``network_not_enforced`` says so.
+  bypasses Python's socket functions escapes: ``network_not_enforced`` says so. Where attempts
+  are not detected at all, a JavaScript run (K08, K11): at L2 it is not evaluated; at L3 a pass
+  rests on the enforcement alone (nothing reached the network), it cannot fail, and its
+  message says that attempts were not seen.
 - ``perf_budget`` (F03): no timed test slower than base past ``max_regression``, by D07's
   comparison: a test fails when its interval's low end is past the budget and D07 calls it a
   regression (significant, past this machine's noise). An interval past the budget that D07
@@ -265,16 +268,20 @@ def no_network(
     network: str | None,
     complete: bool = True,
     unseen: str | None = None,
+    undetected: str | None = None,
 ) -> InvariantResult:
     """``attempts``: what head's test runs were seen to attempt, None if they did not run;
     ``network``: head's sandbox's ``enforced`` or ``detected-only``; ``complete``: whether every
     detection was read (a process's log can be cut, or hold lines that are not records);
     ``unseen``: why head's network use could be neither blocked nor seen (K08: a Node process
-    in the process sandbox), which leaves the invariant not evaluated."""
+    in the process sandbox), which leaves the invariant not evaluated; ``undetected``: why
+    attempts are not seen where the network is enforced (K11: a Node process in a container),
+    which a pass then states."""
     name, options = invariant.name, invariant.options
-    if unseen is not None and network != "enforced":
+    blind = unseen if unseen is not None else undetected
+    if blind is not None and network != "enforced":  # neither blocked nor seen
         return InvariantResult(
-            name, "not_evaluated", unseen, details={"network": network}, options=options
+            name, "not_evaluated", blind, details={"network": network}, options=options
         )
     if attempts is None:
         return InvariantResult(name, "not_evaluated", "head's tests did not run", options=options)
@@ -298,6 +305,13 @@ def no_network(
             details={"network": network},
             options=options,
         )
+    if network == "enforced" and undetected is not None:
+        message = (
+            "nothing head's tests did reached the network: the sandbox had none (enforced); "
+            f"their attempts are not seen ({undetected})"
+        )
+        details = {"network": network, "undetected": undetected}
+        return InvariantResult(name, "pass", message, (), details, options)
     if network == "enforced":
         message = "no network attempt by head's tests; the sandbox had no network (enforced)"
     else:

@@ -1,5 +1,5 @@
 """JavaScript and TypeScript targets: the project, its dependencies, and runs of its tests (K01,
-K06, K07, K08; ADR-0017).
+K06, K07, K08, K11; ADR-0017).
 
 ``repro run`` reproduces a JavaScript or TypeScript change with these (``repro.js_stage``, K08);
 ``repro js-run`` reports the same runs without a card (K01's command, kept for a quick look).
@@ -10,18 +10,24 @@ K06, K07, K08; ADR-0017).
 - **Dependencies** are installed from the lockfile with lifecycle scripts disabled
   (``--ignore-scripts``), so no code of the target or of its dependencies runs while the
   network is reachable [npm docs, "npm ci"; pnpm docs, "pnpm install"; checked 2026-10-18].
-  This is the same rule as Python's provisioning (D03).
-- **The tests** run in Repro's process sandbox (L2: a minimal environment, a contained process
-  tree, a time limit), with the runner's JSON report. Vitest's report is "compatible with
-  Jest's ``--json`` option" [vitest.dev, "Reporters", checked 2026-10-18], so one reader serves
-  both. Each test's start (line and column, 1-based) comes with it: Vitest's
-  ``--includeTaskLocation`` and Jest's ``--testLocationInResults`` (both in their ``--help``,
-  Vitest 5.0.4 and Jest 30.5.2, checked 2026-10-20). Repro's network guard is a Python audit
-  hook, so it does not see a Node process: neither blocked nor detected at L2. Node runs with
-  WebAssembly's trap handler off and its heap capped (``NODE_OPTIONS``): the trap handler's
-  address-space reservations do not fit the POSIX sandbox's memory limit.
+  This is the same rule as Python's provisioning (D03). On the host (``install_dependencies``)
+  or, at L3 (K11), in a container of their own on the sandbox's volume, the only one with the
+  network (``install_in_container``), with the Node.js image's package managers.
+- **The tests** run in a ``Tree``: the process sandbox on the host's copy of the project (L2: a
+  minimal environment, a contained process tree, a time limit; ``HostTree``), or fresh
+  containers with no network on a volume (L3, K11; ``VolumeTree``). The runner writes its JSON
+  report. Vitest's report is "compatible with Jest's ``--json`` option" [vitest.dev,
+  "Reporters", checked 2026-10-18], so one reader serves both. Each test's start (line and
+  column, 1-based) comes with it: Vitest's ``--includeTaskLocation`` and Jest's
+  ``--testLocationInResults`` (both in their ``--help``, Vitest 5.0.4 and Jest 30.5.2, checked
+  2026-10-20). Repro's network guard is a Python audit hook, so it does not see a Node process:
+  at L2 its network use is neither blocked nor detected; at L3 it is blocked, and still not
+  detected. Node runs with WebAssembly's trap handler off and its heap capped
+  (``NODE_OPTIONS``): the trap handler's address-space reservations do not fit the POSIX
+  sandbox's memory limit.
 - **A test's identity** is its file, relative to the project, and its full name:
-  ``test/m.test.js::m adds``, the counterpart of a pytest node ID.
+  ``test/m.test.js::m adds``, the counterpart of a pytest node ID. A container's paths are
+  POSIX, under ``/work``; the identity is the same on either tree.
 - **A test file that did not run** (a syntax error, an import that fails) has no tests in the
   report, only a message; Repro keeps it (``Side.broken``).
 
@@ -34,14 +40,16 @@ import re
 import shutil
 import subprocess
 import sys
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path, PurePosixPath
-from typing import Any, Final, Literal
+from pathlib import Path, PurePath, PurePosixPath
+from typing import Any, Final, Literal, Protocol
 
 from repro import jsmap, jstrace
 from repro.gitops import Git, snapshot
-from repro.sandbox import GIB, Limits, ProcessSandbox
+from repro.sandbox import GIB, DockerSandbox, Execution, Limits, ProcessSandbox, SandboxError
+from repro.sandbox.docker import TMP, TMPFS_SIZE, USER, WORK
 
 Runner = Literal["vitest", "jest"]
 Manager = Literal["npm", "pnpm", "yarn"]
@@ -57,6 +65,16 @@ ENTRY: Final[Mapping[Runner, str]] = {
 }
 REPORT: Final = "repro-report.json"
 INSTALL_TIMEOUT_S: Final = 900.0
+#: The install from the lockfile, lifecycle scripts off: the package manager's arguments.
+INSTALL: Final[Mapping[Manager, tuple[str, ...]]] = {
+    "npm": ("ci", "--ignore-scripts", "--no-audit", "--no-fund"),
+    "pnpm": ("install", "--frozen-lockfile", "--ignore-scripts"),
+    "yarn": ("install", "--frozen-lockfile", "--ignore-scripts"),
+}
+#: Where a container's install keeps the package managers' caches (K11): in the volume, not in
+#: the memory-backed ``/tmp``, and removed when it ends (they are not the project's, and Jest
+#: would index them).
+CACHE: Final = ".repro/cache"
 #: Node's options in the sandbox. V8 bounds-checks WebAssembly memory with a trap handler that
 #: "requires allocating a big virtual memory cage (currently 10GB)" [nodejs.org, CLI docs,
 #: ``--disable-wasm-trap-handler``, checked 2026-10-18], and the POSIX sandbox caps address
@@ -138,15 +156,34 @@ def manifest(root: Path) -> dict[str, Any]:
 
 
 def install_argv(project: JsProject) -> list[str]:
-    """The install from the lockfile, lifecycle scripts off."""
+    """The install from the lockfile, lifecycle scripts off, with the host's package manager."""
     program = shutil.which(project.manager)
     if program is None:
         raise JsError(f"{project.manager} is not installed")
-    return {
-        "npm": [program, "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
-        "pnpm": [program, "install", "--frozen-lockfile", "--ignore-scripts"],
-        "yarn": [program, "install", "--frozen-lockfile", "--ignore-scripts"],
-    }[project.manager]
+    return [program, *INSTALL[project.manager]]
+
+
+#: Lines that end a failed install's output without saying why: npm's pointer to its log, and
+#: the version Node.js prints after an uncaught error.
+_NOT_WHY: Final = re.compile(r"A complete log of this run|^Node\.js v\d")
+
+
+def _failed(done: subprocess.CompletedProcess[bytes]) -> str:
+    """Why an install failed: the last line that says, from stderr, else from stdout (pnpm
+    writes its errors there)."""
+    for stream in (done.stderr, done.stdout):
+        lines = [line.strip() for line in stream.decode("utf-8", "replace").splitlines()]
+        said = [line for line in lines if line and not _NOT_WHY.search(line)]
+        if said:
+            return f"the install failed: {said[-1][:300]}"
+    return f"the install failed: exit {done.returncode}"
+
+
+def _no_runner(entry: str) -> JsError:
+    return JsError(
+        f"after the install, {entry} cannot be read: the runner is run from node_modules "
+        "(Yarn's Plug'n'Play is not supported), and each link there must resolve"
+    )
 
 
 def install_dependencies(project: JsProject) -> None:
@@ -162,16 +199,105 @@ def install_dependencies(project: JsProject) -> None:
     except subprocess.TimeoutExpired:
         raise JsError(f"the install took longer than {INSTALL_TIMEOUT_S:.0f} s") from None
     if done.returncode != 0:
-        said = done.stderr.decode("utf-8", "replace").strip().splitlines()[-1:]
-        raise JsError(f"the install failed: {said[0][:300] if said else done.returncode}")
+        raise JsError(_failed(done))
     entry = ENTRY[project.runner]
     if not (project.root / entry).is_file():
         # Seen on Windows inside a packaged app, whose writes under AppData are redirected:
         # pnpm's links pointed at the unredirected path (docs/guide/troubleshooting.md).
-        raise JsError(
-            f"after the install, {entry} cannot be read: the runner is run from node_modules "
-            "(Yarn's Plug'n'Play is not supported), and each link there must resolve"
+        raise _no_runner(entry)
+
+
+def install_in_container(box: DockerSandbox, project: JsProject) -> None:
+    """Installs the project's dependencies into ``box``'s volume from its lockfile, lifecycle
+    scripts off (K11): ``INSTALL``'s commands, with the image's package managers, in a
+    container of their own. It is the only one with the network, and is otherwise hardened as
+    the sandbox's are: a read-only root, no capabilities, the unprivileged user. Corepack works
+    from a copy of the image's in ``/tmp``, so that a version the project names can be fetched
+    into it."""
+    cache = f"{WORK}/{CACHE}"
+    script = (
+        f"set -e; trap 'rm -rf {cache}' EXIT; "
+        f'cp -R "$COREPACK_HOME" {TMP}/corepack; export COREPACK_HOME={TMP}/corepack; '
+        + " ".join([project.manager, *INSTALL[project.manager]])
+    )
+    name = f"repro-install-{uuid.uuid4().hex[:12]}"
+    command = [
+        box.docker, "run", "--rm", "--name", name,
+        *(["--runtime", box.runtime] if box.runtime is not None else []),
+        "--read-only", "--tmpfs", f"{TMP}:rw,exec,size={TMPFS_SIZE}",
+        "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--user", USER,
+        "-v", f"{box.volume}:{WORK}", "-w", WORK,
+        "-e", f"HOME={TMP}", "-e", f"TMPDIR={TMP}",
+        "-e", f"npm_config_cache={cache}/npm", "-e", f"npm_config_store_dir={cache}/pnpm",
+        "-e", f"YARN_CACHE_FOLDER={cache}/yarn",
+        "--entrypoint", "sh", box.image, "-c", script,
+    ]  # fmt: skip
+    try:
+        done = subprocess.run(  # noqa: S603 - docker, with Repro's own arguments
+            command, capture_output=True, timeout=INSTALL_TIMEOUT_S, check=False
         )
+    except subprocess.TimeoutExpired:
+        subprocess.run(  # noqa: S603 - docker, with Repro's own arguments
+            [box.docker, "rm", "-f", name], capture_output=True, timeout=60, check=False
+        )
+        raise JsError(f"the install took longer than {INSTALL_TIMEOUT_S:.0f} s") from None
+    except OSError as exc:
+        raise SandboxError(f"docker run: {exc}") from None
+    if done.returncode != 0:
+        raise JsError(_failed(done))
+
+
+#: Run with ``node -e`` in the sandbox, after the install, with no network: Node's version (what
+#: ``node --version`` prints), whether the runner's entry (the argument) is there, and the
+#: packages at the top of ``node_modules``, as ``installed`` reads them (their ``package.json``:
+#: no package's code runs).
+_ENVIRONMENT: Final = """
+const fs = require("node:fs");
+const read = (path) => { try { return fs.readdirSync(path); } catch { return []; } };
+const isDir = (path) => { try { return fs.statSync(path).isDirectory(); } catch { return false; } };
+const folders = [];
+for (const name of read("node_modules")) {
+  if (name.startsWith("@") && isDir(`node_modules/${name}`)) {
+    for (const inner of read(`node_modules/${name}`))
+      if (isDir(`node_modules/${name}/${inner}`)) folders.push(`${name}/${inner}`);
+  } else if (!name.startsWith(".")) folders.push(name);
+}
+const installed = {};
+for (const folder of folders) {
+  try {
+    const data = JSON.parse(fs.readFileSync(`node_modules/${folder}/package.json`, "utf8"));
+    if (data && typeof data.version === "string")
+      installed[String(data.name || folder)] = data.version.slice(0, 100);
+  } catch {}
+}
+const entry = fs.existsSync(process.argv[1]);
+console.log(JSON.stringify({ node: process.version, entry, installed }));
+"""
+
+
+def container_environment(box: DockerSandbox, project: JsProject) -> tuple[str, dict[str, str]]:
+    """Node.js's version in ``box`` (``22.23.3``) and the packages installed there, by name with
+    their version, read in a sandboxed run (K11). The runner's entry must be there, as after
+    ``install_dependencies``."""
+    entry = ENTRY[project.runner]
+    run = box.run(["node", "-e", _ENVIRONMENT, entry])
+    lines = run.stdout.decode("utf-8", "replace").strip().splitlines()
+    try:
+        found = json.loads(lines[-1]) if run.returncode == 0 and lines else None
+    except ValueError:
+        found = None
+    if not isinstance(found, dict):
+        said = run.stderr.decode("utf-8", "replace").strip().splitlines()[-1:]
+        error = said[0][:300] if said else run.outcome
+        raise JsError(f"node did not report in the container: {error}")
+    version = re.match(r"v?(\d+\.\d+\.\d+)", str(found.get("node", "")))
+    if version is None:
+        raise JsError("node --version gave no version")
+    if found.get("entry") is not True:
+        raise _no_runner(entry)
+    listed = found.get("installed")
+    installed = {str(k): str(v) for k, v in listed.items()} if isinstance(listed, dict) else {}
+    return version.group(1), installed
 
 
 def node_version() -> str:
@@ -230,16 +356,122 @@ def installed(root: Path) -> dict[str, str]:
     return found
 
 
+class Tree(Protocol):
+    """Where a project's tests run (K11): its files and its commands, as they see them.
+    ``HostTree``: the host's copy, in the process sandbox (L2); ``VolumeTree``: a container
+    sandbox's volume (L3)."""
+
+    @property
+    def root(self) -> PurePath:
+        """The project's root."""
+        ...
+
+    @property
+    def node(self) -> str:
+        """Node.js, the program."""
+        ...
+
+    def outputs(self, out: Path) -> PurePath:
+        """A directory for one run's files, kept in ``out`` on the host."""
+        ...
+
+    def write(self, files: Mapping[str, bytes]) -> None:
+        """Writes ``files`` (POSIX paths relative to the project's root) into the project."""
+        ...
+
+    def read(self, path: PurePath) -> bytes | None:
+        """A file a command left, or None."""
+        ...
+
+    def run(
+        self,
+        argv: Sequence[str],
+        *,
+        env: Mapping[str, str],
+        stop: Callable[[], bool] | None = None,
+    ) -> Execution:
+        """Runs ``argv`` from the project's root."""
+        ...
+
+
+class HostTree:
+    """The project on the host, its commands in the process sandbox (L2)."""
+
+    def __init__(self, root: Path, box: ProcessSandbox) -> None:
+        self.root = root
+        self.box = box
+        self._outputs: list[Path] = []
+
+    @property
+    def node(self) -> str:
+        node = shutil.which("node")
+        if node is None:
+            raise JsError("node is not installed")
+        return node
+
+    def outputs(self, out: Path) -> Path:
+        out.mkdir(parents=True, exist_ok=True)
+        self._outputs.append(out)
+        return out
+
+    def write(self, files: Mapping[str, bytes]) -> None:
+        for name, data in files.items():
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / name).write_bytes(data)
+
+    def read(self, path: PurePath) -> bytes | None:
+        found = Path(path)
+        return found.read_bytes() if found.is_file() else None
+
+    def run(
+        self,
+        argv: Sequence[str],
+        *,
+        env: Mapping[str, str],
+        stop: Callable[[], bool] | None = None,
+    ) -> Execution:
+        return self.box.run(argv, cwd=self.root, env=env, writable=tuple(self._outputs), stop=stop)
+
+
+class VolumeTree:
+    """The project in a container sandbox's volume, its commands in fresh containers with no
+    network (L3, K11). Paths are POSIX, under ``/work``; a run's files go in ``.repro/runs``
+    and are read back with ``docker cp``."""
+
+    node: Final = "node"
+
+    def __init__(self, box: DockerSandbox) -> None:
+        self.box = box
+        self.root = PurePosixPath(WORK)
+
+    def outputs(self, out: Path) -> PurePosixPath:
+        out.mkdir(parents=True, exist_ok=True)
+        relative = f".repro/runs/{out.name}"
+        self.box.write_files(relative, {})  # the directory, owned by the unprivileged user
+        return self.root / relative
+
+    def write(self, files: Mapping[str, bytes]) -> None:
+        self.box.write_files(".", files)
+
+    def read(self, path: PurePath) -> bytes | None:
+        return self.box.read_file(PurePosixPath(path).relative_to(self.root).as_posix())
+
+    def run(
+        self,
+        argv: Sequence[str],
+        *,
+        env: Mapping[str, str],
+        stop: Callable[[], bool] | None = None,
+    ) -> Execution:
+        return self.box.run(argv, env=env, stop=stop)
+
+
 def runner_argv(
-    project: JsProject, report: str, *, entry: str | None = None, extra: Sequence[str] = ()
+    project: JsProject, report: str, *, node: str, script: str, extra: Sequence[str] = ()
 ) -> list[str]:
-    """The runner's command, with its JSON report written to ``report`` and each test's start
-    in it; ``entry`` replaces the runner's entry point under ``node_modules`` (a test's),
-    ``extra`` comes last (the map's setup, K06; the files to run, K08)."""
-    node = shutil.which("node")
-    if node is None:
-        raise JsError("node is not installed")
-    script = entry or str(project.root / ENTRY[project.runner])
+    """The runner's command, ``node script``, with its JSON report written to ``report`` and
+    each test's start in it; ``extra`` comes last (the map's setup, K06; the files to run,
+    K08)."""
     if project.runner == "vitest":
         return [
             node,
@@ -284,7 +516,12 @@ class Reported:
     duration_ms: int = 0
 
 
-def _relative(name: str, root: Path) -> str:
+def _relative(name: str, root: PurePath) -> str:
+    if not isinstance(root, Path):  # a container's root (K11): POSIX, nothing here to resolve
+        try:
+            return PurePosixPath(name).relative_to(root).as_posix()
+        except ValueError:
+            return PurePosixPath(name).name
     try:
         return Path(name).resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
@@ -298,9 +535,10 @@ def _text(value: object) -> str | None:
     return text[:_TEXT] or None
 
 
-def read_tests(data: bytes, root: Path) -> tuple[dict[str, Reported], dict[str, str]]:
+def read_tests(data: bytes, root: PurePath) -> tuple[dict[str, Reported], dict[str, str]]:
     """Each test, by ``<file relative to root>::<full name>``, and each test file that did not
-    run, with its message."""
+    run, with its message. ``root`` is the project's root as the runner saw it: a host path,
+    or a container's (a ``PurePosixPath``, K11)."""
     try:
         report = json.loads(data)
     except ValueError as exc:
@@ -330,7 +568,7 @@ def read_tests(data: bytes, root: Path) -> tuple[dict[str, Reported], dict[str, 
     return found, broken
 
 
-def read_report(data: bytes, root: Path) -> dict[str, str]:
+def read_report(data: bytes, root: PurePath) -> dict[str, str]:
     """Each test's outcome, by ``<file relative to root>::<full name>``."""
     return {test: found.outcome for test, found in read_tests(data, root)[0].items()}
 
@@ -380,7 +618,7 @@ class Side:
 
 def run_tests(
     project: JsProject,
-    box: ProcessSandbox,
+    tree: Tree,
     out: Path,
     commit: str,
     *,
@@ -391,18 +629,20 @@ def run_tests(
     files: Sequence[str] = (),
     stop: Callable[[], bool] | None = None,
 ) -> Side:
-    """One run of the project's tests in ``box``, its report, map and calls written in ``out``.
+    """One run of the project's tests in ``tree``, its report, map and calls kept in ``out``.
     ``mapped``: with the map's setup (K06); ``trace``: the functions to trace (K07); ``again``:
     in another order (base's second run, A2); ``files``: these test files alone."""
-    out.mkdir(parents=True, exist_ok=True)
     side = Side(commit)
-    report = out / REPORT
-    map_file = out / jsmap.MAP_FILE
-    calls = out / jstrace.TRACE_FILE
     env = {"NODE_OPTIONS": NODE_OPTIONS}
     unmapped = ""
     extra: list[str] = []
     try:
+        here = tree.outputs(out)
+        report, map_file, calls = (
+            here / REPORT,
+            here / jsmap.MAP_FILE,
+            here / jstrace.TRACE_FILE,
+        )
         if mapped or trace:
             env["REPRO_JS_MAP"] = str(map_file)
             if trace:
@@ -411,36 +651,53 @@ def run_tests(
                     "REPRO_JS_TRACE_OUT": str(calls),
                     "REPRO_JS_TRACE_SAMPLES": str(jstrace.SAMPLES),
                 }
-            extra, unmapped = _map_setup(project, box, env, entry, trace=bool(trace))
+            extra, unmapped = _map_setup(project, tree, env, entry, trace=bool(trace))
         if again:
             extra += jstrace.shuffled(project.runner)
         extra += only(project.runner, files)
-        run = box.run(
-            runner_argv(project, str(report), entry=entry, extra=extra),
-            cwd=project.root,
+        script = _script(tree, project, entry)
+        run = tree.run(
+            runner_argv(project, str(report), node=tree.node, script=script, extra=extra),
             env=env,
-            writable=(out,),
             stop=stop,
         )
         side.ended = run.outcome
-        if not report.is_file():
+        data = _kept(tree, report, out)
+        if data is None:
             # Node ends a crash with its version: the error is the line that names one.
             lines = run.stderr.decode("utf-8", "replace").strip().splitlines()
             error = ([line for line in lines if "Error" in line] or lines or [""])[-1].strip()
             raise JsError(
                 f"the tests wrote no report ({run.outcome}, exit {run.returncode}): {error[:300]}"
             )
-        tests, side.broken = read_tests(report.read_bytes(), project.root)
+        tests, side.broken = read_tests(data, tree.root)
         side.outcomes = {test: found.outcome for test, found in tests.items()}
         side.starts = {test: found.start for test, found in tests.items() if found.start}
         side.messages = {test: found.message for test, found in tests.items() if found.message}
         side.durations = {test: found.duration_ms for test, found in tests.items()}
         if mapped:
-            side.map = _read_map(map_file, unmapped)
-        side.calls = calls.read_bytes() if calls.is_file() else b""
+            side.map = _read_map(None if unmapped else _kept(tree, map_file, out), unmapped)
+        side.calls = _kept(tree, calls, out) or b""
     except JsError as exc:
         side.problem = str(exc)
+    except SandboxError as exc:  # the container sandbox itself (K11), not the tests
+        side.problem = f"the sandbox: {exc}"
     return side
+
+
+def _script(tree: Tree, project: JsProject, entry: str | None) -> str:
+    """The runner's entry point: ``entry`` (a test's own), or the project's under
+    ``node_modules``."""
+    return entry or str(tree.root / ENTRY[project.runner])
+
+
+def _kept(tree: Tree, path: PurePath, out: Path) -> bytes | None:
+    """A file a run left, read back; a container's is kept in ``out`` too, as the host's is."""
+    data = tree.read(path)
+    kept = out / path.name
+    if data is not None and not kept.is_file():
+        kept.write_bytes(data)
+    return data
 
 
 def run_side(
@@ -466,12 +723,13 @@ def run_side(
     except JsError as exc:
         return Side(commit, problem=str(exc))
     box = ProcessSandbox(work / "box", limits or Limits(timeout_s=900, memory_bytes=MEMORY_BYTES))
-    return run_tests(project, box, work / "box", commit, entry=entry, trace=trace, again=again)
+    host = HostTree(project.root, box)
+    return run_tests(project, host, work / "box", commit, entry=entry, trace=trace, again=again)
 
 
 def _map_setup(
     project: JsProject,
-    box: ProcessSandbox,
+    tree: Tree,
     env: Mapping[str, str],
     entry: str | None,
     *,
@@ -481,25 +739,24 @@ def _map_setup(
     the tests then run as they would without it."""
     try:
         if project.runner == "vitest":
-            return jsmap.vitest_setup(project.root, trace=trace), ""
-        node = shutil.which("node")
-        if node is None:
-            raise JsError("node is not installed")
-        script = entry or str(project.root / ENTRY[project.runner])
-        shown = box.run([node, script, "--showConfig"], cwd=project.root, env=env)
+            tree.write(jsmap.vitest_files(project.root, trace=trace))
+            return ["--config", jsmap.WRAPPER], ""
+        script = _script(tree, project, entry)
+        shown = tree.run([tree.node, script, "--showConfig"], env=env)
         own = jsmap.jest_own_setup(shown.stdout)
-        return jsmap.jest_setup(project.root, own, trace=trace), ""
-    except (jsmap.MapError, OSError) as exc:
+        tree.write(jsmap.jest_files(trace=trace))
+        return jsmap.jest_args(own, str(tree.root / jsmap.JEST_SETUP)), ""
+    except (jsmap.MapError, OSError, SandboxError) as exc:
         return [], str(exc)
 
 
-def _read_map(path: Path, unmapped: str) -> jsmap.TestMap:
+def _read_map(data: bytes | None, unmapped: str) -> jsmap.TestMap:
     if unmapped:
         return jsmap.TestMap(problem=unmapped)
-    if not path.is_file():
+    if data is None:
         return jsmap.TestMap(problem="the setup file wrote no map")
     try:
-        return jsmap.read_map(path.read_bytes())
+        return jsmap.read_map(data)
     except jsmap.MapError as exc:
         return jsmap.TestMap(problem=str(exc))
 
