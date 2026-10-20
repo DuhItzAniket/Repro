@@ -1,8 +1,9 @@
 # ADR-0018: Remote sandbox backends for teams
 
-- **Status:** proposed. Option A is built as a local prototype (K05). Options B and C need
-  infrastructure Repro's owner does not run (a KVM host, or a cloud account), so they stay a
-  design until the owner approves one and provides it.
+- **Status:** accepted by the owner (2026-10-19). Option A is built (K05); options B and C
+  are K09 and K10. They need infrastructure not yet provided (a Linux host with KVM, or a
+  cloud account): their code is tested against fakes until a real host exists, and the
+  isolation level L5 this acceptance approves enters the schema with B.
 - **Date:** 2026-10-18
 - **Phase:** K05
 
@@ -30,7 +31,7 @@ What the candidates offer, read on 2026-10-18:
   needs the `devmapper` snapshotter; `kata-deploy` installs a `kata-fc` RuntimeClass
   [V kata-containers, `docs/how-to/how-to-use-kata-containers-with-firecracker.md`].
 
-## Decision (proposed)
+## Decision
 - **A. A team's own Docker engine (built, K05).** The setting `docker_context`
   (`REPRO_DOCKER_CONTEXT`) names a Docker context that every container command uses. The
   context is the team's engine on another machine, over SSH or TLS. Isolation is what that

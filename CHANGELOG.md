@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-20
+
+Stage K's first items, the evaluation's harness (Stage J, J01 to J05; the study itself
+deferred) and the fixes a real-world demo called for. Release record:
+`docs/phases/release-1.2.0.md`. The first release published to PyPI.
+
 ### Added
 - `python -m repro_bench.swe`: SWE-format instances and agent patches as Repro runs, under the
   evaluation's input contract. `seal` keeps a system's input to the repository at base, the
@@ -803,7 +809,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.2.0
 [1.1.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.1.0
 [1.0.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.0.0
 [0.7.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v0.7.0
