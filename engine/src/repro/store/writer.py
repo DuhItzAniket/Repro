@@ -7,6 +7,11 @@ transaction gives each event its run's next ``seq``, inserts it and commits. Onl
 commit does it resolve the callers' futures and call ``on_commit`` with the stored events in
 order: nothing is published that is not durable.
 
+``ts`` is stamped where an event is built, before it is queued, so two jobs emitting at once
+can arrive stamped out of order. ``seq`` stays the only order (ADR-0002); the writer keeps each
+run's ``ts`` from going backwards against it, raising an event stamped before its run's latest
+to that timestamp. A stored ``ts`` therefore lies between the event's build and its commit.
+
 An ``evidence.created`` event carries its evidence record in ``payload.evidence``; the writer
 sets the record's ``seq`` to the event's own and inserts the evidence row in the same
 transaction, so evidence exists exactly when the event that created it does.
@@ -106,6 +111,14 @@ class _Group:
     future: "Future[list[StoredEvent]]"
 
 
+@dataclass(frozen=True, slots=True)
+class _Tail:
+    """A run's last stored event: its ``seq`` and ``ts`` (0 and "" before the first)."""
+
+    seq: int
+    ts: str
+
+
 @dataclass(slots=True)
 class _Call:
     """A registry or maintenance operation, run in the writer thread in its own transaction."""
@@ -138,7 +151,7 @@ class StoreWriter:
         self._queue: queue.SimpleQueue[_Group | _Call | None] = queue.SimpleQueue()
         self._thread: threading.Thread | None = None
         self._connection: sqlite3.Connection | None = None
-        self._next_seq: dict[str, int] = {}
+        self._tails: dict[str, _Tail] = {}
         self._closed = False
         self._lock = threading.Lock()
         #: Transactions committed, for tests and diagnostics.
@@ -375,7 +388,7 @@ class StoreWriter:
 
     def _transaction(self, groups: Sequence[_Group]) -> list[list[StoredEvent]]:
         connection = self._require()
-        next_seq: dict[str, int] = {}
+        tails: dict[str, _Tail] = {}
         stored: list[list[StoredEvent]] = []
         connection.execute("BEGIN IMMEDIATE")
         try:
@@ -383,27 +396,30 @@ class StoreWriter:
                 events = []
                 for draft in group.drafts:
                     run_id = str(draft["run_id"])
-                    seq = next_seq.get(run_id) or self._seq_after(connection, run_id)
-                    events.append(_insert(connection, draft, seq))
-                    next_seq[run_id] = seq + 1
+                    tail = tails.get(run_id) or self._tail(connection, run_id)
+                    ts = _not_before(str(draft["ts"]), tail.ts)
+                    events.append(_insert(connection, {**draft, "ts": ts}, tail.seq + 1))
+                    tails[run_id] = _Tail(tail.seq + 1, ts)
                 stored.append(events)
             connection.execute("COMMIT")
         except BaseException:
             connection.execute("ROLLBACK")
-            # The database may hold numbers this cache does not: read them again next time.
-            for run_id in next_seq:
-                self._next_seq.pop(run_id, None)
+            # The database may not hold the tails this cache would give: read them again.
+            for run_id in tails:
+                self._tails.pop(run_id, None)
             raise
-        self._next_seq.update(next_seq)
+        self._tails.update(tails)
         self.transactions += 1
         return stored
 
-    def _seq_after(self, connection: sqlite3.Connection, run_id: str) -> int:
-        cached = self._next_seq.get(run_id)
+    def _tail(self, connection: sqlite3.Connection, run_id: str) -> _Tail:
+        cached = self._tails.get(run_id)
         if cached is not None:
             return cached
-        row = connection.execute("SELECT MAX(seq) FROM events WHERE run_id = ?", (run_id,))
-        return int(row.fetchone()[0] or 0) + 1
+        row = connection.execute(
+            "SELECT seq, ts FROM events WHERE run_id = ? ORDER BY seq DESC LIMIT 1", (run_id,)
+        ).fetchone()
+        return _Tail(int(row[0]), str(row[1])) if row is not None else _Tail(0, "")
 
     def _publish(self, events: Sequence[StoredEvent]) -> None:
         if self.on_commit is None or not events:
@@ -417,6 +433,17 @@ class StoreWriter:
         if self._connection is None:
             raise WriteError("the writer is not running")
         return self._connection
+
+
+def _instant(ts: str) -> str:
+    """A key that orders the schema's timestamps (UTC, 0 to 9 fraction digits) by time."""
+    whole, _, fraction = ts.removesuffix("Z").partition(".")
+    return f"{whole}.{fraction:0<9}"
+
+
+def _not_before(ts: str, floor: str) -> str:
+    """``ts``, or ``floor`` (the run's latest so far) when ``ts`` is earlier."""
+    return floor if floor and _instant(ts) < _instant(floor) else ts
 
 
 def _insert(connection: sqlite3.Connection, draft: Mapping[str, Any], seq: int) -> StoredEvent:
