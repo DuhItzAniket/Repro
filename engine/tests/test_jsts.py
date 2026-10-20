@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -52,6 +53,23 @@ def test_a_project_repro_cannot_run_is_named(
         jsts.JsProject.detect(project(tmp_path, manifest, lockfile))
     with pytest.raises(jsts.JsError, match=r"no package\.json"):
         jsts.JsProject.detect(tmp_path / "missing")
+
+
+def test_an_install_that_leaves_no_runner_is_named(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # K08: the runner runs from node_modules; an install that leaves none there (Plug'n'Play,
+    # or links that do not resolve) is an environment failure, not a test run's.
+    project = jsts.JsProject(tmp_path, "vitest", "npm")
+    monkeypatch.setattr(jsts, "install_argv", lambda _: ["npm", "ci"])
+    done = subprocess.CompletedProcess(["npm", "ci"], 0, b"", b"")
+    monkeypatch.setattr(subprocess, "run", lambda *_, **__: done)
+    with pytest.raises(jsts.JsError, match=r"vitest\.mjs cannot be read"):
+        jsts.install_dependencies(project)
+    runner = tmp_path / "node_modules" / "vitest" / "vitest.mjs"
+    runner.parent.mkdir(parents=True)
+    runner.write_text("", encoding="utf-8")
+    jsts.install_dependencies(project)
 
 
 def test_the_report_gives_each_tests_outcome(tmp_path: Path) -> None:
@@ -140,7 +158,7 @@ def test_a_real_change_is_run_on_both_sides(tmp_path: Path) -> None:
     assert isinstance(behaviour, dict)
     changed = {(d["test"], d["change"]) for d in behaviour["differences"]}
     assert changed == {("test/m.test.js::m adds", "result_changed")}  # add(0, 0) is the same
-    assert "the card: ADR-0017 phase 4 (K08)" in found["missing"]  # type: ignore[operator]
+    assert "a card: repro run makes one (K08)" in found["missing"]  # type: ignore[operator]
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")

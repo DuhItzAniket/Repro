@@ -161,6 +161,8 @@ class RunState:
     #: every detection was read (F03).
     head_network: list[invariants.Attempt] | None = None
     head_network_complete: bool = True
+    #: Why head's network use could be neither blocked nor seen, if it could not (K08).
+    network_unseen: str | None = None
     #: Each timed test's comparison with its evidence, None if nothing was timed, and the tests
     #: too fast to time (D07; F03).
     perf_timed: list[invariants.Timed] | None = None
@@ -910,7 +912,13 @@ def _probe_diff_job(state: RunState, artifacts: ArtifactStore | None) -> Job:
     )
 
 
-def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
+def invariants_job(
+    git: Git,
+    base: str,
+    head: str,
+    state: RunState,
+    after: Sequence[str] = ("api", "deps", "outcomes", "perf-diff"),
+) -> Job:
     def run(ctx: JobContext) -> None:
         read = state.policy
         if read is None or read.policy is None:
@@ -947,7 +955,7 @@ def _invariants_job(git: Git, base: str, head: str, state: RunState) -> Job:
         OnFailure(reason="unsupported_project", detail="the invariants could not be evaluated"),
         needs=("policy",),
         # Whatever these find, or "not evaluated" for an invariant if they found nothing.
-        after=("api", "deps", "outcomes", "perf-diff"),
+        after=tuple(after),
     )
 
 
@@ -968,6 +976,7 @@ def _evaluate(
                 state.head_network,
                 network=state.network.get("head"),
                 complete=state.head_network_complete,
+                unseen=state.network_unseen,
             )
         case _:  # perf_budget: the schema knows no other
             return invariants.perf_budget(invariant, state.perf_timed, state.perf_too_fast)
@@ -1020,5 +1029,5 @@ def run_jobs(
         _probe_diff_job(state, artifacts),
         _perf_job(state),
         _perf_diff_job(state),
-        _invariants_job(git, base, head, state),
+        invariants_job(git, base, head, state),
     ]

@@ -11,6 +11,7 @@
       "sha": "4db2bbdccc03213251a357dfa874f781cfb71db7"
     },
     "isolation_level": "L2",
+    "language": "python",
     "lock_sha256": {
       "base": null,
       "head": null

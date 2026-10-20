@@ -83,8 +83,8 @@ def test_the_plan_is_the_changed_functions() -> None:
     )
     assert found == {"src/m.js": ["add", "twice"]}
     assert jstrace.targets(found) == {
-        ("src/m.js", "add", 1, 1): "src/m.js:add",
-        ("src/m.js", "twice", 1, 1): "src/m.js:twice",
+        ("src/m.js", "add", 1, 1): "src/m.js:add#0",
+        ("src/m.js", "twice", 1, 1): "src/m.js:twice#0",
     }
     assert jstrace.shuffled("vitest") == ["--sequence.shuffle", "--sequence.seed=1"]
     assert jstrace.shuffled("jest") == ["--randomize", "--seed=1"]
@@ -116,10 +116,10 @@ def test_a_change_no_test_catches_is_a_stable_difference(tmp_path: Path) -> None
     }
     found = behaviour_of(tmp_path, base, head)
     assert changes(found) == {
-        ("src/m.js:label", "test/m.test.js::label", "result_changed"),
-        ("src/m.js:add", "test/m.test.js::twice", "result_changed"),
+        ("src/m.js:label#0", "test/m.test.js::label", "result_changed"),
+        ("src/m.js:add#0", "test/m.test.js::twice", "result_changed"),
     }
-    label = next(d for d in found["differences"] if d["function"] == "src/m.js:label")
+    label = next(d for d in found["differences"] if d["function"] == "src/m.js:label#0")
     assert label["stability"] == "stable"
     assert label["summary"].startswith('label(2) gives another result: head "n=2", base "n=2.0"')
 
@@ -169,7 +169,7 @@ def test_methods_accessors_and_const_functions_are_traced(tmp_path: Path) -> Non
     }
     found = behaviour_of(tmp_path, base, head)
     assert {(fn, change) for fn, _, change in changes(found)} == {
-        ("src/box.js:get size", "result_changed"),
-        ("src/box.js:first", "result_changed"),
-        ("src/box.js:total", "result_changed"),
+        ("src/box.js:get-size#0", "result_changed"),
+        ("src/box.js:first#0", "result_changed"),
+        ("src/box.js:total#0", "result_changed"),
     }

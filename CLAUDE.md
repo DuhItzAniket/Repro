@@ -78,8 +78,9 @@ evidence, claim attribution, and the Missing list, all local and replayable.
   custom instanced `RawShaderMaterial` layers (ADR-0008). Panels are Canvas 2D. The shell is
   Preact + signals. Tooling is Biome, Vitest, Playwright and size-limit (ADR-0009).
 - **Engine (`engine/`):** Python 3.12+ (development pins 3.13), FastAPI + WebSocket, SQLite
-  (WAL, single writer). First target language: **Python repos with pytest**. Reused libraries:
-  grimp and griffe (ADR-0006). Tracer, encoder and selection map are Repro's own (ADR-0005).
+  (WAL, single writer). First target language: **Python repos with pytest**; JavaScript and
+  TypeScript with Vitest or Jest since K08 (ADR-0017). Reused libraries: grimp and griffe
+  (ADR-0006). Tracer, encoder and selection map are Repro's own (ADR-0005).
 - **Isolation:** layered, with Docker as the default enforcing sandbox (ADR-0004).
 - **Agents:** Claude Agent SDK (Python `claude-agent-sdk`, pinned exactly), locked down, behind
   an `LLMBackend` protocol (ADR-0007). Models are configurable via env. A second backend for
@@ -102,7 +103,9 @@ pnpm build              # production build of apps/web
 uv run pytest           # Python tests
 uv run repro --version  # engine CLI
 uv run repro doctor     # can this machine run Repro? (--json for a report)
-uv run repro run --repo <path> --base <ref> --head <ref>   # live in the cockpit (C08)
+uv run repro run --repo <path> --base <ref> --head <ref>   # live in the cockpit (C08); a
+                                          # JavaScript/TypeScript repo too (K08: Vitest or Jest,
+                                          # --language to choose)
 uv run repro run --pr https://github.com/<owner>/<repo>/pull/<n>  # a GitHub PR (I01; token
                                           # from GITHUB_TOKEN or GH_TOKEN, if set)
 uv run repro replay <run id | log.jsonl>                    # replayed from the start
@@ -111,9 +114,9 @@ uv run repro report <run id | log.jsonl> [--pr <url>]  # the card on its GitHub 
                                           # comment, job summary (I02; token needs checks and
                                           # pull-requests write)
 uv run repro serve      # cockpit + read-only API + event stream on 127.0.0.1:8780
-uv run repro js-run --repo <path> --base <ref> --head <ref>  # K01, K06, K07, experimental: a
-                                          # Vitest/Jest change's test outcomes, the tests it
-                                          # reaches, and its functions' calls compared (no card)
+uv run repro js-run --repo <path> --base <ref> --head <ref>  # K01, K06, K07: a Vitest/Jest
+                                          # change's outcomes, the tests it reaches and its
+                                          # functions' calls, without the card (repro run's)
 uv run repro mcp        # K03: Repro as an MCP server on stdio (docs/guide/mcp.md)
 uv run repro symbolic --repo <path> --base <ref> --head <ref>  # K04, experimental: CrossHair
                                           # diffbehavior on the small pure functions a change edits

@@ -74,6 +74,8 @@ class RunSpec:
     pr_url: str | None = None
     deterministic_only: bool = False
     sandbox_backend: SandboxBackend = "process"
+    #: The target's language (K08): which pipeline reproduces it.
+    language: Literal["python", "javascript"] = "python"
 
     def payload(self) -> dict[str, Any]:
         return {
@@ -87,6 +89,7 @@ class RunSpec:
                 "deterministic_only": self.deterministic_only,
                 "sandbox_backend": self.sandbox_backend,
             },
+            "language": self.language,
         }
 
 

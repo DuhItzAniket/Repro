@@ -3,7 +3,15 @@ import { describe, expect, it } from "vitest";
 import { CockpitModel } from "../../model/cockpit";
 import { runEvents } from "../../model/test-support";
 import { cardUnits, DOT_COLS } from "./atlas";
-import { cardHeader, MAX_CARDS, NEVER, ringContent, targetFile } from "./content";
+import {
+  cardHeader,
+  MAX_CARDS,
+  NEVER,
+  ringContent,
+  scriptImport,
+  scriptSymbol,
+  targetFile,
+} from "./content";
 
 function modelOf(events: readonly unknown[]): CockpitModel {
   const model = new CockpitModel();
@@ -62,6 +70,17 @@ describe("ringContent", () => {
   it("heads each card with its package and module, like the reference's", () => {
     expect(cardHeader("timekeeper.tz.fold")).toBe("// tz / fold");
     expect(cardHeader("timekeeper")).toBe("// timekeeper");
+  });
+
+  it("writes a JavaScript file's card as JavaScript (K08)", () => {
+    expect(cardHeader("src/util/dates.ts", true)).toBe("// util / dates.ts");
+    expect(cardHeader("index.js", true)).toBe("// index.js");
+    expect(scriptImport("src/a.ts", "src/b.ts")).toBe('import "./b.ts"');
+    expect(scriptImport("src/lib/a.ts", "src/b.ts")).toBe('import "../b.ts"');
+    expect(scriptImport("test/a.test.ts", "src/lib/b.ts")).toBe('import "../src/lib/b.ts"');
+    expect(scriptImport("a.js", "lib/b.js")).toBe('import "./lib/b.js"');
+    expect(scriptSymbol("add")).toBe("function add()");
+    expect(scriptSymbol("get-size")).toBe("get size()");
   });
 
   it("stamps appear, blast-radius and change times from the log", () => {
