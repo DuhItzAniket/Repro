@@ -11,8 +11,12 @@
 // {"file", "test", "ran"} per test, each function as [path relative to the project, name]. Files
 // under node_modules and outside the project are left out. It reads only coverage, never the
 // project's values, and a failure is written as {"error"} without failing a test.
+//
+// With REPRO_JS_TRACE_OUT (K07), it also installs the tracer runtime (repro_trace_js.cjs) that
+// the plugin's wrappers call, and tells it which test is running.
 import { appendFileSync } from "node:fs";
 import { Session } from "node:inspector/promises";
+import { createRequire } from "node:module";
 import { isAbsolute, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach } from "vitest";
@@ -22,9 +26,19 @@ const root = process.cwd();
 const session = new Session();
 let started = false;
 let loaded = null;
+let tracer = null;
 
 function write(record) {
   if (out) appendFileSync(out, `${JSON.stringify(record)}\n`);
+}
+
+if (process.env.REPRO_JS_TRACE_OUT) {
+  try {
+    tracer = createRequire(import.meta.url)("./repro_trace_js.cjs");
+    globalThis.__reproTrace = tracer;
+  } catch (error) {
+    write({ error: `the tracer did not load: ${error}` });
+  }
 }
 
 function where(url) {
@@ -69,6 +83,7 @@ try {
 }
 
 beforeEach(async (context) => {
+  tracer?.setTest(`${where(context.task.file.filepath)}::${fullName(context.task)}`);
   if (!started) return;
   const ran = await take();
   if (loaded === null) {
@@ -78,6 +93,8 @@ beforeEach(async (context) => {
 });
 
 afterEach(async (context) => {
+  tracer?.setTest(null);
+  tracer?.flush();
   if (!started) return;
   try {
     const ran = await take();

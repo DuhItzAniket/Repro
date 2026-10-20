@@ -136,7 +136,11 @@ def test_a_real_change_is_run_on_both_sides(tmp_path: Path) -> None:
     assert isinstance(comparison, dict)
     assert comparison["regressions"] == ["test/m.test.js::m adds"]
     assert comparison["same"] == 1  # 0 - 0 is still 0
-    assert "no JavaScript tracer yet" in str(found["missing"])
+    behaviour = found["behaviour"]  # K07: add's calls, compared
+    assert isinstance(behaviour, dict)
+    changed = {(d["test"], d["change"]) for d in behaviour["differences"]}
+    assert changed == {("test/m.test.js::m adds", "result_changed")}  # add(0, 0) is the same
+    assert "the card: ADR-0017 phase 4 (K08)" in found["missing"]  # type: ignore[operator]
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
