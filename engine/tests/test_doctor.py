@@ -22,6 +22,7 @@ from repro.doctor import (
     check_git,
     check_isolation,
     check_long_paths,
+    check_node,
     check_python,
     check_run_root,
     check_sqlite,
@@ -69,6 +70,7 @@ def said(stdout: str, returncode: int = 0, stderr: str = "") -> ProbeResult:
 HEALTHY: dict[str, Answer] = {
     "git": said("git version 2.55.0.windows.3\n"),
     "uv": said("uv 0.13.0 (4ecd0eff2 2026-10-09 x86_64-pc-windows-msvc)\n"),
+    "node": said("v22.23.0\n"),
     "docker": said(json.dumps(DOCKER_OK)),
 }
 
@@ -138,6 +140,26 @@ def test_uv_is_recommended_until_stage_d(answer: Answer, status: str, words: str
     if words == "older than 0.12.18":
         assert check.hint is not None
         assert "path traversal" in check.hint
+
+
+@pytest.mark.parametrize(
+    ("answer", "status", "words"),
+    [
+        (said("v22.23.0\n"), "ok", "Node.js 22.23.0"),
+        (said("node: bad option\n"), "warn", "failed"),
+        (None, "warn", "not found"),
+        (ProbeTimeoutError, "warn", "timed out"),
+    ],
+)
+def test_node_is_needed_for_javascript_targets_only(
+    answer: Answer, status: str, words: str
+) -> None:
+    check = check_node(FakeProbe({"node": answer}))
+    assert (check.status, check.required) == (status, False)
+    assert words in check.summary
+    if status == "warn":
+        assert check.hint is not None
+        assert "Python changes do not need" in check.hint
 
 
 def test_docker_reports_server_and_kernel() -> None:
@@ -254,8 +276,8 @@ def test_a_healthy_machine_is_ready(tmp_path: Path) -> None:
     )  # fmt: skip
     assert report.ok
     assert [check.name for check in report.checks] == [
-        "python", "sqlite", "git", "uv", "docker", "containment", "isolation", "data dir",
-        "run root", "long paths",
+        "python", "sqlite", "git", "uv", "node", "docker", "containment", "isolation",
+        "data dir", "run root", "long paths",
     ]  # fmt: skip
     assert report.to_text().splitlines()[-1] == "Ready: every required check passed."
     assert report.to_text().isascii()
@@ -269,12 +291,12 @@ def test_long_paths_are_checked_on_windows_only(tmp_path: Path) -> None:
 
 
 def test_missing_optional_tools_warn_but_do_not_fail(tmp_path: Path) -> None:
-    answers = {**HEALTHY, "uv": None, "docker": None}
+    answers = {**HEALTHY, "uv": None, "node": None, "docker": None}
     report = diagnose(
         data_dir=tmp_path, run_root=tmp_path, version="0", machine=machine(answers, windows=False)
     )
     assert report.ok
-    assert report.to_text().splitlines()[-1] == "Ready: every required check passed (3 warnings)."
+    assert report.to_text().splitlines()[-1] == "Ready: every required check passed (4 warnings)."
 
 
 def test_a_missing_required_tool_makes_the_machine_not_ready(tmp_path: Path) -> None:

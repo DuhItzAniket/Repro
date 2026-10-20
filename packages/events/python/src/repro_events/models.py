@@ -183,15 +183,19 @@ class ReproductionCardConditionsSeeds(ReproModel):
 
 
 class ReproductionCardConditions(ReproModel):
+    __non_nullable_optional__ = frozenset(['language', 'shuffle_seed'])
     base: GitRef
     head: GitRef
+    language: Literal['python', 'javascript'] | None = None
     python_version: Annotated[str, Field(pattern='^3\\.[0-9]+\\.[0-9]+')] | None
+    node_version: Annotated[str, Field(pattern='^[0-9]+\\.[0-9]+\\.[0-9]+')] | None = None
     platform: Annotated[str, Field(max_length=200, min_length=1)] | None
     isolation_level: IsolationLevel | None
     network: NetworkEnforcement | None
     lock_sha256: ReproductionCardConditionsLockSha256
     selected_tests: Annotated[int, Field(ge=0)]
     seeds: ReproductionCardConditionsSeeds | None
+    shuffle_seed: Annotated[int, Field(ge=0)] | None = None
     repro_version: Annotated[str, Field(max_length=100, min_length=1)]
     models: list[Annotated[str, Field(max_length=200)]]
 
@@ -344,11 +348,13 @@ class RunStartedPayloadMode(ReproModel):
 class RunStartedPayload(ReproModel):
     """A run begins."""
 
+    __non_nullable_optional__ = frozenset(['language'])
     repo: RunStartedPayloadRepo
     base: GitRef
     head: GitRef
     pr: RunStartedPayloadPr | None
     mode: RunStartedPayloadMode
+    language: Literal['python', 'javascript'] | None = None
 
 
 
@@ -509,13 +515,15 @@ class SandboxReadyPayload(ReproModel):
 class EnvProvisionedPayload(ReproModel):
     """An environment for one side was provisioned."""
 
+    __non_nullable_optional__ = frozenset(['node_version'])
     side: SnapshotSide
-    project_kind: Literal['uv', 'poetry', 'pdm', 'requirements', 'setuptools', 'unknown']
-    python_version: Annotated[str, Field(pattern='^3\\.[0-9]+\\.[0-9]+')]
+    project_kind: Literal['uv', 'poetry', 'pdm', 'requirements', 'setuptools', 'unknown', 'npm', 'pnpm', 'yarn']
+    python_version: Annotated[str, Field(pattern='^3\\.[0-9]+\\.[0-9]+')] | None
     lock_sha256: Sha256 | None
     installed_packages: Annotated[int, Field(ge=0)]
     cache_hit: bool
     duration_ms: DurationMs
+    node_version: Annotated[str, Field(pattern='^[0-9]+\\.[0-9]+\\.[0-9]+')] | None = None
 
 
 

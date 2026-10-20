@@ -215,9 +215,17 @@ export interface ReproductionCardConditions {
   base: GitRef;
   head: GitRef;
   /**
+   * The run's language, as run.started records it; absent for runs that predate it (K08).
+   */
+  language?: "python" | "javascript";
+  /**
    * Head's interpreter (else base's); null when no environment was built.
    */
   python_version: string | null;
+  /**
+   * JavaScript: head's Node.js (else base's); null when no environment was built.
+   */
+  node_version?: string | null;
   /**
    * Head's sandbox platform (else base's); null when no sandbox was ready.
    */
@@ -236,9 +244,14 @@ export interface ReproductionCardConditions {
    */
   selected_tests: number;
   /**
-   * The hash seeds of base's two runs (A and A'); null when the tests did not run.
+   * Python: the hash seeds of base's two runs (A and A'); null when the tests did not run, and for JavaScript (see shuffle_seed).
    */
   seeds: ReproductionCardConditionsSeeds | null;
+  /**
+   * JavaScript: the seed that shuffles the order of base's second run (A'); A runs in the runner's own order. Absent when the tests did not run.
+   * Constraints: minimum=0
+   */
+  shuffle_seed?: number;
   /**
    * Constraints: maxLength=100, minLength=1
    */
@@ -453,6 +466,10 @@ export interface RunStartedPayload {
   head: GitRef;
   pr: RunStartedPayloadPr | null;
   mode: RunStartedPayloadMode;
+  /**
+   * The target's language (K08): javascript covers TypeScript. Absent in logs that predate it, which are all Python.
+   */
+  language?: "python" | "javascript";
 }
 
 export interface RunFinishedPayloadCounts {
@@ -674,11 +691,11 @@ export interface SandboxReadyPayload {
  */
 export interface EnvProvisionedPayload {
   side: SnapshotSide;
-  project_kind: "uv" | "poetry" | "pdm" | "requirements" | "setuptools" | "unknown";
+  project_kind: "uv" | "poetry" | "pdm" | "requirements" | "setuptools" | "unknown" | "npm" | "pnpm" | "yarn";
   /**
-   * Constraints: pattern="^3\\.[0-9]+\\.[0-9]+"
+   * The environment's interpreter; null for a JavaScript project.
    */
-  python_version: string;
+  python_version: string | null;
   lock_sha256: Sha256 | null;
   /**
    * Constraints: minimum=0
@@ -686,6 +703,11 @@ export interface EnvProvisionedPayload {
   installed_packages: number;
   cache_hit: boolean;
   duration_ms: DurationMs;
+  /**
+   * A JavaScript project's Node.js (K08).
+   * Constraints: pattern="^[0-9]+\\.[0-9]+\\.[0-9]+"
+   */
+  node_version?: string;
 }
 
 /**

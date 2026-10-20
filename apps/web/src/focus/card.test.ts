@@ -149,6 +149,22 @@ describe("the card in the drawer", () => {
     expect(conditions?.find((f) => f.label === "Lock, base")?.value).toBe("—");
   });
 
+  it("names Node.js and the shuffled order of a JavaScript run (K08)", () => {
+    const conditions = {
+      ...CARD.conditions,
+      language: "javascript" as const,
+      python_version: null,
+      node_version: "22.23.0",
+      seeds: null,
+      shuffle_seed: 1,
+    };
+    const view = cardView({ ...PAYLOAD, card: { ...CARD, conditions } }, () => null);
+    const facts = view.sections.find((s) => s.title === "Conditions")?.facts ?? [];
+    expect(facts.find((f) => f.label === "Node.js")?.value).toBe("22.23.0");
+    expect(facts.find((f) => f.label === "Order of A2")?.value).toBe("shuffled, seed 1");
+    expect(facts.some((f) => f.label === "Python" || f.label.startsWith("Hash seeds"))).toBe(false);
+  });
+
   it("notes only what is unusual about a gap item", () => {
     const item = CARD.gap[1];
     if (item === undefined) throw new Error("no second gap item");

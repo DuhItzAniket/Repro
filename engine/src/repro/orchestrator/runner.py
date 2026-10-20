@@ -43,6 +43,8 @@ from repro.store import RunRecord, StoredEvent
 log = get_logger("orchestrator")
 
 RunOutcome = Literal["completed", "failed", "cancelled"]
+#: The sandbox a run's target code runs in, as ``run.started`` names it.
+SandboxBackend = Literal["process", "docker", "gvisor"]
 #: How long a cancelled run waits for its running jobs to notice before abandoning them.
 CANCEL_GRACE_S: Final = 5.0
 #: How long the end of a run waits for its events to be committed.
@@ -71,7 +73,9 @@ class RunSpec:
     pr_number: int | None = None
     pr_url: str | None = None
     deterministic_only: bool = False
-    sandbox_backend: Literal["process", "docker", "gvisor"] = "process"
+    sandbox_backend: SandboxBackend = "process"
+    #: The target's language (K08): which pipeline reproduces it.
+    language: Literal["python", "javascript"] = "python"
 
     def payload(self) -> dict[str, Any]:
         return {
@@ -85,6 +89,7 @@ class RunSpec:
                 "deterministic_only": self.deterministic_only,
                 "sandbox_backend": self.sandbox_backend,
             },
+            "language": self.language,
         }
 
 

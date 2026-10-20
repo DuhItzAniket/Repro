@@ -1,8 +1,9 @@
 # ADR-0017: JavaScript and TypeScript targets
 
 - **Status:** accepted by the owner (2026-10-19). Phase 1 is built (K01); phases 2 to 4 are
-  K06, K07 and K08. They add a Node.js runtime to the sandbox image and a language field to
-  the event schema's core, which this acceptance approves.
+  K06, K07 and K08, and the owner split phase 4 in two on 2026-10-20 (K08, then K11). They add
+  a Node.js runtime to the sandbox image and a language field to the event schema's core,
+  which this acceptance approves.
 - **Date:** 2026-10-18
 - **Phase:** K01
 
@@ -74,6 +75,20 @@ JavaScript and TypeScript targets in four phases, each usable on its own:
    declarations. Isolation is L3 in a container with Node (`sandbox_image`, J04), and Node's
    network use is cut off there. Repro's L1 guard is a Python audit hook and does not see Node.
 
+   The owner split this phase on 2026-10-20, so that a card exists before the container does.
+   - **K08, as built.** `run.started` records the language (`python` or `javascript`, which
+     covers TypeScript), and `repro run` chooses it from the root's files (`--language`).
+     A JavaScript run emits the same events as a Python one, so the card, the cockpit, the
+     exports and the review stage need nothing new. Its parts:
+     - symbols and imports come from scanners (K06's for functions, one for relative
+       specifiers), not from the compiler;
+     - isolation is L2, in the process sandbox;
+     - each check Python has and JavaScript does not yet is a missing item: the API diff,
+       weakened assertions, timing, and the network, which is neither blocked nor seen.
+   - **K11.** The rest: L3 in a container with Node, and the TypeScript compiler API for the
+     API diff and for edited tests' assertions. It also runs base's version of an edited test
+     against head.
+
 ## Consequences
 - Phase 1 runs on the host's Node in the process sandbox (L2). A Node process's network
   attempts are not detected there, and the output says so.
@@ -81,7 +96,11 @@ JavaScript and TypeScript targets in four phases, each usable on its own:
   Python. Their correctness depends on the runner's hooks, which differ between Vitest and
   Jest. Each needs its own fixture suite (as D04 did for pytest).
 - Phase 4 changes the event schema's core (a language for the run). CLAUDE.md requires the
-  owner's approval for that.
+  owner's approval for that, which this ADR's acceptance gives. As built (K08), `language` is
+  optional on `run.started`, so a log from before it still validates and replays to the same
+  card; `env.provisioned` gains npm, pnpm and Yarn and a Node.js version, and the card's
+  conditions gain the language, Node.js and the shuffled run's seed, present only where the
+  log records a language.
 
 ## Alternatives considered
 - **Istanbul-style instrumentation of every file** (coverage counters inserted at build). It

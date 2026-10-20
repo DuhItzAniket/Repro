@@ -4,11 +4,13 @@ A card is a function of the events before its own ``card.published``: assembling
 a stored or exported log gives the same bytes (``canonical``), which is how a replay checks it.
 
 - **Status and reasons**: F04's ``decide`` over ``repro.policy.gap.inputs_from_events``.
-- **Conditions**: the refs and repository from ``run.started``; head's interpreter and lock
-  (else base's) from ``env.provisioned``; the platform, the lower isolation level and the
-  network from ``sandbox.ready`` (``enforced`` only if every side's was); the seeds from the
-  tests job's ``environment`` evidence; Repro's version from ``run.started``'s producer.
-  What a run did not reach is null, never guessed.
+- **Conditions**: the refs, the repository and the language from ``run.started``; head's
+  interpreter (or, for JavaScript, Node.js) and lock (else base's) from ``env.provisioned``;
+  the platform, the lower isolation level and the network from ``sandbox.ready`` (``enforced``
+  only if every side's was); the seeds from the tests job's ``environment`` evidence (Python's
+  hash seeds, or the seed of JavaScript's shuffled second base run); Repro's version from
+  ``run.started``'s producer. What a run did not reach is null, never guessed. A log from
+  before K08 has no language, and its card has none of K08's conditions.
 - **Gap, invariants, missing**: the gap items with their evidence's type and summary and what
   the rules made of them; each ``invariant.result``; every ``missing.recorded`` item.
 - **Replay**: the SHA-256 of the canonical log the card rests on, its event count, and its last
@@ -72,11 +74,16 @@ def conditions(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     sandbox = ready.get("head") or ready.get("base")
     levels = [p["isolation_level"] for p in ready.values()]
     networks = {p["network"] for p in ready.values()}
+    environment = [
+        e["data"]
+        for e in (p["evidence"] for p in _payloads(events, "evidence.created"))
+        if e["type"] == "environment"
+    ]
     seeds = next(
         (
-            {"hash_seed": e["data"]["hash_seed"], "hash_seed_repeat": e["data"]["hash_seed_repeat"]}
-            for e in (p["evidence"] for p in _payloads(events, "evidence.created"))
-            if e["type"] == "environment"
+            {"hash_seed": data["hash_seed"], "hash_seed_repeat": data["hash_seed_repeat"]}
+            for data in environment
+            if "hash_seed" in data
         ),
         None,
     )
@@ -85,7 +92,7 @@ def conditions(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         {p["verdict"]["model"] for p in _payloads(events, "verdict.issued")}
         | {str(p["model"]) for p in _payloads(events, "agent.spawned") if p.get("model")}
     )
-    return {
+    found = {
         "base": spec.get("base"),
         "head": spec.get("head"),
         "python_version": preferred["python_version"] if preferred else None,
@@ -104,6 +111,15 @@ def conditions(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "repro_version": producer.removeprefix("repro/") or "unknown",
         "models": models,
     }
+    # K08: only where run.started records a language, so an older log's card is the same.
+    if "language" in spec:
+        found["language"] = spec["language"]
+    if spec.get("language") == "javascript":
+        found["node_version"] = preferred.get("node_version") if preferred else None
+        shuffle = next((d["shuffle_seed"] for d in environment if "shuffle_seed" in d), None)
+        if shuffle is not None:
+            found["shuffle_seed"] = shuffle
+    return found
 
 
 def _gap_item(item: GapItem, evidence: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:

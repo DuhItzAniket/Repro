@@ -86,6 +86,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "language": {
+      "description": "The target's language (K08): javascript covers TypeScript. Absent in logs that predate it, which are all Python.",
+      "enum": ["python", "javascript"]
     }
   },
   "additionalProperties": false

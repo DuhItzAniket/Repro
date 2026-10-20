@@ -118,17 +118,21 @@ def _conditions(card: Mapping[str, Any]) -> list[str]:
     seeds = c["seeds"]
     locks = c["lock_sha256"]
     hashes = f"{seeds['hash_seed']}, {seeds['hash_seed_repeat']}" if seeds else None
+    javascript = c.get("language") == "javascript"  # K08
+    runtime = ["Node.js", c.get("node_version")] if javascript else ["Python", c["python_version"]]
+    shuffled = f"shuffled, seed {c['shuffle_seed']}" if "shuffle_seed" in c else None
+    order = ["Order of A2", shuffled] if javascript else ["Hash seeds (A, A2)", hashes]
     return _table(
         ["Condition", "Value"],
         [
-            ["Python", c["python_version"]],
+            runtime,
             ["Platform", c["platform"]],
             ["Isolation", c["isolation_level"]],
             ["Network", c["network"]],
             ["Lock, base", locks["base"]],
             ["Lock, head", locks["head"]],
             ["Selected tests", c["selected_tests"]],
-            ["Hash seeds (A, A2)", hashes],
+            order,
             ["Repro", c["repro_version"]],
             ["Models", ", ".join(c["models"]) or None],
         ],
