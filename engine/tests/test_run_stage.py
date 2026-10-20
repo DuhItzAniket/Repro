@@ -76,6 +76,12 @@ def check_card(events: list[dict[str, Any]], stored: dict[str, Any] | None) -> N
     )
 
 
+def started_backend(events: list[dict[str, Any]]) -> str:
+    """The sandbox ``run.started`` names: the one the run's sandbox jobs used."""
+    (started,) = [e["payload"] for e in events if e["kind"] == "run.started"]
+    return str(started["mode"]["sandbox_backend"])
+
+
 def evidence_name(item: dict[str, Any]) -> str | None:
     """An evidence item as the expectation files name it: ``<type>:<detail>:<target>``
     (a dependency's: ``dep_diff:<change>/<source>:<package>``)."""
@@ -204,6 +210,7 @@ def test_a_run_reproduces_the_fixture(name: str, tmp_path: Path, golden: Golden)
     ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
     assert {r["backend"] for r in ready} == {"process"}
     assert {r["network"] for r in ready} == {"detected-only"}
+    assert started_backend(events) == "process"
     if name == "policy-weaken":  # F01: base's policy in force, head's edit named
         (change,) = [
             e["payload"]["evidence"]
@@ -399,6 +406,7 @@ def test_a_run_in_containers(tmp_path: Path) -> None:
     assert {(r["backend"], r["isolation_level"], r["network"]) for r in ready} == {
         ("docker", "L3", "enforced")
     }
+    assert started_backend(events) == "docker"
 
 
 @pytest.mark.skipif(
@@ -412,6 +420,7 @@ def test_a_run_under_gvisor_is_l4(tmp_path: Path) -> None:
     check_against_expectation("test-tamper", events)
     ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
     assert {(r["isolation_level"], r["network"]) for r in ready} == {("L4", "enforced")}
+    assert started_backend(events) == "gvisor"
     (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
     assert card["conditions"]["isolation_level"] == "L4"
 

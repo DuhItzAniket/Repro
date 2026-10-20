@@ -576,7 +576,7 @@ def run(
     from repro.card.job import StoreCards  # noqa: PLC0415
     from repro.ids import new_run_id  # noqa: PLC0415
     from repro.orchestrator import Orchestrator  # noqa: PLC0415
-    from repro.pipeline import pipeline_jobs, remove_work  # noqa: PLC0415
+    from repro.pipeline import pipeline_jobs, remove_work, run_backend  # noqa: PLC0415
     from repro.sandbox.limits import MIB, Limits  # noqa: PLC0415
     from repro.store import ArtifactStore, StoreWriter  # noqa: PLC0415
 
@@ -592,14 +592,24 @@ def run(
     if agents is not None:
         commits = [] if pr_body else commit_messages(git, change.base.sha, change.head.sha)
         pr = PrText.of(title=pr_title, description=pr_body, commits=commits)
-    change = replace(change, pr_title=pr_title, deterministic_only=agents is None)
+    change = replace(
+        change,
+        pr_title=pr_title,
+        deterministic_only=agents is None,
+        # Decided once: the sandbox jobs use it, and run.started names it.
+        sandbox_backend=run_backend(
+            settings.sandbox,
+            settings.docker_runtime,
+            runs_code=not analyse_only,
+            language=change.language,
+        ),
+    )
     writer = StoreWriter(settings.paths.database).start()
     orchestrator = Orchestrator(EventBus(writer), concurrency=settings.concurrency)
     jobs, state = pipeline_jobs(
         git,
         change,
         work,
-        backend=settings.sandbox,
         cache=settings.paths.data_dir,
         analyse_only=analyse_only,
         artifacts=ArtifactStore(settings.paths.runs, writer),

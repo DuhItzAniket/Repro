@@ -19,6 +19,7 @@ from repro.orchestrator.runner import (
     RunOutcome,
     RunResult,
     RunSpec,
+    SandboxBackend,
     check_pipeline,
 )
 
@@ -36,6 +37,7 @@ __all__ = [
     "RunOutcome",
     "RunResult",
     "RunSpec",
+    "SandboxBackend",
     "Stage",
     "SubprocessTimeoutError",
     "check_pipeline",

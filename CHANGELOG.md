@@ -47,6 +47,13 @@ All notable changes to this project are documented here. The format follows
   (`src/m.js:add#0`), as on the card. [K08]
 
 ### Fixed
+- `run.started` named the process sandbox (`mode.sandbox_backend: "process"`) for every
+  `repro run`, even when its tests ran in Docker. It now names the sandbox the run uses:
+  `docker`, `gvisor` under `docker_runtime = "runsc"`, or `process`. With `auto`, Docker is
+  asked once per run, and the sandbox jobs use that answer; they used to ask once per side.
+  An `--analyse-only` run starts no sandbox, so Docker is not asked and `auto` is recorded as
+  `process`. A JavaScript run takes the process sandbox under `auto` until K11's container, and
+  says so. The card was not affected, because it takes its isolation level from `sandbox.ready`. [C08]
 - The `net-call` fixture's end-to-end test no longer flakes on Windows. Head's lookup of a
   `str` host loaded Python's `idna` codec, about 4 ms in every timing run, against the 5 ms
   timing floor, so the run reported a regression in 1 of 20 runs here. The fixture's host is
