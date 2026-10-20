@@ -17,15 +17,21 @@ commit, whose test dependencies do not work on 3.13 shows `collection_error` or
 `environment_failed` on its card.
 
 ## 2. Install
-Each GitHub release attaches two wheels. Replace `<version>` with the release's version (for
-example `1.0.0`):
+Repro is on PyPI from v1.2.0, as `repro-engine`:
 
 ```
-uv tool install --python 3.13 --from "repro-engine @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_engine-<version>-py3-none-any.whl" --with "repro-events @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_events-<version>-py3-none-any.whl" repro-engine
+uv tool install --python 3.13 repro-engine
 ```
 
 This installs the `repro` command. If your shell cannot find it, run `uv tool update-shell` and
 open a new terminal.
+
+**From a release's wheels.** Each GitHub release, from v1.0.0, attaches its two wheels. Replace
+`<version>` with the release's version (for example `1.2.0`):
+
+```
+uv tool install --python 3.13 --from "repro-engine @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_engine-<version>-py3-none-any.whl" --with "repro-events @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_events-<version>-py3-none-any.whl" repro-engine
+```
 
 ## 3. Check the machine
 ```
