@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-20
+
+JavaScript and TypeScript, end to end: the rest of ADR-0017 (K06, K07, K08, K11) and the
+fixes the work around it found. Release record: `docs/phases/release-1.3.0.md`.
+
 ### Added
 - `repro js-run` reports which tests a change reaches. For each test, the functions it ran,
   from V8's precise coverage, are recorded by a setup file added after the project's own:

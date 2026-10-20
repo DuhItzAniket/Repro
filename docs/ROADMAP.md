@@ -22,7 +22,7 @@
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
 | **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
 | **J** | Evaluation & research | J01–J10 | v1.2.0 (harness); the study later | Reproducible benchmark results and paper submission |
-| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05) | K01–K05 built; K06–K11 from ADR-0017 and ADR-0018 |
+| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05), v1.3.0 (K06–K08, K11) | Built but for K09 and K10, which need a Linux host with KVM |
 
 76 scheduled phases (A–J) plus 11 in Stage K. Stages run in order. B and C could run in
 parallel with two contributors, because B depends only on the schema (A04/A05).
@@ -784,3 +784,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K07 | 2026-10-20 | [#105](https://github.com/DuhItzAniket/Repro/pull/105) | JavaScript function-level traces: repro_encode's rules ported (no user code runs), the changed functions wrapped (a Vite plugin in place; Jest through its modules' exports), base twice (shuffled) and head compared by E03's comparison; js-run reports behaviour differences with values |
 | K08 | 2026-10-20 | [#107](https://github.com/DuhItzAniket/Repro/pull/107) | `repro run` on JavaScript and TypeScript (Vitest, Jest): the language in `run.started`, a scanner analysis, A, H, A2 shuffled and reruns, outcomes, edited tests, behaviour, dependencies and invariants as Python's events; L2, the rest missing items (K11); unjs/defu's silent guard change FLAGGED |
 | K11 | 2026-10-20 | [#110](https://github.com/DuhItzAniket/Repro/pull/110) | JavaScript at L3 in Repro's Node image (own install container; `.pnpmfile.cjs` and `yarn-path` found running under `--ignore-scripts`, turned off); the public API and edited tests' assertions from a pinned TypeScript 6.0.3; base's version of an edited test on head |
+| Release 1.3.0 | 2026-10-20 | [#111](https://github.com/DuhItzAniket/Repro/pull/111) | JavaScript and TypeScript end to end (K06–K08, K11), the fixes #106, #108 and #109, Dependabot's updates; published to PyPI |

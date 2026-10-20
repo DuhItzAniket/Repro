@@ -37,7 +37,7 @@ This installs the `repro` command. If your shell cannot find it, run `uv tool up
 open a new terminal.
 
 **From a release's wheels.** Each GitHub release, from v1.0.0, attaches its two wheels. Replace
-`<version>` with the release's version (for example `1.2.0`):
+`<version>` with the release's version (for example `1.3.0`):
 
 ```
 uv tool install --python 3.13 --from "repro-engine @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_engine-<version>-py3-none-any.whl" --with "repro-events @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_events-<version>-py3-none-any.whl" repro-engine
