@@ -5,7 +5,6 @@ import base64
 import hashlib
 import io
 import json
-import os
 import shutil
 import tarfile
 from pathlib import Path
@@ -113,7 +112,12 @@ def test_relative_paths_reach_the_worker_resolved(
     package: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # The worker runs in its work directory: a relative tools directory must not be required
-    # from there, or as a package name.
-    monkeypatch.chdir(tmp_path)
-    relative = Path(os.path.relpath(package, tmp_path))
-    assert typescript.run(relative, {}, Path("work"))["version"] == "6.0.3"
+    # from there, or as a package name. Both paths are relative to the package's own directory:
+    # on CI's Windows the package (the checkout's cache) and tmp_path are on different drives,
+    # where no relative path joins them.
+    monkeypatch.chdir(package.parent)
+    work = Path(f"work-{tmp_path.name}")
+    try:
+        assert typescript.run(Path(package.name), {}, work)["version"] == "6.0.3"
+    finally:
+        shutil.rmtree(package.parent / work, ignore_errors=True)
