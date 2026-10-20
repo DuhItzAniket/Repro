@@ -774,7 +774,10 @@ on Linux; where it cannot be read, one agent runs at a time.
   `evidence.created` event. Migrations are numbered by `PRAGMA user_version`, one transaction
   each; a database from a newer Repro is refused. The writer fills `seq` into the envelope and,
   for `evidence.created`, into `payload.evidence`, and inserts the evidence row in the same
-  transaction. The run registry (`runs`) holds `running`, then the `run.finished` outcome.
+  transaction. `ts` is stamped where an event is built, before it is queued, so events that
+  jobs emit at once can arrive out of order. The writer stores an event stamped before its
+  run's latest with that latest `ts`, so `ts` never goes backwards within a run's `seq`.
+  `seq` stays the only order (ADR-0002). The run registry (`runs`) holds `running`, then the `run.finished` outcome.
 - **Artifacts** live at `~/.repro/runs/<run_id>/`: observations, JUnit, logs, snapshots
   manifest and reproducers. Observations (E03) are deterministic CBOR (RFC 8949 §4.2.1,
   `repro.store.cbor`): `obs/A.cbor`, `obs/A2.cbor`, `obs/H.cbor`, and `obs/behaviour.cbor`, the

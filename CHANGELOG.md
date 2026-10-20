@@ -54,6 +54,12 @@ All notable changes to this project are documented here. The format follows
   An `--analyse-only` run starts no sandbox, so Docker is not asked and `auto` is recorded as
   `process`. A JavaScript run takes the process sandbox under `auto` until K11's container, and
   says so. The card was not affected, because it takes its isolation level from `sandbox.ready`. [C08]
+- An event log could have an event's timestamp 1 ms behind the event stored before it, and
+  `repro-events validate` warned about it. The cause was two jobs emitting at once, such as
+  snapshots, analysis and policy in the build stage: each event is stamped on its job's
+  thread, and the store's writer numbers the events later. The writer now stores an event
+  stamped before its run's latest event with that latest timestamp. `seq` is still the only
+  order. The end-to-end tests that expect a clean log no longer fail now and then. [C03]
 
 ## [1.2.0] - 2026-10-20
 
