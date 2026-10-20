@@ -5,7 +5,7 @@
 | **Stage** | K — Expansion |
 | **Status** | done |
 | **Depends on** | K07 |
-| **Branch / PR** | `phase/K08-js-card` |
+| **Branch / PR** | `phase/K08-js-card` · [#107](https://github.com/DuhItzAniket/Repro/pull/107) |
 | **Started / finished** | 2026-10-20 / 2026-10-20 |
 
 ## Objective
@@ -112,7 +112,7 @@ makes its card, as it does a Python change's. The owner split phase 4 on 2026-10
   and replay tests).
 - **The suites:** every Python test passes (the `net-call` fixture's timing flake passed on
   its rerun; it has its own task). Every web and events test passes.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#107).
 
 ## Deviations from spec
 - ADR-0017's phase 4 is split (the owner, 2026-10-20). Symbols come from K06's scanner, not
