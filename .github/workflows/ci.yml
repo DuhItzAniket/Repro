@@ -64,7 +64,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     # A guard against hangs, not a budget: the suite runs both sides of every fixture, traced
     # since E03, and a slow Windows runner took 13 minutes for 60 % of it (E03's first CI run).
-    timeout-minutes: 30
+    # With K08 and K11's real Vitest and compiler tests, Windows took 22 to 27 minutes on
+    # 2026-10-20 and once passed 30 (Ubuntu: 11 to 13).
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
