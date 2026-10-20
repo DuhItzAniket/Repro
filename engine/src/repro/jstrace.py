@@ -27,7 +27,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import Final, Literal
 
-from repro.jsmap import JsChange
+from repro.jsmap import JsChange, symbol_id
 from repro.runner.behaviour import Difference, differences
 from repro.runner.observations import Behaviour, RunObservations, compare, observe
 from repro.runner.pytest import TestResult, TraceTarget, read_results
@@ -46,9 +46,11 @@ def plan(changes: Sequence[JsChange]) -> dict[str, list[str]]:
 
 
 def targets(traced: Mapping[str, Sequence[str]]) -> dict[TraceTarget, str]:
-    """Each traced function's target, as the runtime names it, and its symbol."""
+    """Each traced function's target, as the runtime names it, and its ``SymbolId`` (K08)."""
     return {
-        (file, name, 1, 1): f"{file}:{name}" for file, names in traced.items() for name in names
+        (file, name, 1, 1): symbol_id(file, name)
+        for file, names in traced.items()
+        for name in names
     }
 
 
@@ -75,16 +77,18 @@ def observed(
 def behaviour(
     runs: Sequence[tuple[Mapping[str, str], bytes]],
     names: Mapping[TraceTarget, str],
+    modified: frozenset[str] = frozenset(),
 ) -> tuple[Behaviour, list[Difference]]:
     """A, A2 and H, each (outcomes, trace), compared: the behaviour and its differences, each
-    showing the values its own traced calls previewed."""
+    showing the values its own traced calls previewed; ``modified``: the tests whose own code
+    changed (K08), marked on their differences."""
     (a, a_calls), (a2, a2_calls), (h, h_calls) = runs
     found = compare(
         observed("A", "base", a, a_calls, names),
         observed("A2", "base", a2, a2_calls, names),
         observed("H", "head", h, h_calls, names),
     )
-    listed = differences(found)
+    listed = differences(found, modified)
     for difference in listed:
         difference.base_again = difference.first.base
         difference.head_again = difference.first.head

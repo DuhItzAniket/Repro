@@ -10,11 +10,19 @@ From nothing to your first Reproduction Card, on Windows, Linux or macOS. Allow 
   isolation level L3. Without it, Repro runs the code in a contained process (memory, process
   and time limits) and records what it tried to do: level L2. The card always says which level
   a run reached.
+- **Node.js** and the project's package manager (npm, pnpm or Yarn), for JavaScript and
+  TypeScript projects only.
 
 Repro checks Python projects tested with pytest. Their tests run on Python 3.13, whatever
 versions the project supports, and the version is not a setting yet: a project, or an older
 commit, whose test dependencies do not work on 3.13 shows `collection_error` or
 `environment_failed` on its card.
+
+It also checks JavaScript and TypeScript projects tested with Vitest or Jest (checked with
+Vitest 4.1 and 5.0, and Jest 30), with a lockfile. Their dependencies are installed from the lockfile
+with lifecycle scripts off, and their tests run on the machine's Node.js in a contained
+process (L2): a container with Node is still to come. Fewer checks run than for Python, and the
+card lists each one that did not: the public API, weakened assertions, timing and the network.
 
 ## 2. Install
 Repro is on PyPI from v1.2.0, as `repro-engine`:
@@ -44,14 +52,18 @@ can run (L2). The other lines say where Repro keeps its data, whether the cockpi
 on Windows, whether long paths are on.
 
 ## 4. Run it on a change
-In a git repository with a pytest suite, choose two refs: the **base** (where the change
-starts, often `main`) and the **head** (the change, often your branch). Any commit works as a
+In a git repository with a pytest, Vitest or Jest suite, choose two refs: the **base** (where
+the change starts, often `main`) and the **head** (the change, often your branch). Any commit works as a
 ref: a branch, a tag or a commit's hash. For a merge commit, its first parent (`<hash>^1`) is
 the base.
 
 ```
 repro run --repo . --base main --head my-branch
 ```
+
+Repro reads the language from the repository's root: a Python project's files
+(`pyproject.toml`, `setup.py`, `setup.cfg`, requirement files), else a `package.json`. A root
+with both is taken as Python; `--language javascript` chooses the other.
 
 Repro then:
 1. takes a copy of each commit, without its `.git`;

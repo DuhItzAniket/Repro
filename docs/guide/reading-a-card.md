@@ -74,6 +74,9 @@ run covers every test, to learn which test runs which code, and head's tests are
 of a test the change edits is run against head's code (**base tests on head**). Missing items
 and the cockpit name runs this way.
 
+A JavaScript or TypeScript run (K08) runs the whole suite on A and H, with the map and the
+traces, then A2 in a shuffled order. A test that flips is run again three times on each side.
+
 The tests that run are those the change can affect:
 - the tests that ran the changed code on base. A class's own code (an attribute, a base class,
   a decorator) runs when its module is imported, so a change to it selects the tests that ran
@@ -187,6 +190,12 @@ The lock digests are the SHA-256 of the file each side's requirements came from,
 is none: `uv.lock`, `poetry.lock` or `pdm.lock`, else the first of the project's requirements
 files (`requirements.txt`, then `requirements-dev.txt` and the like, then
 `requirements/tests.txt`).
+
+A JavaScript or TypeScript card names **Node.js** where a Python card names Python. Its lock
+digests are its lockfile's (`package-lock.json`, `pnpm-lock.yaml` or `yarn.lock`). Its **order
+of A2** is the seed that shuffled base's second run: JavaScript has no hash seed to change. Its
+isolation is `L2` until a container with Node exists (K11). Until then, the card lists the
+network as missing: a Node process's network use is neither blocked nor seen.
 
 ## In the cockpit
 A check's evidence drawer shows its *Status*, the check's own verdict (`ok`, `warn`, `fail`)

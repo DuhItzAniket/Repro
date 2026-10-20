@@ -15,22 +15,29 @@ function is known by its name in its file, not by its offsets.
 function around it (``functions``, a conservative scanner: declarations, methods, functions
 assigned to a name). A line inside no named function is a module-level change.
 
-**The rule** is D06's: a changed function selects the tests that ran it, on base or on head. A
-module-level change selects every test that ran anything in that file, and every test in a test
-file that loaded it. A changed test file selects its own tests. Functions of the same name in
-one file are not told apart: that selects more tests, never fewer.
+**A test's own code** (K08) runs from where the runner says the test starts (Vitest's
+``--includeTaskLocation``, Jest's ``--testLocationInResults``) to the end of that call
+(``own_lines``). A test file's changed lines in no named function are its tests' own code, or
+else the file's (its hooks, its imports).
+
+**The rule** is D06's (``select``): a changed function selects the tests that ran it, on base or
+on head. A module-level change selects every test that ran anything in that file, and every test
+in a test file that loaded it; in a test file, every test in it. A test whose own code changed
+selects itself, as new if base does not have it. Functions of the same name in one file are not
+told apart: that selects more tests, never fewer.
 """
 
 import json
 import re
 import shutil
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePosixPath
 from typing import Final, Literal
+from urllib.parse import quote
 
-from repro.gitops import Git, GitError
-from repro.gitops.changes import diff
+from repro.gitops import Git, read_blobs
+from repro.gitops.changes import FileChange, diff
 
 HOOKS: Final = Path(__file__).parent / "sandbox" / "_hook"
 MAP_FILE: Final = "repro-map.jsonl"
@@ -47,6 +54,23 @@ VITEST_CONFIGS: Final = tuple(
     for ext in ("ts", "mts", "cts", "js", "mjs", "cjs")
 )
 SOURCES: Final = frozenset({".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx"})
+#: A module's own code, as Python's symbols name it (``analysis.symbols.MODULE_QUALNAME``).
+MODULE: Final = "<module>"
+#: What a module name keeps of a path as it is: ``SymbolId`` allows no whitespace or colon.
+_SAFE: Final = "/!$&'()*+,;=@~[]"
+
+
+def module_name(file: str) -> str:
+    """A JavaScript or TypeScript file's module name, in symbol IDs and the graph (K08): its
+    path, with whitespace, colons and ``%`` percent-encoded."""
+    return quote(file, safe=_SAFE)
+
+
+def symbol_id(file: str, name: str = MODULE) -> str:
+    """A function's ``SymbolId``, ``<module>:<name>#0``; its module's own code by default. A
+    function is known by its name in its file, and V8's ``get x`` is ``get-x``: an ID has no
+    spaces."""
+    return f"{module_name(file)}:{name.replace(' ', '-')}#0"
 
 
 class MapError(Exception):
@@ -191,7 +215,7 @@ _DECLARATIONS: Final = (
 _CONSTRUCTOR: Final = "constructor"
 
 
-def _blanked(source: str) -> str:
+def blanked(source: str) -> str:
     """``source`` with comments and the insides of strings and template literals blanked, so
     that braces in them are not counted; line breaks are kept."""
     out: list[str] = []
@@ -225,7 +249,7 @@ def _blanked(source: str) -> str:
 def functions(source: str) -> list[JsFunction]:
     """The named functions of a JavaScript or TypeScript source, with their lines: a scanner,
     not a parser. What it misses is a module-level change to the rule, which selects more."""
-    text = _blanked(source)
+    text = blanked(source)
     lines = text.split("\n")
     starts = [0]
     for line in lines:
@@ -282,6 +306,9 @@ def _line_of(offset: int, starts: Sequence[int]) -> int:
     return low + 1
 
 
+Span = tuple[int, int]
+
+
 @dataclass(frozen=True)
 class JsChange:
     """What a change does to one JavaScript or TypeScript file."""
@@ -289,6 +316,25 @@ class JsChange:
     file: str
     functions: frozenset[str]
     module_level: bool
+    #: The file on each side; None where it is not (added or deleted).
+    old_path: str | None = None
+    new_path: str | None = None
+    #: Each side's changed lines in no named function (K08): in a test file, its tests' own code
+    #: is among them.
+    old_loose: frozenset[int] = frozenset()
+    new_loose: frozenset[int] = frozenset()
+    #: Each changed function's lines on each side that has it (K08: ``symbol.changed``).
+    old_spans: Mapping[str, Span] = field(default_factory=dict)
+    new_spans: Mapping[str, Span] = field(default_factory=dict)
+    #: Each side's line count; None where the file is not.
+    old_size: int | None = None
+    new_size: int | None = None
+
+
+def _innermost(named: Sequence[JsFunction], line: int) -> JsFunction | None:
+    around = [f for f in named if f.first <= line <= f.last]
+    found = min(around, key=lambda f: f.last - f.first) if around else None
+    return None if found is None or found.name == _CONSTRUCTOR else found
 
 
 def attribute(source: str, lines: Iterable[int]) -> tuple[set[str], bool]:
@@ -297,72 +343,209 @@ def attribute(source: str, lines: Iterable[int]) -> tuple[set[str], bool]:
     found: set[str] = set()
     module = False
     for line in lines:
-        around = [f for f in named if f.first <= line <= f.last]
-        innermost = min(around, key=lambda f: f.last - f.first).name if around else None
-        if innermost is None or innermost == _CONSTRUCTOR:
+        innermost = _innermost(named, line)
+        if innermost is None:
             module = True
         else:
-            found.add(innermost)
+            found.add(innermost.name)
     return found, module
+
+
+def _side(named: Sequence[JsFunction], lines: Iterable[int]) -> tuple[set[str], frozenset[int]]:
+    """One side of a file's change: the changed functions, and the changed lines in none."""
+    names: set[str] = set()
+    loose = set()
+    for line in lines:
+        innermost = _innermost(named, line)
+        if innermost is None:
+            loose.add(line)
+        else:
+            names.add(innermost.name)
+    return names, frozenset(loose)
+
+
+def file_change(change: FileChange, old: str | None, new: str | None) -> JsChange:
+    """What ``change`` does, from the file's source on each side (None where it is not). Each
+    changed function's span is its first of that name on each side that has one."""
+    old_named = functions(old) if old is not None else []
+    new_named = functions(new) if new is not None else []
+    old_names, old_loose = _side(old_named, (n for s in change.changed_lines("old") for n in s))
+    new_names, new_loose = _side(new_named, (n for s in change.changed_lines("new") for n in s))
+    names = old_names | new_names
+
+    def spans(named: Sequence[JsFunction]) -> dict[str, Span]:
+        found: dict[str, Span] = {}
+        for function in named:
+            if function.name in names:
+                found.setdefault(function.name, (function.first, function.last))
+        return found
+
+    added_or_deleted = change.old_path is None or change.new_path is None
+    return JsChange(
+        change.path,
+        frozenset(names),
+        added_or_deleted or bool(old_loose or new_loose),
+        change.old_path,
+        change.new_path,
+        old_loose,
+        new_loose,
+        spans(old_named),
+        spans(new_named),
+        None if old is None else old.count("\n") + 1,
+        None if new is None else new.count("\n") + 1,
+    )
 
 
 def changed(git: Git, base: str, head: str) -> list[JsChange]:
     """Each JavaScript or TypeScript file the change touches, its changed functions on either
-    side, and whether it changes code outside them."""
-    result = []
-    for change in diff(git, base, head):
-        if PurePosixPath(change.path).suffix not in SOURCES:
+    side, and whether it changes code outside them. Both sides' sources are read through one
+    ``git cat-file --batch``."""
+    found = [c for c in diff(git, base, head) if PurePosixPath(c.path).suffix in SOURCES]
+    wanted = [b for c in found for b in (c.old_blob, c.new_blob) if b is not None]
+    blobs = read_blobs(git, wanted) if wanted else {}
+
+    def text(path: str | None, blob: str | None) -> str | None:
+        if path is None:
+            return None
+        return blobs.get(blob, b"").decode("utf-8", "replace") if blob else ""
+
+    return [
+        file_change(c, text(c.old_path, c.old_blob), text(c.new_path, c.new_blob)) for c in found
+    ]
+
+
+# -- a test's own code ----------------------------------------------------------------------------
+
+
+def _call_end(text: str, at: int) -> int | None:
+    """The offset of the ``)`` that closes the first call from ``at``, or of the last call
+    chained straight after it (``test.each(rows)(name, fn)``); None if the text ends first."""
+    i = text.find("(", at)
+    if i < 0:
+        return None
+    depth, end = 0, None
+    while i < len(text):
+        c = text[i]
+        i += 1
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                end = i - 1
+                while i < len(text) and text[i].isspace():
+                    i += 1
+                if i == len(text) or text[i] != "(":
+                    return end
+    return end
+
+
+def own_lines(source: str, starts: Mapping[str, tuple[int, int]]) -> dict[str, Span]:
+    """Each test's own lines in ``source``, from where the runner says it starts (line, column,
+    1-based) to the end of the call it is, and never into the next test's start."""
+    text = blanked(source)
+    offsets = [0]
+    for row in text.split("\n"):
+        offsets.append(offsets[-1] + len(row) + 1)
+    count = len(offsets) - 1
+    firsts = sorted({line for line, _ in starts.values()})
+    found: dict[str, Span] = {}
+    for test, (line, column) in starts.items():
+        if not 1 <= line <= count:
             continue
-        names: set[str] = set()
-        module = change.old_path is None or change.new_path is None  # added or deleted
-        sides: tuple[tuple[Literal["old", "new"], str, str | None], ...] = (
-            ("old", base, change.old_path),
-            ("new", head, change.new_path),
-        )
-        for side, commit, path in sides:
-            lines = [n for span in change.changed_lines(side) for n in span]
-            if path is None or not lines:
-                continue
-            found, outside = attribute(_read(git, commit, path), lines)
-            names |= found
-            module = module or outside
-        result.append(JsChange(change.path, frozenset(names), module))
-    return result
-
-
-def _read(git: Git, commit: str, path: str) -> str:
-    try:
-        return git.run("show", f"{commit}:{path}").decode("utf-8", "replace")
-    except GitError:
-        return ""
+        end = _call_end(text, offsets[line - 1] + max(column - 1, 0))
+        last = _line_of(end, offsets) if end is not None else line
+        later = [first for first in firsts if first > line]
+        if later:
+            last = min(last, later[0] - 1)
+        found[test] = (line, max(last, line))
+    return found
 
 
 # -- the selection --------------------------------------------------------------------------------
 
 
-def select(changes: Sequence[JsChange], maps: Sequence[TestMap]) -> dict[str, list[str]]:
-    """Each selected test and why, from the maps of both sides (``changes`` per ``changed``)."""
-    reasons: dict[str, list[str]] = {}
+Reason = Literal["blast_radius", "module_import", "new_test", "modified_test"]
 
-    def add(test: str, why: str) -> None:
-        if why not in reasons.setdefault(test, []):
-            reasons[test].append(why)
 
+@dataclass
+class Selected:
+    """Why a test is selected: the schema's reasons, the changed symbols that select it, and the
+    same in words."""
+
+    reasons: list[Reason] = field(default_factory=list)
+    symbols: list[str] = field(default_factory=list)
+    why: list[str] = field(default_factory=list)
+
+    def add(self, reason: Reason, symbol: str | None, why: str) -> None:
+        if reason not in self.reasons:
+            self.reasons.append(reason)
+        if symbol is not None and symbol not in self.symbols:
+            self.symbols.append(symbol)
+        if why not in self.why:
+            self.why.append(why)
+
+
+def own_changes(
+    change: JsChange, base: Mapping[str, Span], head: Mapping[str, Span]
+) -> tuple[set[str], JsChange]:
+    """The tests whose own code ``change`` edits, by their lines on each side (``own_lines``),
+    and the change without those lines: module-level only for a line in no test, or a file
+    added or deleted."""
+
+    def inside(line: int, blocks: Mapping[str, Span]) -> bool:
+        return any(first <= line <= last for first, last in blocks.values())
+
+    edited = {t for t, (a, b) in base.items() if any(a <= n <= b for n in change.old_loose)}
+    edited |= {t for t, (a, b) in head.items() if any(a <= n <= b for n in change.new_loose)}
+    old = frozenset(n for n in change.old_loose if not inside(n, base))
+    new = frozenset(n for n in change.new_loose if not inside(n, head))
+    whole = change.old_path is None or change.new_path is None
+    return edited, replace(change, module_level=whole or bool(old or new), old_loose=old,
+                           new_loose=new)  # fmt: skip
+
+
+def select(
+    changes: Sequence[JsChange],
+    maps: Sequence[TestMap],
+    own: Mapping[str, Reason] | None = None,
+) -> dict[str, Selected]:
+    """Each selected test and why, from the maps of both sides (``changes`` per ``changed``, a
+    test file's after ``own_changes``); ``own``: the tests whose own code changed, each
+    ``modified_test`` or ``new_test``."""
+    found: dict[str, Selected] = {}
+    for test, reason in (own or {}).items():
+        why = "its own code changed" + (", new" if reason == "new_test" else "")
+        found.setdefault(test, Selected()).add(reason, None, why)
     for change in changes:
         for side in maps:
-            for test in side.tests_in(change.file):
-                add(test, f"its test file changed ({change.file})")
-            for test, ran in side.ran.items():
-                for file, name in ran:
-                    if file != change.file:
-                        continue
-                    if name in change.functions:
-                        add(test, f"ran {name} in {file}")
-                    elif change.module_level:
-                        add(test, f"ran code of {file}, changed outside a function")
-            if change.module_level:
-                for test_file, loaded in side.loaded.items():
-                    if change.file in loaded:
-                        for test in side.tests_in(test_file):
-                            add(test, f"its file loaded {change.file}, changed outside a function")
-    return {test: reasons[test] for test in sorted(reasons)}
+            for test, reason, symbol, why in _reached(change, side):
+                found.setdefault(test, Selected()).add(reason, symbol, why)
+    return {test: found[test] for test in sorted(found)}
+
+
+def _reached(change: JsChange, side: TestMap) -> Iterable[tuple[str, Reason, str, str]]:
+    """The tests one side's map says ``change`` reaches: (test, reason, symbol, why)."""
+    module = symbol_id(change.file)
+    if change.module_level:
+        for test in side.tests_in(change.file):
+            yield test, "module_import", module, f"its test file changed ({change.file})"
+    for test, ran in side.ran.items():
+        for file, name in ran:
+            if file != change.file:
+                continue
+            if name in change.functions:
+                yield test, "blast_radius", symbol_id(file, name), f"ran {name} in {file}"
+            elif change.module_level:
+                yield (
+                    test,
+                    "module_import",
+                    module,
+                    f"ran code of {file}, changed outside a function",
+                )
+    if change.module_level:
+        why = f"its file loaded {change.file}, changed outside a function"
+        for test_file, loaded in side.loaded.items():
+            if change.file in loaded:
+                for test in side.tests_in(test_file):
+                    yield test, "module_import", module, why

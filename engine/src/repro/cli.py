@@ -477,6 +477,35 @@ def _from_pull_request(
     return found.git, change, pr.title, pr.body
 
 
+def _target(
+    settings: Settings,
+    pr_address: str | None,
+    repo: Path | None,
+    given: tuple[str | None, str | None, str | None, str | None],
+    language: str,
+) -> "tuple[Git, Change, str | None, str | None]":
+    """The change ``repro run`` reproduces, from a pull request or ``--repo``, ``--base`` and
+    ``--head`` (``given`` holds those and the title and description), with its target's
+    language: ``language``, or the one its root files show (``auto``, K08). Exit 2 if not."""
+    from repro.language import detect  # noqa: PLC0415
+
+    base, head, title, body = given
+    if language not in ("auto", "python", "javascript"):
+        typer.echo("repro run: --language is auto, python or javascript", err=True)
+        raise typer.Exit(2)
+    if pr_address is not None:
+        git, change, title, body = _from_pull_request(pr_address, settings, repo, given=given)
+    elif repo is None or base is None or head is None:
+        typer.echo("repro run: give --repo, --base and --head, or --pr", err=True)
+        raise typer.Exit(2)
+    else:
+        git, change = _resolve(repo, base, head)
+    chosen = detect(git, change.base.sha, change.head.sha) if language == "auto" else language
+    if chosen == "javascript":
+        typer.echo("repro: a JavaScript or TypeScript target (K08)", err=True)
+    return git, replace(change, language=chosen), title, body  # type: ignore[arg-type]
+
+
 @app.command()
 def run(
     ctx: typer.Context,
@@ -517,6 +546,15 @@ def run(
             "--pr-file", help="A UTF-8 file: the pull request's title, then its description."
         ),
     ] = None,
+    language: Annotated[
+        str,
+        typer.Option(
+            "--language",
+            help="The target's language: auto (from its root files: a Python project's, else "
+            "a package.json), python, or javascript (JavaScript and TypeScript with Vitest or "
+            "Jest).",
+        ),
+    ] = "auto",
 ) -> None:
     """Reproduce a change: analyse base and head, run the tests the change can affect on both
     sides, and record what differs.
@@ -542,15 +580,9 @@ def run(
     from repro.sandbox.limits import MIB, Limits  # noqa: PLC0415
     from repro.store import ArtifactStore, StoreWriter  # noqa: PLC0415
 
-    if pr_address is not None:
-        git, change, pr_title, pr_body = _from_pull_request(
-            pr_address, settings, repo, given=(base, head, pr_title, pr_body)
-        )
-    elif repo is None or base is None or head is None:
-        typer.echo("repro run: give --repo, --base and --head, or --pr", err=True)
-        raise typer.Exit(2)
-    else:
-        git, change = _resolve(repo, base, head)
+    git, change, pr_title, pr_body = _target(
+        settings, pr_address, repo, (base, head, pr_title, pr_body), language
+    )
     sock = _bind(host, port) if serve else None
     settings.paths.data_dir.mkdir(parents=True, exist_ok=True)
     run_id = new_run_id()

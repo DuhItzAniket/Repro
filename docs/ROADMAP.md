@@ -22,9 +22,9 @@
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
 | **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
 | **J** | Evaluation & research | J01–J10 | v1.2.0 (harness); the study later | Reproducible benchmark results and paper submission |
-| **K** | Expansion | K01–K10 | v1.2.0 (K01–K05) | K01–K05 built; K06–K10 from ADR-0017 and ADR-0018 |
+| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05) | K01–K05 built; K06–K11 from ADR-0017 and ADR-0018 |
 
-76 scheduled phases (A–J) plus 10 in Stage K. Stages run in order. B and C could run in
+76 scheduled phases (A–J) plus 11 in Stage K. Stages run in order. B and C could run in
 parallel with two contributors, because B depends only on the schema (A04/A05).
 
 ```
@@ -648,7 +648,8 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 ## Stage K — Expansion
 
 K01 to K05 shipped in v1.2.0. The owner accepted ADR-0017 and ADR-0018 on 2026-10-19:
-their remaining parts are K06 to K10.
+their remaining parts are K06 to K10. On 2026-10-20 the owner split ADR-0017's phase 4 in two:
+the card first (K08), then the container and the compiler's view (K11).
 
 | ID | Phase | Notes |
 |---|---|---|
@@ -659,9 +660,10 @@ their remaining parts are K06 to K10.
 | K05 | Remote sandbox backends | Self-hosted E2B / Firecracker for teams. **Done (K05, [#92](https://github.com/DuhItzAniket/Repro/pull/92)):** `docker_context`; E2B and Firecracker designed (ADR-0018, proposed) |
 | K06 | JavaScript: the test → function map | ADR-0017 phase 2: per-test V8 precise coverage from a setup file, the map selection (D06) needs. **Done (K06, [#100](https://github.com/DuhItzAniket/Repro/pull/100)):** `repro js-run` reports the tests a change reaches |
 | K07 | JavaScript: function-level traces | ADR-0017 phase 3: a `load` hook wraps the changed functions with an encoder ported from `repro_encode`. **Done (K07, [#105](https://github.com/DuhItzAniket/Repro/pull/105)):** each runner's transform point instead of a `load` hook; base twice and head compared as E03 does |
-| K08 | JavaScript: the card | ADR-0017 phase 4: the target's language in the event schema, symbols and API from the TypeScript compiler API, L3 in a container with Node. Planned |
+| K08 | JavaScript: the card | ADR-0017 phase 4, first part: the target's language in the event schema, and `repro run` makes a JavaScript or TypeScript change's card (cockpit, exports, review), at L2. In progress |
 | K09 | E2B self-hosted sandbox | ADR-0018 option B: `E2BSandbox`, a microVM per side, isolation level L5 in the schema. Real tests need a Linux host with KVM. Planned |
 | K10 | Kata Containers with Firecracker | ADR-0018 option C: Repro's containers under the `kata-fc` runtime class on a containerd host. Needs a Linux host with KVM. Planned |
+| K11 | JavaScript: L3 and the compiler's view | ADR-0017 phase 4, second part: L3 in a container with Node, the public API diff and edited tests' assertions from the TypeScript compiler API, and base's version of an edited test run against head. Planned |
 
 ---
 

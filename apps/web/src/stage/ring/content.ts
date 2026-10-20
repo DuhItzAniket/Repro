@@ -2,10 +2,10 @@
  * What the ring shows (B06, restyled in B14; DESIGN.md "Ring"): one card per file, built only
  * from what the event stream says about that file. A v1 event never carries file contents, so a
  * card is the file's outline, laid out like the reference's code cards:
- * - a header, `// package / module`;
+ * - a header, `// package / module` (a JavaScript file's, `// directory / file`);
  * - rows of `line  code`: its functions, classes and tests with their line numbers
  *   (`graph.node`), changed ones in `--flag` (`symbol.changed`), then its imports
- *   (`graph.edge`);
+ *   (`graph.edge`), written as the run's language writes them (`run.started`, K08);
  * - a neighbour fingerprint: a grid of dots, one bucket of the repo's modules per dot, lit where
  *   the file imports or is imported by a module in that bucket;
  * - labels on the outer column: imports, importers, symbols and changes.
@@ -74,9 +74,10 @@ const FOCUS_KINDS = new Set([
   "missing.recorded",
 ]);
 
-/** `// package / module` from a dotted module name (its last two parts). */
-export function cardHeader(module: string): string {
-  const parts = module.split(".");
+/** `// package / module` from a dotted module name (its last two parts); with `javascript`,
+ * `// directory / file` from a path. */
+export function cardHeader(module: string, javascript = false): string {
+  const parts = module.split(javascript ? "/" : ".");
   const name = parts.at(-1) ?? module;
   const pkg = parts.length > 1 ? parts.at(-2) : "";
   return pkg === "" ? `// ${name}` : `// ${pkg} / ${name}`;
@@ -90,6 +91,32 @@ function importLine(module: string): string {
     : `from ${module.slice(0, dot)} import ${module.slice(dot + 1)}`;
 }
 
+/** An import as JavaScript writes it, relative to the importing file: `import "./b.js"`. */
+export function scriptImport(from: string, to: string): string {
+  const dir = from.split("/").slice(0, -1);
+  const path = to.split("/");
+  let common = 0;
+  while (common < dir.length && common < path.length - 1 && dir[common] === path[common]) common++;
+  const up = dir.length - common;
+  return `import "${up === 0 ? "./" : "../".repeat(up)}${path.slice(common).join("/")}"`;
+}
+
+/** A JavaScript function as a row: `function add()`; an accessor's id (`get-size`) as
+ * `get size()`. */
+export function scriptSymbol(name: string): string {
+  const accessor = /^([gs]et)-(.+)$/.exec(name);
+  return accessor === null ? `function ${name}()` : `${accessor[1]} ${accessor[2]}()`;
+}
+
+/** Whether the run's target is JavaScript or TypeScript, as `run.started` says (K08). */
+function isJavaScript(model: CockpitModel): boolean {
+  for (let i = 0; i < model.store.length; i++) {
+    const event = model.store.event(i);
+    if (event?.kind === "run.started") return event.payload.language === "javascript";
+  }
+  return false;
+}
+
 /** The symbol's name within its module, from an id like `pkg.mod:Class.method#0`. */
 function symbolName(id: string): string {
   const colon = id.indexOf(":");
@@ -101,6 +128,7 @@ function symbolName(id: string): string {
 
 export function ringContent(model: CockpitModel, maxCards = MAX_CARDS): RingContent {
   const { graph, store } = model;
+  const javascript = isJavaScript(model);
   const moduleOf = new Map<string, number>(); // file → module node
   const symbols = new Map<string, number[]>(); // file → non-module nodes
   for (let i = 0; i < graph.nodeCount; i++) {
@@ -190,7 +218,11 @@ export function ringContent(model: CockpitModel, maxCards = MAX_CARDS): RingCont
         const line = event?.kind === "graph.node" ? (event.payload.node.line ?? null) : null;
         const type = graph.nodeTypeName(n);
         const name = type === "test" ? symbolName(id.replace("::", ":")) : symbolName(id);
-        const text = type === "class" ? `class ${name}:` : `def ${name}()`;
+        const text = javascript
+          ? scriptSymbol(name)
+          : type === "class"
+            ? `class ${name}:`
+            : `def ${name}()`;
         return {
           line: line ?? 0,
           num: line === null ? "" : `${line}`,
@@ -199,10 +231,13 @@ export function ringContent(model: CockpitModel, maxCards = MAX_CARDS): RingCont
         };
       })
       .sort((a, b) => a.line - b.line || a.text.localeCompare(b.text));
-    const imported = (imports.get(module) ?? []).map((n) => graph.ids[n] as string).sort();
+    const imported = (imports.get(module) ?? [])
+      .map((n) => [graph.ids[n] as string, graph.files[n] as string] as const)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([id, path]) => (javascript ? scriptImport(file, path) : importLine(id)));
     const rows: CardRow[] = [
       ...own.slice(0, MAX_SYMBOL_ROWS).map(({ num, text, flag }) => ({ num, text, flag })),
-      ...imported.map((m) => ({ num: "", text: importLine(m), flag: false })),
+      ...imported.map((text) => ({ num: "", text, flag: false })),
     ].slice(0, MAX_ROWS);
     const linked = neighbours.get(module) ?? new Set<number>();
     const buckets = DOT_COLS * DOT_ROWS;
@@ -220,7 +255,7 @@ export function ringContent(model: CockpitModel, maxCards = MAX_CARDS): RingCont
       changed > 0 ? `±${changed}` : "",
     ];
     const atlas: AtlasCard = {
-      header: cardHeader(graph.ids[module] as string),
+      header: javascript ? cardHeader(file, true) : cardHeader(graph.ids[module] as string),
       rows,
       dots,
       dotRows: dots.length > 0 ? DOT_ROWS : 0,

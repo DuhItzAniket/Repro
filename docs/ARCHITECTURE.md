@@ -149,6 +149,20 @@ Repro on the pull request, keeps the card as an artifact, reports it, and signs 
 with Repro's predicate through `actions/attest`. Repro's mirror and test maps are cached
 between runs.
 
+**JavaScript and TypeScript** (K08, ADR-0017). `run.started` records the target's language,
+read from the repository's root (`language.detect`) or given with `--language`. A JavaScript
+run has its own analysis (`analysis/javascript.py`, §9) and its own run and diff stages
+(`js_stage.py`, with `jsts`, `jsmap` and `jstrace`). They emit the same events, so the status
+rules, the card, the exports and the cockpit are shared. The runs:
+- A and H run the whole suite, with the test → function map (V8 precise coverage per test) and
+  the traces (the changed functions wrapped at the runner's own transform point);
+- the selection follows from both maps (§4.1's rule);
+- A2 runs shuffled with a fixed seed, and a flip is rerun three times on each side.
+
+It runs at L2, in the process sandbox. What Python checks and JavaScript does not yet is a
+missing item each: the public API, weakened assertions, timing and the network. A container
+with Node and the TypeScript compiler API are K11.
+
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector
 in "collect-map" mode. It does not use coverage.py contexts, because those force coverage's
@@ -565,6 +579,14 @@ Rules:
 - **Blast radius:** changed symbols ∪ their reverse dependents (dynamic map ∪ grimp
   downstream modules), with distance kept for UI weighting. Statically, it walks the imports of
   both sides from the changed symbols' modules; an affected module is its `<module>` symbol.
+- **JavaScript and TypeScript** (K08, `analysis/javascript.py`): scanners, not a parser; the
+  TypeScript compiler API is K11.
+  - **Symbols:** K06's function scanner, run on a source whose comments and strings are
+    blanked. A function is `<path>:<name>#0`, by its name in its file; the path is
+    percent-encoded where `SymbolId` allows no character.
+  - **Imports:** the relative specifiers of `import`, `export … from`, `import()` and
+    `require()`, resolved as Node and bundlers resolve them. A package import is not an edge.
+  - **Blast radius:** Python's.
 
 ## 10. Agents — see ADR-0007
 

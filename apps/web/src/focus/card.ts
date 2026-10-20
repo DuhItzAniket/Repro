@@ -77,22 +77,33 @@ function gap(card: ReproductionCard, checkOf: CheckOf): DrawerSection {
 
 function conditions(card: ReproductionCard): DrawerSection {
   const c = card.conditions;
+  // K08: a JavaScript run names Node.js, and base's second run is shuffled, not rehashed.
+  const javascript = c.language === "javascript";
+  const runtime = javascript
+    ? { label: "Node.js", value: value(c.node_version) }
+    : { label: "Python", value: value(c.python_version) };
+  const order = javascript
+    ? {
+        label: "Order of A2",
+        value: c.shuffle_seed === undefined ? NONE : `shuffled, seed ${c.shuffle_seed}`,
+      }
+    : {
+        label: "Hash seeds (A, A2)",
+        value: c.seeds === null ? NONE : `${c.seeds.hash_seed}, ${c.seeds.hash_seed_repeat}`,
+      };
   return {
     title: "Conditions",
     facts: [
       { label: "Base", value: `${c.base.ref} (${c.base.sha.slice(0, 12)})` },
       { label: "Head", value: `${c.head.ref} (${c.head.sha.slice(0, 12)})` },
-      { label: "Python", value: value(c.python_version) },
+      runtime,
       { label: "Platform", value: value(c.platform) },
       { label: "Isolation", value: value(c.isolation_level) },
       { label: "Network", value: value(c.network) },
       { label: "Lock, base", value: value(c.lock_sha256.base) },
       { label: "Lock, head", value: value(c.lock_sha256.head) },
       { label: "Selected tests", value: String(c.selected_tests) },
-      {
-        label: "Hash seeds (A, A2)",
-        value: c.seeds === null ? NONE : `${c.seeds.hash_seed}, ${c.seeds.hash_seed_repeat}`,
-      },
+      order,
       { label: "Repro", value: c.repro_version },
       { label: "Models", value: c.models.join(", ") || NONE },
     ],

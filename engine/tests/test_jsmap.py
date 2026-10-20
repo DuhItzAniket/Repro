@@ -2,6 +2,7 @@
 
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -155,12 +156,67 @@ def test_a_change_selects_the_tests_that_ran_it() -> None:
         },
     )
     twice = jsmap.JsChange("src/m.js", frozenset({"twice"}), module_level=False)
-    assert jsmap.select([twice], [side]) == {"test/m.test.js::m twice": ["ran twice in src/m.js"]}
+    assert jsmap.select([twice], [side]) == {
+        "test/m.test.js::m twice": jsmap.Selected(
+            ["blast_radius"], ["src/m.js:twice#0"], ["ran twice in src/m.js"]
+        )
+    }
     top = jsmap.JsChange("src/o.js", frozenset(), module_level=True)
-    assert set(jsmap.select([top], [side])) == {"test/o.test.js::o"}
+    found = jsmap.select([top], [side])
+    assert set(found) == {"test/o.test.js::o"}
+    assert (found["test/o.test.js::o"].reasons, found["test/o.test.js::o"].symbols) == (
+        ["module_import"],
+        ["src/o.js:<module>#0"],
+    )
     test_file = jsmap.JsChange("test/o.test.js", frozenset(), module_level=True)
-    assert jsmap.select([test_file], [side])["test/o.test.js::o"][0].startswith("its test file")
+    assert jsmap.select([test_file], [side])["test/o.test.js::o"].why[0].startswith("its test")
     assert jsmap.select([twice], []) == {}
+    own = jsmap.select([], [side], {"test/m.test.js::m new": "new_test"})
+    assert own["test/m.test.js::m new"].reasons == ["new_test"]
+
+
+def test_a_symbol_id_has_no_space_or_colon() -> None:
+    assert jsmap.symbol_id("src/box.js", "get size") == "src/box.js:get-size#0"
+    assert jsmap.symbol_id("my dir/a:b.ts") == "my%20dir/a%3Ab.ts:<module>#0"
+
+
+TESTS = """import { add } from "../src/m.js";
+describe("m", () => {
+  test("adds", () => {
+    expect(add(1, 2)).toBe(3);
+  });
+  test.each([1, 2])("each %i", (n) => {
+    expect(n).toBeTruthy();
+  });
+  // a comment (with a paren
+  test("last", () => {});
+});
+"""
+
+
+def test_a_tests_own_code_runs_to_the_end_of_its_call() -> None:
+    starts = {"adds": (3, 3), "each 1": (6, 20), "each 2": (6, 20), "last": (10, 3)}
+    assert jsmap.own_lines(TESTS, starts) == {
+        "adds": (3, 5),
+        "each 1": (6, 8),  # the call chained after test.each(rows)
+        "each 2": (6, 8),
+        "last": (10, 10),  # the comment's paren is not counted
+    }
+    change = jsmap.JsChange(
+        "test/m.test.js",
+        frozenset(),
+        module_level=True,
+        old_path="test/m.test.js",
+        new_path="test/m.test.js",
+        old_loose=frozenset({4}),
+        new_loose=frozenset({4, 1}),
+    )
+    blocks = jsmap.own_lines(TESTS, starts)
+    edited, rest = jsmap.own_changes(change, blocks, blocks)
+    assert edited == {"adds"}
+    assert (rest.module_level, rest.new_loose) == (True, frozenset({1}))  # line 1: an import
+    edited, rest = jsmap.own_changes(replace(change, new_loose=frozenset({7})), blocks, blocks)
+    assert (edited, rest.module_level) == ({"adds", "each 1", "each 2"}, False)
 
 
 # -- for real, with Vitest ------------------------------------------------------------------------

@@ -20,6 +20,29 @@ All notable changes to this project are documented here. The format follows
     ported to JavaScript; no user code runs.
   - **Comparison:** base runs twice, the second time shuffled, then head, compared as
     Python's traces are. [K07]
+- `repro run` reproduces JavaScript and TypeScript changes tested with Vitest or Jest, and makes
+  their card. A JavaScript run emits the same events as a Python one, so the cockpit, the
+  exports, the GitHub report and the review stage all read it. [K08]
+  - **Language:** `run.started` records it. `repro run` reads it from the repository's root
+    (a Python project's files, else a `package.json`), or takes `--language`.
+  - **Analysis:** changed functions and the imports between modules, by scanners.
+  - **Runs:** base, head, then base again shuffled; a test that flips runs three more times on
+    each side. Outcomes are classified as Python's are.
+  - **Checked:** each test's outcome; the changed functions' behaviour; the tests a change edits
+    (removed, newly skipped, fewer `expect` or `assert` calls); the dependencies, declared and
+    installed; the invariants.
+  - **Not checked yet**, and listed on the card: the public API, weakened assertions, timing,
+    and the network. A Node process is neither blocked nor seen in the process sandbox (L2).
+    These are K11.
+- `repro doctor` reports Node.js. [K08]
+
+### Changed
+- The event schema: `run.started.language`, optional, so older logs still validate and replay
+  to the same card. `env.provisioned` takes npm, pnpm and Yarn projects and a Node.js version;
+  the card's conditions add the language, Node.js and the shuffled run's seed when the log
+  records a language. [K08]
+- A JavaScript function's symbol in `repro js-run`'s `behaviour` is a `SymbolId`
+  (`src/m.js:add#0`), as on the card. [K08]
 
 ## [1.2.0] - 2026-10-20
 

@@ -114,12 +114,28 @@
         "head": {
           "$ref": "../common.schema.json#/$defs/GitRef"
         },
+        "language": {
+          "description": "The run's language, as run.started records it; absent for runs that predate it (K08).",
+          "enum": ["python", "javascript"]
+        },
         "python_version": {
           "description": "Head's interpreter (else base's); null when no environment was built.",
           "anyOf": [
             {
               "type": "string",
               "pattern": "^3\\.[0-9]+\\.[0-9]+"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "node_version": {
+          "description": "JavaScript: head's Node.js (else base's); null when no environment was built.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+"
             },
             {
               "type": "null"
@@ -193,7 +209,7 @@
           "minimum": 0
         },
         "seeds": {
-          "description": "The hash seeds of base's two runs (A and A'); null when the tests did not run.",
+          "description": "Python: the hash seeds of base's two runs (A and A'); null when the tests did not run, and for JavaScript (see shuffle_seed).",
           "anyOf": [
             {
               "type": "object",
@@ -214,6 +230,11 @@
               "type": "null"
             }
           ]
+        },
+        "shuffle_seed": {
+          "description": "JavaScript: the seed that shuffles the order of base's second run (A'); A runs in the runner's own order. Absent when the tests did not run.",
+          "type": "integer",
+          "minimum": 0
         },
         "repro_version": {
           "type": "string",

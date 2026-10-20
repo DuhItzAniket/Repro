@@ -15,8 +15,10 @@ Events are taken as stored, in ``seq`` order.
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from pathlib import PurePosixPath
 from typing import Any, Final
 
+from repro.jsmap import SOURCES, module_name
 from repro.policy.loader import DEFAULT
 from repro.policy.status import UNVERIFIED_REASONS, GapItem, Inputs, Verdict
 
@@ -48,14 +50,19 @@ def _module(symbol: str) -> str:
 
 
 def _test_modules(events: Iterable[Mapping[str, Any]]) -> set[str]:
-    """The dotted module names of the test files the run's tests come from."""
+    """The module names of the test files the run's tests come from: Python's dotted, and a
+    JavaScript or TypeScript file's by its path (K08)."""
     files = set()
     for event in events:
         if event["kind"] in ("test.selected", "test.started", "test.finished"):
             test = (event.get("target") or {}).get("test")
             if test:
                 files.add(test.split("::", 1)[0])
-    return {f.removesuffix(".py").replace("/", ".") for f in files if f.endswith(".py")}
+    return {
+        f.removesuffix(".py").replace("/", ".") if f.endswith(".py") else module_name(f)
+        for f in files
+        if f.endswith(".py") or PurePosixPath(f).suffix in SOURCES
+    }
 
 
 def inputs_from_events(events: Iterable[Mapping[str, Any]]) -> Inputs:
