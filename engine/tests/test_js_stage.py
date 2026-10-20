@@ -22,7 +22,7 @@ from repro.card.job import StoreCards
 from repro.card.markdown import render
 from repro.gitops import Git
 from repro.ids import new_run_id
-from repro.js_stage import JsOptions
+from repro.js_stage import JsOptions, base_copy
 from repro.orchestrator import Orchestrator
 from repro.pipeline import Change, pipeline_jobs, run_backend
 from repro.store import ArtifactStore, StoreReader, StoreWriter
@@ -240,3 +240,28 @@ def test_imports_resolve_as_node_and_bundlers_resolve_them() -> None:
     assert javascript.specifiers(source) == ["./b.js", "./lib", "./c.mjs", "./side", "./d"]
     sources = ["src/a.ts", "src/a.d.ts", "src/b.d.mts", "node_modules/x/i.js", "README.md"]
     assert [path for path in sources if javascript.is_source(path)] == ["src/a.ts"]
+
+
+@NEEDS_VITEST
+def test_a_test_edited_to_fit_a_regression_is_caught_by_its_base_version(
+    tmp_path: Path,
+) -> None:
+    """K11: base's version of an edited test runs against head's code. Head breaks ``add`` and
+    edits the test to expect the broken result: head's test passes, base's fails on head."""
+    head = SOURCE.replace("return a + b;", "return a - b;")
+    tests = TESTS.replace("expect(add(1, 2)).toBe(3);", "expect(add(1, 2)).toBe(-1);").replace(
+        "expect(add(2, 2)).toBe(4);", "expect(add(2, 2)).toBe(0);"
+    )
+    events, card = reproduce(tmp_path, {"src/m.js": head, "test/m.test.js": tests})
+    found = evidence(events, "test_change")
+    changes = {(t["targets"][0].get("test"), t["data"]["change"]) for t in found}
+    assert ("test/m.test.js::m adds", "base_test_fails_on_head") in changes
+    assert ("test/m.test.js::m old", "base_test_fails_on_head") in changes
+    assert card["status"] == "FLAGGED"
+    assert not (tmp_path / "work").exists() or not list((tmp_path / "work").rglob("*.repro-base.*"))
+
+
+def test_base_versions_go_beside_the_test_file() -> None:
+    assert base_copy("test/m.test.ts") == "test/m.repro-base.test.ts"
+    assert base_copy("src/a.spec.mjs") == "src/a.repro-base.spec.mjs"
+    assert base_copy("__tests__/b.js") == "__tests__/b.repro-base.js"

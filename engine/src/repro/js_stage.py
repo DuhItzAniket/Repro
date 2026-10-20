@@ -36,9 +36,9 @@ import platform
 import re
 import threading
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 from repro import __version__, jsmap, jstrace, jsts
@@ -82,6 +82,8 @@ NETWORK_UNSEEN: Final = (
 _ASSERTION: Final = re.compile(r"\b(?:expect|assert)\s*[.(]")
 #: At most this many tests are listed as one missing item's targets.
 LISTED: Final = 20
+#: What base's version of an edited test file is called beside head's (``base_copy``).
+BASE_COPY: Final = "repro-base"
 #: The two sides install one after the other. Two installs at once share the package manager's
 #: store, and the version a project pins is fetched on first use: on a machine's first run,
 #: pnpm's head install failed with "The system cannot find the path specified" while base's
@@ -121,6 +123,8 @@ class JsState(RunState):
     test_changes: list[TestChange] = field(default_factory=list)
     #: What the tests job found missing: the runs, the maps, the files that did not run.
     problems: list[dict[str, Any]] = field(default_factory=list)
+    #: Each edited test's outcome when base's version runs against head's code (K11).
+    base_on_head: dict[str, str | None] = field(default_factory=dict)
 
 
 def _snapshot(work: Path, side: str) -> Path:
@@ -430,6 +434,14 @@ def _tests_job(work: Path, state: JsState, options: JsOptions, commits: Mapping[
                 state.reruns.setdefault(side, []).append(found)
                 events.run(side, found, flips)
         state.diffs = [_classify(t, state, maps) for t in reported]
+        edited = sorted(
+            t
+            for t, kind in state.own.items()
+            if kind == "modified_test" and outcome(a, t) == "passed" and t in h.outcomes
+        )
+        if edited:
+            ctx.log(f"running base's version of {len(edited)} edited tests against head's code")
+            state.base_on_head = _base_tests_on_head(work, state, edited, tests)
         state.test_changes = _test_changes(work, state)
         state.network_unseen = NETWORK_UNSEEN
 
@@ -441,6 +453,49 @@ def _tests_job(work: Path, state: JsState, options: JsOptions, commits: Mapping[
         needs=("sandbox-base", "sandbox-head", "static-analysis"),
         timeout_s=TESTS_TIMEOUT_S,
     )
+
+
+def base_copy(path: str) -> str:
+    """Where base's version of the test file ``path`` goes in head's tree (K11): beside it, so
+    its relative imports reach head's code, and named so the runners' default patterns still
+    match it (``m.test.ts`` becomes ``m.repro-base.test.ts``)."""
+    name = PurePosixPath(path)
+    for marker in (".test.", ".spec."):
+        at = name.name.find(marker)
+        if at >= 0:
+            return str(name.with_name(f"{name.name[:at]}.{BASE_COPY}{name.name[at:]}"))
+    return str(name.with_name(f"{name.stem}.{BASE_COPY}{name.suffix}"))
+
+
+def _base_tests_on_head(
+    work: Path,
+    state: JsState,
+    edited: Sequence[str],
+    tests: Callable[..., jsts.Side],
+) -> dict[str, str | None]:
+    """Each edited test's outcome when base's version of its file runs in head's tree: the
+    regression an edit to the test can hide (Python's ``base tests on head``, D06). A file
+    whose copy would replace one of the project's is not run, and its tests have no outcome."""
+    root = state.js_projects["head"].root
+    copies = {file: base_copy(file) for file in sorted({_file(test) for test in edited})}
+    written: list[Path] = []
+    try:
+        for file, copy in copies.items():
+            source = _snapshot(work, "base") / file
+            target = root / copy
+            if source.is_file() and not target.exists():
+                target.write_bytes(source.read_bytes())
+                written.append(target)
+        ran = [copies[f] for f in copies if root / copies[f] in written]
+        found = tests("head", "base tests on head", mapped=False, files=ran) if ran else None
+    finally:
+        for target in written:
+            target.unlink(missing_ok=True)
+    result: dict[str, str | None] = {}
+    for test in edited:
+        file, _, name = test.partition("::")
+        result[test] = None if found is None else outcome(found, f"{copies[file]}::{name}")
+    return result
 
 
 def _classify(test: str, state: JsState, maps: Sequence[jsmap.TestMap]) -> OutcomeDiff:
@@ -494,6 +549,10 @@ def _test_changes(work: Path, state: JsState) -> list[TestChange]:
             found.append(TestChange(file, test, "assertion_removed", detail))
         else:
             found.append(TestChange(file, test, "test_modified", "the test's code changed"))
+    for test, got in sorted(state.base_on_head.items()):
+        if got is not None and got != "passed":
+            detail = f"base's version passes on base, {got} on head"
+            found.append(TestChange(_file(test), test, "base_test_fails_on_head", detail))
     return found
 
 
