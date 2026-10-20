@@ -1,7 +1,8 @@
 """JavaScript and TypeScript: the static analysis of a change (K08; ADR-0017, phase 4).
 
 The same ``StaticAnalysis`` as Python's (``repro.analysis.static``), read with scanners rather
-than a parser (the TypeScript compiler API is K11), so the build stage emits the same events:
+than a parser (the compiler reads the public API, ``analysis.jsapi``, K11), so the build stage
+emits the same events:
 
 - **Modules**: each side's JavaScript and TypeScript sources, declaration files (``.d.ts``)
   left out, each named by its path (``jsmap.module_name``).

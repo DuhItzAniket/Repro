@@ -37,6 +37,18 @@ All notable changes to this project are documented here. The format follows
   - **Installs:** from the lockfile with lifecycle scripts off, one side after the other. An
     install that leaves no runner in `node_modules` is an environment failure that says so.
 - `repro doctor` reports Node.js. [K08]
+- JavaScript and TypeScript runs in a container with Node and no network (L3; L4 under gVisor),
+  under `auto` when Docker answers, as Python's are. Repro's Node.js image is Node 22, with pnpm
+  and Yarn through Corepack, all pinned by digest or SHA-512. The install has a container of its
+  own, the only one with the network; the tests run in hardened containers with none. [K11]
+- A JavaScript or TypeScript change's public API, read by Repro's own pinned TypeScript compiler
+  (6.0.3, checked against the registry's sha512, never the target's): each export of the
+  package's entries, base against head, as `diff.api` breaks. The new breakage kind
+  `parameter_changed_type` covers a parameter whose type changed. [K11]
+- Edited JavaScript tests are read from the compiler's syntax tree: a weakened assertion
+  (`toBe` to `toBeTruthy`, say), a widened `toThrow` and fewer assertions. Base's version of
+  an edited test also runs against head's code, so a test edited to fit a regression is
+  `base_test_fails_on_head`. [K11]
 
 ### Changed
 - The event schema: `run.started.language`, optional, so older logs still validate and replay
@@ -45,6 +57,13 @@ All notable changes to this project are documented here. The format follows
   records a language. [K08]
 - A JavaScript function's symbol in `repro js-run`'s `behaviour` is a `SymbolId`
   (`src/m.js:add#0`), as on the card. [K08]
+
+### Security
+- A JavaScript install could run the project's own code, even with lifecycle scripts off.
+  pnpm runs a project's `.pnpmfile.cjs`, and Yarn 1 runs the file `.yarnrc`'s `yarn-path` names
+  in its place; each wrote a marker file during an install with the network on. Installs now
+  pass pnpm's `--ignore-pnpmfile` and set `YARN_IGNORE_PATH=1`, on the host and in containers.
+  K08's host installs had the same exposure. [K11]
 
 ### Fixed
 - `run.started` named the process sandbox (`mode.sandbox_backend: "process"`) for every

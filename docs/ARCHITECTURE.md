@@ -159,9 +159,12 @@ rules, the card, the exports and the cockpit are shared. The runs:
 - the selection follows from both maps (§4.1's rule);
 - A2 runs shuffled with a fixed seed, and a flip is rerun three times on each side.
 
-It runs at L2, in the process sandbox. What Python checks and JavaScript does not yet is a
-missing item each: the public API, weakened assertions, timing and the network. A container
-with Node and the TypeScript compiler API are K11.
+Since K11 it runs as Python's does: in a container with Node and no network (L3, L4 under
+gVisor) when Docker answers, else in the process sandbox (L2), where the network is a missing
+item. The install runs in a container of its own, the only one with the network, with lifecycle
+scripts, pnpm's `.pnpmfile.cjs` and Yarn's `yarn-path` all off. The public API and edited
+tests' assertions come from a pinned TypeScript compiler (§9), and base's version of an edited
+test runs against head. Timing is still Python's alone, and a missing item.
 
 ### 4.1 Test selection (`runner/selection`)
 Selection uses a **function-level per-test map** built by Repro's own `sys.monitoring` collector
@@ -579,8 +582,13 @@ Rules:
 - **Blast radius:** changed symbols ∪ their reverse dependents (dynamic map ∪ grimp
   downstream modules), with distance kept for UI weighting. Statically, it walks the imports of
   both sides from the changed symbols' modules; an affected module is its `<module>` symbol.
-- **JavaScript and TypeScript** (K08, `analysis/javascript.py`): scanners, not a parser; the
-  TypeScript compiler API is K11.
+- **JavaScript and TypeScript** (K08, `analysis/javascript.py`): symbols and imports by
+  scanners, not a parser. The public API (K11, `analysis/jsapi.py`) is read by Repro's own
+  pinned TypeScript compiler (`analysis/typescript.py`), never the target's:
+  - `typescript` 6.0.3, fetched once from the npm registry, checked against its sha512 and
+    unpacked with no package manager;
+  - run by Repro's worker on the host's Node, which parses and type-checks the target's files
+    and runs none of them.
   - **Symbols:** K06's function scanner, run on a source whose comments and strings are
     blanked. A function is `<path>:<name>#0`, by its name in its file; the path is
     percent-encoded where `SymbolId` allows no character.

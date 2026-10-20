@@ -7,12 +7,12 @@ read a Python one.
 - ``sandbox-<side>`` (build): the sandbox and the dependencies, installed from the lockfile with
   lifecycle scripts off; ``sandbox.ready``, then ``env.provisioned`` (the package manager,
   Node.js, the lock's digest, the packages installed).
-  - With ``backend="docker"`` (K11): a container sandbox (L3, or L4 under gVisor) on Repro's
-    Node.js image (``sandbox.image.node_image``). The install runs in a container of its own,
-    the only one with the network (``jsts.install_in_container``); Node.js's version and the
-    packages are read in the sandbox, with none.
-  - Otherwise: the process sandbox (L2), the install on the host. ``auto`` stays here, as in
-    K08: a JavaScript run uses a container only when asked for one.
+  - With ``backend="docker"`` (K11; ``auto`` when Docker answers, as for Python): a container
+    sandbox (L3, or L4 under gVisor) on Repro's Node.js image (``sandbox.image.node_image``).
+    The install runs in a container of its own, the only one with the network
+    (``jsts.install_in_container``); Node.js's version and the packages are read in the
+    sandbox, with none.
+  - Otherwise: the process sandbox (L2), the install on the host.
 
   An image of the user's (``sandbox_image``, J04) is for Python projects, and refused.
 - ``tests`` (run): A (base, with the map and the traces), H (head, the same), then the tests

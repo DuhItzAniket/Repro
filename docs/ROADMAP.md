@@ -663,7 +663,7 @@ the card first (K08), then the container and the compiler's view (K11).
 | K08 | JavaScript: the card | ADR-0017 phase 4, first part: the target's language in the event schema, and `repro run` makes a JavaScript or TypeScript change's card (cockpit, exports, review), at L2. **Done (K08, [#107](https://github.com/DuhItzAniket/Repro/pull/107)):** the same events as Python's; what is not checked yet is a missing item each |
 | K09 | E2B self-hosted sandbox | ADR-0018 option B: `E2BSandbox`, a microVM per side, isolation level L5 in the schema. Real tests need a Linux host with KVM. Planned |
 | K10 | Kata Containers with Firecracker | ADR-0018 option C: Repro's containers under the `kata-fc` runtime class on a containerd host. Needs a Linux host with KVM. Planned |
-| K11 | JavaScript: L3 and the compiler's view | ADR-0017 phase 4, second part: L3 in a container with Node, the public API diff and edited tests' assertions from the TypeScript compiler API, and base's version of an edited test run against head. Planned |
+| K11 | JavaScript: L3 and the compiler's view | ADR-0017 phase 4, second part: L3 in a container with Node, the public API diff and edited tests' assertions from the TypeScript compiler API, and base's version of an edited test run against head. **Done (K11):** the Node image and its own install container; pnpm's `.pnpmfile.cjs` and Yarn's `yarn-path` found running under `--ignore-scripts`, and turned off; a pinned TypeScript 6.0.3 for the API and assertions; base on head |
 
 ---
 

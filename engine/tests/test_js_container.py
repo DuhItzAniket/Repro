@@ -32,7 +32,7 @@ from repro.card.job import StoreCards
 from repro.gitops import Git
 from repro.ids import new_run_id
 from repro.js_stage import NO_ENV_IMAGE, NODE_UNDETECTED, JsOptions
-from repro.orchestrator import Orchestrator
+from repro.orchestrator import Orchestrator, SandboxBackend
 from repro.pipeline import Change, pipeline_jobs
 from repro.run_stage import Backend
 from repro.sandbox import DockerSandbox, Limits, docker_available
@@ -356,7 +356,10 @@ def reproduce(
     head_sha = repo.commit(head)
     git = Git(repo.path)
     found = language.detect(git, base_sha, head_sha)
-    change = replace(Change.resolve(git, repo.path, base_sha, head_sha), language=found)
+    sandbox: SandboxBackend = "process" if backend == "process" else "docker"
+    change = replace(
+        Change.resolve(git, repo.path, base_sha, head_sha), language=found, sandbox_backend=sandbox
+    )
     database = tmp_path / "repro.db"
     writer = StoreWriter(database).start()
     run_id = new_run_id()
@@ -365,7 +368,6 @@ def reproduce(
             git,
             change,
             tmp_path / "work",
-            backend=backend,
             cache=tmp_path / "cache",
             analyse_only=False,
             artifacts=ArtifactStore(tmp_path / "runs", writer),
