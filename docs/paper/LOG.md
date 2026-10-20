@@ -670,3 +670,26 @@ entry. If something turns out wrong, add a correcting entry.
   an own key, not on `Object.prototype`. The test checks the attack it was written for; the
   trace shows what else the change did to the merged object. A change a reviewer would read as
   a harmless simplification is the kind function-level evidence is for.
+
+## 2026-10-20 · fix · A lazy import at the timing floor
+- **The flake:** `net-call`'s end-to-end test failed in 1 of 20 runs on Windows, with Docker
+  Desktop running. Head's code under test calls `socket.create_connection(("192.0.2.1", 80))`,
+  which Repro's guard refuses. Head's call took a median of 4.44 ms (3.72 to 9.47 ms, 80
+  samples) against base's 0.11 ms. When the median of ten samples reached the 5 ms floor, the
+  test was timed and reported as a regression.
+- **Measured:** the cost is the first `getaddrinfo` of a `str` host in the process. CPython
+  encodes such a host with the `idna` codec (`socket_getaddrinfo`, `Modules/socketmodule.c`)
+  **[V]**, whose module imports `stringprep` and `unicodedata`.
+  - Timings through Repro's real sandbox, plugin and hook: 4.03 ms in the sandbox, 3.95 ms on
+    the host without the hook, 0.03 ms with a `bytes` host. The guard and hook add about
+    0.03 ms.
+  - Across this machine's interpreters, the same first lookup took 3.9 to 12.7 ms (3.12.13 to
+    3.15.0). It depends on whether the interpreter's cached bytecode is usable.
+  - Details: H02's record, "Follow-up: `net-call`'s timing".
+- **The fix:** the fixture uses a `bytes` host. Head's first ping then costs 0.23 ms in the
+  sandbox. The refused lookup and connection, and the failed `no_network` invariant, are
+  unchanged.
+- **For the paper.** Every timing sample is a fresh process, so a one-off import in the code
+  under test is paid in every sample. It reads as a steady slowdown, and here it sat half a
+  millisecond under the floor. A change whose cost is near the floor gets a verdict decided by
+  the machine's load: the timing pass's threat to validity on Windows, stated with the floor.

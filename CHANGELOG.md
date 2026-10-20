@@ -54,6 +54,16 @@ All notable changes to this project are documented here. The format follows
   An `--analyse-only` run starts no sandbox, so Docker is not asked and `auto` is recorded as
   `process`. A JavaScript run takes the process sandbox under `auto` until K11's container, and
   says so. The card was not affected, because it takes its isolation level from `sandbox.ready`. [C08]
+- An event log could have an event's timestamp 1 ms behind the event stored before it, and
+  `repro-events validate` warned about it. The cause was two jobs emitting at once, such as
+  snapshots, analysis and policy in the build stage: each event is stamped on its job's
+  thread, and the store's writer numbers the events later. The writer now stores an event
+  stamped before its run's latest event with that latest timestamp. `seq` is still the only
+  order. The end-to-end tests that expect a clean log no longer fail now and then. [C03]
+- The `net-call` fixture's end-to-end test no longer flakes on Windows. Head's lookup of a
+  `str` host loaded Python's `idna` codec, about 4 ms in every timing run, against the 5 ms
+  timing floor, so the run reported a regression in 1 of 20 runs here. The fixture's host is
+  now `bytes`: the same refused lookup and connection, and `no_network` still fails. [F03]
 
 ## [1.2.0] - 2026-10-20
 
