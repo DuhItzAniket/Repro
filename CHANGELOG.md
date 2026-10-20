@@ -34,6 +34,8 @@ All notable changes to this project are documented here. The format follows
   - **Not checked yet**, and listed on the card: the public API, weakened assertions, timing,
     and the network. A Node process is neither blocked nor seen in the process sandbox (L2).
     These are K11.
+  - **Installs:** from the lockfile with lifecycle scripts off, one side after the other. An
+    install that leaves no runner in `node_modules` is an environment failure that says so.
 - `repro doctor` reports Node.js. [K08]
 
 ### Changed

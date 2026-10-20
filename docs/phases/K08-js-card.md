@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | K07 |
 | **Branch / PR** | `phase/K08-js-card` |
-| **Started / finished** | 2026-10-20 / — |
+| **Started / finished** | 2026-10-20 / 2026-10-20 |
 
 ## Objective
 ADR-0017's phase 4, first part. `repro run` reproduces a JavaScript or TypeScript change and
@@ -56,15 +56,15 @@ makes its card, as it does a Python change's. The owner split phase 4 on 2026-10
 - Workspaces and monorepos: only the root project runs, and the card says so.
 
 ## Acceptance criteria
-- [ ] AC1: `repro run` on a JavaScript change gives a schema-valid log whose card is assembled
+- [x] AC1: `repro run` on a JavaScript change gives a schema-valid log whose card is assembled
   again from it byte for byte, with the language, Node.js and L2 in its conditions.
-- [ ] AC2: a regression is a P2F confirmed by reruns, and a silent change is a behaviour
+- [x] AC2: a regression is a P2F confirmed by reruns, and a silent change is a behaviour
   difference: both flag the card.
-- [ ] AC3: edited tests are named for what was done to them: removed, skipped, fewer
+- [x] AC3: edited tests are named for what was done to them: removed, skipped, fewer
   assertions.
-- [ ] AC4: a change that keeps behaviour can be VERIFIED, with every check not run listed as
+- [x] AC4: a change that keeps behaviour can be VERIFIED, with every check not run listed as
   missing.
-- [ ] AC5: a log from before K08 replays to the same card.
+- [x] AC5: a log from before K08 replays to the same card.
 
 ## Test plan
 | Criterion | Check |
@@ -79,12 +79,58 @@ makes its card, as it does a Python change's. The owner split phase 4 on 2026-10
 *Filled in at the end of the phase:*
 
 ## What shipped
+- `repro.language`, `repro.analysis.javascript` and `repro.js_stage`.
+- `jsmap`: per-side spans, test blocks and the schema's selection reasons.
+- `jsts`: test locations, messages and durations, files that did not run, reruns of chosen
+  files, and the install checked for the runner.
+- The schema's language fields, and the card's (assembly, Markdown, the cockpit's drawer).
+- The cockpit's ring writes a JavaScript file's card as JavaScript.
+- `repro doctor`'s Node.js check, and `repro run --language`.
+- Tests:
+  - `test_js_stage.py`: three real Vitest runs through the pipeline, the language, imports;
+  - additions to `test_jsmap.py`, `test_jsts.py`, `test_doctor.py`, and the web's
+    `card.test.ts` and `content.test.ts`;
+  - 19 golden cards and the stub pipeline's log regenerated, each with one line,
+    `"language": "python"`.
 
 ## Evidence
+- **Real Vitest 5.0.4 runs through the pipeline** (`test_js_stage.py`). Each log validates,
+  and its card is assembled again byte for byte.
+  - `add` breaks two tests: P2F each, after three reruns a side.
+  - `label` changes while every test passes: a stable behaviour difference. FLAGGED.
+  - An edited test file gives `assertion_removed`, `skip_added` and `test_removed`, with
+    `modified_test` and `new_test` selections. FLAGGED.
+  - A refactor is VERIFIED; the API, timing and network items are on its card.
+- **A real library:** unjs/defu at `82632b66f591`, Vitest 4.1.6, pnpm, 23 tests, through
+  `repro run` (`docs/paper/LOG.md`, 2026-10-20).
+  - Dropping `"constructor"` from `_defu`'s guard passes every test. Repro shows `_defu`
+    returning `{constructor: …}` where base returned `{}`: FLAGGED.
+  - A behaviour-preserving refactor is VERIFIED.
+  - About 22 s a run, the installs included.
+- **Older logs.** Python's golden cards change only by the new `language` line, which comes
+  from the new `run.started` field. A log without the field gives a card without it (the card
+  and replay tests).
+- **The suites:** every Python test passes (the `net-call` fixture's timing flake passed on
+  its rerun; it has its own task). Every web and events test passes.
+- CI run: linked in the PR.
 
 ## Deviations from spec
+- ADR-0017's phase 4 is split (the owner, 2026-10-20). Symbols come from K06's scanner, not
+  the TypeScript compiler; isolation is L2, not L3. Both are K11.
+- The network is a missing item on every JavaScript card, and `no_network` is not evaluated:
+  the process sandbox neither blocks nor sees a Node process's network use.
+- The two sides install one after the other. On a machine's first run, two pnpm installs at
+  once failed once, while fetching the pnpm version the project pins.
 
 ## Known gaps
+- Edited tests: a weakened assertion, and base's version of an edited test run on head, are
+  Python's alone (K11). Fewer `expect`/`assert` calls is counted by a scanner.
+- Workspaces and monorepos: only the root project runs, and the card says so.
+- Inside a packaged Windows app, pnpm's links under the redirected `AppData\Local` do not
+  resolve: the install fails with that named, and the troubleshooting guide gives the fix
+  (`REPRO_RUN_ROOT`).
+- A test's own code is found from where the runner says it starts. A test with no start
+  reported counts as the file's code.
 
 ## Dependencies added
 None.
