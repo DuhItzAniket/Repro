@@ -204,20 +204,17 @@ def test_a_change_that_keeps_behaviour_is_verified(tmp_path: Path, tools: Path) 
     assert {"unsupported_project", "perf_not_assessable"} <= reasons(card)
 
 
-def test_a_javascript_run_takes_the_process_sandbox_under_auto(
+def test_a_javascript_run_takes_a_container_under_auto_as_python_does(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Until K11's container, ``auto`` does not ask Docker for a JavaScript run, and
-    ``run.started`` names the sandbox its jobs use; ``docker``, asked for, is named and refused
-    by the jobs (``environment_failed``)."""
-
-    def no_docker_question() -> bool:
-        raise AssertionError("a JavaScript run does not ask Docker")
-
-    monkeypatch.setattr("repro.run_stage.docker_available", no_docker_question)
-    assert run_backend("auto", None, runs_code=True, language="javascript") == "process"
-    assert run_backend("process", None, runs_code=True, language="javascript") == "process"
-    assert run_backend("docker", None, runs_code=True, language="javascript") == "docker"
+    """K11: with a container that has Node, ``auto`` means Docker when it answers, as for
+    Python; ``run.started`` names what the jobs use."""
+    monkeypatch.setattr("repro.run_stage.docker_available", lambda: True)
+    assert run_backend("auto", None, runs_code=True) == "docker"
+    assert run_backend("auto", "runsc", runs_code=True) == "gvisor"
+    assert run_backend("process", None, runs_code=True) == "process"
+    monkeypatch.setattr("repro.run_stage.docker_available", lambda: False)
+    assert run_backend("auto", None, runs_code=True) == "process"
 
 
 @NEEDS_VITEST

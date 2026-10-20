@@ -2,7 +2,8 @@
 (K06; ADR-0017, phase 2).
 
 **The map.** Repro copies a setup file into the snapshot (``_hook/repro_map_vitest.mjs`` or
-``repro_map_jest.cjs``) and adds it after the project's own setup files:
+``repro_map_jest.cjs``), on the host or into a container's volume (``vitest_files``,
+``jest_files``; K11), and adds it after the project's own setup files:
 - for Vitest, a wrapper config imports the project's config and appends it;
 - for Jest, it goes after the ``setupFilesAfterEnv`` that ``--showConfig`` reports.
 
@@ -29,7 +30,6 @@ told apart: that selects more tests, never fewer.
 
 import json
 import re
-import shutil
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePosixPath
@@ -121,14 +121,12 @@ def read_map(data: bytes) -> TestMap:
     )
 
 
-def vitest_setup(root: Path, *, trace: bool = False) -> list[str]:
-    """Copies the setup file into ``root`` with a config that adds it to the project's own;
-    the runner's extra arguments. With ``trace`` (K07), the tracer runtime and Vitest's plugin
-    are copied too, and the plugin comes after the project's own."""
-    shutil.copyfile(HOOKS / VITEST_SETUP, root / VITEST_SETUP)
-    if trace:
-        for name in (TRACE_RUNTIME, TRACE_PLUGIN):
-            shutil.copyfile(HOOKS / name, root / name)
+def vitest_files(root: Path, *, trace: bool = False) -> dict[str, bytes]:
+    """The setup file and a config that adds it to the project's own (found in ``root``), by
+    name in the project's root. With ``trace`` (K07), the tracer runtime and Vitest's plugin
+    too, and the plugin comes after the project's own."""
+    names = [VITEST_SETUP, *((TRACE_RUNTIME, TRACE_PLUGIN) if trace else ())]
+    files = {name: (HOOKS / name).read_bytes() for name in names}
     base = next((name for name in VITEST_CONFIGS if (root / name).is_file()), None)
     lines = [f'import base from "./{base}";'] if base else ["const base = {};"]
     if trace:
@@ -150,7 +148,14 @@ def vitest_setup(root: Path, *, trace: bool = False) -> list[str]:
         "  },",
         "};",
     ]
-    (root / WRAPPER).write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+    files[WRAPPER] = ("\n".join(lines) + "\n").encode("utf-8")
+    return files
+
+
+def vitest_setup(root: Path, *, trace: bool = False) -> list[str]:
+    """Writes ``vitest_files`` into ``root``; the runner's extra arguments."""
+    for name, data in vitest_files(root, trace=trace).items():
+        (root / name).write_bytes(data)
     return ["--config", WRAPPER]
 
 
@@ -166,13 +171,24 @@ def jest_own_setup(shown: bytes) -> list[str]:
     return [str(path) for path in configs[0].get("setupFilesAfterEnv") or []]
 
 
+def jest_files(*, trace: bool = False) -> dict[str, bytes]:
+    """The setup file (and the tracer runtime, with ``trace``), by name in the project's
+    root."""
+    names = [JEST_SETUP, *((TRACE_RUNTIME,) if trace else ())]
+    return {name: (HOOKS / name).read_bytes() for name in names}
+
+
+def jest_args(own: Sequence[str], setup: str) -> list[str]:
+    """The runner's extra arguments: the project's own setup files first, then ``setup``, the
+    setup file's path as the runner sees it."""
+    return ["--setupFilesAfterEnv", *own, setup]
+
+
 def jest_setup(root: Path, own: Sequence[str], *, trace: bool = False) -> list[str]:
-    """Copies the setup file into ``root`` (and the tracer runtime, with ``trace``); the
-    runner's extra arguments, the project's own setup files first."""
-    shutil.copyfile(HOOKS / JEST_SETUP, root / JEST_SETUP)
-    if trace:
-        shutil.copyfile(HOOKS / TRACE_RUNTIME, root / TRACE_RUNTIME)
-    return ["--setupFilesAfterEnv", *own, str(root / JEST_SETUP)]
+    """Writes ``jest_files`` into ``root``; the runner's extra arguments."""
+    for name, data in jest_files(trace=trace).items():
+        (root / name).write_bytes(data)
+    return jest_args(own, str(root / JEST_SETUP))
 
 
 # -- the change -----------------------------------------------------------------------------------

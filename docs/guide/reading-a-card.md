@@ -194,8 +194,10 @@ files (`requirements.txt`, then `requirements-dev.txt` and the like, then
 A JavaScript or TypeScript card names **Node.js** where a Python card names Python. Its lock
 digests are its lockfile's (`package-lock.json`, `pnpm-lock.yaml` or `yarn.lock`). Its **order
 of A2** is the seed that shuffled base's second run: JavaScript has no hash seed to change. Its
-isolation is `L2` until a container with Node exists (K11). Until then, the card lists the
-network as missing: a Node process's network use is neither blocked nor seen.
+isolation is `L3` with the Docker sandbox (`REPRO_SANDBOX=docker`), in containers on Repro's
+Node.js image with no network, and `L2` otherwise (`auto` included). At L2 the card lists the
+network as missing: a Node process's network use is neither blocked nor seen. At L3 it is
+blocked, but still not seen: `no_network` passes on the block alone, and its message says so.
 
 ## In the cockpit
 A check's evidence drawer shows its *Status*, the check's own verdict (`ok`, `warn`, `fail`)
