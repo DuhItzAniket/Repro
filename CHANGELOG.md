@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- CI: the Python tests' job may take 45 minutes, up from 30. On Windows it took 22 to 27
+  minutes with K08 and K11's tests, and once passed 30, which cancelled it on `main`. [K11]
+
 ## [1.3.0] - 2026-10-20
 
 JavaScript and TypeScript, end to end: the rest of ADR-0017 (K06, K07, K08, K11) and the
