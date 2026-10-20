@@ -1,8 +1,10 @@
-"""A JavaScript change through ``repro run``'s pipeline to its card (K08; ADR-0017, phase 4).
+"""A JavaScript change through ``repro run``'s pipeline to its card (K08, K11; ADR-0017, phase 4).
 
 Real Vitest runs: the monorepo's own Vitest stands in for the project's (``JsOptions``), so no
-dependency is installed and no network is needed. Each run's log must be schema-valid and its
-card assembled again from it byte for byte, as a Python run's (``test_run_stage``).
+dependency is installed. The pinned TypeScript compiler (K11) is fetched once per checkout into
+pytest's cache (``ts_support``); without it, the runs record what it would have checked as
+missing. Each run's log must be schema-valid and its card assembled again from it byte for byte,
+as a Python run's (``test_run_stage``).
 """
 
 import json
