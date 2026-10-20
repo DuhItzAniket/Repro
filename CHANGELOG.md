@@ -65,6 +65,13 @@ All notable changes to this project are documented here. The format follows
   submission checklist (`docs/paper/SUBMISSION.md`). [J10]
 
 ### Fixed
+- A call whose arguments cannot be encoded (a framework's context object, too deep, too
+  large or cyclic) is compared by its position, the n-th such call of the function in the
+  test, when base twice and head made as many of them; its result was never compared
+  before. On pallets/click#3884, whose changed functions take click's `Context`, 151 calls
+  of 2 of its 4 changed functions (in 16 and 58 tests) went from not comparable to compared
+  (395 calls in all, up from 244), and the card from UNVERIFIABLE to VERIFIED
+  (deterministic). [E03, E04]
 - A run stopped by a warning the project makes an error (`filterwarnings = error`) is reported
   by that warning, not by pytest's "ImportError while loading conftest". [J01]
 - A selection of tests too long for a command line (889 node IDs on Windows,

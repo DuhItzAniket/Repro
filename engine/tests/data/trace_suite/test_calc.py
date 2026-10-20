@@ -1,6 +1,6 @@
 import pytest
 
-from calc import Box, add, extend, fails, gen, many, ordered, recurse, threaded, with_kw
+from calc import Box, add, extend, fails, gen, label, many, ordered, recurse, threaded, with_kw
 
 
 @pytest.fixture
@@ -58,3 +58,10 @@ def test_dict_order():
 def test_mutation():
     items = [1]
     assert extend(items, [2, 3]) == 3
+
+
+def test_cycle():
+    first, second = {"name": "a"}, {"name": "b"}
+    first["self"], second["self"] = first, second
+    assert label(first) == "node a"
+    assert label(second) == "node b"

@@ -53,3 +53,8 @@ def ordered(keys):
 def extend(items, extra):
     items.extend(extra)
     return len(items)
+
+
+def label(node):
+    """A cyclic argument: its encoding is incomplete (E02), so the call is matched by position."""
+    return f"node {node['name']}"
