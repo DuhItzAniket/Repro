@@ -158,6 +158,7 @@ dependencies.
   target that finds it; T2's residual covers it.
 - **The preview cap (T12, E04)** has no test of its own.
 - **`net-call`'s flaky end-to-end test** (H02's known gap) is still open, as a follow-up.
+  *Resolved on 2026-10-20: see H02's "Follow-up: `net-call`'s timing".*
 
 ## Dependencies added
 None to the project. CI runs pip-audit 2.10.1 through `uvx`, outside the project's
