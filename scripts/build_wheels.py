@@ -31,6 +31,7 @@ MUST_HOLD = {
         "repro/api/cockpit/index.html",
         "repro/sandbox/_hook/sitecustomize.py",
         "repro/sandbox/image/Dockerfile",
+        "repro/sandbox/image/node.Dockerfile",
         "repro/agents/prompts/lock.json",
     ),
     "repro_events": (

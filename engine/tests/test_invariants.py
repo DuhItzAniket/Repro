@@ -170,6 +170,30 @@ def test_no_network() -> None:
     assert rules.no_network(invariant, [out], network="enforced", complete=False).result == "fail"
 
 
+def test_no_network_where_attempts_are_not_seen() -> None:
+    """K08, K11: a Node process is not seen by Repro's detection. In the process sandbox the
+    invariant is not evaluated; in a container it passes on the enforcement alone, and says
+    so."""
+    invariant = Invariant("no_network")
+    why = "a Node process does not load the hook"
+    l2 = checked(rules.no_network(invariant, [], network="detected-only", unseen=why))
+    assert (l2.result, l2.message) == ("not_evaluated", why)
+    l3 = checked(rules.no_network(invariant, [], network="enforced", undetected=why))
+    assert l3.result == "pass"
+    assert l3.message == (
+        "nothing head's tests did reached the network: the sandbox had none (enforced); their "
+        f"attempts are not seen ({why})"
+    )
+    assert l3.details == {"network": "enforced", "undetected": why}
+    # Where the network is not enforced, "not seen" leaves nothing to rest a pass on.
+    blind = rules.no_network(invariant, [], network="detected-only", undetected=why)
+    assert checked(blind).result == "not_evaluated"
+    # Head's tests did not run: nothing to rest it on either.
+    assert rules.no_network(invariant, None, network="enforced", undetected=why).result == (
+        "not_evaluated"
+    )
+
+
 def timed(test: str, verdict: str, ratio: float, low: float, high: float) -> rules.Timed:
     return rules.Timed(test, verdict, ratio, low, high, EV1 if verdict == "regression" else EV2)
 

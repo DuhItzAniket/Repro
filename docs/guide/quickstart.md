@@ -19,10 +19,12 @@ commit, whose test dependencies do not work on 3.13 shows `collection_error` or
 `environment_failed` on its card.
 
 It also checks JavaScript and TypeScript projects tested with Vitest or Jest (checked with
-Vitest 4.1 and 5.0, and Jest 30), with a lockfile. Their dependencies are installed from the lockfile
-with lifecycle scripts off, and their tests run on the machine's Node.js in a contained
-process (L2): a container with Node is still to come. Fewer checks run than for Python, and the
-card lists each one that did not: the public API, weakened assertions, timing and the network.
+Vitest 4.1 and 5.0, and Jest 30), with an npm, pnpm or Yarn 1 lockfile. Their dependencies are
+installed from the lockfile with lifecycle scripts off. With Docker, their tests run in a
+container with Node and no network (L3); without it, on the machine's Node.js in a contained
+process (L2). Their public API is read by a TypeScript compiler Repro fetches once, which needs
+Node.js on the machine. The card lists what it could not check: timing, which is Python's
+alone, and at L2 the network.
 
 ## 2. Install
 Repro is on PyPI from v1.2.0, as `repro-engine`:

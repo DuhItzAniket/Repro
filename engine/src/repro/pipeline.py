@@ -80,19 +80,11 @@ class Change:
         )
 
 
-def run_backend(
-    backend: Backend,
-    docker_runtime: str | None,
-    *,
-    runs_code: bool,
-    language: Language = "python",
-) -> SandboxBackend:
+def run_backend(backend: Backend, docker_runtime: str | None, *, runs_code: bool) -> SandboxBackend:
     """The sandbox a run uses, decided once for its jobs and ``run.started``: ``gvisor`` when its
     containers run under gVisor. ``auto`` asks Docker only if the run will run the target's code;
-    a run that only analyses records it as ``process``. A JavaScript run takes the process
-    sandbox under ``auto``: a container with Node is K11, and its jobs refuse ``docker``."""
-    if language == "javascript" and backend != "docker":
-        return "process"
+    a run that only analyses records it as ``process``. Python and JavaScript alike (K11: the
+    JavaScript container has Node)."""
     if not (use_docker(backend) if runs_code else backend == "docker"):
         return "process"
     return "gvisor" if docker_runtime == GVISOR else "docker"
@@ -299,7 +291,8 @@ def pipeline_jobs(
             artifacts=artifacts,
             limits=limits,
             env_image=env_image,
-            options=js,
+            docker_runtime=docker_runtime,
+            options=js or JsOptions(tools=cache / "tools"),
         )
     elif not analyse_only:
         base, head = change.base.sha, change.head.sha

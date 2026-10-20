@@ -199,7 +199,7 @@ def check_node(probe: Probe) -> Check:
     if result.returncode != 0 or version is None:
         problem = _first_line(result.stderr) or _first_line(result.stdout) or "no output"
         return Check("node", "warn", f"node --version failed: {problem}", hint=hint)
-    detail = "JavaScript and TypeScript targets run in the process sandbox (L2) until K11"
+    detail = "JavaScript and TypeScript targets run as Python's: in a container when Docker answers"
     return Check("node", "ok", f"Node.js {show(version)}", detail=detail)
 
 

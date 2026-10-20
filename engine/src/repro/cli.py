@@ -601,7 +601,6 @@ def run(
             settings.sandbox,
             settings.docker_runtime,
             runs_code=not analyse_only,
-            language=change.language,
         ),
     )
     writer = StoreWriter(settings.paths.database).start()

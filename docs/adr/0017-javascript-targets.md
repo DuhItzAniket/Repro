@@ -1,7 +1,8 @@
 # ADR-0017: JavaScript and TypeScript targets
 
 - **Status:** accepted by the owner (2026-10-19). Phase 1 is built (K01); phases 2 to 4 are
-  K06, K07 and K08, and the owner split phase 4 in two on 2026-10-20 (K08, then K11). They add
+  K06, K07 and K08, and the owner split phase 4 in two on 2026-10-20 (K08, then K11). All are
+  built. They add
   a Node.js runtime to the sandbox image and a language field to the event schema's core,
   which this acceptance approves.
 - **Date:** 2026-10-18
@@ -87,7 +88,26 @@ JavaScript and TypeScript targets in four phases, each usable on its own:
        weakened assertions, timing, and the network, which is neither blocked nor seen.
    - **K11.** The rest: L3 in a container with Node, and the TypeScript compiler API for the
      API diff and for edited tests' assertions. It also runs base's version of an edited test
-     against head.
+     against head. As built:
+     - **The container.** Repro's Node.js image (`sandbox/image/node.Dockerfile`) is the
+       official Node 22 bookworm-slim image, pinned by digest. pnpm and Yarn 1 come through
+       Corepack, each pinned by version and SHA-512. Under `auto`, a JavaScript run takes it
+       when Docker answers, as a Python run does: L3, or L4 under gVisor. The install has a
+       container of its own, the only one with the network. Lifecycle scripts are off there,
+       and so are pnpm's `.pnpmfile.cjs` and Yarn 1's `yarn-path`: K11 found that both run the
+       project's code under `--ignore-scripts`. The tests then run in hardened containers with
+       no network. Node does not load Repro's Python audit hook, so at L3 `no_network` passes
+       on enforcement alone, and says so.
+     - **The compiler.** Repro pins `typescript` 6.0.3. 7.0.2, the latest, is the native port,
+       with no JavaScript API in its package. It is fetched once from the npm registry, its
+       sha512 checked, and unpacked by Repro, so no package manager runs. A worker of Repro's
+       own runs it on the host's Node, so the target's `typescript` never loads. It reads the
+       exports of `package.json`'s entries, mapped to their sources through `tsconfig.json`,
+       and the assertions in each edited test's own lines. A parameter's changed type needed a
+       breakage kind: the schema gained `parameter_changed_type`.
+     - **Base on head.** Base's version of an edited test file is written beside head's
+       (`m.repro-base.test.ts`), so its relative imports reach head's code and the runners'
+       default patterns still match it.
 
 ## Consequences
 - Phase 1 runs on the host's Node in the process sandbox (L2). A Node process's network
