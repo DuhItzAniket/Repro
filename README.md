@@ -61,19 +61,20 @@ PR ─► READ claims ─► BUILD isolated snapshots + blast radius ─► RUN 
 Repro needs [uv](https://docs.astral.sh/uv/) and git. Docker is optional: with it, runs reach
 isolation level L3, the target's code in a container with no network.
 
-Each GitHub release from v1.0.0 carries two wheels, `repro-engine` (the command and the
-cockpit) and `repro-events` (the event schemas). Install both as one tool, with Python 3.13:
+Repro is on PyPI from v1.2.0: `repro-engine`, the command and the cockpit, which brings
+`repro-events`, the event schemas. Install it as a tool, with Python 3.13:
 
 ```
-uv tool install --python 3.13 --from "repro-engine @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_engine-<version>-py3-none-any.whl" --with "repro-events @ https://github.com/DuhItzAniket/Repro/releases/download/v<version>/repro_events-<version>-py3-none-any.whl" repro-engine
+uv tool install --python 3.13 repro-engine
 repro doctor
 repro run --repo <path> --base <ref> --head <ref>
 ```
 
 `repro doctor` says what this machine can do. `repro run` serves the cockpit and prints its
-address, which follows the run live (`--open` opens it in the browser). CI makes this same
-install, and a first run on a small repository, on Linux and Windows for every change, inside
-ten minutes (`scripts/install_check.py`). PyPI comes later. To work on Repro itself, run it
+address, which follows the run live (`--open` opens it in the browser). Each GitHub release
+also attaches both wheels; [the quickstart](docs/guide/quickstart.md) shows that install. CI
+installs the wheels it builds from each change, and makes a first run on a small repository, on
+Linux and Windows, inside ten minutes (`scripts/install_check.py`). To work on Repro itself, run it
 from a checkout: `uv sync`, `pnpm install` and `pnpm build`, then `uv run repro ...`
 ([CONTRIBUTING](CONTRIBUTING.md)).
 
