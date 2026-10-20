@@ -978,7 +978,9 @@ def summary(temps):
 """
 
 # Head pings a host on every call. 192.0.2.1 is in TEST-NET-1, reserved for documentation
-# (RFC 5737), so nothing answers it; the sandbox refuses the connection either way.
+# (RFC 5737), so nothing answers it; the sandbox refuses the connection either way. The host
+# is bytes: a str host's lookup imports the idna codec, about 4 ms on Windows in every timing
+# run, which put head's call at the 5 ms timing floor (H02's record, its follow-up).
 _REPORT_PING = """\"\"\"Weather reports.\"\"\"
 
 import socket
@@ -986,7 +988,7 @@ import socket
 
 def _ping():
     try:
-        with socket.create_connection(("192.0.2.1", 80), timeout=0.5):
+        with socket.create_connection((b"192.0.2.1", 80), timeout=0.5):
             pass
     except OSError:
         pass
