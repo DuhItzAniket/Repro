@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+import ts_support
 from gitrepo import Entry, Repo
 from repro import language
 from repro.analysis import javascript
@@ -58,13 +59,22 @@ TESTS = (
 )
 
 
+@pytest.fixture
+def tools(pytestconfig: pytest.Config, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Repro's tools for the runs: the pinned TypeScript compiler is fetched there once (K11)."""
+    return ts_support.tools(pytestconfig, tmp_path_factory)
+
+
 def reproduce(
-    tmp_path: Path, head: dict[str, Entry | None]
+    tmp_path: Path,
+    head: dict[str, Entry | None],
+    tools: Path,
+    base: dict[str, Entry] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Base (``PROJECT``, ``SOURCE``, ``TESTS``) against base with ``head`` applied: the run's
-    events, checked, and its card."""
+    """Base (``PROJECT``, ``SOURCE``, ``TESTS``, and ``base``) against base with ``head``
+    applied: the run's events, checked, and its card."""
     repo = Repo(tmp_path / "repo")
-    base_sha = repo.commit({**PROJECT, "src/m.js": SOURCE, "test/m.test.js": TESTS})
+    base_sha = repo.commit({**PROJECT, "src/m.js": SOURCE, "test/m.test.js": TESTS, **(base or {})})
     head_sha = repo.commit(head)
     git = Git(repo.path)
     found = language.detect(git, base_sha, head_sha)
@@ -82,7 +92,7 @@ def reproduce(
             analyse_only=False,
             artifacts=ArtifactStore(tmp_path / "runs", writer),
             cards=StoreCards(database, writer),
-            js=JsOptions(install=False, entry=str(VITEST)),
+            js=JsOptions(install=False, entry=str(VITEST), tools=tools),
         )
         result = Orchestrator(EventBus(writer), concurrency=2).run(
             change.spec(), jobs, run_id=run_id
@@ -118,9 +128,9 @@ def reasons(card: dict[str, Any]) -> set[str]:
 
 
 @NEEDS_VITEST
-def test_a_regression_and_a_silent_change_flag_the_card(tmp_path: Path) -> None:
+def test_a_regression_and_a_silent_change_flag_the_card(tmp_path: Path, tools: Path) -> None:
     head = SOURCE.replace("return a + b;", "return a - b;").replace("n.toFixed(1)", "n")
-    events, card = reproduce(tmp_path, {"src/m.js": head})
+    events, card = reproduce(tmp_path, {"src/m.js": head}, tools)
     assert payloads(events, "run.started")[0]["language"] == "javascript"
     changed = {(p["symbol_id"], p["change"]) for p in payloads(events, "symbol.changed")}
     assert changed == {("src/m.js:add#0", "modified"), ("src/m.js:label#0", "modified")}
@@ -156,14 +166,16 @@ def test_a_regression_and_a_silent_change_flag_the_card(tmp_path: Path) -> None:
 
 
 @NEEDS_VITEST
-def test_edited_tests_are_checked_for_what_an_agent_does_to_them(tmp_path: Path) -> None:
+def test_edited_tests_are_checked_for_what_an_agent_does_to_them(
+    tmp_path: Path, tools: Path
+) -> None:
     tests = (
         TESTS.replace("    expect(add(0, 0)).toBe(0);\n", "")  # one assertion fewer
         .replace('test("labels"', 'test.skip("labels"')  # skipped
         .replace('  test("old", () => {\n    expect(add(2, 2)).toBe(4);\n  });\n', "")  # gone
         .removesuffix("});\n")
     ) + '  test("new", () => {\n    expect(add(1, 1)).toBe(2);\n  });\n});\n'
-    events, card = reproduce(tmp_path, {"test/m.test.js": tests})
+    events, card = reproduce(tmp_path, {"test/m.test.js": tests}, tools)
     selected = {
         e["target"]["test"]: e["payload"]["reasons"] for e in events if e["kind"] == "test.selected"
     }
@@ -181,14 +193,56 @@ def test_edited_tests_are_checked_for_what_an_agent_does_to_them(tmp_path: Path)
 
 
 @NEEDS_VITEST
-def test_a_change_that_keeps_behaviour_is_verified(tmp_path: Path) -> None:
+def test_a_change_that_keeps_behaviour_is_verified(tmp_path: Path, tools: Path) -> None:
     head = SOURCE.replace("  return a + b;", "  const sum = a + b;\n  return sum;")
-    events, card = reproduce(tmp_path, {"src/m.js": head})
+    events, card = reproduce(tmp_path, {"src/m.js": head}, tools)
     assert payloads(events, "diff.behaviour") == []
     assert {o["data"]["class"] for o in evidence(events, "test_outcome")} == {"P2P"}
     assert card["status"] == "VERIFIED", card["status_reasons"]
     # Verified, and what was not checked is on the card.
     assert {"unsupported_project", "perf_not_assessable"} <= reasons(card)
+
+
+@NEEDS_VITEST
+def test_the_public_api_and_a_weakened_assertion_by_typescript(
+    tmp_path: Path, pytestconfig: pytest.Config, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    # K11: the package's main is src/m.js. Head adds a parameter to label, which every call
+    # leaves out, and the test of label checks less.
+    tools = ts_support.pinned(pytestconfig, tmp_path_factory).parent
+    manifest = json.dumps({**json.loads(PROJECT["package.json"]), "main": "src/m.js"})
+    head: dict[str, Entry | None] = {
+        "src/m.js": SOURCE.replace("label(n)", "label(n, digits)").replace(
+            "n.toFixed(1)", "n.toFixed(digits ?? 1)"
+        ),
+        "test/m.test.js": TESTS.replace(
+            'expect(label(2)).toContain("n=")', "expect(label(2)).toBeTruthy()"
+        ),
+    }
+    events, card = reproduce(tmp_path, head, tools, base={"package.json": manifest})
+    (api,) = payloads(events, "diff.api")
+    assert (api["symbol_id"], api["breakage"]) == ("src/m.js:label#0", "parameter_added_required")
+    assert api["explanation"] == (
+        "label in the package: Parameter was added as required (digits: any)"
+    )
+    (break_,) = evidence(events, "api_diff")
+    assert break_["data"]["source"] == "typescript"
+    found = evidence(events, "test_change")
+    assert [(t["targets"][0]["test"], t["data"]["change"], t["data"]["detail"]) for t in found] == [
+        (
+            "test/m.test.js::m labels",
+            "assertion_weakened",
+            'a check became a looser one: toContain("…") → toBeTruthy()',
+        )
+    ]
+    assert payloads(events, "diff.behaviour") == []  # label(2) returns what it did
+    assert card["status"] == "FLAGGED"
+    edited = [m["detail"] for m in card["missing"] if "edited tests" in m["detail"]]
+    assert edited == [
+        "1 edited tests are checked for removal, a new skip, and fewer, weaker or wider "
+        "assertions; base's version of an edited test run against head is checked for Python "
+        "only"
+    ]
 
 
 def test_the_target_language_is_read_from_the_root(tmp_path: Path) -> None:

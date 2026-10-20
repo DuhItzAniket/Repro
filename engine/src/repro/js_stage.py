@@ -15,16 +15,20 @@ read a Python one.
   ``test.finished``); ``trace.sample`` per previewed call.
 - ``outcomes`` (diff): ``diff.outcome`` per reported test, classified as Python's are
   (``runner.outcomes.classify``; a test whose own code changed is ``modified``); ``diff.tests``
-  for a test removed, an edited test skipped on head, and an edited test with fewer
-  ``expect``/``assert`` calls. Missing items: flaky tests, changed functions no selected test
-  runs, test files that did not run, maps not made, runs that did not finish, and the checks of
-  edited tests that Python has and JavaScript does not yet (K11).
+  for a test removed, an edited test skipped on head, and an edited test whose assertions are
+  fewer, weaker or wider (``jsassert``, from the TypeScript compiler's syntax tree, K11; without
+  the compiler, fewer ``expect``/``assert`` calls, counted by a scanner). Missing items: flaky
+  tests, changed functions no selected test runs, test files that did not run, maps not made,
+  runs that did not finish, and the checks of edited tests that Python has and JavaScript does
+  not yet.
 - ``behaviour`` (diff): A, A2 and H's calls compared (``jstrace``) as E03 and E04 compare
   Python's: ``behaviour_diff`` evidence and ``diff.behaviour``, the masked noise and what could
   not be compared as missing items, and a changed function that ran but was never traced. A
   run's first calls of each function carry previews, which stand in for E04's reproducer runs.
-- ``api`` (diff): a missing item: the public API is compared from K11 (the TypeScript
-  compiler API).
+- ``api`` (diff): the exports of ``package.json``'s entries compared with the TypeScript compiler
+  API (``analysis.jsapi``, K11): ``api_diff`` evidence and ``diff.api`` per breaking change, and a
+  missing item for each entry not read. Without Node.js or the pinned compiler, the API is a
+  missing item, never a pass.
 - ``deps`` (diff): ``package.json``'s dependencies and the installed packages, compared
   (``dep_diff`` evidence, ``diff.deps``).
 - ``invariants`` (check): F02's (``run_stage.invariants_job``). ``no_network`` is not evaluated:
@@ -41,7 +45,9 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final
 
-from repro import __version__, jsmap, jstrace, jsts
+from repro import __version__, jsassert, jsmap, jstrace, jsts
+from repro.analysis import jsapi, typescript
+from repro.config.settings import SettingsError, load_settings
 from repro.gitops import Git
 from repro.ids import new_evidence_id
 from repro.jsmap import JsChange, Reason, Selected, Span
@@ -78,6 +84,11 @@ NETWORK_UNSEEN: Final = (
     "a Node process's network use is neither blocked nor seen in the process sandbox (L2); a "
     "container with Node is K11"
 )
+#: What would let the TypeScript compiler be used (K11).
+TYPESCRIPT_FIX: Final = (
+    f"Put Node.js on PATH and let Repro fetch TypeScript {typescript.VERSION} from the npm "
+    "registry once (into the data directory's tools)"
+)
 #: An ``expect`` or ``assert`` call in a test's own code, comments and strings blanked.
 _ASSERTION: Final = re.compile(r"\b(?:expect|assert)\s*[.(]")
 #: At most this many tests are listed as one missing item's targets.
@@ -92,11 +103,25 @@ _INSTALL: Final = threading.Lock()
 @dataclass(frozen=True)
 class JsOptions:
     """How the JavaScript runs are made: ``install`` the dependencies (off where ``node_modules``
-    is in place already, as in Repro's own tests), and ``entry``, the runner's entry point
-    instead of the project's own (a test's Vitest)."""
+    is in place already, as in Repro's own tests), ``entry``, the runner's entry point instead of
+    the project's own (a test's Vitest), and ``tools``, where Repro keeps the tools it fetches
+    (the pinned TypeScript compiler; ``<data dir>/tools`` when None)."""
 
     install: bool = True
     entry: str | None = None
+    tools: Path | None = None
+
+
+def typescript_package(options: JsOptions) -> Path:
+    """The pinned TypeScript compiler's package, fetched into the tools directory on first use.
+    Raises ``typescript.TypeScriptError``."""
+    tools = options.tools
+    if tools is None:
+        try:
+            tools = load_settings().paths.data_dir / "tools"
+        except SettingsError as exc:
+            raise typescript.TypeScriptError(f"the data directory is not known: {exc}") from None
+    return typescript.ensure(tools)
 
 
 @dataclass
@@ -119,6 +144,8 @@ class JsState(RunState):
     effective: list[JsChange] = field(default_factory=list)
     diffs: list[OutcomeDiff] = field(default_factory=list)
     test_changes: list[TestChange] = field(default_factory=list)
+    #: Why edited tests' assertions were counted by a scanner, not read from the syntax tree.
+    assertions_unread: str | None = None
     #: What the tests job found missing: the runs, the maps, the files that did not run.
     problems: list[dict[str, Any]] = field(default_factory=list)
 
@@ -430,7 +457,7 @@ def _tests_job(work: Path, state: JsState, options: JsOptions, commits: Mapping[
                 state.reruns.setdefault(side, []).append(found)
                 events.run(side, found, flips)
         state.diffs = [_classify(t, state, maps) for t in reported]
-        state.test_changes = _test_changes(work, state)
+        state.test_changes = _test_changes(work, state, options)
         state.network_unseen = NETWORK_UNSEEN
 
     return Job(
@@ -466,34 +493,81 @@ def _assertions(source: str | None, span: Span | None) -> int | None:
     return len(_ASSERTION.findall("\n".join(lines)))
 
 
-def _test_changes(work: Path, state: JsState) -> list[TestChange]:
-    """Removed tests, then each edited test's finding: skipped on head, fewer assertions, or
-    only changed."""
+Assertions = tuple[jsassert.Assertion, ...]
+
+
+def _shapes(
+    work: Path,
+    state: JsState,
+    edited: Sequence[str],
+    sources: Mapping[tuple[str, str], str | None],
+    options: JsOptions,
+) -> dict[str, tuple[Assertions, Assertions]] | None:
+    """Each edited test's assertions on base and on head, from the compiler's syntax tree; None
+    (and ``state.assertions_unread``) if the compiler could not be used."""
+    files: list[tuple[str, jsassert.Source]] = []
+    for index, side in enumerate(("base", "head")):
+        spans: dict[str, dict[str, Span]] = {}
+        for test in edited:
+            span = state.blocks.get(test, (None, None))[index]
+            if span is not None and sources[(side, _file(test))] is not None:
+                spans.setdefault(_file(test), {})[test] = span
+        for file, found in spans.items():
+            files.append((side, jsassert.Source(file, sources[(side, file)] or "", found)))
+    if not files:
+        return {}
+    try:
+        package = typescript_package(options)
+        read = jsassert.assertions(package, [s for _, s in files], work / "jsassert")
+    except typescript.TypeScriptError as exc:
+        state.assertions_unread = str(exc)
+        return None
+    sides: dict[str, dict[str, Assertions]] = {"base": {}, "head": {}}
+    for (side, _), tests in zip(files, read, strict=True):
+        sides[side].update(tests)
+    return {
+        test: (sides["base"][test], sides["head"][test])
+        for test in edited
+        if test in sides["base"] and test in sides["head"]
+    }
+
+
+def _test_changes(work: Path, state: JsState, options: JsOptions) -> list[TestChange]:
+    """Removed tests, then each edited test's findings: skipped on head; else fewer, weaker or
+    wider assertions (``jsassert``); else only changed. Without the compiler, fewer ``expect``
+    or ``assert`` calls are counted by a scanner (K08's)."""
     a, h = state.runs["A"], state.runs["H"]
     found = [
         TestChange(_file(test), test, "test_removed", "not reported on head")
         for test in sorted(a.outcomes.keys() - h.outcomes.keys())
         if _file(test) not in h.broken
     ]
+    edited = [t for t, kind in state.own.items() if kind == "modified_test" and t in h.outcomes]
     sources: dict[tuple[str, str], str | None] = {}
-    for test, kind in state.own.items():
-        if kind != "modified_test" or test not in h.outcomes:
-            continue
-        file = _file(test)
+    for test in edited:
         for side in ("base", "head"):
-            sources.setdefault((side, file), _read(work, side, file))
-        before, after = state.blocks.get(test, (None, None))
-        counts = (
-            _assertions(sources[("base", file)], before),
-            _assertions(sources[("head", file)], after),
-        )
+            sources.setdefault((side, _file(test)), _read(work, side, _file(test)))
+    shapes = _shapes(work, state, edited, sources, options)
+    for test in edited:
+        file = _file(test)
         if a.outcomes[test] != "skipped" and h.outcomes[test] == "skipped":
             found.append(TestChange(file, test, "skip_added", "skipped on head; it ran on base"))
-        elif None not in counts and counts[1] < counts[0]:  # type: ignore[operator]
-            detail = f"{counts[0]} expect or assert calls on base, {counts[1]} on head"
-            found.append(TestChange(file, test, "assertion_removed", detail))
+            continue
+        if shapes is not None:
+            findings = jsassert.compare(*shapes[test]) if test in shapes else []
         else:
-            found.append(TestChange(file, test, "test_modified", "the test's code changed"))
+            before, after = state.blocks.get(test, (None, None))
+            counts = (
+                _assertions(sources[("base", file)], before),
+                _assertions(sources[("head", file)], after),
+            )
+            findings = []
+            if counts[0] is not None and counts[1] is not None and counts[1] < counts[0]:
+                detail = f"{counts[0]} expect or assert calls on base, {counts[1]} on head"
+                findings.append(("assertion_removed", detail))
+        found += [TestChange(file, test, kind, detail) for kind, detail in findings] or [
+            TestChange(file, test, "test_modified", "the test's code changed")
+        ]
     return found
 
 
@@ -516,6 +590,22 @@ def _uncovered(state: JsState) -> list[dict[str, Any]]:
         targets = [{"file": change.file, "symbol": change.symbol_id}]
         items.append(_missing("no_covering_test", detail, targets, "Add a test that runs it"))
     return items
+
+
+def _edited(edited: Sequence[str], state: JsState) -> str:
+    """What is checked of the edited tests, and what is not."""
+    if state.assertions_unread is None:
+        return (
+            f"{len(edited)} edited tests are checked for removal, a new skip, and fewer, weaker "
+            "or wider assertions; base's version of an edited test run against head is checked "
+            "for Python only"
+        )
+    return (
+        f"{len(edited)} edited tests are checked for removal, a new skip and fewer expect or "
+        "assert calls, counted by a scanner: the TypeScript compiler could not be used "
+        f"({state.assertions_unread}). A weakened assertion, and base's version of an edited "
+        "test run against head, are not checked"
+    )
 
 
 def _outcomes_job(state: JsState) -> Job:
@@ -546,13 +636,8 @@ def _outcomes_job(state: JsState) -> Job:
             missing += _uncovered(state)
         edited = sorted(t for t, kind in state.own.items() if kind == "modified_test")
         if edited:
-            detail = (
-                f"{len(edited)} edited tests are checked for removal, a new skip and fewer "
-                "expect or assert calls; a weakened assertion, and base's version of an edited "
-                "test run against head, are checked for Python only (K11)"
-            )
             targets = [{"test": test} for test in edited[:LISTED]]
-            missing.append(_missing("unsupported_project", detail, targets, None))
+            missing.append(_missing("unsupported_project", _edited(edited, state), targets, None))
         missing.append(
             _missing(
                 "perf_not_assessable",
@@ -689,17 +774,40 @@ def _behaviour_job(state: JsState, artifacts: ArtifactStore | None) -> Job:
 # -- api and dependencies -------------------------------------------------------------------------
 
 
-def _api_job(state: JsState) -> Job:
+def _api_job(
+    git: Git, base: str, head: str, work: Path, state: JsState, *, options: JsOptions
+) -> Job:
     def run(ctx: JobContext) -> None:
-        detail = (
-            "the public API of JavaScript and TypeScript is not compared yet: exported "
-            "declarations are read with the TypeScript compiler API in K11"
+        try:
+            package = typescript_package(options)
+            found = jsapi.api_diff(git, base, head, work / "jsapi", package)
+        except typescript.TypeScriptError as exc:
+            detail = f"the public API was not compared: {exc}"
+            item = _missing("unsupported_project", detail, [], TYPESCRIPT_FIX)
+            ctx.emit("missing.recorded", status="warn", payload=item)
+            ctx.log(detail, level="warning", status="warn")
+            state.api_breaks, state.api_unread = None, []
+            return
+        breaks = []
+        for change in found.breaks:
+            record = change.evidence(ctx.run_id)
+            breaks.append((change.symbol, change.breakage, str(record["id"])))
+            ctx.emit("evidence.created", status="ok", payload={"evidence": record})
+            target = {"symbol": change.symbol, **({"file": change.file} if change.file else {})}
+            payload = change.payload(record["id"])
+            ctx.emit("diff.api", status="warn", payload=payload, target=target)  # ADR-0015 §2
+        for missing in found.missing():
+            ctx.emit("missing.recorded", status="warn", payload=missing)
+        entries = ", ".join(found.packages) or "no entry point"
+        ctx.log(
+            f"public API ({entries}; TypeScript {typescript.VERSION}): "
+            f"{len(found.breaks)} breaking changes"
         )
-        item = _missing("unsupported_project", detail, [], None)
-        ctx.emit("missing.recorded", status="warn", payload=item)
-        ctx.log("public API: not compared for JavaScript (K11)")
-        state.api_breaks, state.api_unread = None, []
+        ctx.check()  # an abandoned job's comparison is not the run's
+        state.api_breaks = breaks
+        state.api_unread = sorted({name for _, name, _ in found.problems})
 
+    # Read from git alone, as Python's: compared even when a side could not be installed.
     return Job(
         "api",
         "diff",
@@ -794,7 +902,7 @@ def run_jobs(
         _tests_job(work, state, how, {"base": base, "head": head}),
         _outcomes_job(state),
         _behaviour_job(state, artifacts),
-        _api_job(state),
+        _api_job(git, base, head, work, state, options=how),
         _deps_job(work, state),
         invariants_job(git, base, head, state, after=("api", "deps", "outcomes")),
     ]
