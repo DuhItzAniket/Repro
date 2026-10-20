@@ -587,3 +587,35 @@ entry. If something turns out wrong, add a correcting entry.
 - **For the paper.** Disk and download time are part of the study's cost, like tokens. The
   order of work matters: every stage on one task before the next pulls each image once.
 
+## 2026-10-19 · fix · Reviewers on a real repository
+- **The change:** pallets/itsdangerous at `672971d`, and one commit that rewrites HMAC key
+  derivation (`hmac.new(secret_key, ...)`, `update(salt)`) as
+  `hmac.digest(self.salt, secret_key, ...)`, swapping key and message. Its message claims a pure
+  refactor. All 272 selected tests pass on both sides; Repro found 27 stable behaviour
+  differences in `Signer.derive_key` for `key_derivation='hmac'`. The commit is a seeded
+  example on real code, not a change from the project.
+- **Measured: no reviewer could answer on Groq's free tier.** Each request was 10,786 to
+  19,909 tokens, against 8,000 a minute (3,000 of them reserved for the answer). Rebuilt from
+  the stored run:
+  - the answer schema listed every evidence ID twice: 20,620 characters for 304 IDs;
+  - 272 of the 304 items were tests that passed on both sides, and they came first, so the 10
+    items shown in full were passing tests and the 27 differences were behind the tools.
+- **Fixed** (`agents/reviewer.py`, `evidence.py`, `tools.py`, `openai_compat.py`):
+  - findings first, alike ones grouped, and unchanged outcomes counted;
+  - no ID enum past 40 IDs;
+  - tool answers capped at 4,000 characters;
+  - the last two turns kept for the answer.
+
+  The schema fell to 666 characters, and a reviewer's first turn to about 2,300 tokens.
+  Requests of 10 items or fewer are unchanged, so every recorded cassette still replays.
+- **After the fix, live** (`run_01M5A6999AHKERBJTG6ZW5GBZH`):
+  - "pure refactor, no behaviour change" was contradicted, citing the derive_key difference,
+    in both orders;
+  - the claims that describe the code change were supported.
+- **Cost of a run with agents on this repository:** 46,533 to 62,650 tokens in 6 or 7 calls
+  ($0.012 to $0.016 at Groq's list prices), against 24,138 per PR on the Stage G fixtures. The
+  free tier's daily tokens lasted about four such runs; the next calls were told to wait
+  1,287 s.
+- **For the paper.** Evidence volume, not model quality, decided whether the reviewers could
+  answer at all. The tests that pass on both sides are most of a real repository's evidence.
+  How evidence is chosen and grouped for a reviewer is part of the method and is stated.

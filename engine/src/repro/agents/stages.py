@@ -150,6 +150,8 @@ REVIEWER_PROMPT: Final = "reviewer"
 #: Attempts per claim: the verdict, and one more after a rejection, told why.
 ATTEMPTS: Final = 2
 SHORT: Final = 1000
+#: How long the review job may take, all its claims together.
+REVIEW_JOB_TIMEOUT_S: Final = 1800.0
 #: ``verdict.issued``'s status for each verdict (ADR-0015's sense).
 VERDICT_STATUS: Final = {"supported": "ok", "contradicted": "fail", "unverifiable": "warn"}
 
@@ -411,6 +413,10 @@ def review_job(
             detail="the claims could not be reviewed",
             resolution="check the agent settings, the API or the cassettes, then run again",
         ),
+        # The claims are reviewed at once, but a rate-limited API serves the calls one after
+        # another: four claims on a free tier took over 600 s (2026-10-19). Each call keeps its
+        # own limit (REVIEW_BUDGET).
+        timeout_s=REVIEW_JOB_TIMEOUT_S,
         after=tuple(others),
     )
 

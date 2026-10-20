@@ -21,15 +21,23 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
 from repro.agents.backend import AgentRequest, Budget, ReproTool
-from repro.agents.evidence import EvidenceView, Item
+from repro.agents.evidence import EvidenceView, Item, group_key, unchanged
 from repro.agents.prompts import Prompt
 from repro.agents.sources import RepoSources, SourceError
 from repro.agents.untrusted import block
 from repro.agents.validate import VERDICTS
 
 REVIEW_BUDGET: Final = Budget(max_turns=4, max_budget_usd=0.25, timeout_s=600)
-#: Evidence items given in full; more are listed for the tools.
+#: Evidence items given in full. A claim with more gets its findings grouped instead (``_many``)
+#: and the tools for the rest.
 MAX_INLINE_ITEMS: Final = 10
+#: A group's other evidence IDs listed after its first item, at most.
+MAX_GROUP_IDS: Final = 30
+#: More evidence IDs than this, and the answer's schema takes an ID as a string, not as an enum
+#: of every one. On a real repository the enum, which the schema holds twice, was most of each
+#: request: 304 IDs, 20,620 characters, on an itsdangerous change, past a free tier's 8,000
+#: tokens a minute. ``validate.check`` refuses an ID that is not the claim's evidence either way.
+MAX_ENUM_IDS: Final = 40
 #: Diff lines given per file, and files given.
 MAX_DIFF_LINES: Final = 60
 MAX_DIFF_FILES: Final = 3
@@ -41,8 +49,13 @@ def relevant(view: EvidenceView, claim: Mapping[str, Any]) -> list[Item]:
 
 
 def schema(ids: Sequence[str]) -> dict[str, Any]:
-    """The verdict's schema for one claim: strict-mode ready, draft-07, ``$ref``-free."""
-    evidence = {"type": "string", "enum": list(ids)}
+    """The verdict's schema for one claim: strict-mode ready, draft-07, ``$ref``-free. Its
+    evidence IDs are an enum unless there are more than ``MAX_ENUM_IDS``."""
+    evidence: dict[str, Any] = (
+        {"type": "string", "enum": list(ids)}
+        if len(ids) <= MAX_ENUM_IDS
+        else {"type": "string", "description": "an evidence ID given above or by list_evidence"}
+    )
     quote = {
         "type": "object",
         "properties": {"evidence_id": evidence, "text": {"type": "string"}},
@@ -82,20 +95,58 @@ def _others(claim: Mapping[str, Any], claims: Sequence[Mapping[str, Any]]) -> st
     return block("claims", "\n".join(said)) if said else "(none)"
 
 
+def _many(items: Sequence[Item], *, reverse: bool = False) -> str:
+    """The evidence of a claim with more than ``MAX_INLINE_ITEMS`` items. What differs comes
+    first: each group of alike findings (``group_key``) once in full, with its other IDs, up to
+    ``MAX_INLINE_ITEMS`` groups. The tests that passed on both sides are counted, not shown;
+    the tools list them. ``reverse``: the groups in the opposite order (G08)."""
+    groups: dict[tuple[str, str, str], list[Item]] = {}
+    same = 0
+    for item in items:
+        if unchanged(item):
+            same += 1
+        else:
+            groups.setdefault(group_key(item), []).append(item)
+    shown = list(groups.values())[:MAX_INLINE_ITEMS]
+    parts = []
+    for group in shown[::-1] if reverse else shown:
+        text = group[0].render()
+        others = [item.id for item in group[1:]]
+        if others:
+            beyond = len(others) - MAX_GROUP_IDS
+            text += (
+                f"\n{len(others)} more like it (the same type, change and target): "
+                + ", ".join(others[:MAX_GROUP_IDS])
+                + (f", and {beyond} more: list_evidence lists them" if beyond > 0 else "")
+            )
+        parts.append(text)
+    if len(groups) > len(shown):
+        parts.append(
+            f"{len(groups) - len(shown)} more groups of findings: list_evidence lists them."
+        )
+    if same:
+        parts.append(
+            f"{same} items say nothing changed (tests that passed on base and on head, timings "
+            "that did not change): list_evidence lists them, and any of them may be cited."
+        )
+    return "\n\n".join(parts)
+
+
 def reviewer_prompt(
     claim: Mapping[str, Any],
     items: Sequence[Item],
     sources: RepoSources,
     claims: Sequence[Mapping[str, Any]] = (),
     feedback: str = "",
+    *,
+    reverse: bool = False,
 ) -> str:
-    """The reviewer's prompt, the evidence and the other claims in the order given."""
-    inline = items[:MAX_INLINE_ITEMS]
-    more = len(items) - len(inline)
-    listed = (
-        f"\n\n{more} more items about it: list_evidence and get_evidence show them."
-        if more > 0
-        else ""
+    """The reviewer's prompt, the evidence and the other claims in the order given; a claim
+    with more than ``MAX_INLINE_ITEMS`` items gets its findings grouped (``_many``)."""
+    evidence = (
+        _many(items, reverse=reverse)
+        if len(items) > MAX_INLINE_ITEMS
+        else "\n\n".join(item.render() for item in items)
     )
     said = f"{claim['id']} ({claim['kind']}): {claim['text']}"
     again = f"\n\nYour previous answer was refused: {feedback}. Answer again." if feedback else ""
@@ -103,8 +154,7 @@ def reviewer_prompt(
         f"The claim to judge:\n{block('claim', said)}\n\n"
         f"The pull request's other claims:\n{_others(claim, claims)}\n\n"
         f"The evidence about it ({len(items)} items; cite them by ID):\n\n"
-        + "\n\n".join(item.render() for item in inline)
-        + listed
+        + evidence
         + f"\n\nWhat the change edits in the claim's files:\n{_diffs(claim, sources)}"
         + again
     )
@@ -123,13 +173,15 @@ def reviewer_request(
     reverse: bool = False,
 ) -> AgentRequest:
     """One reviewer's call; ``reverse``: everything listed in the opposite order (G08)."""
-    if reverse:  # the same items given in full, in the opposite order
-        items = [*items[:MAX_INLINE_ITEMS][::-1], *items[MAX_INLINE_ITEMS:]]
+    many = len(items) > MAX_INLINE_ITEMS
+    if reverse:
+        if not many:  # the same items given in full, in the opposite order
+            items = items[::-1]
         claims = claims[::-1]
     return AgentRequest(
         role="review",
         system_prompt=prompt.text,
-        prompt=reviewer_prompt(claim, items, sources, claims, feedback),
+        prompt=reviewer_prompt(claim, items, sources, claims, feedback, reverse=reverse and many),
         model=model,
         prompt_version=prompt.prompt_version,
         budget=REVIEW_BUDGET,

@@ -9,7 +9,9 @@ ADR-0016. Repro runs the agent loop itself, so there is nothing to lock down but
 - with an output schema, the loop's last step asks for the answer alone, with
   ``response_format`` ``json_schema`` (strict when the schema allows it), since such an API
   cannot combine structured output with tools; the answer is validated against the schema and
-  refused (``invalid_output``) if it does not match, after one retry.
+  refused (``invalid_output``) if it does not match, after one retry. The last two of
+  ``max_turns`` are kept for that answer and its retry, however many lookups the model still
+  wants.
 
 Rate limits are honoured: a 429 waits for its ``retry-after`` (within the call's time), and
 a 5xx is retried after a pause, each up to ``Endpoint.retries`` times. The API key is read
@@ -24,7 +26,7 @@ import os
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
@@ -40,6 +42,8 @@ BACKOFF_S: Final = 2.0
 ANSWER_NOW: Final = (
     "Give your final answer now, as JSON matching the required schema, and nothing else."
 )
+#: The turns kept at the end of a call for its structured answer and that answer's one retry.
+ANSWER_TURNS: Final = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +117,13 @@ class _HttpError(Exception):
         return self.status == 400 and (  # noqa: PLR2004 - an HTTP status
             self.code == "json_validate_failed" or "validate JSON" in str(self)
         )
+
+    @property
+    def answer_called_tool(self) -> bool:
+        """A tool call where only the answer was asked for, which the API refuses (observed on
+        Groq with gpt-oss, 2026-10-19: a 400 "Tool choice is none, but model called a tool"):
+        a slip of the model's, asked again like an answer off the schema."""
+        return self.status == 400 and "called a tool" in str(self)  # noqa: PLR2004
 
 
 def _post(url: str, body: Mapping[str, Any], key: str | None, timeout: float) -> dict[str, Any]:
@@ -188,6 +199,8 @@ class _Session:
         self.backend = backend
         self.request = request
         self.on_progress = on_progress
+        #: When the call's time is up (``time.monotonic``).
+        self.deadline = time.monotonic() + request.budget.timeout_s
         self.messages: list[dict[str, Any]] = [
             {"role": "system", "content": request.system_prompt},
             {"role": "user", "content": request.prompt},
@@ -239,7 +252,13 @@ class _Session:
     async def ask(self, extra: Mapping[str, Any]) -> dict[str, Any]:
         """One model response: a turn."""
         self.turn += 1
-        reply = await self.backend.complete(self.request, self.messages, extra)
+        reply = await self.backend.complete(
+            self.request,
+            self.messages,
+            extra,
+            retrying=lambda why: self.progress(Progress("thinking", self.turn, detail=why)),
+            deadline=self.deadline,
+        )
         model = str(reply.get("model") or self.request.model)
         used = reply.get("usage") or {}
         cached = (used.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
@@ -287,9 +306,17 @@ class OpenAICompatibleBackend:
         return key
 
     async def complete(
-        self, request: AgentRequest, messages: list[dict[str, Any]], extra: Mapping[str, Any]
+        self,
+        request: AgentRequest,
+        messages: list[dict[str, Any]],
+        extra: Mapping[str, Any],
+        *,
+        retrying: Callable[[str], None] | None = None,
+        deadline: float | None = None,
     ) -> dict[str, Any]:
-        """One chat completion, retried on rate limits and server errors."""
+        """One chat completion, retried on rate limits and server errors; ``retrying`` is told
+        why before each wait, so a call the API keeps waiting does not look like thinking. A
+        wait that would pass ``deadline`` (``time.monotonic``) ends the call at once instead."""
         endpoint = self.endpoint
         body: dict[str, Any] = {
             "model": request.model,
@@ -317,6 +344,22 @@ class OpenAICompatibleBackend:
                 if not retryable or attempt == endpoint.retries:
                     raise
                 pause = exc.retry_after if exc.retry_after is not None else BACKOFF_S * 2**attempt
+                if deadline is not None and time.monotonic() + pause > deadline:
+                    # Waiting would outlast the call: say why now, not as a timeout. Seen on
+                    # Groq's free tier once its daily tokens were spent: "retry after 1287 s".
+                    raise _HttpError(
+                        exc.status,
+                        f"{exc} (the API asks to wait {pause:.0f} s, past this call's time: "
+                        "a rate limit, perhaps a daily one, is used up)",
+                    ) from None
+                if retrying is not None:
+                    why = {0: str(exc), 429: "rate limited (429)"}.get(exc.status) or (
+                        f"the API failed ({exc.status})"
+                    )
+                    retrying(
+                        f"{why[:120]}; asking again in {pause:.0f} s "
+                        f"(attempt {attempt + 2} of {endpoint.retries + 1})"
+                    )
                 await asyncio.sleep(pause)
         raise AssertionError("unreachable")  # pragma: no cover
 
@@ -353,6 +396,14 @@ class OpenAICompatibleBackend:
             return await self._answer(session, "")  # nothing to look up: straight to the answer
         text = ""
         while True:
+            if request.output_schema is not None and session.turn == request.budget.max_turns - (
+                ANSWER_TURNS if request.budget.max_turns > ANSWER_TURNS else 1
+            ):
+                # The last turns are the answer's and its retry's: a model still looking things
+                # up is asked for what it has (often "unverifiable"), not stopped without one.
+                # Seen on a real repository: a reviewer of a performance claim spent every turn
+                # on lookups.
+                return await self._answer(session, "")
             if session.turn == request.budget.max_turns:
                 return session.result("max_turns", detail="error_max_turns")
             message = await session.ask({"tools": functions} if functions else {})
@@ -395,10 +446,14 @@ class OpenAICompatibleBackend:
             try:
                 message = await session.ask({"response_format": response_format})
             except _HttpError as exc:
-                if not exc.answer_off_schema:
+                if not (exc.answer_off_schema or exc.answer_called_tool):
                     raise
                 session.messages.pop()
-                problem = " The last answer did not match the schema."
+                problem = (
+                    " Call no tool now: give the JSON answer alone."
+                    if exc.answer_called_tool
+                    else " The last answer did not match the schema."
+                )
                 continue
             if session.over_budget():
                 return session.result("max_budget", detail="error_max_budget_usd")

@@ -20,6 +20,7 @@ from gitrepo import Repo
 from repro.agents.evidence import EvidenceView
 from repro.agents.sources import RepoSources
 from repro.agents.tools import (
+    MAX_ANSWER_CHARS,
     MAX_DIFF_LINES,
     MAX_LINE,
     MAX_SNIPPET_LINES,
@@ -119,7 +120,10 @@ def test_planted_evidence_text_stays_in_its_block(
 def tools(tmp_path: Path) -> EvidenceTools:
     repo = Repo(tmp_path / "repo")
     long_file = "".join(f"line {n}\n" for n in range(1, 301))
-    base = repo.commit({"a.py": "x = 1\n", "long.py": long_file, "wide.py": "y" * 1000 + "\n"})
+    many = "".join(f"{n:03d} " + "z" * 200 + "\n" for n in range(1, 81))  # 80 wide lines
+    base = repo.commit(
+        {"a.py": "x = 1\n", "long.py": long_file, "wide.py": "y" * 1000 + "\n", "many.py": many}
+    )
     head = repo.commit({"a.py": "x = 2\n", "long.py": long_file.replace("line", "row")})
     view = EvidenceView.from_events([outcome_event("boom")])
     return EvidenceTools(view, RepoSources(Git(repo.path), base, head))
@@ -137,6 +141,21 @@ def test_a_snippet_is_numbered_and_capped(tools: EvidenceTools) -> None:
     assert call(tools, "read_snippet", {"side": "head", "path": "b.py", "start": 1, "end": 1}) == (
         "head has no file b.py"
     )
+
+
+def test_an_answer_stops_at_its_budget_on_a_whole_line(tools: EvidenceTools) -> None:
+    out = call(tools, "read_snippet", {"side": "base", "path": "many.py", "start": 1, "end": 80})
+    head, _, rest = out.partition("\n")
+    assert head.startswith("base:many.py lines 1-")
+    assert "(cut at 4000 characters; ask from line" in head
+    shown = BLOCK.search(rest)
+    assert shown is not None  # the block still closes
+    body = shown.group(0).split("\n")[1:-1]
+    assert len("\n".join(body)) <= MAX_ANSWER_CHARS
+    assert all(line.endswith("z" * 200) for line in body)  # whole lines only
+    last = int(head.split("lines 1-")[1].split()[0])
+    rest_of_it = {"side": "base", "path": "many.py", "start": last + 1, "end": 80}
+    assert call(tools, "read_snippet", rest_of_it).startswith(f"base:many.py lines {last + 1}-")
 
 
 def test_a_long_diff_is_cut_and_says_so(tools: EvidenceTools) -> None:
