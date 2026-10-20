@@ -1,8 +1,8 @@
 # ADR-0017: JavaScript and TypeScript targets
 
-- **Status:** proposed. Phase 1 is built (K01). Phases 2 to 4 need the owner's approval:
-  they add a Node.js runtime to the sandbox image and a language field to the event schema's
-  core.
+- **Status:** accepted by the owner (2026-10-19). Phase 1 is built (K01); phases 2 to 4 are
+  K06, K07 and K08. They add a Node.js runtime to the sandbox image and a language field to
+  the event schema's core, which this acceptance approves.
 - **Date:** 2026-10-18
 - **Phase:** K01
 
@@ -28,7 +28,7 @@ What the platform offers, read on 2026-10-18:
 
   Taking it between tests gives each test's executed functions.
 
-## Decision (proposed)
+## Decision
 JavaScript and TypeScript targets in four phases, each usable on its own:
 
 1. **Outcomes (built, K01).** `repro.jsts`, and `repro js-run`:

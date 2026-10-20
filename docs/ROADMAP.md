@@ -21,10 +21,10 @@
 | **G** | Agents | G01–G10 | v0.7.0 | Claims extracted, verdicts judged against cited evidence, generated probes |
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
 | **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
-| **J** | Evaluation & research | J01–J10 | v1.2.0 | Reproducible benchmark results and paper submission |
-| **K** | Expansion (backlog) | K01–K05 | — | Unscheduled. Ordered by evidence from J |
+| **J** | Evaluation & research | J01–J10 | v1.2.0 (harness); the study later | Reproducible benchmark results and paper submission |
+| **K** | Expansion | K01–K10 | v1.2.0 (K01–K05) | K01–K05 built; K06–K10 from ADR-0017 and ADR-0018 |
 
-76 scheduled phases (A–J) plus 5 backlog phases. Stages run in order. B and C could run in
+76 scheduled phases (A–J) plus 10 in Stage K. Stages run in order. B and C could run in
 parallel with two contributors, because B depends only on the schema (A04/A05).
 
 ```
@@ -611,6 +611,10 @@ a paper. Protocol: [`paper/EVALUATION_PROTOCOL.md`](paper/EVALUATION_PROTOCOL.md
 **Gate J:** every table and figure regenerates from one command over pinned manifests. The
 artifact is archived with a DOI. The paper is submitted.
 
+**Deferred by the owner (2026-10-19):** the study (J06 to J10) waits for a budget and two
+annotators. Its harness (J01 to J05) and what J06, J09 and J10 prepared shipped in v1.2.0;
+Gate J and the study's release come later.
+
 | ID | Phase | Size | Depends | Status |
 |---|---|---|---|---|
 | J01 | Benchmark infrastructure & input contract | L | H05 | done |
@@ -618,11 +622,11 @@ artifact is archived with a DOI. The paper is submitted.
 | J03 | Baselines | L | J01 | done |
 | J04 | S0 dev set & S1 pilot | M | J02, J03 | done |
 | J05 | S2 patch generation on fresh tasks | M | J04 | done |
-| J06 | Annotation, κ & label freeze; pre-registration | L | J05 | paused: prepared; waiting for the owner (budget, then labels) |
-| J07 | S2 main study | M | J06 | planned |
-| J08 | Ablations, S3 in-the-wild & S4 synthetic | M | J07 | planned |
-| J09 | Artifact package | M | J08 | paused: prepared (kick-the-tires, AE guide, metadata); results and DOI wait |
-| J10 | Paper writing & submission | L | J08 | paused: draft 0 prepared; results, review and submission wait |
+| J06 | Annotation, κ & label freeze; pre-registration | L | J05 | deferred (owner, 2026-10-19): prepared; budget, then labels |
+| J07 | S2 main study | M | J06 | deferred (owner, 2026-10-19) |
+| J08 | Ablations, S3 in-the-wild & S4 synthetic | M | J07 | deferred (owner, 2026-10-19) |
+| J09 | Artifact package | M | J08 | deferred (owner, 2026-10-19): prepared (kick-the-tires, AE guide, metadata); results and DOI wait |
+| J10 | Paper writing & submission | L | J08 | deferred (owner, 2026-10-19): draft 0 prepared; results, review and submission wait |
 
 **J01** SWE-format adapter (instance + image + patch → base/head), image management by digest,
 manifest format, input-contract enforcement with a test proving withheld fields never reach the
@@ -641,7 +645,10 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 
 ---
 
-## Stage K — Expansion backlog (unscheduled)
+## Stage K — Expansion
+
+K01 to K05 shipped in v1.2.0. The owner accepted ADR-0017 and ADR-0018 on 2026-10-19:
+their remaining parts are K06 to K10.
 
 | ID | Phase | Notes |
 |---|---|---|
@@ -650,6 +657,11 @@ S3 and S4. **J09** Zenodo DOI, image digests, 30-minute kick-the-tires subset, A
 | K03 | Repro as an MCP server | Agents can request verification and receive evidence, while the verifier stays independent. **Done (K03, [#90](https://github.com/DuhItzAniket/Repro/pull/90)):** `repro mcp` |
 | K04 | Symbolic deep checks | CrossHair `diffbehavior` on small pure functions in the blast radius. **Done (K04, [#91](https://github.com/DuhItzAniket/Repro/pull/91)):** `repro symbolic` |
 | K05 | Remote sandbox backends | Self-hosted E2B / Firecracker for teams. **Done (K05, [#92](https://github.com/DuhItzAniket/Repro/pull/92)):** `docker_context`; E2B and Firecracker designed (ADR-0018, proposed) |
+| K06 | JavaScript: the test → function map | ADR-0017 phase 2: per-test V8 precise coverage from a setup file, the map selection (D06) needs. Planned |
+| K07 | JavaScript: function-level traces | ADR-0017 phase 3: a `load` hook wraps the changed functions with an encoder ported from `repro_encode`. Planned |
+| K08 | JavaScript: the card | ADR-0017 phase 4: the target's language in the event schema, symbols and API from the TypeScript compiler API, L3 in a container with Node. Planned |
+| K09 | E2B self-hosted sandbox | ADR-0018 option B: `E2BSandbox`, a microVM per side, isolation level L5 in the schema. Real tests need a Linux host with KVM. Planned |
+| K10 | Kata Containers with Firecracker | ADR-0018 option C: Repro's containers under the `kata-fc` runtime class on a containerd host. Needs a Linux host with KVM. Planned |
 
 ---
 
@@ -765,3 +777,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K05 | 2026-10-18 | [#92](https://github.com/DuhItzAniket/Repro/pull/92) | docker_context setting (a team's engine elsewhere); ADR-0018 proposed for E2B self-hosted and Kata with Firecracker |
 | J09 | 2026-10-18 | [#93](https://github.com/DuhItzAniket/Repro/pull/93) | Prepared and paused: kick-the-tires script (2 min 10 s, four checks), AE guide, .zenodo.json and CITATION.cff; study data and DOI wait |
 | J10 | 2026-10-18 | [#94](https://github.com/DuhItzAniket/Repro/pull/94) | Prepared and paused: paper draft 0 (results pending) and the submission checklist; six verified references added |
+| Release 1.2.0 | 2026-10-20 | [#98](https://github.com/DuhItzAniket/Repro/pull/98) | Stage K's first items (K01–K05), the study's harness (J01–J05) and the demo's fixes (#95, #96, #97); first PyPI release; the study (J06–J10) deferred; ADR-0017 and ADR-0018 accepted (K06–K10) |

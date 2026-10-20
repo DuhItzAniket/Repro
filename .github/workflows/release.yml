@@ -1,7 +1,9 @@
 # Release (H05): a published GitHub release gets the wheels of its version attached, after the
-# same clean install and first run as CI's install job. Run by hand (workflow_dispatch), it
-# builds and checks them and keeps them as an artifact. PyPI comes later, through PyPI's trusted
-# publishing, once the project's publisher is set up there.
+# same clean install and first run as CI's install job, and published to PyPI (1.2.0) through
+# PyPI's trusted publishing: no token, each package from its own GitHub environment (`pypi`,
+# `pypi-events`), which only release tags (v*) may use. repro-events goes first, since
+# repro-engine requires it. Run by hand (workflow_dispatch), it builds and checks the wheels and
+# keeps them as an artifact, and publishes nothing.
 name: Release
 
 on:
@@ -64,3 +66,47 @@ jobs:
           name: wheels
           path: dist/wheels/
           retention-days: 30
+
+  pypi-events:
+    name: PyPI (repro-events)
+    if: github.event_name == 'release'
+    needs: wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi-events
+      url: https://pypi.org/project/repro-events/
+    permissions:
+      id-token: write # trusted publishing: PyPI checks this job's OIDC token
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: wheels
+          path: dist/wheels/
+      - name: Only repro-events
+        run: mkdir dist/events && mv dist/wheels/repro_events-*.whl dist/events/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: dist/events/
+
+  pypi-engine:
+    name: PyPI (repro-engine)
+    if: github.event_name == 'release'
+    needs: pypi-events
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/repro-engine/
+    permissions:
+      id-token: write # trusted publishing: PyPI checks this job's OIDC token
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: wheels
+          path: dist/wheels/
+      - name: Only repro-engine
+        run: mkdir dist/engine && mv dist/wheels/repro_engine-*.whl dist/engine/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: dist/engine/
