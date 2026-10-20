@@ -4,6 +4,9 @@ Repro's Action reproduces each pull request and puts its card on it: a check run
 `Repro`, one comment that each run updates, the job's summary, and, on a public repository, a
 signed attestation of the card.
 
+It is listed on GitHub Marketplace as
+[Repro Reproduction Card](https://github.com/marketplace/actions/repro-reproduction-card).
+
 ## Use it
 ```yaml
 name: Repro

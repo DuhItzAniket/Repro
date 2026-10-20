@@ -34,6 +34,12 @@ unjs/defu (Vitest, pnpm), two changes written as an agent might (`docs/paper/LOG
 - The GitHub release `v1.3.0`, with both wheels attached by the release workflow.
 - PyPI: `repro-events` and then `repro-engine`, 1.3.0, by the same workflow, checked after it
   ran.
+- **Checked:** both wheels installed from PyPI with `uvx --from repro-engine==1.3.0`; `repro
+  --version` printed 1.3.0 and `repro doctor` passed every check.
+- GitHub Marketplace: the Action is listed as
+  [Repro Reproduction Card](https://github.com/marketplace/actions/repro-reproduction-card),
+  v1.3.0, under Code review and Testing. The owner published it from the release on
+  2026-10-21.
 
 ## Still open
 - K09 and K10 need a Linux host with KVM.
