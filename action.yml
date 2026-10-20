@@ -4,7 +4,7 @@
 # uses the runner's Docker (L3; L4 with docker-runtime: runsc). The steps are thin; what they
 # decide is repro.integrations.github.action, tested with the engine. Usage, permissions and
 # forks: docs/guide/github-action.md.
-name: Repro
+name: Repro Reproduction Card
 description: Reproduce a pull request on both sides, and report its Reproduction Card.
 branding:
   icon: check-circle

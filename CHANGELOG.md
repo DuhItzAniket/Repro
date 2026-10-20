@@ -56,6 +56,9 @@ fixes the work around it found. Release record: `docs/phases/release-1.3.0.md`.
   `base_test_fails_on_head`. [K11]
 
 ### Changed
+- The Action's name is `Repro Reproduction Card`, so it can be listed on GitHub Marketplace,
+  whose names may not match a GitHub user's (one is named `repro`). Workflows refer to it as
+  before, `uses: DuhItzAniket/Repro@<ref>`, and its check run is still named `Repro`. [I03]
 - The event schema: `run.started.language`, optional, so older logs still validate and replay
   to the same card. `env.provisioned` takes npm, pnpm and Yarn projects and a Node.js version;
   the card's conditions add the language, Node.js and the shuffled run's seed when the log
