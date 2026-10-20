@@ -211,7 +211,8 @@ from an earlier measurement and checked by a repeatable benchmark.
   it is, so the run has a `perf_diff` its expectation and golden card do not list. It failed
   on main's code too (1 of 14 runs; 5 of 23 here, one of them a package-index request that
   failed). Without Docker Desktop, and in CI, it has not failed. The fixture's timing needs to
-  be made deterministic (a follow-up).
+  be made deterministic (a follow-up). *Resolved on 2026-10-20: see "Follow-up: `net-call`'s
+  timing" below.*
 
 ## Dependencies added
 None.
@@ -223,3 +224,87 @@ None.
 - Running a change twice and comparing the cards is a cheap oracle for caches. It found three
   differences the fixture suite had never shown. It also needs care: which tests are timed
   legitimately differs between any two runs, so the comparison leaves timings out.
+
+## Follow-up: `net-call`'s timing (2026-10-20)
+Branch `fix/net-call-timing`. The fixture came with F03, so the fix carries F03's ID.
+
+- **Where the time went.** Each step of head's `_ping` was timed inside a test, on its first
+  call in a fresh pytest process, through Repro's own `ProcessSandbox`, plugin and audit hook:
+  `plugin_env` with the guard on, 10 processes per setting. Python 3.13.13, Windows 11, Docker
+  Desktop 29.8.2 running. Medians:
+
+  | First call in the process | Sandbox: guard and hook | Host environment: guard, no hook | Sandbox's environment: guard, no hook |
+  |---|---|---|---|
+  | `getaddrinfo("192.0.2.1", 80, 0, SOCK_STREAM)` | 4.03 ms | 3.95 ms | 3.99 ms |
+  | `socket()` | 0.056 ms | 0.052 ms | 0.057 ms |
+  | `connect`, refused by the guard | 0.063 ms | 0.027 ms | 0.029 ms |
+
+  The lookup is the cost; the same lookup again in that process takes 0.02 to 0.04 ms. The
+  guard refuses in all three settings; the hook adds about 0.03 ms to the refused connection,
+  its record.
+- **Why the first lookup is slow.** CPython's `getaddrinfo` encodes a `str` host with the
+  `idna` codec and passes `bytes` as they are. In `socket_getaddrinfo`
+  (`Modules/socketmodule.c`, branch 3.13), the call is
+  `PyUnicode_AsEncodedString(hobj, "idna", NULL)`,
+  https://github.com/python/cpython/blob/3.13/Modules/socketmodule.c **[V]** 2026-10-20. The
+  codec's module imports `stringprep` and `unicodedata` (`encodings/idna.py` and
+  `stringprep.py` of the installed 3.13.13) **[V]**. The first lookup loads `unicodedata.pyd`.
+  With `b"192.0.2.1"`, `encodings.idna` is not imported, and the first lookup takes 0.03 ms.
+- **Per interpreter.** The first lookup of the `str` host, in fresh `python -I` processes
+  with `re` already imported, 7 each:
+  - 3.12.13: 8.7 to 10.2 ms;
+  - 3.13.13: 3.9 to 4.4 ms;
+  - 3.14.4: 9.5 to 10.6 ms;
+  - 3.15.0: 11.6 to 12.7 ms;
+  - with `bytes`, 0.02 to 0.10 ms on all four.
+
+  On this machine, 3.14's cached bytecode for `stringprep` is stale and cannot be replaced
+  (`python -v`: "bytecode is stale", "could not create … FileExistsError"), so it is compiled
+  on every import. 3.12 and 3.15 were not checked. The cost depends on the interpreter's
+  install as well as the machine.
+- **Why it flaked.** Each timing sample is a fresh pytest process, so head paid the import in
+  every sample. Before the fix: 20 sequential runs of the end-to-end test on `349d011`, Docker
+  Desktop running.
+  - Head's samples: median 4.44 ms (3.72 to 9.47 ms, 80 samples). Base's: about 0.11 ms.
+  - Every run timed the test: in each, a traced run's call was at 5 ms or more.
+  - 1 of 20 runs failed: the median of head's ten samples reached 5 ms, and the run reported
+    `perf_diff:regression`.
+
+  The margin was about half a millisecond, so any background load could decide the verdict.
+  Why Docker Desktop made failures more frequent was not isolated.
+- **Not a Repro bug.** The import belongs to the code under test and costs the same outside
+  the sandbox. A real change like head's is slower, and its timing is reported from whichever
+  side of the floor the run lands on (AC1 T3 above).
+- **The fix.** The fixture pings `b"192.0.2.1"`, so its lookup skips the codec. The guard and
+  the hook see the same lookup and connection (`192.0.2.1:80`, two `network_attempt`
+  records), and `no_network` fails on them as before.
+  - In the sandbox, head's first ping now costs 0.23 ms (0.21 to 0.32 ms, 20 processes),
+    against 3.92 ms (3.35 to 4.90 ms) with the `str` host.
+  - Only head's commit changes on the golden card.
+- **After the fix:** 25 sequential runs of the end-to-end test on `b2f9256` with the fix,
+  Docker Desktop running.
+  - 25 of 25 passed.
+  - Head's samples: median 0.93 ms (0.78 to 1.42 ms, 50 samples). Base's: median 0.106 ms.
+  - In every run, the first block's four samples were under the floor, the test was timed no
+    more, and the card lists it as too fast to time.
+  - Three copies of the test at once, twice: 6 of 6 passed, head's samples 0.88 to 1.38 ms.
+  - In the Docker sandbox (Linux, L3, network enforced), one run: the same two attempts,
+    `no_network` failed, FLAGGED, and no test was timed at all.
+- **The first ABBA block still runs.** Head's traced call takes 7.7 to 9.5 ms and base's 2.6
+  to 3.3 ms (3 runs); the map and the tracer account for the difference. So the shortcut above
+  (under the floor in every traced run) does not apply. The untraced samples prune the test
+  after the block, and the outcome rests on them, as D07 intends.
+- **To reproduce.**
+  - The first lookup:
+    `python -I -c "import re, socket, time; t = time.perf_counter(); socket.getaddrinfo('192.0.2.1', 80, 0, socket.SOCK_STREAM); print((time.perf_counter() - t) * 1000)"`.
+    Then the same with `b'192.0.2.1'`.
+  - The end-to-end runs: `uv run pytest
+    "engine/tests/test_run_stage.py::test_a_run_reproduces_the_fixture[net-call]"
+    --basetemp=<dir>`, one at a time, then read the `perf.sample` events in
+    `<dir>/test_a_run_reproduces_the_fixt0/run.jsonl`.
+  - Keep `<dir>` short: past about 260 characters, the fixture builder's `git add` fails with
+    "Filename too long".
+- **Measured on the way, outside Repro.** The hook's fifth record in a process took about
+  1 ms. Plain Python appends to a fresh file on the same disk show the same thing: the write
+  that takes the file past about 600 bytes costs up to 1.3 ms (20 files, 150-byte lines).
+  Head's call writes only the log's first two records.

@@ -46,6 +46,12 @@ All notable changes to this project are documented here. The format follows
 - A JavaScript function's symbol in `repro js-run`'s `behaviour` is a `SymbolId`
   (`src/m.js:add#0`), as on the card. [K08]
 
+### Fixed
+- The `net-call` fixture's end-to-end test no longer flakes on Windows. Head's lookup of a
+  `str` host loaded Python's `idna` codec, about 4 ms in every timing run, against the 5 ms
+  timing floor, so the run reported a regression in 1 of 20 runs here. The fixture's host is
+  now `bytes`: the same refused lookup and connection, and `no_network` still fails. [F03]
+
 ## [1.2.0] - 2026-10-20
 
 Stage K's first items, the evaluation's harness (Stage J, J01 to J05; the study itself
