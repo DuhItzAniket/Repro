@@ -50,7 +50,7 @@ What it showed, and what changed:
 The measurements are in `docs/paper/LOG.md` (2026-10-19 entries).
 
 ## CI
-- The release PR's CI and `main`'s after the merge: linked in the PR.
+- The release PR ([#98](https://github.com/DuhItzAniket/Repro/pull/98)) and `main` after the merge: linked in the PR.
 
 ## Published
 - The GitHub release `v1.2.0`, with both wheels attached by the release workflow.
