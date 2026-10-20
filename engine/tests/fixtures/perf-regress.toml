@@ -19,11 +19,9 @@ missing = ["perf_not_assessable:tests/test_tags.py::test_unique_tags_small"]
 # F03: base's repro.yml allows 20 %; test_unique_tags is far past it.
 invariants = ["perf_budget:fail"]
 # The behaviour comparison (E03): unique_tags()'s 50,000 tags are past the encoder's node
-# guard, so those calls have no key and are not compared.
-behaviour = [
-  "encoding_failed:tags.core:unique_tags#0",
-  "encoding_failed:tests/test_tags.py::test_unique_tags",
-]
+# guard, so those calls have no key of their arguments. A, A2 and H each make 20 of them in
+# test_unique_tags, so they are compared by position, and give the same result.
+behaviour = []
 
 [selection]
 uncovered = []
