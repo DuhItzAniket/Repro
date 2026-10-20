@@ -96,7 +96,8 @@ does reaches the store as validated events through one bus. Whatever happens, a 
 - On Windows the tool tree is killed with `taskkill /T`; Job Objects arrive with the sandbox (D).
 - The bus validates with the generated models; the JSON Schema itself is checked by the drift gate
   and by `validate_log` in tests.
-- **Timestamps in `seq` order, fixed later:** the bus stamps `ts` on the emitting job's thread,
+- **Timestamps in `seq` order, fixed later**
+  ([#108](https://github.com/DuhItzAniket/Repro/pull/108)): the bus stamps `ts` on the emitting job's thread,
   and the writer assigns `seq` later. Two jobs emitting at once could therefore be stored 1 ms
   backwards, which `validate_log` warns about and which failed an end-to-end test now and then.
   The writer now raises such a `ts` to its run's latest
