@@ -23,11 +23,12 @@ from repro.analysis import StaticAnalysis, analyse, graph_payloads
 from repro.card.job import CardStore, card_job
 from repro.gitops import Git, Snapshot, snapshot
 from repro.gitops.snapshot import remove_snapshot
-from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec
+from repro.orchestrator import GitRef, Job, JobContext, OnFailure, RunSpec, SandboxBackend
 from repro.policy import FILE as POLICY_FILE
 from repro.policy.stage import read_policy
-from repro.run_stage import Backend, RunState, run_jobs
+from repro.run_stage import Backend, RunState, run_jobs, use_docker
 from repro.sandbox import Limits
+from repro.sandbox.docker import GVISOR
 from repro.store import ArtifactStore
 
 #: A run's log lists at most this many skipped entries or problems one by one.
@@ -49,6 +50,8 @@ class Change:
     repo_url: str | None = None
     pr_number: int | None = None
     pr_url: str | None = None
+    #: The sandbox the run's jobs use, as ``run.started`` names it (``run_backend``).
+    sandbox_backend: SandboxBackend = "process"
 
     @classmethod
     def resolve(cls, git: Git, repo: Path, base: str, head: str) -> "Change":
@@ -65,7 +68,17 @@ class Change:
             pr_number=self.pr_number,
             pr_url=self.pr_url,
             deterministic_only=self.deterministic_only,
+            sandbox_backend=self.sandbox_backend,
         )
+
+
+def run_backend(backend: Backend, docker_runtime: str | None, *, runs_code: bool) -> SandboxBackend:
+    """The sandbox a run uses, decided once for its jobs and ``run.started``: ``gvisor`` when its
+    containers run under gVisor. ``auto`` asks Docker only if the run will run the target's code;
+    a run that only analyses records it as ``process``."""
+    if not (use_docker(backend) if runs_code else backend == "docker"):
+        return "process"
+    return "gvisor" if docker_runtime == GVISOR else "docker"
 
 
 def _snapshot_job(git: Git, side: str, sha: str, work: Path) -> Job:
@@ -219,7 +232,6 @@ def pipeline_jobs(
     change: Change,
     work: Path,
     *,
-    backend: Backend,
     cache: Path,
     analyse_only: bool,
     artifacts: ArtifactStore | None = None,
@@ -230,8 +242,9 @@ def pipeline_jobs(
     docker_runtime: str | None = None,
     env_image: str | None = None,
 ) -> tuple[Sequence[Job], RunState]:
-    """Every job of a run, and the state they share (close it when the run is over). With
-    ``cards``, the card stage ends the run (F05); with ``agents``, the agent stages run (G04)."""
+    """Every job of a run, and the state they share (close it when the run is over). The
+    sandboxes are ``change.sandbox_backend``'s (``run_backend``). With ``cards``, the card stage
+    ends the run (F05); with ``agents``, the agent stages run (G04)."""
     state = RunState()
     jobs: list[Job] = []
     if agents is not None:
@@ -255,7 +268,7 @@ def pipeline_jobs(
             head,
             work,
             state,
-            backend=backend,
+            backend="process" if change.sandbox_backend == "process" else "docker",
             cache=cache,
             artifacts=artifacts,
             agents=agents,

@@ -309,3 +309,65 @@ def test_entries_a_snapshot_leaves_out_are_a_warning(tmp_path: Path) -> None:
         "snapshot base",
         "snapshot head",
     ]
+
+
+def run_started_backend(events: list[dict[str, Any]]) -> str:
+    (started,) = [e["payload"] for e in events if e["kind"] == "run.started"]
+    return str(started["mode"]["sandbox_backend"])
+
+
+@pytest.mark.parametrize(
+    ("variables", "expected"),
+    [
+        ({"REPRO_SANDBOX": "process"}, "process"),
+        ({"REPRO_SANDBOX": "docker"}, "docker"),
+        ({"REPRO_SANDBOX": "docker", "REPRO_DOCKER_RUNTIME": "runsc"}, "gvisor"),
+        ({"REPRO_SANDBOX": "auto"}, "process"),  # nothing runs: Docker is not asked
+    ],
+)
+def test_run_started_names_the_configured_backend(
+    tmp_path: Path,
+    change: tuple[Path, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    variables: dict[str, str],
+    expected: str,
+) -> None:
+    def no_docker_question() -> bool:
+        raise AssertionError("an analysis does not ask Docker")
+
+    monkeypatch.setattr("repro.run_stage.docker_available", no_docker_question)
+    repo, base, head = change
+    env = clean_env(tmp_path, **variables)
+    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve", *ANALYSE]
+    result = runner.invoke(app, argv, env=env)
+    assert result.exit_code == 0, result.output
+    assert run_started_backend(stored_events(tmp_path, env)) == expected
+
+
+def test_run_started_names_the_backend_auto_chose_for_the_sandboxes(
+    tmp_path: Path, change: tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With ``auto`` and Docker answering, run.started says ``docker``, as the sandbox jobs do:
+    Docker is asked once for the run, not once per side."""
+    asked: list[bool] = []
+
+    def docker_answers() -> bool:
+        asked.append(True)
+        return True
+
+    monkeypatch.setattr("repro.run_stage.docker_available", docker_answers)
+    repo, base, head = change
+    env = clean_env(
+        tmp_path,
+        REPRO_SANDBOX="auto",
+        REPRO_RUN_ROOT=str(tmp_path / "scratch"),
+        DOCKER_HOST="tcp://127.0.0.1:9",  # no daemon answers here: the containers cannot start
+    )
+    argv = ["run", "--repo", str(repo), "--base", base, "--head", head, "--no-serve"]
+    runner.invoke(app, argv, env=env)
+    events = stored_events(tmp_path, env)
+    assert run_started_backend(events) == "docker"
+    assert len(asked) == 1
+    missing = [e["payload"]["missing"] for e in events if e["kind"] == "missing.recorded"]
+    sandboxes = [m["detail"] for m in missing if "the sandbox could not start" in m["detail"]]
+    assert sorted(detail.split(":", 1)[0] for detail in sandboxes) == ["base", "head"]
