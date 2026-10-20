@@ -30,11 +30,12 @@ import json
 import shutil
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Final, Literal
 
+from repro import jsmap
 from repro.gitops import Git, snapshot
 from repro.sandbox import GIB, Limits, ProcessSandbox
 
@@ -122,16 +123,19 @@ def install_argv(project: JsProject) -> list[str]:
     }[project.manager]
 
 
-def runner_argv(project: JsProject, report: str, *, entry: str | None = None) -> list[str]:
+def runner_argv(
+    project: JsProject, report: str, *, entry: str | None = None, extra: Sequence[str] = ()
+) -> list[str]:
     """The runner's command, with its JSON report written to ``report``; ``entry`` replaces the
-    runner's entry point under ``node_modules`` (a test's)."""
+    runner's entry point under ``node_modules`` (a test's), ``extra`` comes last (the map's
+    setup, K06)."""
     node = shutil.which("node")
     if node is None:
         raise JsError("node is not installed")
     script = entry or str(project.root / ENTRY[project.runner])
     if project.runner == "vitest":
-        return [node, script, "run", "--reporter=json", f"--outputFile={report}"]
-    return [node, script, "--ci", "--json", f"--outputFile={report}"]
+        return [node, script, "run", "--reporter=json", f"--outputFile={report}", *extra]
+    return [node, script, "--ci", "--json", f"--outputFile={report}", *extra]
 
 
 def read_report(data: bytes, root: Path) -> dict[str, str]:
@@ -186,6 +190,8 @@ class Side:
     commit: str
     outcomes: dict[str, str] = field(default_factory=dict)
     problem: str = ""
+    #: What each test ran (K06); None when the side did not run.
+    map: jsmap.TestMap | None = None
 
 
 def run_side(
@@ -218,10 +224,13 @@ def run_side(
             work / "box", limits or Limits(timeout_s=900, memory_bytes=MEMORY_BYTES)
         )
         report = work / "box" / REPORT
+        mapped = work / "box" / jsmap.MAP_FILE
+        env = {"NODE_OPTIONS": NODE_OPTIONS, "REPRO_JS_MAP": str(mapped)}
+        extra, unmapped = _map_setup(project, tree, box, env, entry)
         run = box.run(
-            runner_argv(project, str(report), entry=entry),
+            runner_argv(project, str(report), entry=entry, extra=extra),
             cwd=tree,
-            env={"NODE_OPTIONS": NODE_OPTIONS},
+            env=env,
             writable=(work / "box",),
         )
         if not report.is_file():
@@ -232,16 +241,63 @@ def run_side(
                 f"the tests wrote no report ({run.outcome}, exit {run.returncode}): {error[:300]}"
             )
         side.outcomes = read_report(report.read_bytes(), tree)
+        side.map = _read_map(mapped, unmapped)
     except JsError as exc:
         side.problem = str(exc)
     return side
 
 
-def summary(base: Side, head: Side, found: Comparison | None) -> dict[str, object]:
-    """What ``repro js-run`` reports: each side's counts, the comparison, and what is missing."""
-    missing = ["function-level traces: no JavaScript tracer yet (ADR-0017, proposed)"]
+def _map_setup(
+    project: JsProject, tree: Path, box: ProcessSandbox, env: Mapping[str, str], entry: str | None
+) -> tuple[list[str], str]:
+    """The runner's extra arguments for the map (K06), and why there is no map if there is none:
+    the tests then run as they would without it."""
+    try:
+        if project.runner == "vitest":
+            return jsmap.vitest_setup(tree), ""
+        node = shutil.which("node")
+        if node is None:
+            raise JsError("node is not installed")
+        script = entry or str(project.root / ENTRY[project.runner])
+        shown = box.run([node, script, "--showConfig"], cwd=tree, env=env)
+        return jsmap.jest_setup(tree, jsmap.jest_own_setup(shown.stdout)), ""
+    except (jsmap.MapError, OSError) as exc:
+        return [], str(exc)
+
+
+def _read_map(path: Path, unmapped: str) -> jsmap.TestMap:
+    if unmapped:
+        return jsmap.TestMap(problem=unmapped)
+    if not path.is_file():
+        return jsmap.TestMap(problem="the setup file wrote no map")
+    try:
+        return jsmap.read_map(path.read_bytes())
+    except jsmap.MapError as exc:
+        return jsmap.TestMap(problem=str(exc))
+
+
+def summary(
+    base: Side,
+    head: Side,
+    found: Comparison | None,
+    changes: Sequence[jsmap.JsChange] = (),
+    selected: Mapping[str, list[str]] | None = None,
+) -> dict[str, object]:
+    """What ``repro js-run`` reports: each side's counts, the comparison, the changed functions
+    and the tests they select (K06), and what is missing."""
+    missing = ["function-level traces: no JavaScript tracer yet (ADR-0017 phase 3, K07)"]
     if base.problem or head.problem:
         missing.append(f"tests: {base.problem or head.problem}")
+    missing.extend(
+        f"the test map ({side.commit[:12]}): {side.map.problem}"
+        for side in (base, head)
+        if side.map is not None and side.map.problem
+    )
+    if changes:
+        missing.append(
+            "selection by function name: functions of the same name in one file are not told "
+            "apart (more tests, never fewer)"
+        )
     return {
         "base": {"commit": base.commit, "tests": len(base.outcomes), "problem": base.problem},
         "head": {"commit": head.commit, "tests": len(head.outcomes), "problem": head.problem},
@@ -255,6 +311,11 @@ def summary(base: Side, head: Side, found: Comparison | None) -> dict[str, objec
             "removed": list(found.removed),
             "same": found.same,
         },
+        "changes": [
+            {"file": c.file, "functions": sorted(c.functions), "module_level": c.module_level}
+            for c in changes
+        ],
+        "selected": dict(selected or {}),
         "isolation": "L2 (process); a Node process's network use is not detected",
         "missing": missing,
     }
@@ -268,4 +329,6 @@ def run_change(
         for name, commit in (("base", base), ("head", head))
     ]
     found = None if any(s.problem for s in sides) else compare(sides[0].outcomes, sides[1].outcomes)
-    return summary(sides[0], sides[1], found)
+    changes = jsmap.changed(git, base, head)
+    maps = [side.map for side in sides if side.map is not None]
+    return summary(sides[0], sides[1], found, changes, jsmap.select(changes, maps))

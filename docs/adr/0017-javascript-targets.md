@@ -39,11 +39,18 @@ JavaScript and TypeScript targets in four phases, each usable on its own:
      report and compared test by test.
 
    It makes no card; it says what is missing.
-2. **The test → function map.** A setup file (Vitest `setupFiles`, Jest `setupFilesAfterEnv`)
+2. **The test → function map (built, K06).** A setup file (Vitest `setupFiles`, Jest
+   `setupFilesAfterEnv`)
    opens an in-process inspector session, starts precise coverage, and takes it after each
    test. Functions with a count above zero are what the test ran, by file and range. This is
    the map that selection (D06) needs, with the same rule: a changed function selects the
    tests that ran it.
+
+   As built (K06), functions are known by file and *name*, not range. V8 reports ranges in
+   the code the runner executes, which Vite and Babel have rewritten (`add`, at offset 0 in
+   its source, was at 507 in what Vitest ran). Changed lines are attributed to named functions
+   by a conservative scanner, and code in no named function selects the tests that loaded its
+   file.
 3. **Function-level traces.** A synchronous `load` hook rewrites the modules that hold
    changed functions, wrapping each changed function to record its arguments, result or
    exception with an encoder ported from `repro_encode`. The same plan is used on base and on
