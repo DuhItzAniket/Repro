@@ -2,6 +2,7 @@
 
 import os
 import re
+import threading
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
@@ -163,6 +164,45 @@ def test_subscribers_see_committed_events_in_order(bus: EventBus, run_id: str) -
     unsubscribe()
     bus.emit(run_id, "log.line", stage="read", status="ok", payload=LOG).result(TIMEOUT)
     assert len(seen) == 30
+
+
+def test_events_emitted_at_once_are_stored_with_ts_in_seq_order(
+    writer: StoreWriter, run_id: str, tmp_path: Path
+) -> None:
+    """C03 (found in a full run): the bus stamps ``ts`` on the emitting job's thread, and the
+    writer assigns ``seq`` later. A job stamped first can be stored second, 1 ms backwards, and
+    the log validator warns. The writer raises its ``ts`` to the one stored before it."""
+    early, late = "2026-10-20T11:56:58.832Z", "2026-10-20T11:56:58.833Z"
+    stamped, stored = threading.Event(), threading.Event()
+
+    def clock() -> str:
+        if threading.current_thread().name == "slow-job":
+            stamped.set()  # it has read the time; it is held before it can submit
+            assert stored.wait(TIMEOUT)
+            return early
+        assert stamped.wait(TIMEOUT)
+        return late
+
+    bus = EventBus(writer, clock=clock)
+    slow: list[StoredEvent] = []
+
+    def slow_job() -> None:
+        slow.extend(
+            bus.emit(run_id, "log.line", stage="build", status="ok", payload=LOG).result(TIMEOUT)
+        )
+
+    thread = threading.Thread(target=slow_job, name="slow-job")
+    thread.start()
+    try:
+        future = bus.emit(run_id, "log.line", stage="build", status="ok", payload=LOG)
+        (fast,) = future.result(TIMEOUT)
+    finally:
+        stored.set()
+        thread.join(TIMEOUT)
+    assert [event.seq for event in (fast, *slow)] == [1, 2]  # stamped first, stored second
+    with StoreReader(tmp_path / "repro.db") as reader:
+        assert [event.envelope()["ts"] for event in reader.events(run_id)] == [late, late]
+    assert slow[0].envelope()["ts"] == late  # the emitter is given what was stored
 
 
 def test_a_failing_subscriber_is_dropped_and_the_others_carry_on(

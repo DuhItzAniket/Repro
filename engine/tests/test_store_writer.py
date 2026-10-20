@@ -1,9 +1,11 @@
 """The single writer: seq, batching, atomic groups, evidence, the run registry (C02)."""
 
 import json
+import sqlite3
 import threading
 import time
 from collections.abc import Sequence
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -97,6 +99,58 @@ def test_a_group_commits_together_and_a_bad_group_fails_alone(db: Path) -> None:
     with StoreReader(db) as reader:
         messages = [event.envelope()["payload"]["message"] for event in reader.events(run.id)]
     assert messages == ["first", "a", "b"]
+
+
+def stamp(fraction: str) -> str:
+    return f"2026-10-20T11:56:58.{fraction}Z"
+
+
+def stored_ts(db: Path, run_id: str) -> list[str]:
+    """Each event's ``ts``, from its body and from the ``ts`` column, which must agree."""
+    with StoreReader(db) as reader:
+        bodies = [event.envelope()["ts"] for event in reader.events(run_id)]
+    with closing(sqlite3.connect(db)) as connection:
+        rows = connection.execute(
+            "SELECT ts FROM events WHERE run_id = ? ORDER BY seq", (run_id,)
+        ).fetchall()
+    assert [row[0] for row in rows] == bodies
+    return bodies
+
+
+def test_a_runs_ts_never_goes_backwards(db: Path) -> None:
+    """C03: ``ts`` is stamped before the writer assigns ``seq``, so events can arrive stamped
+    out of order. One stamped before its run's latest gets that time (compared as instants,
+    whatever the digits), within a transaction, across them and from a new writer."""
+    a, b = run_record(), run_record()
+    with started_writer(db) as writer:
+        for run in (a, b):
+            writer.create_run(run).result(TIMEOUT)
+        writer.submit({**log_line(a.id), "ts": stamp("8")}).result(TIMEOUT)
+        group = [{**log_line(a.id), "ts": stamp(digits)} for digits in ("83", "825")]
+        writer.submit_group(group).result(TIMEOUT)
+        writer.submit({**log_line(b.id), "ts": stamp("1")}).result(TIMEOUT)  # another run
+        writer.submit({**log_line(a.id), "ts": stamp("9")}).result(TIMEOUT)
+    with started_writer(db) as writer:  # this one reads the run's latest from the store
+        writer.submit({**log_line(a.id), "ts": stamp("1")}).result(TIMEOUT)
+    assert stored_ts(db, a.id) == [stamp(d) for d in ("8", "83", "83", "9", "9")]
+    assert stored_ts(db, b.id) == [stamp("1")]
+
+
+def test_a_group_that_fails_does_not_move_ts_forward(db: Path) -> None:
+    run = run_record()
+    with started_writer(db, max_delay=0.2) as writer:
+        writer.create_run(run).result(TIMEOUT)
+        first = {**log_line(run.id), "ts": stamp("100")}
+        good = writer.submit(first)
+        bad = writer.submit_group(
+            [{**log_line(run.id), "ts": stamp("900")}, {**log_line(run.id), "id": first["id"]}]
+        )
+        later = writer.submit({**log_line(run.id), "ts": stamp("200")})
+        for future in (good, later):
+            future.result(TIMEOUT)
+        with pytest.raises(WriteError, match="UNIQUE"):
+            bad.result(TIMEOUT)
+    assert stored_ts(db, run.id) == [stamp("100"), stamp("200")]
 
 
 def test_evidence_is_stored_with_its_event(db: Path) -> None:

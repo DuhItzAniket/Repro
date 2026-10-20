@@ -4,7 +4,9 @@
 producer), removes recognised credentials from its payload and target, validates the complete
 event against its kind's generated model (payload and stage), and hands it to the store's
 writer, which alone assigns ``seq`` (and an ``evidence.created`` event's evidence ``seq``, the
-same number). When the writer commits, the bus passes the stored events to
+same number). Events emitted at once from several jobs can reach the writer in another order
+than they were stamped; the writer raises a ``ts`` that would go backwards to its run's latest.
+When the writer commits, the bus passes the stored events to
 its subscribers in ``seq`` order: nothing is published that is not durable.
 
 Subscribers are called on the writer's thread and must not block (C04 hands events to each

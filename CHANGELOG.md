@@ -21,6 +21,14 @@ All notable changes to this project are documented here. The format follows
   - **Comparison:** base runs twice, the second time shuffled, then head, compared as
     Python's traces are. [K07]
 
+### Fixed
+- An event log could have an event's timestamp 1 ms behind the event stored before it, and
+  `repro-events validate` warned about it. The cause was two jobs emitting at once, such as
+  snapshots, analysis and policy in the build stage: each event is stamped on its job's
+  thread, and the store's writer numbers the events later. The writer now stores an event
+  stamped before its run's latest event with that latest timestamp. `seq` is still the only
+  order. The end-to-end tests that expect a clean log no longer fail now and then. [C03]
+
 ## [1.2.0] - 2026-10-20
 
 Stage K's first items, the evaluation's harness (Stage J, J01 to J05; the study itself
