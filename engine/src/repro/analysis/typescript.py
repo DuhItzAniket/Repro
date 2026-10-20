@@ -4,11 +4,11 @@ The compiler API reads JavaScript and TypeScript alike. Repro uses it for a chan
 (``repro.analysis.jsapi``) and for its edited tests' assertions (``repro.jsassert``).
 
 **Which compiler.** Repro's own, never the target's: a target's ``node_modules/typescript`` is
-the target's code. The pin is ``typescript`` 6.0.3, the last line whose package is the compiler
-API in JavaScript, with no dependencies [npm registry, ``npm view typescript@6.0.3``, checked
-2026-10-20: ``main`` is ``./lib/typescript.js``; 7.0.2 is native binaries per platform, with an
-API under ``unstable/``]. Its licence is Apache-2.0, as its own ``package.json`` and
-``LICENSE.txt`` say.
+the target's code. The pin is ``typescript`` 6.0.3, the newest release whose package holds the
+compiler API in JavaScript, with no dependencies [npm registry, ``npm view typescript``, checked
+2026-10-20: 6.0.3's ``main`` is ``./lib/typescript.js``; 7.0.2's package has no
+``lib/typescript.js``, depends on a native package per platform, and exports its API under
+``unstable/``]. Its licence is Apache-2.0, as its own ``package.json`` and ``LICENSE.txt`` say.
 
 **How it is fetched.** Once, into ``<tools>/typescript-6.0.3`` (``<data dir>/tools`` by
 default): the registry's tarball, checked against the registry's ``dist.integrity`` (sha512)
