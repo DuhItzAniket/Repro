@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Stage** | K — Expansion |
-| **Status** | in progress |
+| **Status** | done |
 | **Depends on** | K06 |
-| **Branch / PR** | `phase/K07-js-traces` · PR pending |
-| **Started / finished** | 2026-10-20 / — |
+| **Branch / PR** | `phase/K07-js-traces` · [#105](https://github.com/DuhItzAniket/Repro/pull/105) |
+| **Started / finished** | 2026-10-20 / 2026-10-20 |
 
 ## Objective
 ADR-0017's phase 3, accepted by the owner on 2026-10-19. It records the calls of the functions
@@ -87,7 +87,7 @@ Python's. The aim is to show a behaviour change that no test catches.
   - "m adds" recorded `add(1, 2) -> 3` and "m twice" recorded `twice(2) -> 4`;
   - the call to `add` inside `twice` was not traced, as stated;
   - no setup error was written.
-- CI run: linked in the PR.
+- CI run: linked in the PR (#105).
 
 ## Deviations from spec
 - No Node `load` hook: each runner's transform point. ADR-0017 records why.
