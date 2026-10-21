@@ -109,9 +109,18 @@ Measured on 2026-10-21. **The owner's machine:**
   - under runc on the same engine, the same setting stopped the container's first `exec`:
     WSL's own uid 1000 already had processes. So the setting is used only on a kernel of the
     container's own.
-- **After the fix:** RESULTS_WSL.
+- **After the fix:**
+  - in microVMs: the container module, the run end to end and the JavaScript module's tests,
+    35 passed and 1 skipped (gVisor only) in 418 s;
+  - under runc on the same engine: the container module, 24 passed and 1 skipped in 55 s;
+  - a JavaScript change in microVMs, its install container included: RESULTS_JS.
+- **A container's start, `docker run --rm … uname -r` (the probe), five times each:**
+  6.15 to 6.43 s in a microVM and 0.52 to 0.59 s under runc.
 
-**CI's `kata` job:** RESULTS_CI.
+**CI's `kata` job** (run 39552929061, GitHub's `ubuntu-24.04` image 20261018.339.1):
+- the setup script ran in 49 s: host kernel 7.0.0-1017-azure, guest kernel 6.18.35, volume ok;
+- the container module and the run end to end in microVMs: 25 passed and 1 skipped in 238 s;
+- about 5 minutes in all.
 
 ## Deviations from spec
 - **Cloud Hypervisor, not Firecracker.** This was the owner's choice on 2026-10-21, on these
@@ -130,8 +139,9 @@ Measured on 2026-10-21. **The owner's machine:**
 ## Known gaps
 - GitHub calls nested virtualization on its runners "not officially supported". The `kata`
   job may stop working without notice, which is why it is not required.
-- The probe adds one container to each sandbox's start: PROBE_TIME in a microVM. With no
-  runtime set, nothing is probed.
+- A microVM costs time: each container started about 6 s later than under runc on WSL2
+  (Evidence), and every command of a run is a container. The probe adds one more to each
+  sandbox's start. With no runtime set, nothing is probed.
 - Kata's guest kernel and image come from its release, checked by its SHA-256 and trusted as
   the host's kernel is.
 - The setup script supports Ubuntu 24.04 on amd64 only, since its pins are noble's.

@@ -693,3 +693,30 @@ entry. If something turns out wrong, add a correcting entry.
   under test is paid in every sample. It reads as a steady slowdown, and here it sat half a
   millisecond under the floor. A change whose cost is near the floor gets a verdict decided by
   the machine's load: the timing pass's threat to validity on Windows, stated with the floor.
+
+## 2026-10-21 · K10 · A microVM per container, and the limit it dropped
+- **Setup:** Kata Containers 4.2.0 with Cloud Hypervisor as a Docker runtime, by
+  `scripts/kata/setup.sh` ([phase record](../phases/K10-kata-microvms.md)). It was run on two
+  hosts with nested virtualization. One was WSL2's Ubuntu 24.04 on a Windows 11 laptop. The
+  other was GitHub's `ubuntu-24.04` runner, where GitHub calls nested virtualization
+  "not officially supported". On both, the guest kernel was 6.18.35 and the host's was not.
+- **The level is observed, not named.** When the sandbox starts, a container of the runtime
+  runs `uname -r`. The card states L5 only when that kernel differs from the engine's. Under
+  runc on the same engine, the same tests state L3.
+- **What the stronger boundary dropped:**
+  - in a microVM, Docker's `--pids-limit 16` is not applied: `pids.max` reads `max`, and the
+    fork-bomb test started 30 processes;
+  - L3's suite caught it only because it runs unchanged at every level;
+  - the fix is uid 1000's `nproc`, which a kernel of the container's own counts for the
+    container alone: 15 forks, then `EAGAIN`;
+  - on a shared kernel the same setting stopped the container's first `exec`, since it counts
+    the host's processes of that uid. So it is set only at L5.
+- **The cost:** a container started in 6.15 to 6.43 s in a microVM, against 0.52 to 0.59 s under
+  runc (WSL2, five each). Every command of a run is a container. In CI, the container suite
+  and a run took 238 s in microVMs.
+- **For the paper:**
+  - isolation levels are not monotone in every property: L5 holds a stronger kernel boundary
+    than L3 but, as shipped, a weaker process limit;
+  - a card that states a level should rest on the same suite at every level, not on the
+    stronger boundary's reputation;
+  - and on a probe of what the run got, not on the configuration's name.
