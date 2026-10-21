@@ -98,7 +98,7 @@ fake implementation for tests.
 
 ```python
 class SandboxBackend(Protocol):                       # D01/D02
-    level: IsolationLevel                             # L0..L4, reported on the card
+    level: IsolationLevel                             # L0..L5, reported on the card
     def prepare(self, snapshot: Path, spec: EnvSpec) -> SandboxHandle: ...
     def run(self, h: SandboxHandle, cmd: list[str], *, timeout_s: float,
             network: Literal["none", "index-only"]) -> RunResult: ...

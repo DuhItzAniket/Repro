@@ -34,7 +34,8 @@ if not docker_available():
 
 #: The containers' runtime: unset (Docker's default, L3) or gVisor's (L4).
 RUNTIME = os.environ.get("REPRO_DOCKER_RUNTIME") or None
-LEVEL = "L4" if RUNTIME == GVISOR else "L3"
+#: K10: a Kata runtime (``scripts/kata/setup.sh`` names it ``kata``) gives a microVM, L5.
+LEVEL = "L4" if RUNTIME == GVISOR else "L5" if (RUNTIME or "").startswith("kata") else "L3"
 
 
 ESCAPES = {
@@ -267,7 +268,7 @@ def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
         # and a limit this low can end it before the first process writes its line.
         assert len(started) <= limit
         assert run.outcome == "timeout" or run.returncode != 0, run
-    else:  # runc: the forks fail, and the bomb sleeps on until its timeout
+    else:  # runc, or Kata with uid 1000's nproc (K10): the forks fail, and the bomb sleeps on
         assert 1 <= len(started) <= limit
         assert run.outcome == "timeout"
 

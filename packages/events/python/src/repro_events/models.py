@@ -126,11 +126,11 @@ EvidenceType = Literal['test_outcome', 'test_change', 'behaviour_diff', 'probe_d
 MissingReason = Literal['no_covering_test', 'environment_failed', 'collection_error', 'timeout', 'unstable_observation', 'trace_unavailable', 'trace_truncated', 'subprocess_untraced', 'encoding_failed', 'network_not_enforced', 'perf_not_assessable', 'unsupported_project', 'verdict_rejected', 'claim_unverifiable', 'agent_failed', 'judge_is_author', 'memory_limit', 'run_incomplete']
 
 # Highest isolation layer actually achieved (ARCHITECTURE §8).
-IsolationLevel = Literal['L0', 'L1', 'L2', 'L3', 'L4']
+IsolationLevel = Literal['L0', 'L1', 'L2', 'L3', 'L4', 'L5']
 
 NetworkEnforcement = Literal['enforced', 'detected-only']
 
-SandboxBackend = Literal['process', 'docker', 'gvisor']
+SandboxBackend = Literal['process', 'docker', 'gvisor', 'kata']
 
 AgentRole = Literal['read', 'build', 'review', 'gap', 'probe', 'qa']
 

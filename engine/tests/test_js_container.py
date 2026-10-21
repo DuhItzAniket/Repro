@@ -348,6 +348,7 @@ def reproduce(
     *,
     env_image: str | None = None,
     js: JsOptions | None = None,
+    docker_runtime: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Base (``project_files``) against base with ``head`` applied: the run's events, checked,
     and its card."""
@@ -374,6 +375,7 @@ def reproduce(
             cards=StoreCards(database, writer),
             env_image=env_image,
             js=js,
+            docker_runtime=docker_runtime,
         )
         try:
             result = Orchestrator(EventBus(writer), concurrency=2).run(
@@ -456,3 +458,28 @@ def test_a_change_is_reproduced_in_containers_with_no_network(tmp_path: Path) ->
     conditions = card["conditions"]
     assert (conditions["language"], conditions["isolation_level"]) == ("javascript", "L3")
     assert conditions["node_version"].startswith("22.")
+
+
+@pytest.mark.skipif(
+    os.environ.get("REPRO_DOCKER_RUNTIME") != "kata",
+    reason="Kata's runtime is not in use (a Linux host with KVM: scripts/kata/setup.sh)",
+)
+def test_a_change_is_reproduced_in_microvms(tmp_path: Path) -> None:
+    """K10: the same change with each container in a Kata microVM, the install's included (it
+    alone has the network): the same outcomes, and the card at L5."""
+    head = SOURCE.replace("return a + b;", "return a - b;").replace("n.toFixed(1)", "n")
+    events, card = reproduce(tmp_path, {"src/m.js": head}, "docker", docker_runtime="kata")
+    ready = payloads(events, "sandbox.ready")
+    assert {(r["isolation_level"], r["network"]) for r in ready} == {("L5", "enforced")}
+    assert all("runtime kata" in r["platform"] for r in ready)
+    assert all(env["installed_packages"] > 1 for env in payloads(events, "env.provisioned"))
+    classes = {
+        o["targets"][0]["test"]: o["data"]["class"] for o in evidence(events, "test_outcome")
+    }
+    assert classes == {
+        "test/m.test.js::m adds": "P2F",
+        "test/m.test.js::m labels": "P2P",
+        "test/m.test.js::m old": "P2F",
+    }
+    assert card["status"] == "FLAGGED"
+    assert card["conditions"]["isolation_level"] == "L5"

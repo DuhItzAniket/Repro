@@ -130,11 +130,11 @@ export type MissingReason = "no_covering_test" | "environment_failed" | "collect
 /**
  * Highest isolation layer actually achieved (ARCHITECTURE §8).
  */
-export type IsolationLevel = "L0" | "L1" | "L2" | "L3" | "L4";
+export type IsolationLevel = "L0" | "L1" | "L2" | "L3" | "L4" | "L5";
 
 export type NetworkEnforcement = "enforced" | "detected-only";
 
-export type SandboxBackend = "process" | "docker" | "gvisor";
+export type SandboxBackend = "process" | "docker" | "gvisor" | "kata";
 
 export type AgentRole = "read" | "build" | "review" | "gap" | "probe" | "qa";
 

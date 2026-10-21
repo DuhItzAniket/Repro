@@ -1,7 +1,8 @@
 # ADR-0018: Remote sandbox backends for teams
 
 - **Status:** accepted by the owner (2026-10-19). Option A is built (K05); options B and C
-  are K09 and K10. They need infrastructure not yet provided (a Linux host with KVM, or a
+  are K09 and K10. C is built (K10), with Cloud Hypervisor in place of Firecracker (the owner's
+  choice, 2026-10-21; see C below). They need infrastructure not yet provided (a Linux host with KVM, or a
   cloud account): their code is tested against fakes until a real host exists, and the
   isolation level L5 this acceptance approves enters the schema with B.
 - **Date:** 2026-10-18
@@ -50,11 +51,34 @@ What the candidates offer, read on 2026-10-18:
   runtime class runs Repro's containers. It is reached as in A if that host's engine exposes
   the runtime. A Kubernetes job per side would need its own sandbox class, like B.
 
+  **As built (K10): Kata with Cloud Hypervisor, under Docker.** What K10 found, on 2026-10-21:
+  - Firecracker's only storage is "file-backed block device[s]" [V firecracker README]: it
+    shares no directory with the VM, so Repro's volumes (the snapshot, the hook, each
+    environment) cannot reach it. Kata's guide runs it through containerd alone, with the
+    devmapper snapshotter.
+  - Kata 4.2.0's static release ships no Firecracker binary. It ships Cloud Hypervisor, QEMU and
+    `virtiofsd` [V the release's tarball, unpacked].
+  - Docker runs a containerd shim as a runtime (`docker run --runtime io.containerd.kata.v2`;
+    a shim's path may be a runtime's `runtimeType`) [V docs.docker.com, "Alternative container
+    runtimes"].
+
+  So the owner chose Cloud Hypervisor (2026-10-21), and C is what it meant: no new sandbox.
+  - `scripts/kata/setup.sh` gives a Linux host Docker Engine with a runtime `kata`: Kata's shim,
+    with its shipped Cloud Hypervisor configuration as its default (Kata's runtime accepts no
+    other path).
+  - `docker_runtime = "kata"` runs every container of a run in a microVM, its volumes over
+    virtio-fs.
+  - The level is L5, from a probe: a container of the runtime whose kernel is not the engine's.
+  - WSL2 is such a host on Windows 11, which gives it nested virtualization by default. So is
+    GitHub's Ubuntu runner: GitHub calls nested virtualization there "technically possible" but
+    "not officially supported" [V docs.github.com, "GitHub-hosted runners", 2026-10-21], and
+    the setup script ran on it (CI job `kata`).
+
 ## Consequences
 - A adds no code path: the same `DockerSandbox` talks to another engine. Its cost is latency,
   since snapshots and results cross the network, and the engine host's trust: it runs the
   target's code.
-- B and C are where hardware isolation comes from. Both need a Linux host with KVM, which
-  Repro's CI and its owner's machine do not have, so neither can be tested here.
+- B and C are where hardware isolation comes from. Both need a Linux host with KVM. K10 found
+  two: the owner's machine, in WSL2, and GitHub's runners. C is tested on both; B is not yet.
 - Whatever the backend, the card names the isolation level reached. A remote engine is not
   stated as more isolated than it is.

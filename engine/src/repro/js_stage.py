@@ -8,10 +8,10 @@ read a Python one.
   lifecycle scripts off; ``sandbox.ready``, then ``env.provisioned`` (the package manager,
   Node.js, the lock's digest, the packages installed).
   - With ``backend="docker"`` (K11; ``auto`` when Docker answers, as for Python): a container
-    sandbox (L3, or L4 under gVisor) on Repro's Node.js image (``sandbox.image.node_image``).
-    The install runs in a container of its own, the only one with the network
-    (``jsts.install_in_container``); Node.js's version and the packages are read in the
-    sandbox, with none.
+    sandbox (L3; L4 under gVisor, L5 under Kata) on Repro's Node.js image
+    (``sandbox.image.node_image``). The install runs in a container of its own, the only one with
+    the network (``jsts.install_in_container``); Node.js's version and the packages are read in
+    the sandbox, with none.
   - Otherwise: the process sandbox (L2), the install on the host.
 
   An image of the user's (``sandbox_image``, J04) is for Python projects, and refused.

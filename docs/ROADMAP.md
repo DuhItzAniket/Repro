@@ -22,7 +22,7 @@
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
 | **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
 | **J** | Evaluation & research | J01–J10 | v1.2.0 (harness); the study later | Reproducible benchmark results and paper submission |
-| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05), v1.3.0 (K06–K08, K11) | Built but for K09 and K10, which need a Linux host with KVM |
+| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05), v1.3.0 (K06–K08, K11) | Built but for K09 (E2B self-hosted) |
 
 76 scheduled phases (A–J) plus 11 in Stage K. Stages run in order. B and C could run in
 parallel with two contributors, because B depends only on the schema (A04/A05).
@@ -661,8 +661,8 @@ the card first (K08), then the container and the compiler's view (K11).
 | K06 | JavaScript: the test → function map | ADR-0017 phase 2: per-test V8 precise coverage from a setup file, the map selection (D06) needs. **Done (K06, [#100](https://github.com/DuhItzAniket/Repro/pull/100)):** `repro js-run` reports the tests a change reaches |
 | K07 | JavaScript: function-level traces | ADR-0017 phase 3: a `load` hook wraps the changed functions with an encoder ported from `repro_encode`. **Done (K07, [#105](https://github.com/DuhItzAniket/Repro/pull/105)):** each runner's transform point instead of a `load` hook; base twice and head compared as E03 does |
 | K08 | JavaScript: the card | ADR-0017 phase 4, first part: the target's language in the event schema, and `repro run` makes a JavaScript or TypeScript change's card (cockpit, exports, review), at L2. **Done (K08, [#107](https://github.com/DuhItzAniket/Repro/pull/107)):** the same events as Python's; what is not checked yet is a missing item each |
-| K09 | E2B self-hosted sandbox | ADR-0018 option B: `E2BSandbox`, a microVM per side, isolation level L5 in the schema. Real tests need a Linux host with KVM. Planned |
-| K10 | Kata Containers with Firecracker | ADR-0018 option C: Repro's containers under the `kata-fc` runtime class on a containerd host. Needs a Linux host with KVM. Planned |
+| K09 | E2B self-hosted sandbox | ADR-0018 option B: `E2BSandbox`, a microVM per side, isolation level L5 in the schema. Real tests need a Linux host with KVM: K10 found WSL2 and GitHub's runners to be such hosts. Planned |
+| K10 | Kata Containers with Firecracker | ADR-0018 option C: Repro's containers under the `kata-fc` runtime class on a containerd host. Needs a Linux host with KVM. **Done (K10, [#116](https://github.com/DuhItzAniket/Repro/pull/116)):** with Cloud Hypervisor in place of Firecracker, by the owner's choice (Firecracker's storage is block devices only, so Repro's volumes cannot reach it), under Docker: `docker_runtime = "kata"`, L5 when a probe sees a kernel of the container's own; the process limit at L5 is uid 1000's `nproc`, as Kata's VM applies no pids limit; `scripts/kata/setup.sh` for a host (WSL2 included); CI job `kata` |
 | K11 | JavaScript: L3 and the compiler's view | ADR-0017 phase 4, second part: L3 in a container with Node, the public API diff and edited tests' assertions from the TypeScript compiler API, and base's version of an edited test run against head. **Done (K11, [#110](https://github.com/DuhItzAniket/Repro/pull/110)):** the Node image and its own install container; pnpm's `.pnpmfile.cjs` and Yarn's `yarn-path` found running under `--ignore-scripts`, and turned off; a pinned TypeScript 6.0.3 for the API and assertions; base on head |
 
 ---
@@ -786,3 +786,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | K11 | 2026-10-20 | [#110](https://github.com/DuhItzAniket/Repro/pull/110) | JavaScript at L3 in Repro's Node image (own install container; `.pnpmfile.cjs` and `yarn-path` found running under `--ignore-scripts`, turned off); the public API and edited tests' assertions from a pinned TypeScript 6.0.3; base's version of an edited test on head |
 | Release 1.3.0 | 2026-10-20 | [#111](https://github.com/DuhItzAniket/Repro/pull/111) | JavaScript and TypeScript end to end (K06–K08, K11), the fixes #106, #108 and #109, Dependabot's updates; published to PyPI |
 | Release 1.3.1 | 2026-10-21 | [#114](https://github.com/DuhItzAniket/Repro/pull/114) | A patch release with no code change: CI's timeout (#112), the Marketplace docs (#113); the first release archived on Zenodo, for a DOI |
+| K10 | 2026-10-21 | [#116](https://github.com/DuhItzAniket/Repro/pull/116) | Isolation level L5: each container in a Kata microVM with Cloud Hypervisor, under Docker (`docker_runtime = "kata"`), the level probed from the container's kernel; uid 1000's `nproc` as the process limit there (Kata's VM applies no pids limit, measured); `scripts/kata/setup.sh`, tested in WSL2 and in CI's `kata` job on GitHub's nested virtualization |

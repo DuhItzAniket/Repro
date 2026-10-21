@@ -33,7 +33,7 @@ each one protects, where it runs, and the fixtures it relies on.
 | 8 | Visual regression | Playwright screenshot comparison | Cockpit at frozen replay times on the reference fixture log | Every PR touching `apps/web` |
 | 9 | Performance | Custom harness (`repro_bench.scale`, H02) + Playwright tracing | Frame-time budget, JS bundle size, engine wall-clock and cache use on three pinned reference repos | Bundle size on every PR; frame/engine perf nightly |
 | 9a | Allocation | Vitest (heap after GC; V8 allocation counter) | 1,000 frames of the stress burst: flat heap; stage allocation per frame within budget | Every PR (Ubuntu + Windows) |
-| 10 | Security | pytest sandbox suite, `test_secrets.py`, `test_threat_model.py`, pip-audit and `pnpm audit` | Network, filesystem, process, privilege, kernel and resource-exhaustion escape attempts, at L3 and under gVisor (L4); what leaves a run; each threat's tests (THREAT_MODEL §7); known vulnerabilities in the locked dependencies | Every PR (jobs `test`, `gvisor`, `dependency audit`) |
+| 10 | Security | pytest sandbox suite, `test_secrets.py`, `test_threat_model.py`, pip-audit and `pnpm audit` | Network, filesystem, process, privilege, kernel and resource-exhaustion escape attempts, at L3, under gVisor (L4) and in Kata microVMs (L5); what leaves a run; each threat's tests (THREAT_MODEL §7); known vulnerabilities in the locked dependencies | Every PR (jobs `test`, `gvisor`, `kata`, `dependency audit`) |
 | 11 | Agent evals | Eval harness over labelled PR set | Claim extraction, verdict accuracy, citation validity, cost | On agent changes (recorded), weekly live |
 | 12 | Mutation | mutmut (engine core) | Measures how strong the suite is | Stage gates |
 

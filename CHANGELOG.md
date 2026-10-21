@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Isolation level L5: with `docker_runtime = "kata"`, each of the target's containers runs in
+  a Kata Containers microVM with Cloud Hypervisor, on a kernel of its own. The card states L5
+  only when a container of the runtime reports a kernel other than the engine's, whatever the
+  runtime is called. `scripts/kata/setup.sh` sets up a Linux host with KVM (WSL2 on Windows 11
+  included): Docker Engine and Kata 4.2.0, pinned and checked, then a self-test.
+  Kata's VM does not apply Docker's pids limit (`pids.max` reads `max` in it; a fork bomb
+  started 30 processes against a limit of 16), so at L5 the sandbox also sets uid 1000's
+  `nproc`, which a kernel of the container's own counts for the container alone. [K10]
+- CI job `kata`: the container sandbox and a run in Kata microVMs on GitHub's runners, which
+  allow nested virtualization without supporting it; not required. [K10]
+
+### Changed
+- Event schema: `L5` is an isolation level, and `kata` a sandbox backend, in `run.started`.
+  [K10]
+
 ## [1.3.1] - 2026-10-21
 
 A patch release with no change to Repro's code: CI's timeout, the Marketplace listing in the

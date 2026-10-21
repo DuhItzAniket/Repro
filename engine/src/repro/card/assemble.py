@@ -27,7 +27,7 @@ from repro.policy.gap import inputs_from_events
 from repro.policy.status import GapItem, decide
 
 CARD_VERSION: Final = 1
-LEVELS: Final = ("L0", "L1", "L2", "L3", "L4")
+LEVELS: Final = ("L0", "L1", "L2", "L3", "L4", "L5")
 
 
 def canonical(value: Any) -> bytes:

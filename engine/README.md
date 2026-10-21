@@ -159,7 +159,7 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `test_timeout_s` | `REPRO_TEST_TIMEOUT_S` | `900`: each sandboxed test run's wall-clock limit, in seconds (H01) |
 | `memory_limit_mb` | `REPRO_MEMORY_LIMIT_MB` | `4096`: the memory a sandboxed run's processes may use (H01) |
 | `github_api_url` | `REPRO_GITHUB_API_URL` | `https://api.github.com`: GitHub's REST API for `repro run --pr` (I01); a GitHub Enterprise Server's is `https://<host>/api/v3` |
-| `docker_runtime` | `REPRO_DOCKER_RUNTIME` | unset: Docker's default. `runsc` runs the target's containers under gVisor, isolation level L4 (H03) |
+| `docker_runtime` | `REPRO_DOCKER_RUNTIME` | unset: Docker's default. `runsc` runs the target's containers under gVisor, isolation level L4 (H03); `kata` runs each in a microVM of Kata Containers, L5 (K10; set up with `scripts/kata/setup.sh`) |
 | `docker_context` | `REPRO_DOCKER_CONTEXT` | unset: Docker's own. The Docker context every container command uses: a team's engine on another machine (`docker context create builder --docker host=ssh://user@host`), K05 |
 | `sandbox_image` | `REPRO_SANDBOX_IMAGE` | unset: Repro's own image and environment. An image pinned by digest (`name@sha256:...`) whose own Python environment the tests run in, as it is: a benchmark task's image, or a CI image (J04). Needs the Docker sandbox |
 | `agent_probes` | `REPRO_AGENT_PROBES` | `true`: with agents on, the probe writer proposes inputs for the probes (G07) |

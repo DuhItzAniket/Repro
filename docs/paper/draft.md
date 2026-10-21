@@ -117,7 +117,9 @@ untrusted code. Each side's environment is provisioned in two steps:
 Tests run in a sandbox whose level the card states:
 - **L2**: a contained process, with network attempts detected by an audit hook;
 - **L3**: a container with no network, a read-only root, no capabilities and resource limits;
-- **L4**: the same under gVisor.
+- **L4**: the same under gVisor;
+- **L5**: the same with each container in a Kata microVM, on a kernel of its own. The level is
+  stated only when a probe of the container's kernel shows it.
 
 A run can also use a task's own environment image as it is, with the snapshot first on the
 import path. Repro refuses to run when the image's installed copy of the project would be
