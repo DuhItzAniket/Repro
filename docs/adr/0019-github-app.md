@@ -164,3 +164,13 @@ GitHub's installation itself: which repositories the App may see.
   answer, not a weaker check.
 - **Revisit** when a server is available (switch to `--listen`), or when signing from the App
   is asked for.
+
+## As built (I04, 2026-10-21)
+The live trial, in WSL2 at L5 on a private test repository:
+- the manifest flow's redirect to a loopback page worked;
+- all 11 deliveries relayed through smee.io checked their signature, and none was dropped;
+- the pull request's card came 72 s after its delivery;
+- updating a completed check run for a re-run left it reading "failed" while the run went
+  on, and added the next card's annotation to the old one. GitHub's re-run asks for "a new
+  check run" [V docs.github.com, "Using the REST API to interact with checks"]. So the App
+  updates its check run only while it is not completed, and makes a new one otherwise.

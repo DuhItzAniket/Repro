@@ -118,6 +118,9 @@ uv run repro js-run --repo <path> --base <ref> --head <ref>  # K01, K06, K07: a 
                                           # change's outcomes, the tests it reaches and its
                                           # functions' calls, without the card (repro run's)
 uv run repro mcp        # K03: Repro as an MCP server on stdio (docs/guide/mcp.md)
+uv run repro app register   # I04: register Repro's GitHub App (manifest flow; secrets stay in
+                                          # the data directory); then `uv run repro app serve`
+                                          # (Docker needed; docs/guide/github-app.md)
 uv run repro symbolic --repo <path> --base <ref> --head <ref>  # K04, experimental: CrossHair
                                           # diffbehavior on the small pure functions a change edits
 sudo bash scripts/kata/setup.sh          # K10, once, on Ubuntu 24.04 with KVM (WSL2 works): Docker

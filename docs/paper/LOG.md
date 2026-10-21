@@ -720,3 +720,27 @@ entry. If something turns out wrong, add a correcting entry.
   - a card that states a level should rest on the same suite at every level, not on the
     stronger boundary's reputation;
   - and on a probe of what the run got, not on the configuration's name.
+
+## 2026-10-21 · I04 · A GitHub App, tried live, and the fault its first re-run found
+- **Setup:** `repro app register` and `repro app serve` ([phase record](../phases/I04-github-app.md),
+  ADR-0019). Registration used GitHub's manifest flow; deliveries came through a smee.io relay
+  to WSL2, where every run was at L5 (K10). The repository was a private test repository holding
+  Repro's `silent-change` fixture as a pull request.
+- **Results:**
+  - the pull request's card was FLAGGED, its annotation on the changed line, 72 s after the
+    delivery;
+  - all 11 deliveries relayed checked their signature, against the payload written again
+    compactly, since smee.io does not keep GitHub's bytes;
+  - the run's events held no token.
+- **The fault:** the first click on **Re-run Repro** updated the check run already completed.
+  GitHub kept it "failed" while the run went on, and the next card's annotation was added to
+  the old one. The tests against a fake GitHub had passed: the fake, like GitHub's API,
+  accepted the update, and only GitHub's page showed what it meant. The fix makes a new check run
+  for each run, as GitHub's own guidance asks.
+- **For the paper:**
+  - a verifier's report is only as trustworthy as the surface that shows it;
+  - a check run that reads "failed" while it runs, or that doubles its evidence, misleads a
+    reviewer as surely as a wrong verdict would;
+  - a fake service tests the protocol, not how the real one shows its state, so the trial on
+    GitHub itself found what the suite could not.
+
