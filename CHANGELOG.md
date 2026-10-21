@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-21
+
+A patch release with no change to Repro's code: CI's timeout, the Marketplace listing in the
+docs, and the first release archived on Zenodo, for a DOI. Release record:
+`docs/phases/release-1.3.1.md`.
+
 ### Changed
 - CI: the Python tests' job may take 45 minutes, up from 30. On Windows it took 22 to 27
   minutes with K08 and K11's tests, and once passed 30, which cancelled it on `main`. [K11]
