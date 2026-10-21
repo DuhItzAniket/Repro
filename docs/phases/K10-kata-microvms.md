@@ -113,7 +113,8 @@ Measured on 2026-10-21. **The owner's machine:**
   - in microVMs: the container module, the run end to end and the JavaScript module's tests,
     35 passed and 1 skipped (gVisor only) in 418 s;
   - under runc on the same engine: the container module, 24 passed and 1 skipped in 55 s;
-  - a JavaScript change in microVMs, its install container included: RESULTS_JS.
+  - a JavaScript change in microVMs, its install container included: passed in 120 s, the same
+    outcomes as at L3 and a FLAGGED card at L5.
 - **A container's start, `docker run --rm … uname -r` (the probe), five times each:**
   6.15 to 6.43 s in a microVM and 0.52 to 0.59 s under runc.
 
