@@ -8,6 +8,7 @@ with one that fails. No test reaches GitHub.
 """
 
 import contextlib
+import copy
 import json
 import threading
 import urllib.error
@@ -199,6 +200,27 @@ def test_a_forks_pull_request_waits_for_a_click(
     )
     assert check["head_sha"] == upstream.head
     assert fake.comments == []
+
+
+def test_a_rerun_gets_a_check_run_of_its_own(
+    tmp_path: Path, upstream: Upstream, pem: bytes
+) -> None:
+    """Found in the live trial: updating the completed check run kept its conclusion while the
+    run went on, and the next card's annotations were added to the old ones."""
+    roles = {"maintainer": "write"}
+    with github(own_pull(upstream), roles=roles) as fake, app(tmp_path, fake, pem) as service:
+        deliver(service, "pull_request", pull_request(), "d1")
+        assert service.drain(180)
+        first = copy.deepcopy(fake.check_runs[0])
+        rerun = button("maintainer")
+        rerun["check_run"]["pull_requests"] = [{"number": 1}]
+        deliver(service, "check_run", rerun, "d2")
+        assert service.drain(180)
+    assert [r["status"] for r in fake.check_runs] == ["completed", "completed"]
+    assert fake.check_runs[0] == first  # left as it was
+    assert fake.check_runs[1]["actions"] == [RERUN_ACTION]
+    assert fake.made("POST", r"^/repos/o/r/check-runs$")[1].body["status"] == "in_progress"
+    assert len(fake.comments) == 1  # the comment is updated, not added
 
 
 def test_a_click_runs_only_for_someone_with_write_access(

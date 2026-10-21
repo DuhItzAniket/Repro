@@ -285,7 +285,11 @@ class AppService:
         completed: str | None = None,
         actions: Sequence[Mapping[str, str]] = (),
     ) -> None:
-        """Creates the head's check run, or updates the App's own."""
+        """Updates the App's check run on the head while it is not completed; else creates a new
+        one. A re-run gets a check run of its own, as GitHub's re-run asks for "a new check run"
+        [docs.github.com, "Using the REST API to interact with checks", read on 2026-10-21]: a
+        completed one updated again keeps its conclusion and its annotations, so the next card's
+        would be added to them (seen in I04's live trial)."""
         body: dict[str, Any] = {
             "name": reporting.CHECK_NAME,
             "external_id": external_id(decision.number),
@@ -295,7 +299,7 @@ class AppService:
         body.update({"status": "completed", "conclusion": completed} if completed else
                     {"status": "in_progress"})  # fmt: skip
         mine = reporting.app_check_runs(api, path, head, self.credentials.identity.id)
-        if mine:
+        if mine and mine[-1].get("status") != "completed":
             api.request("PATCH", f"{path}/check-runs/{mine[-1]['id']}", body)
         else:
             api.request("POST", f"{path}/check-runs", {**body, "head_sha": head})
