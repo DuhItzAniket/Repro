@@ -90,6 +90,10 @@ class Settings(BaseModel):
     #: GitHub's REST API, for `repro run --pr` (I01): github.com's, or a GitHub Enterprise
     #: Server's (``https://<host>/api/v3``). HTTPS, or HTTP on a loopback address for tests.
     github_api_url: str = "https://api.github.com"
+    #: The GitHub App (I04): ``owner/repo`` patterns (``fnmatch``) narrowing the repositories
+    #: it runs on, empty for all its installations give; and how many runs it makes at once.
+    app_repositories: tuple[str, ...] = ()
+    app_concurrency: int = Field(default=1, ge=1, le=MAX_CONCURRENCY)
     #: The built cockpit (``pnpm build``'s ``apps/web/dist``); unset: this checkout's, if built.
     ui_dir: Path | None = None
     #: The agent stages' backend; off by default, so no run reaches a model unless asked to.
@@ -141,10 +145,10 @@ class Settings(BaseModel):
             raise ValueError("must be an https:// URL (http:// only on a loopback address)")
         return value.rstrip("/")
 
-    @field_validator("agent_panel", mode="before")
+    @field_validator("agent_panel", "app_repositories", mode="before")
     @classmethod
     def _models(cls, value: object) -> object:
-        """A panel given as text (the environment, the file): models separated by commas."""
+        """A list given as text (the environment, the file): items separated by commas."""
         if isinstance(value, str):
             return tuple(model.strip() for model in value.split(",") if model.strip())
         return value

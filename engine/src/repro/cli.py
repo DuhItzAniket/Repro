@@ -70,6 +70,10 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+github_app = typer.Typer(
+    help="Repro as a GitHub App (I04): register it, then serve it.", no_args_is_help=True
+)
+app.add_typer(github_app, name="app")
 
 
 class LogLevelOption(StrEnum):
@@ -965,3 +969,172 @@ def symbolic(
     typer.echo(text)
     if report.problem:
         raise typer.Exit(1)
+
+
+@github_app.command("register")
+def app_register(
+    ctx: typer.Context,
+    *,
+    org: Annotated[
+        str | None,
+        typer.Option("--org", help="Register it for this organization; by default, your account."),
+    ] = None,
+    name: Annotated[
+        str | None,
+        typer.Option(
+            "--name",
+            help="The App's name, which must be unused on GitHub; by default 'Repro' and six "
+            "hex digits. GitHub's page lets you change it.",
+        ),
+    ] = None,
+    webhook_url: Annotated[
+        str | None,
+        typer.Option(
+            "--webhook-url",
+            help="Where GitHub sends deliveries (your server, behind HTTPS). By default a new "
+            "smee.io channel, which `repro app serve` reads.",
+        ),
+    ] = None,
+    replace: Annotated[
+        bool, typer.Option("--replace", help="Replace the App registered here before.")
+    ] = False,
+    browser: Annotated[
+        bool, typer.Option("--browser/--no-browser", help="Open the page in the browser.")
+    ] = True,
+) -> None:
+    """Register Repro's GitHub App from a manifest (I04).
+
+    A page on this machine posts the App's manifest to GitHub. You click Create GitHub App
+    there, and GitHub hands the App's private key and webhook secret to Repro, which keeps them
+    in its data directory (github-app/) and never shows them. Then install the App on the
+    repositories it should run on, and start `repro app serve`.
+    """
+    settings = _session(ctx).settings()
+    from repro.integrations.github.appauth import AppError, AppFiles  # noqa: PLC0415
+    from repro.integrations.github.appregister import default_name, register  # noqa: PLC0415
+    from repro.integrations.github.relay import RelayError, check_url, new_channel  # noqa: PLC0415
+
+    files = AppFiles.under(settings.data_dir)
+    if files.exists() and not replace:
+        typer.echo(
+            f"repro app register: an App is already registered in {files.root}; "
+            "--replace registers another in its place",
+            err=True,
+        )
+        raise typer.Exit(2)
+    try:
+        hook = check_url(webhook_url) if webhook_url else new_channel()
+    except RelayError as exc:
+        typer.echo(f"repro app register: {exc}", err=True)
+        raise typer.Exit(2) from None
+
+    def open_page(url: str) -> None:
+        typer.echo(f"repro app register: open {url}, then click Create GitHub App on GitHub")
+        if browser:
+            webbrowser.open(url)
+
+    try:
+        identity = register(
+            files,
+            api_url=settings.github_api_url,
+            webhook_url=hook,
+            name=name or default_name(),
+            org=org,
+            open_page=open_page,
+        )
+    except AppError as exc:
+        typer.echo(f"repro app register: {exc}", err=True)
+        raise typer.Exit(1) from None
+    typer.echo(f"repro app register: registered {identity.name}: {identity.html_url}")
+    typer.echo(f"repro app register: install it: {identity.html_url}/installations/new")
+    typer.echo(f"repro app register: deliveries go to {identity.webhook_url}")
+    typer.echo("repro app register: then run `repro app serve`")
+
+
+def _host_port(value: str) -> tuple[str, int]:
+    host, _, port = value.rpartition(":")
+    if not host or not port.isdigit() or not 0 < int(port) < 65536:  # noqa: PLR2004 - TCP's
+        raise typer.BadParameter("HOST:PORT, such as 127.0.0.1:8781", param_hint="--listen")
+    return host.strip("[]"), int(port)
+
+
+@github_app.command("serve")
+def app_serve(
+    ctx: typer.Context,
+    *,
+    relay: Annotated[
+        str | None,
+        typer.Option(
+            "--relay", help="A smee.io channel to read deliveries from; by default, the App's."
+        ),
+    ] = None,
+    listen: Annotated[
+        str | None,
+        typer.Option(
+            "--listen",
+            help="HOST:PORT to receive deliveries on, behind your own HTTPS proxy, in place of a "
+            "relay.",
+        ),
+    ] = None,
+) -> None:
+    """Run Repro on the pull requests the GitHub App is told about (I04).
+
+    Deliveries come through a relay (by default the smee.io channel registered) or, with
+    --listen, to a port of this machine. Each is checked by its signature. A pull request from
+    the repository itself runs; a fork's runs only when someone with write access clicks Run
+    Repro on its check. Runs are in Docker, which this command needs. Ctrl+C stops it.
+    """
+    session = _session(ctx)
+    settings = session.settings()
+    from repro.integrations.github import appserve  # noqa: PLC0415
+    from repro.integrations.github.appauth import AppError, AppFiles, load  # noqa: PLC0415
+    from repro.integrations.github.relay import RelayError, check_url  # noqa: PLC0415
+    from repro.integrations.github.relay import listen as relayed  # noqa: PLC0415
+    from repro.sandbox import docker_available  # noqa: PLC0415
+
+    if relay and listen:
+        typer.echo("repro app serve: --relay or --listen, not both", err=True)
+        raise typer.Exit(2)
+    address = _host_port(listen) if listen else None
+    files = AppFiles.under(settings.data_dir)
+    try:
+        credentials = load(files)
+        source = None if address else check_url(relay or credentials.identity.webhook_url)
+    except (AppError, RelayError) as exc:
+        typer.echo(f"repro app serve: {exc}", err=True)
+        raise typer.Exit(2) from None
+    if not docker_available():
+        typer.echo(
+            "repro app serve: Docker is needed: the App runs other people's code in containers "
+            "only (L3; L4 with gVisor, L5 with Kata)",
+            err=True,
+        )
+        raise typer.Exit(2)
+    deliveries = appserve.Deliveries(files.deliveries)
+    service = appserve.AppService(
+        credentials,
+        settings.github_api_url,
+        deliveries,
+        settings.paths.database,
+        appserve.run_environment(session.environment(), settings),
+        repositories=settings.app_repositories,
+    )
+    appserve.start_workers(service, settings.app_concurrency)
+    stop = threading.Event()
+    try:
+        if address is not None:
+            server = appserve.listener(service, *address)
+            typer.echo(f"repro app serve: {credentials.identity.name} on {listen}")
+            try:
+                server.serve_forever()
+            finally:
+                server.server_close()
+        elif source is not None:
+            typer.echo(f"repro app serve: {credentials.identity.name} through {source}")
+            relayed(source, service.receive, stop)
+    except KeyboardInterrupt:
+        typer.echo("repro app serve: stopped")
+    finally:
+        stop.set()
+        service.stop()
+        deliveries.close()

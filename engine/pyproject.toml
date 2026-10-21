@@ -15,6 +15,7 @@ dependencies = [
     "mcp>=2.3.0,<3",  # `repro mcp` (K03); already required by claude-agent-sdk
     "packaging>=26.3",
     "pydantic>=2.14.1",
+    "pyjwt[crypto]>=2.15.1",  # the GitHub App's JWT (I04); already required by mcp
     "pyyaml>=6.0.3",
     "repro-events",
     "typer>=0.27.3",

@@ -128,25 +128,49 @@ def _batches(items: Sequence[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     return [list(items[i : i + size]) for i in range(0, len(items), size)] or [[]]
 
 
+def app_check_runs(
+    api: GitHubApi, path: str, head_sha: str, app_id: int | None = None
+) -> list[dict[str, Any]]:
+    """The head's ``Repro`` check runs, oldest first; only ``app_id``'s when it is given."""
+    listed = api.get(f"{path}/commits/{head_sha}/check-runs?check_name={CHECK_NAME}")
+    return sorted(
+        (
+            r
+            for r in (listed or {}).get("check_runs", [])
+            if r.get("name") == CHECK_NAME
+            and (app_id is None or (r.get("app") or {}).get("id") == app_id)
+        ),
+        key=lambda r: int(r.get("id", 0)),
+    )
+
+
 def check_run(
-    api: GitHubApi, target: Target, card: Mapping[str, Any], marks: Sequence[dict[str, Any]]
+    api: GitHubApi,
+    target: Target,
+    card: Mapping[str, Any],
+    marks: Sequence[dict[str, Any]],
+    *,
+    app_id: int | None = None,
+    actions: Sequence[Mapping[str, str]] = (),
+    external: str | None = None,
 ) -> str:
-    """Updates the head's ``Repro`` check run, or creates it; what was done, in words."""
+    """Updates the head's ``Repro`` check run, or creates it; what was done, in words.
+
+    A GitHub App (I04) names itself (``app_id``), so that only its own check run is updated; its
+    buttons (``actions``) and its ``external`` ID go with it."""
     run_id = card["run_id"]
     output = _output(card, run_id)
     first, *rest = _batches(marks)
-    body = {
+    body: dict[str, Any] = {
         "name": CHECK_NAME,
         "status": "completed",
         "conclusion": CONCLUSION[card["status"]],
-        "external_id": run_id,
+        "external_id": external or run_id,
         "output": {**output, "annotations": first},
     }
-    listed = api.get(f"{target.path}/commits/{target.head_sha}/check-runs?check_name={CHECK_NAME}")
-    earlier = sorted(
-        (r for r in (listed or {}).get("check_runs", []) if r.get("name") == CHECK_NAME),
-        key=lambda r: int(r.get("id", 0)),
-    )
+    if actions:
+        body["actions"] = [dict(action) for action in actions]
+    earlier = app_check_runs(api, target.path, target.head_sha, app_id)
     made = None
     if earlier:
         try:
@@ -187,10 +211,13 @@ def _ours(comment: Mapping[str, Any], me: str | None) -> bool:
     return user.get("login") == me if me is not None else user.get("type") == "Bot"
 
 
-def comment(api: GitHubApi, target: Target, card: Mapping[str, Any]) -> str:
-    """Updates Repro's comment on the pull request, or creates it; what was done, in words."""
+def comment(
+    api: GitHubApi, target: Target, card: Mapping[str, Any], *, login: str | None = None
+) -> str:
+    """Updates Repro's comment on the pull request, or creates it; what was done, in words.
+    ``login`` names who writes it, as a GitHub App knows its bot's; else the token's user."""
     body = f"{MARKER}\n" + cut(render(card), BODY_MAX - len(MARKER) - 1, card["run_id"])
-    me = identity(api)
+    me = login or identity(api)
     issue = f"{target.path}/issues/{target.number}/comments"
     mine = [
         c
@@ -231,8 +258,13 @@ def report(
     summary: Path | None,
     check: bool = True,
     comment_on: bool = True,
+    login: str | None = None,
+    app_id: int | None = None,
+    actions: Sequence[Mapping[str, str]] = (),
+    external: str | None = None,
 ) -> Reported:
-    """Each target made or updated; one that fails does not stop the others."""
+    """Each target made or updated; one that fails does not stop the others. A GitHub App
+    (I04) gives its bot's ``login``, its ``app_id``, its check run's buttons and ID."""
     found = Reported()
     steps: list[tuple[str, str, Any]] = []
     if check:
@@ -240,11 +272,25 @@ def report(
             (
                 "the check run",
                 "checks: write",
-                lambda: check_run(api, target, card, annotations(card, events)),
+                lambda: check_run(
+                    api,
+                    target,
+                    card,
+                    annotations(card, events),
+                    app_id=app_id,
+                    actions=actions,
+                    external=external,
+                ),
             )
         )
     if comment_on:
-        steps.append(("the comment", "pull-requests: write", lambda: comment(api, target, card)))
+        steps.append(
+            (
+                "the comment",
+                "pull-requests: write",
+                lambda: comment(api, target, card, login=login),
+            )
+        )
     if summary is not None:
         steps.append(("the job summary", "", lambda: job_summary(summary, card)))
     for what, permission, make in steps:

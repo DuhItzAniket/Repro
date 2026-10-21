@@ -1,6 +1,7 @@
 # ADR-0019: A GitHub App that runs Repro on the owner's machine
 
-- **Status:** proposed
+- **Status:** accepted by the owner (2026-10-21), with the App on the owner's machine through a
+  relay for now
 - **Date:** 2026-10-21
 - **Phase:** I04
 

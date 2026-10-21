@@ -149,6 +149,20 @@ Repro on the pull request, keeps the card as an artifact, reports it, and signs 
 with Repro's predicate through `actions/attest`. Repro's mirror and test maps are cached
 between runs.
 
+**The GitHub App** (I04, ADR-0019, `integrations/github/app*`, `webhook`, `relay`). `repro app
+register` registers it from a manifest: GitHub hands its private key and webhook secret
+straight to Repro's data directory (`github-app/`). `repro app serve` takes deliveries from a
+smee.io relay or a port of its own:
+- each is checked by its signature, then by its delivery ID against those seen before;
+- a pull request from the repository is queued, and a fork's gets a check run asking for a
+  click. A click or a re-run is run only for someone with `admin` or `write`;
+- a worker runs `repro run --pr` in a process of its own, with a token for that one
+  repository, in Docker, and reports the card as I02 does, with the App's ID, its bot's
+  comment and a **Re-run Repro** button.
+
+The App runs on the operator's machine, so its runs can be L5 (K10). Its cards are not
+signed: signing rests on GitHub Actions' identity.
+
 **JavaScript and TypeScript** (K08, ADR-0017). `run.started` records the target's language,
 read from the repository's root (`language.detect`) or given with `--language`. A JavaScript
 run has its own analysis (`analysis/javascript.py`, §9) and its own run and diff stages
