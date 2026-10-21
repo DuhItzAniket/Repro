@@ -12,8 +12,11 @@
 # - Kata Containers 4.2.0's static release under /opt/kata (its Rust runtime, its guest kernel
 #   and image, Cloud Hypervisor and virtiofsd), checked by the release's SHA-256 (GitHub's
 #   asset digest, read on 2026-10-21);
-# - the shim `containerd-shim-kata-clh-v2`: Kata's shim with its shipped Cloud Hypervisor
-#   configuration, and Docker's runtime `kata`, which names it (docs.docker.com/engine/daemon/
+# - Kata's shipped Cloud Hypervisor configuration as its first default configuration,
+#   /etc/kata-containers/runtime-rs/configuration.toml. Kata's runtime reads the first of its
+#   default paths that exists, and accepts no other (`KATA_CONF_FILE` must resolve to one of
+#   them: kata-types `DEFAULT_RUNTIME_CONFIGURATIONS`, runtime-rs `is_shipped_kata_config_path`);
+# - Docker's runtime `kata`, Kata's shim by its path (docs.docker.com/engine/daemon/
 #   alternative-runtimes: a shim's path may be the runtime's `runtimeType`).
 # Cloud Hypervisor shares directories with the microVM (virtio-fs), so Repro's volumes work as
 # they do in a container. Firecracker cannot (its storage is block devices only), which is why
@@ -33,7 +36,7 @@ KATA_SHA256=b828904fa3f1e49ddd7dc799c72cb1503cd1e772d354c3987c8d4189b2a623a8
 CACHE=/var/cache/repro-kata
 KATA_SHIM=/opt/kata/runtime-rs/bin/containerd-shim-kata-v2
 KATA_CLH_CONFIG=/opt/kata/share/defaults/kata-containers/runtime-rs/configuration-clh-runtime-rs.toml
-SHIM=/usr/local/bin/containerd-shim-kata-clh-v2
+KATA_DEFAULT_CONFIG=/etc/kata-containers/runtime-rs/configuration.toml
 TEST_IMAGE=docker.io/library/busybox:1.37.0
 LOG=/var/log/repro-kata-setup.log
 
@@ -94,16 +97,13 @@ tar -C / --zstd -xf "$file"
 for needed in "$KATA_SHIM" /opt/kata/bin/cloud-hypervisor /opt/kata/libexec/virtiofsd "$KATA_CLH_CONFIG"; do
 	[ -e "$needed" ] || { echo "Kata $KATA_VERSION has no $needed"; exit 1; }
 done
-cat > "$SHIM" <<EOF
-#!/bin/bash
-# Kata's shim with its shipped Cloud Hypervisor configuration (repro scripts/kata/setup.sh).
-KATA_CONF_FILE=$KATA_CLH_CONFIG exec $KATA_SHIM "\$@"
-EOF
-chmod 0755 "$SHIM"
+rm -f /usr/local/bin/containerd-shim-kata-clh-v2  # an earlier version's wrapper, refused by Kata
+mkdir -p "$(dirname "$KATA_DEFAULT_CONFIG")"
+ln -sf "$KATA_CLH_CONFIG" "$KATA_DEFAULT_CONFIG"
 
 echo "== Docker's runtime kata"
 mkdir -p /etc/docker
-python3 - "$SHIM" <<'EOF'
+python3 - "$KATA_SHIM" <<'EOF'
 import json, sys
 from pathlib import Path
 path = Path("/etc/docker/daemon.json")
