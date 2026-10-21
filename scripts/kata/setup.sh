@@ -50,18 +50,6 @@ echo "== repro kata setup (Cloud Hypervisor), $(date -u +%FT%TZ)"
 . /etc/os-release
 [ "${VERSION_CODENAME:-}" = noble ] || { echo "Ubuntu 24.04 (noble) only: the pins are noble's"; exit 1; }
 
-# The first version of this script (containerd and nerdctl for Firecracker) stopped before it
-# configured anything; what it unpacked goes, and Docker's own containerd takes its place.
-if [ -f "$CACHE/containerd.tar.gz" ]; then
-	echo "== removing the first attempt's containerd and nerdctl"
-	rm -f /usr/local/bin/containerd /usr/local/bin/containerd-shim-runc-v2 \
-		/usr/local/bin/containerd-stress /usr/local/bin/ctr /usr/local/bin/nerdctl \
-		/etc/systemd/system/containerd.service
-	rm -rf /opt/cni
-	rm -f "$CACHE/containerd.tar.gz" "$CACHE/containerd.service" "$CACHE/nerdctl.tar.gz" "$CACHE/cni.tgz"
-	systemctl daemon-reload
-fi
-
 echo "== packages"
 apt-get update -qq
 apt-get install -y -qq zstd ca-certificates curl gnupg >/dev/null
@@ -97,7 +85,6 @@ tar -C / --zstd -xf "$file"
 for needed in "$KATA_SHIM" /opt/kata/bin/cloud-hypervisor /opt/kata/libexec/virtiofsd "$KATA_CLH_CONFIG"; do
 	[ -e "$needed" ] || { echo "Kata $KATA_VERSION has no $needed"; exit 1; }
 done
-rm -f /usr/local/bin/containerd-shim-kata-clh-v2  # an earlier version's wrapper, refused by Kata
 mkdir -p "$(dirname "$KATA_DEFAULT_CONFIG")"
 ln -sf "$KATA_CLH_CONFIG" "$KATA_DEFAULT_CONFIG"
 

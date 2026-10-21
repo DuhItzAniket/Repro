@@ -546,6 +546,34 @@ jobs:
           uv run --locked pytest engine/tests/test_sandbox_docker.py
           "engine/tests/test_run_stage.py::test_a_run_under_gvisor_is_l4"
 
+  # K10: the container sandbox with each container in a Kata microVM (L5), set up by the same
+  # script as a developer's host. GitHub says nested virtualization is "technically possible" on
+  # its runners but "not officially supported" (docs.github.com, "GitHub-hosted runners", read
+  # 2026-10-21), so the job is not required. The script stops first if /dev/kvm is missing.
+  kata:
+    name: kata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Kata Containers with Cloud Hypervisor as Docker's runtime kata
+        run: sudo bash scripts/kata/setup.sh
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Install Python environment
+        run: uv sync --locked
+      - name: The container sandbox in microVMs
+        env:
+          REPRO_DOCKER_RUNTIME: kata
+          REPRO_REQUIRE_DOCKER: "1"
+        run: >
+          uv run --locked pytest engine/tests/test_sandbox_docker.py
+          "engine/tests/test_run_stage.py::test_a_run_under_kata_is_l5"
+
   # Needs the repository's Dependency graph (Settings -> Code security). Enable it, then set the
   # repository variable DEPENDENCY_REVIEW=true to turn this job on.
   dependency-review:
