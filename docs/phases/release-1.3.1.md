@@ -24,5 +24,8 @@ repository's `.zenodo.json`, which Zenodo reads in place of `CITATION.cff` when 
 ## Published
 - The GitHub release `v1.3.1`, with both wheels attached by the release workflow.
 - PyPI: `repro-events` and then `repro-engine`, 1.3.1.
-- Zenodo: the release's archive and its DOI, added to the README and `CITATION.cff` once
-  Zenodo has made them.
+- Zenodo archived the release on 2026-10-21: [10.5281/zenodo.23524048](https://doi.org/10.5281/zenodo.23524048) for
+  1.3.1, and [10.5281/zenodo.23524047](https://doi.org/10.5281/zenodo.23524047) for every version, the one to cite. The
+  README's badge and `CITATION.cff`'s `doi` are the latter.
+- Checked: `repro-events` and `repro-engine` 1.3.1 are in PyPI's index, and the Zenodo
+  record is titled from `.zenodo.json` (v1.3.1).

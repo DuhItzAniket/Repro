@@ -1,5 +1,7 @@
 # Repro
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23524047.svg)](https://doi.org/10.5281/zenodo.23524047)
+
 **Every agent-written change, reproduced and verified before it merges.**
 
 Repro runs both sides of a pull request (base and head) in isolation, records what each side

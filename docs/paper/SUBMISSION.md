@@ -30,5 +30,6 @@
 - [ ] Publish a release; Zenodo archives it from `.zenodo.json` once the repository is linked
   in Zenodo. Check the metadata first (`ARTIFACT.md`, "Archiving"): the creators' names, the
   licence identifier, the description.
-- [ ] Cite the DOI in the paper's availability section.
+- [ ] Cite the DOI in the paper's availability section: the software's is 10.5281/zenodo.23524047
+  (Zenodo, every version); the study's archive gets its own after J07.
 - [ ] Run `scripts/kick_the_tires.py` on a clean machine before the artifact deadline.
