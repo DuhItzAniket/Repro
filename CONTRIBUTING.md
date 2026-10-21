@@ -27,6 +27,7 @@ Repro is developed phase by phase against a public roadmap. Before you open a PR
 | `install` (Ubuntu, Windows) | The release's wheels built, installed as the README says, and a first run, inside ten minutes |
 | `dependency audit` | Known vulnerabilities in every locked dependency (pip-audit, `pnpm audit`); not required |
 | `gvisor` | The container sandbox under gVisor (L4), escape suite included; not required |
+| `kata` | The container sandbox in Kata microVMs (L5), escape suite included, on GitHub's nested virtualization; not required |
 | `dependency review` (PRs) | Known vulnerabilities (high and above) in dependencies the PR adds or changes. Off until the repository's Dependency graph is enabled and the variable `DEPENDENCY_REVIEW=true` is set |
 
 A nightly workflow runs the frame-cost gate, the full visual suite, and the scale benchmark on

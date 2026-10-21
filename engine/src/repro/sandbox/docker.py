@@ -1,4 +1,4 @@
-"""The container sandbox: L3, or L4 under gVisor (ADR-0004, ARCHITECTURE §8).
+"""The container sandbox: L3; L4 under gVisor, L5 in Kata microVMs (ADR-0004, ARCHITECTURE §8).
 
 A commit is streamed into a Docker volume of its own: its tree object as a tar stream
 (``gitops.tar_tree``: modes and symbolic links exactly as git stores them, whatever the host),
@@ -325,7 +325,8 @@ class DockerSandbox:
     # -- running -----------------------------------------------------------------------------
 
     def ready_payload(self, side: str) -> dict[str, str]:
-        """The ``sandbox.ready`` payload: L3 (L4 under gVisor), the network enforced."""
+        """The ``sandbox.ready`` payload: L3 (L4 under gVisor, L5 in a microVM), the network
+        enforced."""
         runtime = f", runtime {self.runtime}" if self.runtime is not None else ""
         return {
             "side": side,

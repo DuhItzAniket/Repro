@@ -182,7 +182,7 @@ functions or files it concerns, a detail, and, where Repro knows one, what would
 How the run was made: the Python the target's tests ran on (3.13), the platform they ran on
 (with Repro's sandbox image, by its digest, when in a container), the **isolation level**
 reached (`L2` a contained process, `L3` a container with no network, `L4` a container under
-gVisor), whether the network was `enforced` or only `detected-only`, the lock files' digests,
+gVisor, `L5` a container in a microVM with a kernel of its own), whether the network was `enforced` or only `detected-only`, the lock files' digests,
 the tests selected, the random seeds of base's two runs, Repro's version and the models used.
 A card never claims more isolation than the run had.
 

@@ -437,7 +437,7 @@
       }
     },
     {
-      "reason": "isolation level must be L0-L4",
+      "reason": "isolation level must be L0-L5",
       "value": {
         "card_version": 1,
         "run_id": "run_01JBAAHWY00000000000003E08",

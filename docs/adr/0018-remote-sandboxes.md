@@ -69,13 +69,16 @@ What the candidates offer, read on 2026-10-18:
   - `docker_runtime = "kata"` runs every container of a run in a microVM, its volumes over
     virtio-fs.
   - The level is L5, from a probe: a container of the runtime whose kernel is not the engine's.
-  - WSL2 is such a host on Windows 11, which gives it nested virtualization by default.
+  - WSL2 is such a host on Windows 11, which gives it nested virtualization by default. So is
+    GitHub's Ubuntu runner: GitHub calls nested virtualization there "technically possible" but
+    "not officially supported" [V docs.github.com, "GitHub-hosted runners", 2026-10-21], and
+    the setup script ran on it (CI job `kata`).
 
 ## Consequences
 - A adds no code path: the same `DockerSandbox` talks to another engine. Its cost is latency,
   since snapshots and results cross the network, and the engine host's trust: it runs the
   target's code.
 - B and C are where hardware isolation comes from. Both need a Linux host with KVM. K10 found
-  that the owner's machine has one, in WSL2, and tested C there; B is still untested.
+  two: the owner's machine, in WSL2, and GitHub's runners. C is tested on both; B is not yet.
 - Whatever the backend, the card names the isolation level reached. A remote engine is not
   stated as more isolated than it is.

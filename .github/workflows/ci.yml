@@ -573,6 +573,7 @@ jobs:
         run: >
           uv run --locked pytest engine/tests/test_sandbox_docker.py
           "engine/tests/test_run_stage.py::test_a_run_under_kata_is_l5"
+          "engine/tests/test_js_container.py::test_a_change_is_reproduced_in_microvms"
 
   # Needs the repository's Dependency graph (Settings -> Code security). Enable it, then set the
   # repository variable DEPENDENCY_REVIEW=true to turn this job on.

@@ -65,7 +65,7 @@ repro/
 │   ├─ gitops/                 ref resolution, diff parsing, worktrees, .git-less snapshots
 │   ├─ analysis/               symbol table (ast), changed-lines→symbols, import graph (grimp),
 │   │                          blast radius, API extraction (griffe)
-│   ├─ sandbox/                isolation backends: process (L0–L2), docker (L3; L4 with gVisor)
+│   ├─ sandbox/                isolation backends: process (L0–L2), docker (L3; L4 with gVisor, L5 with Kata)
 │   ├─ envs/                   project-type detection, interpreter choice, uv provisioning, env cache
 │   ├─ runner/                 test selection, two-sided execution, reruns, perf passes
 │   ├─ plugin/                 the Repro pytest plugin (shipped INTO the sandbox):
@@ -538,8 +538,8 @@ Rules:
   level reached and `network: detected-only`.
 - **Another machine's engine (K05, `docker_context`).** Every container command goes to the
   Docker context named. Since nothing is bind-mounted from the host (H06), a team's engine
-  over SSH runs the same sandbox. Isolation is that engine's: L3, or L4 with gVisor there.
-  Hardware isolation (microVMs) is ADR-0018, proposed.
+  over SSH runs the same sandbox. Isolation is that engine's: L3, L4 with gVisor there, or L5
+  with Kata.
 - **An image's own environment (J04, `sandbox_image`).** The containers run in that image, at
   L3 as above, and nothing is installed: the tests run with the image's interpreter (its named
   conda environment's, as SWE-bench-style task images have, else `python3`), with that
@@ -557,6 +557,16 @@ Rules:
   owned by uid 1000. Each command runs in a fresh container with the hardening above, pids,
   memory (no swap) and CPU limits, and only Repro's audit hook mounted (read-only). Outputs are
   read back with `docker cp`. `repro doctor` reports the level runs will reach.
+- **L5 as built (K10, ADR-0018 option C):** the same sandbox, with `docker_runtime = "kata"`.
+  Docker runs each container through Kata's shim, in a microVM of Cloud Hypervisor with a
+  kernel of its own; the volumes reach it over virtio-fs, so nothing else changes. When it
+  starts, the sandbox runs `uname -r` in a container of the runtime, with no network, and
+  compares it with `docker info`'s kernel: only a different kernel is L5, whatever the
+  runtime's name. Kata's VM does not apply Docker's pids limit (`pids.max` reads `max` in it),
+  so at L5 the process limit is also uid 1000's `nproc` (`--ulimit`), which counts only the
+  container's processes in a kernel of its own; on a shared kernel it would count the host's
+  processes of that uid too. `scripts/kata/setup.sh` sets up such a host: Docker Engine and
+  Kata 4.2.0, pinned and checked, and a self-test.
 
 ## 9. Static analysis — see ADR-0006
 
