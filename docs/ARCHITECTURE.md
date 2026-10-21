@@ -514,6 +514,7 @@ and job summary) and canonical JSON are F05's.
 | L2 contain | Windows Job Objects (kill-on-close, memory, CPU, process count) or POSIX process groups + rlimits, plus wall-clock timeouts | ✓ | ✓ |
 | L3 enforce | Linux container: `--network none`, read-only root + tmpfs `/tmp` (mounted `exec`; A08 found `noexec` breaks real suites), `--cap-drop ALL`, `no-new-privileges`, non-root, pids/memory/cpu limits, snapshot copied into a volume (no bind-mounted live worktree, no `.git`) | Docker Desktop (WSL2) | Docker / Podman |
 | L4 harden | gVisor `runsc` as Docker's runtime (`docker_runtime = "runsc"`, H03): the target's containers run on a kernel in user space | — | CI job `gvisor` |
+| L5 microVM | Kata Containers as Docker's runtime (`docker_runtime = "kata"`, K10): each container in a VM of its own, with its own kernel (Cloud Hypervisor; the snapshot's volume shared over virtio-fs). The level is probed, never named: a container of the runtime whose kernel is not the engine's | WSL2 with nested virtualization (`scripts/kata/setup.sh`) | a host with KVM (`scripts/kata/setup.sh`) |
 
 Rules:
 - L1 is **detection, not a boundary**. Python's audit-hook docs say hooks are not a sandbox, and

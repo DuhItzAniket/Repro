@@ -43,6 +43,13 @@ answers, and for a JavaScript project only when asked (`docker`).
 installed as Docker's runtime. Install it as [gVisor's guide](https://gvisor.dev/docs/user_guide/install/)
 says (`runsc install`), or unset `docker_runtime` for L3. gVisor runs on Linux only.
 
+**`Docker has no runtime 'kata'`, or a card at L3 with `docker_runtime = "kata"`.** Kata's
+runtime needs a Linux host with KVM, set up once with `sudo bash scripts/kata/setup.sh`
+(Docker Engine, Kata Containers with Cloud Hypervisor, a self-test). On Windows, run it in
+WSL2's Ubuntu: Windows 11 gives WSL2 nested virtualization by default. Docker Desktop cannot
+take Kata's runtime. The card's L5 comes from a probe: a container whose kernel is the
+engine's is L3, whatever the runtime is called.
+
 **`sandbox_image` and `the snapshot's <package> does not import in the image`.** With
 `sandbox_image` set, the tests run in that image's own environment and nothing is installed.
 The change's code must import as it is in the repository. A package that needs building
@@ -158,7 +165,7 @@ them all.
 | Variable | What it sets | Default |
 |---|---|---|
 | `REPRO_SANDBOX` | Where the target's code runs: `docker`, `process`, or `auto` | `auto`: Docker when it answers |
-| `REPRO_DOCKER_RUNTIME` | `runsc` runs containers under gVisor (L4, Linux only) | Docker's default |
+| `REPRO_DOCKER_RUNTIME` | `runsc` runs containers under gVisor (L4, Linux only); `kata`, each in a microVM (L5, a Linux host with KVM) | Docker's default |
 | `REPRO_TEST_TIMEOUT_S` | Each test run's time limit, in seconds | `900` |
 | `REPRO_MEMORY_LIMIT_MB` | Each test run's memory limit | `4096` |
 | `REPRO_DATA_DIR`, `REPRO_RUN_ROOT` | Where runs and scratch copies go | above |
