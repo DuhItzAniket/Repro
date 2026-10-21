@@ -3,6 +3,9 @@
 It serves pull requests, check runs (an update appends its annotations, as GitHub's does) and a
 pull request's comments, in pages of ``per_page`` with ``Link`` headers. ``refuse`` makes a path
 answer 403, as a token without the permission gets. Every request is kept, headers and body.
+
+For a GitHub App (I04) it also gives installation tokens, people's roles on a repository and the
+manifest flow's conversion; check runs it makes carry ``app_id``, and comments are ``bot``'s.
 """
 
 import json
@@ -36,6 +39,14 @@ class FakeGitHub:
     refuse: set[str] = field(default_factory=set)  # path prefixes answered 403
     requests: list[Request] = field(default_factory=list)
     url: str = ""
+    #: A GitHub App's (I04): its ID on the check runs made, its bot as comments' author.
+    app_id: int | None = None
+    bot: str = "github-actions[bot]"
+    #: People's roles on o/r (``admin``, ``write``, ``read``); anyone else's is ``read``.
+    roles: dict[str, str] = field(default_factory=dict)
+    #: The manifest flow's codes and what each converts to.
+    conversions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    tokens: list[str] = field(default_factory=list)
 
     def made(self, method: str, pattern: str) -> list[Request]:
         return [r for r in self.requests if r.method == method and re.search(pattern, r.path)]
@@ -95,9 +106,28 @@ class FakeGitHub:
             server.shutdown()
             server.server_close()
 
-    def answer(  # noqa: PLR0911 - one fake API, one dispatch
+    def _app_answer(self, method: str, path: str) -> tuple[int, Any, dict[str, str]] | None:
+        """A GitHub App's endpoints (I04): tokens, roles and the manifest's conversion."""
+        if method == "POST" and (
+            found := re.fullmatch(r"/app/installations/(\d+)/access_tokens", path)
+        ):
+            token = f"ghs_{found[1]}x{len(self.tokens):04d}" + "t" * 28
+            self.tokens.append(token)
+            return 201, {"token": token, "expires_at": "2026-10-21T12:00:00Z"}, {}
+        if method == "POST" and (
+            found := re.fullmatch(r"/app-manifests/([^/]+)/conversions", path)
+        ):
+            converted = self.conversions.pop(found[1], None)
+            return (201, converted, {}) if converted else (404, {"message": "Not Found"}, {})
+        if found := re.fullmatch(r"/repos/[^/]+/[^/]+/collaborators/([^/]+)/permission", path):
+            return 200, {"permission": self.roles.get(found[1], "read")}, {}
+        return None
+
+    def answer(  # noqa: PLR0911, PLR0912 - one fake API, one dispatch
         self, method: str, path: str, query: dict[str, list[str]], body: Any
     ) -> tuple[int, Any, dict[str, str]] | None:
+        if (app := self._app_answer(method, path)) is not None:
+            return app
         if method == "GET" and path in self.pulls:
             return 200, self.pulls[path], {}
         if method == "GET" and path == "/user":
@@ -110,7 +140,10 @@ class FakeGitHub:
             return 200, {"total_count": len(runs), "check_runs": runs}, {}
         if method == "POST" and re.fullmatch(r"/repos/[^/]+/[^/]+/check-runs", path):
             run = {**body, "id": len(self.check_runs) + 1}
-            run["output"] = {**body["output"], "annotations": list(body["output"]["annotations"])}
+            if self.app_id is not None:
+                run["app"] = {"id": self.app_id}
+            annotated = list(body["output"].get("annotations", []))
+            run["output"] = {**body["output"], "annotations": annotated}
             self.check_runs.append(run)
             return 201, run, {}
         if method == "PATCH" and (
@@ -121,7 +154,7 @@ class FakeGitHub:
             )
             if run_found is None:
                 return None
-            kept = run_found["output"]["annotations"]
+            kept = run_found["output"].get("annotations", [])
             new = body.get("output", {})
             run_found.update({k: v for k, v in body.items() if k != "output"})
             run_found["output"] = {
@@ -133,7 +166,7 @@ class FakeGitHub:
         if found := re.fullmatch(r"/repos/[^/]+/[^/]+/issues/(\d+)/comments", path):
             if method == "POST":
                 made = {"id": 1000 + len(self.comments), "body": body["body"],
-                        "user": {"login": self.login or "github-actions[bot]",
+                        "user": {"login": self.login or self.bot,
                                  "type": "User" if self.login else "Bot"}}  # fmt: skip
                 self.comments.append(made)
                 return 201, made, {}

@@ -18,9 +18,21 @@ All notable changes to this project are documented here. The format follows
 - CI job `kata`: the container sandbox and a run in Kata microVMs on GitHub's runners, which
   allow nested virtualization without supporting it; not required. [K10]
 
+- `repro app register` and `repro app serve`: Repro as a GitHub App on your own machine. It
+  runs each pull request of the repositories it is installed on and reports the card as a check
+  run, with a **Re-run Repro** button, and one comment. Registration uses GitHub's manifest
+  flow, and the App's key and secret go straight into Repro's data directory. Deliveries come
+  through a smee.io relay or a port of the App's own, and each is checked by its signature and
+  delivery ID. A fork's pull request runs only when someone with write access clicks **Run
+  Repro**. Each run has a token for one repository and one hour, and runs in Docker. Settings
+  `app_repositories` and `app_concurrency`. Guide: `docs/guide/github-app.md`. [I04]
+
 ### Changed
 - Event schema: `L5` is an isolation level, and `kata` a sandbox backend, in `run.started`.
   [K10]
+- `repro report`'s reporting takes a reporter's identity, App ID, buttons and external ID, for
+  the GitHub App; the Action's reports are unchanged. PyJWT, already installed, is a direct
+  dependency. [I04]
 
 ## [1.3.1] - 2026-10-21
 

@@ -165,6 +165,8 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `agent_probes` | `REPRO_AGENT_PROBES` | `true`: with agents on, the probe writer proposes inputs for the probes (G07) |
 | `agent_order_swap` | `REPRO_AGENT_ORDER_SWAP` | `contradicted`: which verdicts a second reviewer judges with the evidence in the opposite order (`all`, `off`; G08) |
 | `agent_panel` | `REPRO_AGENT_PANEL` | empty: three models, comma-separated, that each judge every claim; a verdict stands when two agree (G08) |
+| `app_repositories` | `REPRO_APP_REPOSITORIES` | empty: `owner/repo` patterns, comma-separated, narrowing the repositories the GitHub App runs on (I04) |
+| `app_concurrency` | `REPRO_APP_CONCURRENCY` | 1: the GitHub App's runs at once (I04) |
 
 With agents on, `repro run` reads the pull request's claims from `--pr-title` and `--pr-body`
 (or `--pr-file`: the title, then the description), else from the commit messages. Groq's key is

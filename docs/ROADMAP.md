@@ -592,14 +592,15 @@ repos) a signed attestation, and re-running updates rather than duplicates them.
 | I01 | PR ingestion | M | H05 | done |
 | I02 | Check run, sticky comment & job summary | M | I01 | done |
 | I03 | GitHub Action & attestation signing | M | I02, H04 | done |
-| I04 | GitHub App (optional) | L | I03 | deferred: built only if users ask |
+| I04 | GitHub App (optional) | L | I03 | done ([#117](https://github.com/DuhItzAniket/Repro/pull/117)), at the owner's request (2026-10-21) |
 
 **I01** PR URL → refs, description, commits (gh/API, token from env), fork handling.
 **I02** Conclusion mapping (VERIFIED→success, FLAGGED→failure or action_required, UNVERIFIABLE→
 neutral), annotations in batches of 50, sticky comment found by a hidden marker, under 60k
 characters, job summary. **I03** Docker-based Action for Linux runners, caching,
 `actions/attest` with the Repro predicate. **I04** Webhooks, re-run button, org config. Built
-only if users ask for it.
+only if users ask for it. **Done (I04, ADR-0019):** built on the owner's request; `repro app
+register` and `serve`, on the operator's machine through a relay or a port of its own.
 
 ---
 
@@ -787,3 +788,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Release 1.3.0 | 2026-10-20 | [#111](https://github.com/DuhItzAniket/Repro/pull/111) | JavaScript and TypeScript end to end (K06–K08, K11), the fixes #106, #108 and #109, Dependabot's updates; published to PyPI |
 | Release 1.3.1 | 2026-10-21 | [#114](https://github.com/DuhItzAniket/Repro/pull/114) | A patch release with no code change: CI's timeout (#112), the Marketplace docs (#113); the first release archived on Zenodo, for a DOI |
 | K10 | 2026-10-21 | [#116](https://github.com/DuhItzAniket/Repro/pull/116) | Isolation level L5: each container in a Kata microVM with Cloud Hypervisor, under Docker (`docker_runtime = "kata"`), the level probed from the container's kernel; uid 1000's `nproc` as the process limit there (Kata's VM applies no pids limit, measured); `scripts/kata/setup.sh`, tested in WSL2 and in CI's `kata` job on GitHub's nested virtualization |
+| I04 | 2026-10-21 | [#117](https://github.com/DuhItzAniket/Repro/pull/117) | The GitHub App (ADR-0019): `repro app register` from a manifest (the key and secret straight into the data directory), `repro app serve` from a smee.io relay or a port; deliveries checked by signature and ID; a repository's pull requests run, a fork's on a write user's click; a one-repository token per run, in Docker; the card with the App's ID, its bot's comment and a Re-run button. Live trial in WSL2 at L5: 11 relayed deliveries all checked, FLAGGED in 72 s; a re-run fault found and fixed (a new check run each run) |

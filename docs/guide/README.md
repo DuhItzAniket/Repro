@@ -7,6 +7,7 @@
 | [`repro.yml`](repro-yml.md) | Set the invariants every change in your repository must keep |
 | [Troubleshooting](troubleshooting.md) | Fix what goes wrong before, around or during a run |
 | [In GitHub Actions](github-action.md) | Run Repro on every pull request, and sign its card |
+| [As a GitHub App](github-app.md) | Run Repro on your own machine for the pull requests of every repository you install it on |
 | [For agents (MCP)](mcp.md) | Let a coding agent ask Repro to verify its change, and read the card |
 | [The demo](demo.md) | See one run, from the command to the card |
 | [For contributors](for-contributors.md) | Find your way around the code: a run, end to end |
