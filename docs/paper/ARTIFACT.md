@@ -54,6 +54,9 @@ call `openai/gpt-oss-120b` (and `qwen/qwen3.8-27b` for generation) on Groq. They
 `--mode replay` and no key, and returns the same answers.
 
 ## Archiving (the owner)
+- **The software is archived:** Zenodo's GitHub integration has archived each release from
+  v1.3.1 (2026-10-21). Concept DOI [10.5281/zenodo.23524047](https://doi.org/10.5281/zenodo.23524047). The study's
+  artifact, with its results, is archived after J07, as below.
 - `.zenodo.json` and `CITATION.cff` at the repository's root describe the software. Zenodo's
   GitHub integration reads `.zenodo.json` when a release is published [developers.zenodo.org].
 - Before the first archive, check them:
