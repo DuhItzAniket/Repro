@@ -34,7 +34,8 @@ if not docker_available():
 
 #: The containers' runtime: unset (Docker's default, L3) or gVisor's (L4).
 RUNTIME = os.environ.get("REPRO_DOCKER_RUNTIME") or None
-LEVEL = "L4" if RUNTIME == GVISOR else "L3"
+#: K10: a Kata runtime (``scripts/kata/setup.sh`` names it ``kata``) gives a microVM, L5.
+LEVEL = "L4" if RUNTIME == GVISOR else "L5" if (RUNTIME or "").startswith("kata") else "L3"
 
 
 ESCAPES = {

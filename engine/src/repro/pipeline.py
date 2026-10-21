@@ -33,7 +33,7 @@ from repro.policy import FILE as POLICY_FILE
 from repro.policy.stage import read_policy
 from repro.run_stage import Backend, RunState, run_jobs, use_docker
 from repro.sandbox import Limits
-from repro.sandbox.docker import GVISOR
+from repro.sandbox.docker import GVISOR, KATA_NAMES
 from repro.store import ArtifactStore
 
 #: A run's log lists at most this many skipped entries or problems one by one.
@@ -82,12 +82,15 @@ class Change:
 
 def run_backend(backend: Backend, docker_runtime: str | None, *, runs_code: bool) -> SandboxBackend:
     """The sandbox a run uses, decided once for its jobs and ``run.started``: ``gvisor`` when its
-    containers run under gVisor. ``auto`` asks Docker only if the run will run the target's code;
-    a run that only analyses records it as ``process``. Python and JavaScript alike (K11: the
-    JavaScript container has Node)."""
+    containers run under gVisor, ``kata`` under a runtime named as Kata's is (K10; the level the
+    card states is probed, not named). ``auto`` asks Docker only if the run will run the
+    target's code; a run that only analyses records it as ``process``. Python and JavaScript
+    alike (K11: the JavaScript container has Node)."""
     if not (use_docker(backend) if runs_code else backend == "docker"):
         return "process"
-    return "gvisor" if docker_runtime == GVISOR else "docker"
+    if docker_runtime == GVISOR:
+        return "gvisor"
+    return "kata" if docker_runtime and docker_runtime.startswith(KATA_NAMES) else "docker"
 
 
 def _snapshot_job(git: Git, side: str, sha: str, work: Path) -> Job:

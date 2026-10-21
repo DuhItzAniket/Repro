@@ -16,7 +16,10 @@ nothing of the host is bind-mounted. Each command then runs in a fresh container
 With ``runtime="runsc"``, the containers that run the target's code run under gVisor, a kernel
 in user space between them and the host's (L4, H03; installed as https://gvisor.dev/docs/
 user_guide/install/ says, checked 2026-10-17). The sandbox checks that Docker has the runtime
-before it starts; any other runtime named is passed on, and the level stays L3.
+before it starts. Any other runtime named is passed on, and its level is what a probe sees
+(K10): a container of that runtime whose kernel is not the engine's has a kernel of its own, a
+microVM such as Kata Containers' (L5); otherwise the level stays L3. The name is never trusted
+for it: ``scripts/kata/setup.sh`` names Kata's runtime ``kata``, but any name would do.
 
 L1 detection still runs inside, so blocked attempts are still recorded. What a command leaves
 (its audit log, result files) is read back with ``docker cp`` after it ends: no host directory
@@ -104,6 +107,8 @@ def docker_available(docker: str = "docker") -> bool:
 
 #: gVisor's Docker runtime: the one that makes a container L4.
 GVISOR: Final = "runsc"
+#: The names a Kata Containers runtime goes by, for ``run.started`` (K10); its level is probed.
+KATA_NAMES: Final = ("kata", "io.containerd.kata")
 
 
 class DockerSandbox:
@@ -145,6 +150,8 @@ class DockerSandbox:
             self._check_runtime(runtime)
         if not self._docker("image", "inspect", "--format", "{{.Id}}", self.image, check=False):
             self._docker("pull", "--quiet", self.image)
+        #: Whether the runtime gives each container a kernel of its own (K10): probed.
+        self.own_kernel = runtime not in (None, GVISOR) and self._own_kernel(runtime)
         self._docker("volume", "create", self.volume)
         try:
             self._load_hook()
@@ -155,8 +162,21 @@ class DockerSandbox:
 
     @property
     def isolation_level(self) -> str:
-        """L4 under gVisor, else L3 (any other runtime is not known to add a layer)."""
-        return "L4" if self.runtime == GVISOR else "L3"
+        """L4 under gVisor; L5 when the runtime gave a container a kernel of its own (a microVM,
+        K10); else L3."""
+        if self.runtime == GVISOR:
+            return "L4"
+        return "L5" if self.own_kernel else "L3"
+
+    def _own_kernel(self, runtime: str) -> bool:
+        """Whether a container of ``runtime`` runs on a kernel other than the engine's: its
+        ``uname -r`` from Repro's own image, with no network, against ``docker info``'s."""
+        host = self._docker("info", "--format", "{{.KernelVersion}}").decode().strip()
+        guest = self._docker(
+            "run", "--rm", "--runtime", runtime, "--network", "none",
+            "--entrypoint", "uname", self.image, "-r", check=False,
+        ).decode().strip()  # fmt: skip
+        return bool(host) and bool(guest) and guest != host
 
     def _check_runtime(self, runtime: str) -> None:
         listed = self._docker("info", "--format", "{{json .Runtimes}}").decode().strip()

@@ -177,13 +177,13 @@
     },
     "IsolationLevel": {
       "description": "Highest isolation layer actually achieved (ARCHITECTURE §8).",
-      "enum": ["L0", "L1", "L2", "L3", "L4"]
+      "enum": ["L0", "L1", "L2", "L3", "L4", "L5"]
     },
     "NetworkEnforcement": {
       "enum": ["enforced", "detected-only"]
     },
     "SandboxBackend": {
-      "enum": ["process", "docker", "gvisor"]
+      "enum": ["process", "docker", "gvisor", "kata"]
     },
     "AgentRole": {
       "enum": ["read", "build", "review", "gap", "probe", "qa"]

@@ -425,6 +425,22 @@ def test_a_run_under_gvisor_is_l4(tmp_path: Path) -> None:
     assert card["conditions"]["isolation_level"] == "L4"
 
 
+@pytest.mark.skipif(
+    os.environ.get("REPRO_DOCKER_RUNTIME") != "kata",
+    reason="Kata's runtime is not in use (a Linux host with KVM: scripts/kata/setup.sh)",
+)
+def test_a_run_under_kata_is_l5(tmp_path: Path) -> None:
+    """K10: the same fixture, end to end, each container in a microVM of Kata's: the same
+    evidence, and the card states the layer the probe saw, a kernel of each container's own."""
+    events = run_fixture("test-tamper", tmp_path, "docker", REPRO_DOCKER_RUNTIME="kata")
+    check_against_expectation("test-tamper", events)
+    ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
+    assert {(r["isolation_level"], r["network"]) for r in ready} == {("L5", "enforced")}
+    assert started_backend(events) == "kata"
+    (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
+    assert card["conditions"]["isolation_level"] == "L5"
+
+
 @docker
 def test_no_network_rests_on_enforcement_in_containers(tmp_path: Path) -> None:
     """F03: where the sandbox has no network, no_network's pass says so, and no

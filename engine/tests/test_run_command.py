@@ -322,6 +322,7 @@ def run_started_backend(events: list[dict[str, Any]]) -> str:
         ({"REPRO_SANDBOX": "process"}, "process"),
         ({"REPRO_SANDBOX": "docker"}, "docker"),
         ({"REPRO_SANDBOX": "docker", "REPRO_DOCKER_RUNTIME": "runsc"}, "gvisor"),
+        ({"REPRO_SANDBOX": "docker", "REPRO_DOCKER_RUNTIME": "kata"}, "kata"),
         ({"REPRO_SANDBOX": "auto"}, "process"),  # nothing runs: Docker is not asked
     ],
 )

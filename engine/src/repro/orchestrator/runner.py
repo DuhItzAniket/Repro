@@ -44,7 +44,7 @@ log = get_logger("orchestrator")
 
 RunOutcome = Literal["completed", "failed", "cancelled"]
 #: The sandbox a run's target code runs in, as ``run.started`` names it.
-SandboxBackend = Literal["process", "docker", "gvisor"]
+SandboxBackend = Literal["process", "docker", "gvisor", "kata"]
 #: How long a cancelled run waits for its running jobs to notice before abandoning them.
 CANCEL_GRACE_S: Final = 5.0
 #: How long the end of a run waits for its events to be committed.
