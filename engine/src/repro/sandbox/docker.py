@@ -19,7 +19,10 @@ user_guide/install/ says, checked 2026-10-17). The sandbox checks that Docker ha
 before it starts. Any other runtime named is passed on, and its level is what a probe sees
 (K10): a container of that runtime whose kernel is not the engine's has a kernel of its own, a
 microVM such as Kata Containers' (L5); otherwise the level stays L3. The name is never trusted
-for it: ``scripts/kata/setup.sh`` names Kata's runtime ``kata``, but any name would do.
+for it: ``scripts/kata/setup.sh`` names Kata's runtime ``kata``, but any name would do. Kata's
+VM does not apply Docker's pids limit (its ``pids.max`` reads ``max``, measured in K10), so in
+a kernel of its own the process limit is also uid 1000's ``nproc``: only the container runs as
+that user there. On a shared kernel that limit would count the host's processes of the uid too.
 
 L1 detection still runs inside, so blocked attempts are still recorded. What a command leaves
 (its audit log, result files) is read back with ``docker cp`` after it ends: no host directory
@@ -431,6 +434,7 @@ class DockerSandbox:
 
     def _hardening(self) -> list[str]:
         memory = str(self.limits.memory_bytes)
+        processes = self.limits.processes
         return [
             *(["--runtime", self.runtime] if self.runtime is not None else []),
             "--network", "none",
@@ -440,6 +444,7 @@ class DockerSandbox:
             "--security-opt", "no-new-privileges",
             "--user", USER,
             "--pids-limit", str(self.limits.processes),
+            *(["--ulimit", f"nproc={processes}:{processes}"] if self.own_kernel else []),
             "--memory", memory,
             "--memory-swap", memory,  # equal to --memory: no swap
             "--cpus", f"{self.limits.cpus:g}",

@@ -268,7 +268,7 @@ def test_a_fork_bomb_meets_the_pids_limit(tmp_path: Path) -> None:
         # and a limit this low can end it before the first process writes its line.
         assert len(started) <= limit
         assert run.outcome == "timeout" or run.returncode != 0, run
-    else:  # runc: the forks fail, and the bomb sleeps on until its timeout
+    else:  # runc, or Kata with uid 1000's nproc (K10): the forks fail, and the bomb sleeps on
         assert 1 <= len(started) <= limit
         assert run.outcome == "timeout"
 
