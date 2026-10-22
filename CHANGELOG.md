@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `sandbox = "e2b"`: each side of a run in a Firecracker microVM of a self-hosted E2B
+  (Embed), at L5. Each side is sealed before any of the target's code runs:
+  - its network is closed by the VM's own kernel firewall, and checked from inside;
+  - the code runs as a user without sudo.
+
+  E2B's own egress firewall was measured letting TCP to numbered addresses through, so it
+  is only a second layer. Settings `e2b_memory_mb` and `e2b_cpus`, and E2B's SDK as the
+  `e2b` extra. CI job `e2b`. [K09]
+
+### Changed
+- Event schema: `e2b` is a sandbox backend. [K09]
+- The runners treat every sandbox whose snapshot is elsewhere alike (`RemoteSandbox`):
+  Docker's and E2B's. [K09]
+
 ## [1.4.0] - 2026-10-22
 
 Isolation level L5, each container in a Kata microVM (K10), and Repro as a GitHub App on the

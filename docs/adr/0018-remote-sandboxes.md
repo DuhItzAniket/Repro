@@ -47,6 +47,27 @@ What the candidates offer, read on 2026-10-18:
     enforces;
   - each microVM is its own kernel: a new isolation level, L5, which is a change to the event
     schema's isolation values and needs the owner's approval.
+
+  **As built (K09): `sandbox = "e2b"`, on E2B's self-hosted Embed.** What K09 found, on
+  2026-10-22 and 23:
+  - Embed runs the whole stack on one Linux host with KVM, kernel 6.8 or newer
+    [V e2b-dev/runtime, `embed/compose/README.md`]. WSL2's kernel was 6.6 until WSL 3.0.3,
+    which ships 6.18.54 [V microsoft/WSL release 3.0.3].
+  - Its builder takes no `COPY --from`, so the template follows Repro's image recipe step by
+    step: the same base by digest, the same packages, uv 0.13.0 by its wheels' SHA-256.
+  - **E2B's egress firewall was not enforcement there.** Told to deny every address, by
+    `allow_internet_access=False`, `deny_out` or `update_network`, E2B stopped names
+    resolving, but TCP to an address by number still connected (`1.1.1.1:443`,
+    `8.8.8.8:443`, measured in each). So the network is closed by the VM's own kernel:
+    - root adds an nftables rule that rejects every packet the target's user sends, but to
+      loopback;
+    - that user (`repro`, uid 1001) has no sudo, unlike E2B's own `user`;
+    - a probe from inside must fail to reach the index by name and two addresses by number,
+      or the side has no sandbox.
+
+    E2B's deny is kept as a second layer.
+  - A VM's lifetime is at most an hour ("Timeout cannot be greater than 1 hours"), so each
+    command renews it.
 - **C. Kata with Firecracker (design).** No new sandbox: a containerd host where the `kata-fc`
   runtime class runs Repro's containers. It is reached as in A if that host's engine exposes
   the runtime. A Kubernetes job per side would need its own sandbox class, like B.

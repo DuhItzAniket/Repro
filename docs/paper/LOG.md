@@ -744,3 +744,25 @@ entry. If something turns out wrong, add a correcting entry.
   - a fake service tests the protocol, not how the real one shows its state, so the trial on
     GitHub itself found what the suite could not.
 
+## 2026-10-23 · K09 · A sandbox's firewall, configured and not enforced
+- **Setup:** the E2B sandbox ([phase record](../phases/K09-e2b.md)). Each side of a run is a
+  Firecracker microVM of E2B's self-hosted stack (Embed, `e2b-dev/runtime` at `c92e06b`) on
+  WSL2, kernel 6.18.54.
+- **What was asked, and what held:**
+  - E2B was told to deny every outbound address, in each of the four ways its SDK offers;
+  - in each, names stopped resolving, but TCP to an address by number still connected
+    (`1.1.1.1:443`, `8.8.8.8:443`);
+  - with only the package index allowed, `example.com:80` connected too.
+- **How Repro found it:** its seal ends with a probe from inside the VM, and the probe
+  refused to call the network closed. The first live run of the sandbox stopped there,
+  before any target code ran. The sandbox now closes the network in the VM's own kernel
+  (nftables, by the target's user ID), and the target runs as a user without sudo. The same
+  probe passes.
+- **For the paper:**
+  - an isolation layer's documentation, or its configuration, is not evidence that it holds.
+    A card's network field should rest on a check made from inside the sandbox, before the
+    target's code runs, as Repro's does;
+  - this is the second such case: in K10, Kata's microVM dropped Docker's process limit;
+  - a stronger boundary in one respect (a kernel of its own) came with a weaker one in
+    another, found only because the same checks run at every level.
+
