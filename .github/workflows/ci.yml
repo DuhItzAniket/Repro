@@ -595,7 +595,7 @@ jobs:
           base="https://raw.githubusercontent.com/e2b-dev/runtime/$E2B_RUNTIME/embed/compose"
           curl -fsSL -o compose.yaml "$base/compose.yaml"
           curl -fsSL -o .env "$base/.env"
-          echo "ba1c32fc0a29db5e8b24af015adb216d4569aa7a41aeffec2d2b98298fc5d99  compose.yaml" | sha256sum -c
+          echo "ba1c32fc02a29db5e8b24af015adb216d4569aa7a41aeffec2d2b98298fc5d99  compose.yaml" | sha256sum -c
           echo "9e647bc41cd12970367af7cba5f08a9787c6ea2fc6af5031aaad8d6a6903ed69  .env" | sha256sum -c
           sudo modprobe nbd || sudo apt-get install -y "linux-modules-extra-$(uname -r)"
           echo "PF_MIN_FREE_GIB=8" >> .env
