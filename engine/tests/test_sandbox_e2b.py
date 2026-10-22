@@ -109,6 +109,7 @@ class FakeVM:
         self.written: dict[str, tuple[bytes, str | None]] = {}
         self.readable: dict[str, bytes] = {}
         self.network: list[dict[str, Any]] = []
+        self.lifetimes: list[int] = []
         self.handles: list[Handle] = []
         self.closed = False  # whether the network is closed
         self.hang = False
@@ -116,6 +117,9 @@ class FakeVM:
         self.killed = False
         self.commands = Commands(self)
         self.files = Files(self)
+
+    def set_timeout(self, seconds: int) -> None:
+        self.lifetimes.append(seconds)
 
     def update_network(self, network: dict[str, Any]) -> None:
         self.network.append(network)
@@ -263,6 +267,8 @@ def test_commands_run_as_the_user_under_its_process_limit_with_the_hook_first(
     assert options["envs"]["PYTHONPATH"] == "/opt/repro/hook:/extra"
     assert options["envs"]["REPRO_AUDIT_LOG"].startswith("/work/.repro/audit-")
     assert (done.outcome, done.returncode, done.stdout) == ("exited", 0, b"out\n")
+    assert vm_of(sdk).options["timeout"] == 3600  # E2B's most (K09)
+    assert vm_of(sdk).lifetimes == [3600]  # renewed by the command
 
 
 def test_a_command_past_its_time_is_killed(

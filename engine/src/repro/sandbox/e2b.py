@@ -55,8 +55,10 @@ ALL_TRAFFIC: Final = "0.0.0.0/0"
 #: The user commands run as: E2B's own unprivileged user in every template.
 RUN_AS: Final = "user"
 ROOT: Final = "root"
-#: How long a VM may live: longer than any run's jobs together (``job_timeout``).
-LIFETIME_S: Final = 4 * 3600
+#: How long a VM may live from now: the most E2B allows ("Timeout cannot be greater than 1
+#: hours", K09). Each command renews it, and so does a long one every ``RENEW_S``.
+LIFETIME_S: Final = 3600
+RENEW_S: Final = 600.0
 #: What the seal's probe tries: the index, and an address outside it. Each must fail.
 _PROBE: Final = """
 import socket, sys
@@ -331,7 +333,8 @@ class E2BSandbox(RemoteSandbox):
         limit = self.limits.processes
         command = f"ulimit -u {limit}; exec {shlex.join(argv)}"
         timeout = timeout_s if timeout_s is not None else self.limits.timeout_s
-        started = time.monotonic()
+        self._renew()
+        started = renewed = time.monotonic()
         outcome: Outcome = "exited"
         out: list[str] = []
         err: list[str] = []
@@ -358,6 +361,9 @@ class E2BSandbox(RemoteSandbox):
             if stop is not None and stop():
                 outcome = "stopped"
                 break
+            if time.monotonic() - renewed > RENEW_S:
+                self._renew()
+                renewed = time.monotonic()
             waiter.join(POLL_S)
         if waiter.is_alive():
             _kill(handle)
@@ -383,6 +389,13 @@ class E2BSandbox(RemoteSandbox):
             detections=read_detections(log_path) if log else Detections((), 0, truncated=False),
             oom_killed=code == 137,  # noqa: PLR2004 - SIGKILL, as the kernel's OOM killer sends
         )
+
+    def _renew(self) -> None:
+        """The VM's lifetime, from now, ``LIFETIME_S`` again."""
+        try:
+            self.vm.set_timeout(LIFETIME_S)
+        except self._e2b.SandboxException as exc:
+            raise SandboxError(f"E2B could not keep the sandbox alive: {exc}") from None
 
     def _environment(self, audit: str, extra: Mapping[str, str] | None) -> dict[str, str]:
         """As the Docker sandbox's: a home in ``/tmp``, the hook first on the import path."""
