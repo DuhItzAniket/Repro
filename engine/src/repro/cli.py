@@ -624,6 +624,7 @@ def run(
         ),
         docker_runtime=settings.docker_runtime,
         env_image=settings.sandbox_image,
+        e2b_size=(settings.e2b_memory_mb, settings.e2b_cpus),
     )
     cleaned = threading.Lock()
 
