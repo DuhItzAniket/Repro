@@ -125,6 +125,8 @@ uv run repro symbolic --repo <path> --base <ref> --head <ref>  # K04, experiment
                                           # diffbehavior on the small pure functions a change edits
 sudo bash scripts/kata/setup.sh          # K10, once, on Ubuntu 24.04 with KVM (WSL2 works): Docker
                                           # and Kata microVMs; then REPRO_DOCKER_RUNTIME=kata for L5
+uv sync --extra e2b                      # K09: E2B's SDK; with E2B Embed running (its compose guide)
+                                          # and its sdk.env exported, REPRO_SANDBOX=e2b runs at L5
 
 uv run python scripts/build_wheels.py      # H05: the release's two wheels in dist/wheels (pnpm build first)
 uv run python scripts/install_check.py dist/wheels   # H05: the README's install + a first run, timed

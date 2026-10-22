@@ -51,7 +51,8 @@ from typing import Any, Final, Literal, Protocol
 from repro import jsmap, jstrace
 from repro.gitops import Git, snapshot
 from repro.sandbox import GIB, DockerSandbox, Execution, Limits, ProcessSandbox, SandboxError
-from repro.sandbox.docker import TMP, TMPFS_SIZE, USER, WORK
+from repro.sandbox.docker import TMPFS_SIZE
+from repro.sandbox.remote import TMP, USER, WORK
 
 Runner = Literal["vitest", "jest"]
 Manager = Literal["npm", "pnpm", "yarn"]

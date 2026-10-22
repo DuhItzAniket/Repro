@@ -28,6 +28,7 @@ Repro is developed phase by phase against a public roadmap. Before you open a PR
 | `dependency audit` | Known vulnerabilities in every locked dependency (pip-audit, `pnpm audit`); not required |
 | `gvisor` | The container sandbox under gVisor (L4), escape suite included; not required |
 | `kata` | The container sandbox in Kata microVMs (L5), escape suite included, on GitHub's nested virtualization; not required |
+| `e2b` | The E2B sandbox on real Firecracker microVMs (L5), E2B's self-hosted stack started from a pinned commit; not required |
 | `dependency review` (PRs) | Known vulnerabilities (high and above) in dependencies the PR adds or changes. Off until the repository's Dependency graph is enabled and the variable `DEPENDENCY_REVIEW=true` is set |
 
 A nightly workflow runs the frame-cost gate, the full visual suite, and the scale benchmark on

@@ -86,6 +86,8 @@ def run_backend(backend: Backend, docker_runtime: str | None, *, runs_code: bool
     card states is probed, not named). ``auto`` asks Docker only if the run will run the
     target's code; a run that only analyses records it as ``process``. Python and JavaScript
     alike (K11: the JavaScript container has Node)."""
+    if backend == "e2b":  # K09: a microVM per side, wherever E2B runs
+        return "e2b" if runs_code else "process"
     if not (use_docker(backend) if runs_code else backend == "docker"):
         return "process"
     if docker_runtime == GVISOR:
@@ -261,13 +263,18 @@ def pipeline_jobs(
     docker_runtime: str | None = None,
     env_image: str | None = None,
     js: JsOptions | None = None,
+    e2b_size: tuple[int, int] = (1024, 2),
 ) -> tuple[Sequence[Job], RunState]:
     """Every job of a run, and the state they share (close it when the run is over). The
     sandboxes are ``change.sandbox_backend``'s (``run_backend``). With ``cards``, the card stage
     ends the run (F05); with ``agents``, the agent stages run (G04). A JavaScript change's run
     and diff stages are ``repro.js_stage``'s (K08), made as ``js`` says."""
     state = JsState() if change.language == "javascript" else RunState()
-    backend: Backend = "process" if change.sandbox_backend == "process" else "docker"
+    backend: Backend = (
+        "process" if change.sandbox_backend == "process"
+        else "e2b" if change.sandbox_backend == "e2b"
+        else "docker"
+    )  # fmt: skip
     jobs: list[Job] = []
     if agents is not None:
         text = pr if pr is not None else PrText(())
@@ -312,6 +319,7 @@ def pipeline_jobs(
             limits=limits,
             docker_runtime=docker_runtime,
             env_image=env_image,
+            e2b_size=e2b_size,
         )
     if agents is not None and cards is not None:
         others = [job.name for job in jobs]

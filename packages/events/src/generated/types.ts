@@ -134,7 +134,7 @@ export type IsolationLevel = "L0" | "L1" | "L2" | "L3" | "L4" | "L5";
 
 export type NetworkEnforcement = "enforced" | "detected-only";
 
-export type SandboxBackend = "process" | "docker" | "gvisor" | "kata";
+export type SandboxBackend = "process" | "docker" | "gvisor" | "kata" | "e2b";
 
 export type AgentRole = "read" | "build" | "review" | "gap" | "probe" | "qa";
 

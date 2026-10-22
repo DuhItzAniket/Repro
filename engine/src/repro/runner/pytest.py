@@ -33,8 +33,8 @@ from typing import Any, Final, Literal
 
 from repro.provision.env import Environment
 from repro.runner.pytest_config import selection
-from repro.sandbox.docker import WORK, DockerSandbox
 from repro.sandbox.process import Execution, ProcessSandbox, read_head
+from repro.sandbox.remote import WORK, RemoteSandbox
 
 TestOutcome = Literal["passed", "failed", "skipped", "xfailed", "xpassed", "error"]
 OUTCOMES: Final[frozenset[str]] = frozenset(
@@ -468,7 +468,7 @@ def _selection(tests: Sequence[str]) -> tuple[list[str], dict[str, bytes], dict[
 
 
 def run_tests(
-    sandbox: ProcessSandbox | DockerSandbox,
+    sandbox: ProcessSandbox | RemoteSandbox,
     env: Environment,
     *,
     tests: Sequence[str] = (),
@@ -495,7 +495,7 @@ def run_tests(
     files, named, plain = _tracing(trace, previews, samples)
     tests, chosen, chosen_named = _selection(tests)
     files, named = files | chosen, named | chosen_named
-    if isinstance(sandbox, DockerSandbox):
+    if isinstance(sandbox, RemoteSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
         root = sandbox.container_path(directory or ".")

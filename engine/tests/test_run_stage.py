@@ -441,6 +441,30 @@ def test_a_run_under_kata_is_l5(tmp_path: Path) -> None:
     assert card["conditions"]["isolation_level"] == "L5"
 
 
+#: K09: E2B's tests run where a self-hosted E2B answers: its SDK's variables set (E2B_API_KEY,
+#: and E2B_API_URL or E2B_DOMAIN) and REPRO_E2B_LIVE=1 (CI's e2b job, or a host with KVM).
+e2b_live = pytest.mark.skipif(
+    os.environ.get("REPRO_E2B_LIVE") != "1",
+    reason="no self-hosted E2B to reach (REPRO_E2B_LIVE=1, E2B_API_KEY, E2B_API_URL)",
+)
+
+
+@e2b_live
+def test_a_run_in_e2b_is_l5(tmp_path: Path) -> None:
+    """K09: the same fixture, end to end, each side in a Firecracker microVM of E2B's, sealed
+    by its own kernel's firewall: the same evidence, and the card at L5, its network enforced."""
+    memory = os.environ.get("REPRO_E2B_MEMORY_MB", "512")
+    events = run_fixture("test-tamper", tmp_path, "e2b", REPRO_E2B_MEMORY_MB=memory)
+    check_against_expectation("test-tamper", events)
+    ready = [e["payload"] for e in events if e["kind"] == "sandbox.ready"]
+    assert {(r["backend"], r["isolation_level"], r["network"]) for r in ready} == {
+        ("e2b", "L5", "enforced")
+    }
+    assert started_backend(events) == "e2b"
+    (card,) = [e["payload"]["card"] for e in events if e["kind"] == "card.published"]
+    assert card["conditions"]["isolation_level"] == "L5"
+
+
 @docker
 def test_no_network_rests_on_enforcement_in_containers(tmp_path: Path) -> None:
     """F03: where the sandbox has no network, no_network's pass says so, and no

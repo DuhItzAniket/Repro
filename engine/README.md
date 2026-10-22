@@ -147,7 +147,9 @@ TOML file (`REPRO_CONFIG`, else `config.toml` in the data directory), the defaul
 | `log_level` | `REPRO_LOG_LEVEL` | `info` (`debug`, `info`, `warning`, `error`) |
 | `log_format` | `REPRO_LOG_FORMAT` | `json` (one object per line on stderr), or `text` |
 | `concurrency` | `REPRO_CONCURRENCY` | the CPU count, at most 4 (1–64) |
-| `sandbox` | `REPRO_SANDBOX` | `auto` (`docker`, `process`) |
+| `sandbox` | `REPRO_SANDBOX` | `auto` (`docker`, `process`; `e2b`: a microVM per side in a self-hosted E2B, L5, K09, with the `e2b` extra and E2B's own `E2B_API_KEY` and `E2B_API_URL`) |
+| `e2b_memory_mb` | `REPRO_E2B_MEMORY_MB` | 1024: an E2B microVM's memory, which is its tests' limit (K09) |
+| `e2b_cpus` | `REPRO_E2B_CPUS` | 2: an E2B microVM's CPUs (K09) |
 | `ui_dir` | `REPRO_UI_DIR` | this checkout's `apps/web/dist`, if built (`pnpm build`) |
 | `agents` | `REPRO_AGENTS` | `off`: deterministic only (`claude`, `groq`, `openai`) |
 | `agent_model` | `REPRO_AGENT_MODEL` | the backend's per-role models (`repro.agents.setup`) |

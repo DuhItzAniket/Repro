@@ -6,6 +6,10 @@ version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = ["repro-engine", "repro-bench", "repro-events"]
 
+[project.optional-dependencies]
+# `uv sync --extra e2b`: the E2B sandbox's SDK (K09), as repro-engine[e2b].
+e2b = ["repro-engine[e2b]"]
+
 [dependency-groups]
 dev = [
   "pytest>=9.1.1",

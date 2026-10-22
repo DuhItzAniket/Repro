@@ -31,7 +31,6 @@ is writable from inside.
 
 import io
 import json
-import posixpath
 import subprocess
 import tarfile
 import tempfile
@@ -59,17 +58,13 @@ from repro.sandbox.process import (
     SandboxError,
     read_head,
 )
+from repro.sandbox.remote import HOOK_MOUNT, TMP, USER, WORK, RemoteSandbox
 
 #: Python 3.13 with uv on Debian bookworm, pinned by digest (A08 measured with this image).
 DEFAULT_IMAGE: Final = (
     "ghcr.io/astral-sh/uv:python3.13-bookworm-slim"
     "@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca"
 )
-WORK: Final = "/work"
-#: The container's own tmpfs, never the host's.
-TMP: Final = "/tmp"  # noqa: S108
-HOOK_MOUNT: Final = "/opt/repro/hook"
-USER: Final = "1000:1000"
 #: ``/tmp`` in the container: tmpfs, ``exec`` (A08), counted against the memory limit.
 TMPFS_SIZE: Final = "512m"
 #: How long Docker commands that only manage containers and volumes may take.
@@ -114,10 +109,10 @@ GVISOR: Final = "runsc"
 KATA_NAMES: Final = ("kata", "io.containerd.kata")
 
 
-class DockerSandbox:
+class DockerSandbox(RemoteSandbox):
     """Runs commands at L3 on commit ``commit`` of ``git``'s repository, held in a volume."""
 
-    backend: Final = "docker"
+    backend = "docker"
 
     def __init__(
         self,
@@ -316,12 +311,6 @@ class DockerSandbox:
         for volume in [*self.mounts, self.volume, self.hook]:
             self._docker("volume", "rm", "-f", volume, check=False)
 
-    def __enter__(self) -> "DockerSandbox":
-        return self
-
-    def __exit__(self, *_: object) -> None:
-        self.close()
-
     # -- running -----------------------------------------------------------------------------
 
     def ready_payload(self, side: str) -> dict[str, str]:
@@ -335,14 +324,6 @@ class DockerSandbox:
             "network": "enforced",
             "platform": f"Docker {self._server} linux{runtime}, {self.image}"[:200],
         }
-
-    @staticmethod
-    def container_path(relative: str) -> str:
-        """Where a path of the snapshot (POSIX, relative to its root) is in the container."""
-        path = posixpath.normpath(posixpath.join(WORK, relative))
-        if path != WORK and not path.startswith(WORK + "/"):
-            raise SandboxError(f"{relative!r} is outside the snapshot")
-        return path
 
     def read_file(self, relative: str, *, limit: int = 64 * 1024 * 1024) -> bytes | None:
         """A file the commands left in the volume (relative to its root), or None."""

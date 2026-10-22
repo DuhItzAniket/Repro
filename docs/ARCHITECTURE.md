@@ -529,6 +529,7 @@ and job summary) and canonical JSON are F05's.
 | L3 enforce | Linux container: `--network none`, read-only root + tmpfs `/tmp` (mounted `exec`; A08 found `noexec` breaks real suites), `--cap-drop ALL`, `no-new-privileges`, non-root, pids/memory/cpu limits, snapshot copied into a volume (no bind-mounted live worktree, no `.git`) | Docker Desktop (WSL2) | Docker / Podman |
 | L4 harden | gVisor `runsc` as Docker's runtime (`docker_runtime = "runsc"`, H03): the target's containers run on a kernel in user space | — | CI job `gvisor` |
 | L5 microVM | Kata Containers as Docker's runtime (`docker_runtime = "kata"`, K10): each container in a VM of its own, with its own kernel (Cloud Hypervisor; the snapshot's volume shared over virtio-fs). The level is probed, never named: a container of the runtime whose kernel is not the engine's | WSL2 with nested virtualization (`scripts/kata/setup.sh`) | a host with KVM (`scripts/kata/setup.sh`) |
+| L5 microVM (E2B) | `sandbox = "e2b"` (K09): each side in a Firecracker microVM of a self-hosted E2B (Embed), the target's code as a user without sudo, the network closed by the VM's own kernel firewall and checked from inside | WSL2 (WSL 3.0.3 or newer: kernel 6.8+) | CI job `e2b` |
 
 Rules:
 - L1 is **detection, not a boundary**. Python's audit-hook docs say hooks are not a sandbox, and
@@ -581,6 +582,19 @@ Rules:
   container's processes in a kernel of its own; on a shared kernel it would count the host's
   processes of that uid too. `scripts/kata/setup.sh` sets up such a host: Docker Engine and
   Kata 4.2.0, pinned and checked, and a self-test.
+- **L5 in E2B (K09, ADR-0018 option B, `repro.sandbox.E2BSandbox`):** a `RemoteSandbox` as
+  the Docker sandbox is, so the runners treat both alike. Each side is a microVM from a
+  template of Repro's image recipe (built once per E2B). Its dependencies install from
+  wheels before the **seal**:
+  - root adds an nftables rule to the VM's own kernel that rejects every packet `repro`
+    (uid 1001, no sudo) sends, but to loopback;
+  - E2B is asked to deny every address too;
+  - a probe as `repro` must fail to reach the index by name and two addresses by number.
+
+  Only then may anything of the target's run, as `repro`, with its process limit. K09
+  measured E2B's own firewall letting TCP to numbered addresses through, so the guest's
+  rule is the enforcement and E2B's the second layer. E2B is reached as its SDK says
+  (`E2B_API_KEY`, `E2B_API_URL`); its SDK is the `e2b` extra.
 
 ## 9. Static analysis — see ADR-0006
 

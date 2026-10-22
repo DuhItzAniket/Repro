@@ -575,6 +575,62 @@ jobs:
           "engine/tests/test_run_stage.py::test_a_run_under_kata_is_l5"
           "engine/tests/test_js_container.py::test_a_change_is_reproduced_in_microvms"
 
+  # K09: the E2B sandbox on real Firecracker microVMs. E2B's self-hosted stack (Embed) is started
+  # from its compose files at a pinned commit, checked by SHA-256, on GitHub's nested
+  # virtualization (not officially supported, as for kata), so the job is not required. Its API
+  # key is the local stack's own, made for this run.
+  e2b:
+    name: e2b
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: E2B Embed (e2b-dev/runtime at c92e06b), as its compose guide installs it
+        env:
+          E2B_RUNTIME: c92e06b2bd635cf5a1a351e1021d5f1dfaed87b6
+        run: |
+          mkdir -p "$RUNNER_TEMP/e2b" && cd "$RUNNER_TEMP/e2b"
+          base="https://raw.githubusercontent.com/e2b-dev/runtime/$E2B_RUNTIME/embed/compose"
+          curl -fsSL -o compose.yaml "$base/compose.yaml"
+          curl -fsSL -o .env "$base/.env"
+          echo "ba1c32fc02a29db5e8b24af015adb216d4569aa7a41aeffec2d2b98298fc5d99  compose.yaml" | sha256sum -c
+          echo "9e647bc41cd12970367af7cba5f08a9787c6ea2fc6af5031aaad8d6a6903ed69  .env" | sha256sum -c
+          # nbd must be available but not loaded: host-setup loads it with the devices it needs,
+          # and stops when it is already loaded with fewer (modprobe's default is 16).
+          modinfo nbd > /dev/null 2>&1 || sudo apt-get install -y "linux-modules-extra-$(uname -r)"
+          echo "PF_MIN_FREE_GIB=8" >> .env
+          docker compose up -d --wait
+          docker compose exec -T ready cat /run/e2b/sdk.env | sed -n 's/^export //p' > sdk.env
+          while IFS= read -r line; do
+            case "$line" in E2B_API_KEY=*) echo "::add-mask::${line#E2B_API_KEY=}" ;; esac
+            echo "$line" | tr -d "'\"" >> "$GITHUB_ENV"
+          done < sdk.env
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Install Python environment, with E2B's SDK
+        run: uv sync --locked --extra e2b
+      - name: The E2B sandbox in microVMs
+        env:
+          REPRO_E2B_LIVE: "1"
+          REPRO_E2B_MEMORY_MB: "1024"
+        run: >
+          uv run --locked pytest engine/tests/test_sandbox_e2b_live.py
+          "engine/tests/test_run_stage.py::test_a_run_in_e2b_is_l5"
+      - name: E2B's logs, when something failed
+        if: failure()
+        run: |
+          cd "$RUNNER_TEMP/e2b"
+          docker compose ps -a
+          docker compose logs preflight host-setup fetch-artifacts base-template ready
+          docker compose logs --tail 60 api orchestrator
+          free -m
+          grep -i huge /proc/meminfo
+          lsmod | grep -E "^(nbd|kvm|tun)" || true
+
   # Needs the repository's Dependency graph (Settings -> Code security). Enable it, then set the
   # repository variable DEPENDENCY_REVIEW=true to turn this job on.
   dependency-review:

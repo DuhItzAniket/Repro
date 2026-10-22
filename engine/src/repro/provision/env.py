@@ -34,12 +34,15 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from repro.provision.project import Project
 from repro.readable import portable
 from repro.sandbox import DockerSandbox, ProcessSandbox
-from repro.sandbox.docker import TMP
+from repro.sandbox.remote import TMP
+
+if TYPE_CHECKING:
+    from repro.sandbox.e2b import E2BSandbox
 
 #: The index every dependency comes from.
 PYPI: Final = "https://pypi.org/simple"
@@ -408,6 +411,58 @@ class DockerProvisioner:
             python_version=version,
             installed_packages=int(count.strip() or 0),
             cache_hit=hit,
+            duration_ms=int((time.monotonic() - started) * 1000),
+        )
+
+
+class E2BProvisioner:
+    """Environments inside the side's own E2B microVM (K09).
+
+    As the Docker provisioner's, the dependencies come from wheels alone (``--no-build``), so
+    none of the target's code runs while the VM may reach the package index, and the VM may
+    reach nothing else (``E2BSandbox``). The VM is then sealed and checked, and the project
+    itself is installed offline, in the sealed VM. Nothing is cached across runs: each side
+    installs its dependencies afresh."""
+
+    def __init__(self, *, index: str = PYPI, exclude_newer: str | None = None) -> None:
+        self.index = index
+        self.exclude_newer = exclude_newer
+
+    def provision(self, side: str, project: Project, sandbox: "E2BSandbox") -> Environment:
+        started = time.monotonic()
+        spec = spec_for(
+            project, platform=f"linux, E2B {sandbox.template}", exclude_newer=self.exclude_newer
+        )
+        sandbox.own_directory(ENV_MOUNT)
+        sandbox.write_files(".repro", {"requirements.txt": spec.text().encode()})
+        requirements = sandbox.container_path(".repro/requirements.txt")
+        python = f"{ENV_MOUNT}/venv/bin/python"
+        install = " ".join(_install_args(python, self.index, spec, requirements))
+        script = f"uv venv {ENV_MOUNT}/venv --python /usr/local/bin/python3 && uv {install}"
+        uv_env = {"UV_NO_CONFIG": "1", "UV_CACHE_DIR": f"{TMP}/uv"}
+        done = sandbox.run_unsealed(["sh", "-c", script], env=uv_env, timeout_s=_TIMEOUT_S)
+        if done.returncode != 0:
+            reason = _tail(done.stderr) if done.outcome == "exited" else done.outcome
+            raise ProvisionError(f"installing the dependencies failed: {reason}")
+        sandbox.seal()  # from here on, no network: the target's code may run
+        version = sandbox.run([python, "-I", "-S", "-c", _VERSION])
+        if version.returncode != 0:
+            raise ProvisionError(f"the environment's Python did not start: {_tail(version.stderr)}")
+        if project.installable:
+            run = sandbox.run(_project_install(python), env=uv_env)
+            if run.returncode != 0:
+                reason = _tail(run.stderr) if run.outcome == "exited" else run.outcome
+                raise ProvisionError(f"the project's own install failed: {reason}")
+        count = sandbox.run(
+            ["sh", "-c", f"ls -d {ENV_MOUNT}/venv/lib/python*/site-packages/*.dist-info | wc -l"]
+        )
+        return Environment(
+            side=side,
+            project=project,
+            python=python,
+            python_version=version.stdout.decode().strip(),
+            installed_packages=int(count.stdout.strip() or 0),
+            cache_hit=False,
             duration_ms=int((time.monotonic() - started) * 1000),
         )
 

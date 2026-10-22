@@ -9,14 +9,14 @@ from typing import Any
 from repro.provision.deps import LIST_INSTALLED, parse_installed
 from repro.provision.env import Environment
 from repro.runner.pytest import TestRun, run_tests
-from repro.sandbox.docker import DockerSandbox
 from repro.sandbox.process import ProcessSandbox, SandboxError
+from repro.sandbox.remote import RemoteSandbox
 
 
 @dataclass
 class Side:
     name: str  # "base" or "head"
-    sandbox: ProcessSandbox | DockerSandbox
+    sandbox: ProcessSandbox | RemoteSandbox
     env: Environment
 
     def run(self, tests: Sequence[str] = (), **options: Any) -> TestRun:
@@ -26,7 +26,7 @@ class Side:
     def installed(self, timeout_s: float = 120.0) -> dict[str, str] | None:
         """The environment's distributions, ``{name: version}``, listed by its own interpreter
         in this side's sandbox (E05); None if that did not work."""
-        if isinstance(self.sandbox, DockerSandbox):  # <venv>/bin/python, inside the container
+        if isinstance(self.sandbox, RemoteSandbox):  # <venv>/bin/python, inside the container
             root = str(PurePosixPath(self.env.python).parent.parent)
             argv = [self.env.python, "-I", "-S", "-c", LIST_INSTALLED, root]
             done = self.sandbox.run(argv, timeout_s=timeout_s)
@@ -39,7 +39,7 @@ class Side:
     def overlay(self, name: str, files: Mapping[str, bytes]) -> str:
         """A copy of the snapshot, at ``.repro/<name>``, with ``files`` written over it; its path
         relative to the snapshot, for ``run(directory=...)``."""
-        if isinstance(self.sandbox, DockerSandbox):
+        if isinstance(self.sandbox, RemoteSandbox):
             return self.sandbox.overlay(name, files)
         if not name.isidentifier():
             raise SandboxError(f"{name!r} is not a plain name")
@@ -59,5 +59,5 @@ class Side:
         return f".repro/{name}"
 
     def close(self) -> None:
-        if isinstance(self.sandbox, DockerSandbox):
+        if isinstance(self.sandbox, RemoteSandbox):
             self.sandbox.close()

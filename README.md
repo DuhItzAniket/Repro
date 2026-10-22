@@ -16,7 +16,7 @@ result is a **Reproduction Card** with one of three verdicts:
 
 > Not "does it work?", but **"what did it change, and did it say so?"**
 
-> **Status: v1.4.0, Stages A to I done; Stage K built but for K09 (E2B self-hosted).**
+> **Status: v1.4.0, Stages A to I done; Stage K built.**
 > Python and JavaScript/TypeScript changes. Repro runs both sides
 > of a change in a sandbox, compares what they do, checks invariants, has agents judge the
 > PR's claims against the evidence, and shows it all live in the cockpit; on GitHub, its
