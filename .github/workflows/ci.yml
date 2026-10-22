@@ -592,12 +592,13 @@ jobs:
           E2B_RUNTIME: c92e06b2bd635cf5a1a351e1021d5f1dfaed87b6
         run: |
           mkdir -p "$RUNNER_TEMP/e2b" && cd "$RUNNER_TEMP/e2b"
-          curl -fsSL --remote-name-all             "https://raw.githubusercontent.com/e2b-dev/runtime/$E2B_RUNTIME/embed/compose/{compose.yaml,.env}"
-          printf '%s  %s
-'             ba1c32fc0a29db5e8b24af015adb216d4569aa7a41aeffec2d2b98298fc5d99 compose.yaml             9e647bc41cd12970367af7cba5f08a9787c6ea2fc6af5031aaad8d6a6903ed69 .env | sha256sum -c
+          base="https://raw.githubusercontent.com/e2b-dev/runtime/$E2B_RUNTIME/embed/compose"
+          curl -fsSL -o compose.yaml "$base/compose.yaml"
+          curl -fsSL -o .env "$base/.env"
+          echo "ba1c32fc0a29db5e8b24af015adb216d4569aa7a41aeffec2d2b98298fc5d99  compose.yaml" | sha256sum -c
+          echo "9e647bc41cd12970367af7cba5f08a9787c6ea2fc6af5031aaad8d6a6903ed69  .env" | sha256sum -c
           sudo modprobe nbd || sudo apt-get install -y "linux-modules-extra-$(uname -r)"
-          printf 'PF_MIN_FREE_GIB=8
-' >> .env
+          echo "PF_MIN_FREE_GIB=8" >> .env
           docker compose up -d --wait
           docker compose exec -T ready cat /run/e2b/sdk.env | sed -n 's/^export //p' > sdk.env
           while IFS= read -r line; do
