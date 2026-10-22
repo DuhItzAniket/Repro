@@ -9,22 +9,30 @@ it through E2B's Python SDK (``e2b``, MIT), which reads ``E2B_API_KEY`` and ``E2
 A side's microVM:
 
 1. starts from a template of Repro's sandbox image (``image/Dockerfile``'s recipe, step by
-   step), named by the recipe's digest and its size, so it is built once per E2B and reused;
-2. may reach the package index alone, through E2B's egress allow-list, while its dependencies
-   are installed from wheels: no code of the target's runs then;
-3. is **sealed** before any of the target's code runs. Every outbound address is denied
-   (``update_network``), and a probe from inside, as the unprivileged user, must then fail to
-   reach the index and an address outside it. If either connects, the side has no sandbox:
-   the card never states a network it did not check. ``run`` refuses to run anything on a VM
-   that is not sealed.
+   step), with nftables and a user of Repro's own, ``repro`` (uid 1001, no sudo), named by the
+   recipe's digest and its size, so it is built once per E2B and reused;
+2. may reach the network while its dependencies are installed from wheels: no code of the
+   target's runs then (E2B's allow-list names the index, as a second layer);
+3. is **sealed** before any of the target's code runs, and checked. Root adds a rule to the
+   VM's own kernel firewall that rejects every packet ``repro`` sends anywhere but loopback
+   (nftables, ``meta skuid``), and E2B is asked to deny every address too. A probe, as
+   ``repro``, must then fail to reach the index by name and two addresses by number. If any
+   connects, the side has no sandbox: the card never states a network it did not check.
+   ``run`` refuses to run anything on a VM that is not sealed.
 
-The snapshot and Repro's hook go in as archives, unpacked as root, the snapshot handed to the
-unprivileged user and the hook left read-only. Commands run as that user, with its process
-limit (``ulimit -u``: the VM's kernel counts only its own processes, as in K10), from a shell
-that ``exec``s the command. The VM's memory is the template's (``e2b_memory_mb``).
+Why the VM's own firewall: K09 measured E2B Embed on WSL2 (kernel 6.18) with every way of
+asking E2B to deny traffic. Names stopped resolving, but TCP to an address by number still
+connected (``1.1.1.1:443``, ``8.8.8.8:443``), so E2B's egress firewall alone is not enforcement
+there. The guest's nftables rule refused all of it. ``repro`` cannot remove the rule: it is not
+root and has no sudo (E2B's own ``user`` does).
 
-The level is L5: a microVM per side, its own kernel. The network is ``enforced`` by the
-host's firewall outside the VM, which a process inside cannot change, root or not.
+The snapshot and Repro's hook go in as archives, unpacked as root, the snapshot handed to
+``repro`` and the hook left read-only. Commands run as ``repro``, with its process limit
+(``ulimit -u``: the VM's kernel counts only its own processes, as in K10), from a shell that
+``exec``s the command. The VM's memory is the template's (``e2b_memory_mb``).
+
+The level is L5: a microVM per side, its own kernel. The network is ``enforced`` by that
+kernel's firewall, checked from inside before anything of the target's runs.
 """
 
 import contextlib
@@ -52,18 +60,27 @@ from repro.sandbox.remote import HOOK_MOUNT, TMP, WORK, RemoteSandbox
 PACKAGE_INDEX: Final = ("pypi.org", "files.pythonhosted.org")
 #: Every outbound address: what a sealed VM is denied.
 ALL_TRAFFIC: Final = "0.0.0.0/0"
-#: The user commands run as: E2B's own unprivileged user in every template.
-RUN_AS: Final = "user"
+#: The user commands run as: Repro's own, made in the template, with no sudo.
+RUN_AS: Final = "repro"
+RUN_AS_UID: Final = 1001
 ROOT: Final = "root"
 #: How long a VM may live from now: the most E2B allows ("Timeout cannot be greater than 1
 #: hours", K09). Each command renews it, and so does a long one every ``RENEW_S``.
 LIFETIME_S: Final = 3600
 RENEW_S: Final = 600.0
-#: What the seal's probe tries: the index, and an address outside it. Each must fail.
+#: The seal: a table of Repro's in the VM's kernel firewall that rejects every packet the
+#: user commands run as sends, but to loopback.
+SEAL_RULES: Final = (
+    "nft add table inet repro && "
+    "nft add chain inet repro out '{ type filter hook output priority 0; policy accept; }' && "
+    f"nft add rule inet repro out meta skuid {RUN_AS_UID} oif != lo reject"
+)
+#: What the seal's probe tries: the index by name, and two addresses by number (what E2B's own
+#: firewall let through, K09). Each must fail.
 _PROBE: Final = """
 import socket, sys
 reached = []
-for host, port in (("pypi.org", 443), ("1.1.1.1", 53)):
+for host, port in (("pypi.org", 443), ("1.1.1.1", 443), ("8.8.8.8", 53)):
     try:
         socket.create_connection((host, port), timeout=5).close()
         reached.append(f"{host}:{port}")
@@ -95,7 +112,8 @@ UV_REQUIREMENT: Final = (
     " --hash=sha256:52c7da0fd9056d9551124777ec77de53f0df7017daf8f98a19e947b7837416ed"
     " --hash=sha256:f840e640fe16591f6d71a94e8863707b7ba43c5786d1fe662868a9fb44c53e50"
 )
-TEMPLATE_PACKAGES: Final = ("less", "git", "procps", "tzdata")
+TEMPLATE_PACKAGES: Final = ("less", "git", "procps", "tzdata", "nftables")
+_ADD_USER: Final = f"useradd -u {RUN_AS_UID} -M -d /tmp -s /bin/sh {RUN_AS}"
 _UV_INSTALL: Final = (
     f"printf '%s\\n' {shlex.quote(UV_REQUIREMENT)} > /tmp/uv.txt"
     " && python3 -m pip install --no-cache-dir --require-hashes -r /tmp/uv.txt"
@@ -106,7 +124,7 @@ _UV_INSTALL: Final = (
 def template_name(memory_mb: int, cpus: int) -> str:
     """The template at this size: the recipe's digest and the size in the name, so a changed
     recipe or size is a new template and an unchanged one is built once per E2B."""
-    recipe = json.dumps([TEMPLATE_BASE, UV_REQUIREMENT, TEMPLATE_PACKAGES]).encode()
+    recipe = json.dumps([TEMPLATE_BASE, UV_REQUIREMENT, TEMPLATE_PACKAGES, _ADD_USER]).encode()
     return f"repro-sandbox-{hashlib.sha256(recipe).hexdigest()[:12]}-{cpus}c{memory_mb}m"
 
 
@@ -129,6 +147,7 @@ def ensure_template(*, memory_mb: int, cpus: int, log: Callable[[str], None] | N
                 .from_image(TEMPLATE_BASE)
                 .run_cmd(_UV_INSTALL, user=ROOT)
                 .apt_install(list(TEMPLATE_PACKAGES), no_install_recommends=True)
+                .run_cmd(_ADD_USER, user=ROOT)
             )
             e2b.Template.build(template, name, cpu_count=cpus, memory_mb=memory_mb)
         except (e2b.SandboxException, e2b.BuildException) as exc:  # BuildException is apart
@@ -195,12 +214,16 @@ class E2BSandbox(RemoteSandbox):
         }
 
     def seal(self) -> None:
-        """Denies the VM every outbound address, and checks it from inside: the index and an
-        address outside it must both be unreachable to the user commands run as."""
-        try:
+        """Rejects every packet ``RUN_AS`` sends but to loopback, in the VM's own kernel, asks
+        E2B to deny every address as a second layer, and checks from inside: the index and
+        two addresses by number must all be unreachable to ``RUN_AS``."""
+        rules = self._raw(["sh", "-c", SEAL_RULES], user=ROOT, timeout_s=60)
+        if rules.exit_code != 0:
+            raise SandboxError(
+                f"the sandbox's firewall could not be set: {rules.stderr.strip()[-300:]}"
+            )
+        with contextlib.suppress(self._e2b.SandboxException):  # a second layer; the probe decides
             self.vm.update_network({"deny_out": [ALL_TRAFFIC]})
-        except self._e2b.SandboxException as exc:
-            raise SandboxError(f"E2B could not close the sandbox's network: {exc}") from None
         done = self._raw(["python3", "-I", "-S", "-c", _PROBE], user=RUN_AS, timeout_s=60)
         if done.exit_code != 0:
             reached = done.stdout.strip() or "?"
@@ -346,13 +369,13 @@ class E2BSandbox(RemoteSandbox):
                 cwd=self.container_path(cwd),
                 envs=self._environment(audit, env),
                 timeout=0,  # Repro keeps the time
-                on_stdout=out.append,
-                on_stderr=err.append,
             )
         except self._e2b.SandboxException as exc:
             raise SandboxError(f"E2B could not start the command: {exc}") from None
         result: list[Any] = []
-        waiter = threading.Thread(target=lambda: result.append(_wait(handle, self._e2b)))
+        waiter = threading.Thread(
+            target=lambda: result.append(_wait(handle, self._e2b, out.append, err.append))
+        )
         waiter.start()
         while waiter.is_alive():
             if time.monotonic() - started > timeout:
@@ -371,8 +394,13 @@ class E2BSandbox(RemoteSandbox):
             waiter.join(30)
         duration = time.monotonic() - started
         code = getattr(result[0], "exit_code", None) if result else None
-        stdout, cut_out = _head("".join(out), self.limits.output_bytes)
-        stderr, cut_err = _head("".join(err), self.limits.output_bytes)
+        # The whole output when the command ended; what streamed in when it was killed.
+        said_out = getattr(result[0], "stdout", None) if result else None
+        said_err = getattr(result[0], "stderr", None) if result else None
+        stdout, cut_out = _head(said_out if said_out is not None else "".join(out),
+                                self.limits.output_bytes)  # fmt: skip
+        stderr, cut_err = _head(said_err if said_err is not None else "".join(err),
+                                self.limits.output_bytes)  # fmt: skip
         log = self._read(audit, 64 * 1024 * 1024)
         log_path = run_dir / "audit.jsonl"
         if log is not None:
@@ -418,9 +446,13 @@ class E2BSandbox(RemoteSandbox):
         return env
 
 
-def _wait(handle: Any, e2b: Any) -> Any:
+def _wait(
+    handle: Any, e2b: Any, on_stdout: Callable[[str], object], on_stderr: Callable[[str], object]
+) -> Any:
+    """The command's result, its output streamed in as it comes (a background command's
+    output reaches the callbacks given here, K09 found, not those given when it started)."""
     try:
-        return handle.wait()
+        return handle.wait(on_stdout=on_stdout, on_stderr=on_stderr)
     except e2b.CommandExitException as exc:
         return exc
 

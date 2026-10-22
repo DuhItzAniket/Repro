@@ -59,7 +59,9 @@ class Handle:
         if not hang:
             self.released.set()
 
-    def wait(self) -> Result:
+    def wait(self, *, on_stdout: Any = None, on_stderr: Any = None) -> Result:
+        if on_stdout is not None:
+            on_stdout(self.result.stdout)
         self.released.wait(30)
         return self.result
 
@@ -74,14 +76,17 @@ class Commands:
 
     def run(self, cmd: str, **options: Any) -> Any:
         self.vm.ran.append((cmd, options))
+        if "nft add rule inet repro" in cmd:  # the guest's own firewall
+            if options.get("user") == "root" and not self.vm.nft_missing:
+                self.vm.guest_closed = True
+                return Result(stdout="", stderr="", exit_code=0)
+            raise FakeCommandExitError(stderr="nft: command not found", exit_code=127)
         if "socket.create_connection" in cmd:  # the seal's probe
-            reached = "" if self.vm.closed else "pypi.org:443"
+            reached = "" if self.vm.guest_closed else "1.1.1.1:443"
             if reached:
                 raise FakeCommandExitError(stdout=reached, exit_code=1)
             return Result(stdout="", stderr="", exit_code=0)
         if options.get("background"):
-            if options.get("on_stdout"):
-                options["on_stdout"]("out\n")
             handle = Handle(Result(stdout="out\n", stderr="", exit_code=self.vm.code),
                             hang=self.vm.hang)  # fmt: skip
             self.vm.handles.append(handle)
@@ -111,7 +116,8 @@ class FakeVM:
         self.network: list[dict[str, Any]] = []
         self.lifetimes: list[int] = []
         self.handles: list[Handle] = []
-        self.closed = False  # whether the network is closed
+        self.guest_closed = False  # whether the guest's own firewall closed the network
+        self.nft_missing = False
         self.hang = False
         self.code = 0
         self.killed = False
@@ -122,8 +128,7 @@ class FakeVM:
         self.lifetimes.append(seconds)
 
     def update_network(self, network: dict[str, Any]) -> None:
-        self.network.append(network)
-        self.closed = network == {"deny_out": [ALL_TRAFFIC]}
+        self.network.append(network)  # recorded; on WSL2 it left numbered addresses open
 
     def kill(self) -> None:
         self.killed = True
@@ -209,7 +214,7 @@ def test_a_vm_may_reach_the_package_index_alone(
     # the snapshot the unprivileged user's.
     unpacked = [cmd for cmd, options in vm.ran if options.get("user") == "root"]
     assert any("/opt/repro/hook" in c and "chmod -R a-w,a+rX" in c for c in unpacked)
-    assert any("tar -x -C /work " in c and "chown -R user:user /work" in c for c in unpacked)
+    assert any("tar -x -C /work " in c and "chown -R repro:repro /work" in c for c in unpacked)
     assert all(user == "root" for _, user in vm.written.values())
     assert not box.sealed
 
@@ -223,17 +228,20 @@ def test_nothing_runs_before_the_seal(
     assert box.run_unsealed(["uv", "pip", "install"], timeout_s=60).returncode == 0
 
 
-def test_the_seal_denies_every_address_and_is_checked_from_inside(
+def test_the_seal_closes_the_vms_own_firewall_and_is_checked_from_inside(
     tmp_path: Path, commit: tuple[Git, str], sdk: SimpleNamespace
 ) -> None:
     box = make(tmp_path, commit)
     box.seal()
     vm = vm_of(sdk)
-    assert vm.network == [{"deny_out": [ALL_TRAFFIC]}]
+    rule, rule_options = next((c, o) for c, o in vm.ran if "nft add rule" in c)
+    assert rule_options["user"] == "root"
+    assert "meta skuid 1001 oif != lo reject" in rule
+    assert vm.network == [{"deny_out": [ALL_TRAFFIC]}]  # E2B's firewall, as a second layer
     probe, options = next((c, o) for c, o in vm.ran if "socket.create_connection" in c)
-    assert options["user"] == "user"
-    assert "pypi.org" in probe
-    assert "1.1.1.1" in probe
+    assert options["user"] == "repro"
+    assert '("pypi.org", 443)' in probe  # the index by name
+    assert '("1.1.1.1", 443)' in probe  # an address by number: what E2B's firewall let through
     assert box.sealed
     ready = box.ready_payload("base")
     assert (ready["backend"], ready["isolation_level"], ready["network"]) == (
@@ -243,16 +251,36 @@ def test_the_seal_denies_every_address_and_is_checked_from_inside(
     )
 
 
-def test_a_seal_the_probe_sees_through_gives_no_sandbox(
+def test_e2bs_firewall_alone_is_not_a_seal(
     tmp_path: Path, commit: tuple[Git, str], sdk: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """K09 measured E2B Embed on WSL2: told to deny every address, it still let TCP through to
+    addresses by number. Without the guest's own rule, the probe sees it and there is no
+    sandbox."""
     box = make(tmp_path, commit)
-    monkeypatch.setattr(FakeVM, "update_network", lambda self, network: None)  # ignored
-    with pytest.raises(SandboxError, match=r"still open after sealing: pypi\.org:443"):
+    real = Commands.run
+
+    def no_guest_rule(self: Commands, cmd: str, **options: Any) -> Any:
+        if "nft add rule" in cmd:
+            return Result(stdout="", stderr="", exit_code=0)  # as if set, but not applied
+        return real(self, cmd, **options)
+
+    monkeypatch.setattr(Commands, "run", no_guest_rule)
+    with pytest.raises(SandboxError, match=r"still open after sealing: 1\.1\.1\.1:443"):
         box.seal()
     assert not box.sealed
     with pytest.raises(SandboxError, match="not sealed"):
         box.run(["python", "-c", "pass"])
+
+
+def test_a_firewall_that_cannot_be_set_gives_no_sandbox(
+    tmp_path: Path, commit: tuple[Git, str], sdk: SimpleNamespace
+) -> None:
+    box = make(tmp_path, commit)
+    vm_of(sdk).nft_missing = True
+    with pytest.raises(SandboxError, match="firewall could not be set: nft: command not found"):
+        box.seal()
+    assert not box.sealed
 
 
 def test_commands_run_as_the_user_under_its_process_limit_with_the_hook_first(
@@ -263,7 +291,7 @@ def test_commands_run_as_the_user_under_its_process_limit_with_the_hook_first(
     done = box.run(["python", "-c", "print(1)"], cwd="pkg", env={"PYTHONPATH": "/extra"})
     command, options = next((c, o) for c, o in vm_of(sdk).ran if o.get("background"))
     assert command == "ulimit -u 64; exec python -c 'print(1)'"
-    assert (options["user"], options["cwd"]) == ("user", "/work/pkg")
+    assert (options["user"], options["cwd"]) == ("repro", "/work/pkg")
     assert options["envs"]["PYTHONPATH"] == "/opt/repro/hook:/extra"
     assert options["envs"]["REPRO_AUDIT_LOG"].startswith("/work/.repro/audit-")
     assert (done.outcome, done.returncode, done.stdout) == ("exited", 0, b"out\n")
@@ -280,7 +308,7 @@ def test_a_command_past_its_time_is_killed(
     done = box.run(["sleep", "600"], timeout_s=0.3)
     assert (done.outcome, done.returncode) == ("timeout", None)
     assert vm_of(sdk).handles[-1].killed
-    assert any(c.startswith("pkill -KILL -u user") for c, _ in vm_of(sdk).ran)
+    assert any(c.startswith("pkill -KILL -u repro") for c, _ in vm_of(sdk).ran)
 
 
 def test_paths_stay_inside_the_snapshot(
@@ -313,7 +341,9 @@ def test_a_template_is_built_once_per_image_and_size(sdk: SimpleNamespace) -> No
     assert "uv==0.13.0 --hash=sha256:" in Templates.steps[1]
     assert "--require-hashes" in Templates.steps[1]
     assert Templates.steps[1].startswith("run as root: ")
-    assert Templates.steps[2] == "apt less git procps tzdata True"
+    assert Templates.steps[2] == "apt less git procps tzdata nftables True"
+    # Repro's own user, with no sudo, is who the target's code runs as.
+    assert Templates.steps[3] == "run as root: useradd -u 1001 -M -d /tmp -s /bin/sh repro"
 
 
 def test_a_template_e2b_cannot_build_is_a_sandbox_error(
