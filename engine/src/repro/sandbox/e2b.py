@@ -129,7 +129,7 @@ def ensure_template(*, memory_mb: int, cpus: int, log: Callable[[str], None] | N
                 .apt_install(list(TEMPLATE_PACKAGES), no_install_recommends=True)
             )
             e2b.Template.build(template, name, cpu_count=cpus, memory_mb=memory_mb)
-        except e2b.SandboxException as exc:
+        except (e2b.SandboxException, e2b.BuildException) as exc:  # BuildException is apart
             raise SandboxError(f"the E2B template {name} could not be built: {exc}") from None
     return name
 

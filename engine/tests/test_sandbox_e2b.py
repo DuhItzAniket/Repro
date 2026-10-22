@@ -33,6 +33,10 @@ class FakeSandboxError(Exception):  # the SDK's SandboxException
     pass
 
 
+class FakeBuildError(Exception):  # the SDK's BuildException, not a SandboxException
+    pass
+
+
 class FakeCommandExitError(FakeSandboxError):  # CommandExitException
     def __init__(self, stdout: str = "", stderr: str = "", exit_code: int = 1) -> None:
         super().__init__(stderr)
@@ -162,6 +166,7 @@ def sdk(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         Sandbox=SimpleNamespace(create=create),
         Template=Templates,
         SandboxException=FakeSandboxError,
+        BuildException=FakeBuildError,
         CommandExitException=FakeCommandExitError,
         NotFoundException=FakeNotFoundError,
         FileNotFoundException=FakeNotFoundError,
@@ -303,6 +308,19 @@ def test_a_template_is_built_once_per_image_and_size(sdk: SimpleNamespace) -> No
     assert "--require-hashes" in Templates.steps[1]
     assert Templates.steps[1].startswith("run as root: ")
     assert Templates.steps[2] == "apt less git procps tzdata True"
+
+
+def test_a_template_e2b_cannot_build_is_a_sandbox_error(
+    sdk: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Found live (K09): E2B's BuildException is not one of its SandboxExceptions."""
+
+    def refuse(*_: object, **__: object) -> None:
+        raise FakeBuildError("mmap memfd: cannot allocate memory")
+
+    monkeypatch.setattr(Templates, "build", refuse)
+    with pytest.raises(SandboxError, match="could not be built: mmap memfd"):
+        module.ensure_template(memory_mb=1024, cpus=2)
 
 
 def test_without_its_sdk_the_sandbox_says_how_to_get_it(monkeypatch: pytest.MonkeyPatch) -> None:
