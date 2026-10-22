@@ -44,7 +44,12 @@ ALIASES = {
 }
 
 # name -> justification. Keep empty unless a dependency genuinely needs it.
-EXCEPTIONS: dict[str, str] = {}
+EXCEPTIONS: dict[str, str] = {
+    # K09, through E2B's SDK (the e2b extra only). Its wheels name no licence; it is built from
+    # packages/protobuf-py-ext of bufbuild/protobuf-py, whose licence is Apache-2.0 (GitHub's
+    # licence of the repository, checked 2026-10-23).
+    "protobuf-py-ext": "Apache-2.0, by its source repository bufbuild/protobuf-py",
+}
 
 FIRST_PARTY = frozenset({"repro-engine", "repro-bench", "repro-events", "repro-workspace"})
 

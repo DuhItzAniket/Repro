@@ -23,6 +23,10 @@ dependencies = [
     "websockets>=17.2",
 ]
 
+[project.optional-dependencies]
+# The E2B sandbox (K09): E2B's SDK, at the version its self-hosted Embed guide is tested with.
+e2b = ["e2b==2.46.0"]
+
 [project.scripts]
 repro = "repro.cli:app"
 
