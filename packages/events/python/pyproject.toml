@@ -1,6 +1,6 @@
 [project]
 name = "repro-events"
-version = "1.3.1"
+version = "1.4.0"
 description = "Repro event schema tooling: schema registry, validation, and agent-output schema derivation."
 readme = "README.md"
 license = "Apache-2.0"
