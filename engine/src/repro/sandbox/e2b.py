@@ -8,8 +8,8 @@ it through E2B's Python SDK (``e2b``, MIT), which reads ``E2B_API_KEY`` and ``E2
 
 A side's microVM:
 
-1. starts from a template built from Repro's sandbox image (``image/Dockerfile``), named by
-   its digest, so it is built once per E2B and reused;
+1. starts from a template of Repro's sandbox image (``image/Dockerfile``'s recipe, step by
+   step), named by the recipe's digest and its size, so it is built once per E2B and reused;
 2. may reach the package index alone, through E2B's egress allow-list, while its dependencies
    are installed from wheels: no code of the target's runs then;
 3. is **sealed** before any of the target's code runs. Every outbound address is denied
@@ -28,8 +28,10 @@ host's firewall outside the VM, which a process inside cannot change, root or no
 """
 
 import contextlib
+import hashlib
 import importlib
 import io
+import json
 import posixpath
 import shlex
 import tarfile
@@ -41,7 +43,7 @@ from typing import Any, Final
 
 from repro.gitops import Git, TarredTree, tar_tree
 from repro.sandbox.detect import AUDIT_LOG_ENV, AUDIT_ROOTS_ENV, Detections, read_detections
-from repro.sandbox.docker import hook_archive
+from repro.sandbox.docker import DEFAULT_IMAGE, hook_archive
 from repro.sandbox.limits import Limits
 from repro.sandbox.process import HASH_SEED, POLL_S, Execution, Outcome, SandboxError
 from repro.sandbox.remote import HOOK_MOUNT, TMP, WORK, RemoteSandbox
@@ -81,30 +83,54 @@ def sdk() -> Any:
         ) from None
 
 
-def template_name(dockerfile: Path, memory_mb: int, cpus: int) -> str:
-    """The template for ``dockerfile`` at this size: its digest and size in the name, so a
-    changed image or size is a new template and an unchanged one is built once."""
-    from repro.sandbox.image import image_tag  # noqa: PLC0415 - the image's digest
+#: The template's recipe: ``image/Dockerfile``'s, step by step, since E2B's builder takes no
+#: ``COPY --from`` (K09 found it refusing the Dockerfile's ``/uv``). The same base image by
+#: digest, the same Debian packages, and uv 0.13.0, the version Repro pins, from PyPI with its
+#: wheels' SHA-256 (pypi.org/pypi/uv/0.13.0/json, read on 2026-10-23).
+TEMPLATE_BASE: Final = DEFAULT_IMAGE
+UV_REQUIREMENT: Final = (
+    "uv==0.13.0"
+    " --hash=sha256:52c7da0fd9056d9551124777ec77de53f0df7017daf8f98a19e947b7837416ed"
+    " --hash=sha256:f840e640fe16591f6d71a94e8863707b7ba43c5786d1fe662868a9fb44c53e50"
+)
+TEMPLATE_PACKAGES: Final = ("less", "git", "procps", "tzdata")
+_UV_INSTALL: Final = (
+    f"printf '%s\\n' {shlex.quote(UV_REQUIREMENT)} > /tmp/uv.txt"
+    " && python3 -m pip install --no-cache-dir --require-hashes -r /tmp/uv.txt"
+    " && rm /tmp/uv.txt && uv --version"
+)
 
-    digest = image_tag(dockerfile).rsplit(":", 1)[-1][:12]
-    return f"repro-sandbox-{digest}-{cpus}c{memory_mb}m"
+
+def template_name(memory_mb: int, cpus: int) -> str:
+    """The template at this size: the recipe's digest and the size in the name, so a changed
+    recipe or size is a new template and an unchanged one is built once per E2B."""
+    recipe = json.dumps([TEMPLATE_BASE, UV_REQUIREMENT, TEMPLATE_PACKAGES]).encode()
+    return f"repro-sandbox-{hashlib.sha256(recipe).hexdigest()[:12]}-{cpus}c{memory_mb}m"
 
 
-def ensure_template(
-    dockerfile: Path, *, memory_mb: int, cpus: int, log: Callable[[str], None] | None = None
-) -> str:
-    """The template's name, built first if this E2B does not have it."""
+_BUILDING = threading.Lock()
+
+
+def ensure_template(*, memory_mb: int, cpus: int, log: Callable[[str], None] | None = None) -> str:
+    """The template's name, built first if this E2B does not have it (once, when both sides
+    ask at the same time)."""
     e2b = sdk()
-    name = template_name(dockerfile, memory_mb, cpus)
-    try:
-        if e2b.Template.exists(name):
-            return name
-        if log is not None:
-            log(f"building the E2B template {name} (once per E2B)")
-        template = e2b.Template().from_dockerfile(dockerfile.read_text(encoding="utf-8"))
-        e2b.Template.build(template, name, cpu_count=cpus, memory_mb=memory_mb)
-    except e2b.SandboxException as exc:
-        raise SandboxError(f"the E2B template {name} could not be built: {exc}") from None
+    name = template_name(memory_mb, cpus)
+    with _BUILDING:
+        try:
+            if e2b.Template.exists(name):
+                return name
+            if log is not None:
+                log(f"building the E2B template {name} (once per E2B)")
+            template = (
+                e2b.Template()
+                .from_image(TEMPLATE_BASE)
+                .run_cmd(_UV_INSTALL, user=ROOT)
+                .apt_install(list(TEMPLATE_PACKAGES), no_install_recommends=True)
+            )
+            e2b.Template.build(template, name, cpu_count=cpus, memory_mb=memory_mb)
+        except e2b.SandboxException as exc:
+            raise SandboxError(f"the E2B template {name} could not be built: {exc}") from None
     return name
 
 

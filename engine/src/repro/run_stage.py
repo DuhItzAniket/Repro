@@ -109,7 +109,7 @@ from repro.runner.twosided import (
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, SandboxError, docker_available
 from repro.sandbox.e2b import E2BSandbox, ensure_template
 from repro.sandbox.evidence import detection_evidence
-from repro.sandbox.image import DOCKERFILE, sandbox_image
+from repro.sandbox.image import sandbox_image
 from repro.sandbox.process import HASH_SEED
 from repro.sandbox.remote import RemoteSandbox
 from repro.store import ArtifactStore, cbor
@@ -209,7 +209,7 @@ def _e2b_side(  # noqa: PLR0917 - a side's parts
     ``sandbox.ready`` emitted."""
     memory_mb, cpus = size
     ctx.check()
-    template = ensure_template(DOCKERFILE, memory_mb=memory_mb, cpus=cpus, log=ctx.log)
+    template = ensure_template(memory_mb=memory_mb, cpus=cpus, log=ctx.log)
     vm = E2BSandbox(box_dir, git, sha, template=template, limits=limits)
     state.containers.append(vm)
     state.platform[side] = f"e2b {template}"

@@ -27,7 +27,6 @@ from repro.provision.project import inspect_project
 from repro.sandbox import Limits, SandboxError
 from repro.sandbox import e2b as module
 from repro.sandbox.e2b import ALL_TRAFFIC, PACKAGE_INDEX, E2BSandbox, template_name
-from repro.sandbox.image import DOCKERFILE
 
 
 class FakeSandboxError(Exception):  # the SDK's SandboxException
@@ -126,7 +125,18 @@ class Templates:
     built: ClassVar[list[tuple[str, int, int]]] = []
     have: ClassVar[set[str]] = set()
 
-    def from_dockerfile(self, _: str) -> "Templates":
+    steps: ClassVar[list[str]] = []
+
+    def from_image(self, image: str) -> "Templates":
+        Templates.steps.append(f"from {image}")
+        return self
+
+    def run_cmd(self, command: str, *, user: str) -> "Templates":
+        Templates.steps.append(f"run as {user}: {command}")
+        return self
+
+    def apt_install(self, packages: list[str], *, no_install_recommends: bool) -> "Templates":
+        Templates.steps.append(f"apt {' '.join(packages)} {no_install_recommends}")
         return self
 
     @classmethod
@@ -157,7 +167,7 @@ def sdk(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         FileNotFoundException=FakeNotFoundError,
         made=made,
     )
-    Templates.built, Templates.have = [], set()
+    Templates.built, Templates.have, Templates.steps = [], set(), []
     monkeypatch.setattr(module, "sdk", lambda: fake)
     return fake
 
@@ -278,14 +288,21 @@ def test_paths_stay_inside_the_snapshot(
 
 
 def test_a_template_is_built_once_per_image_and_size(sdk: SimpleNamespace) -> None:
-    name = module.ensure_template(DOCKERFILE, memory_mb=1024, cpus=2)
-    again = module.ensure_template(DOCKERFILE, memory_mb=1024, cpus=2)
-    bigger = module.ensure_template(DOCKERFILE, memory_mb=2048, cpus=2)
-    assert name == again == template_name(DOCKERFILE, 1024, 2)
+    name = module.ensure_template(memory_mb=1024, cpus=2)
+    again = module.ensure_template(memory_mb=1024, cpus=2)
+    bigger = module.ensure_template(memory_mb=2048, cpus=2)
+    assert name == again == template_name(1024, 2)
     assert name.startswith("repro-sandbox-")
     assert name.endswith("-2c1024m")
     assert bigger != name
     assert [built[0] for built in Templates.built] == [name, bigger]
+    # Repro's image, step by step: its base by digest, uv 0.13.0 by hash, its packages.
+    assert Templates.steps[0] == f"from {module.TEMPLATE_BASE}"
+    assert "@sha256:" in Templates.steps[0]
+    assert "uv==0.13.0 --hash=sha256:" in Templates.steps[1]
+    assert "--require-hashes" in Templates.steps[1]
+    assert Templates.steps[1].startswith("run as root: ")
+    assert Templates.steps[2] == "apt less git procps tzdata True"
 
 
 def test_without_its_sdk_the_sandbox_says_how_to_get_it(monkeypatch: pytest.MonkeyPatch) -> None:
