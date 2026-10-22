@@ -1,6 +1,6 @@
 [project]
 name = "repro-engine"
-version = "1.3.1"
+version = "1.4.0"
 description = "Repro engine: reproduces agent-written code changes base-vs-head and verifies their claims against execution evidence."
 readme = "README.md"
 license = "Apache-2.0"

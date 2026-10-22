@@ -20,9 +20,9 @@
 | **F** | Policy & deterministic card | F01–F05 | v0.6.0 | Invariants and a complete card with no LLM involved |
 | **G** | Agents | G01–G10 | v0.7.0 | Claims extracted, verdicts judged against cited evidence, generated probes |
 | **H** | Hardening & first release | H01–H06 | **v1.0.0** | Installable, documented, hardened local tool |
-| **I** | GitHub integration | I01–I04 | v1.1.0 | PR URL in, check run + sticky comment + signed attestation out |
+| **I** | GitHub integration | I01–I04 | v1.1.0 (I01–I03), v1.4.0 (I04) | PR URL in, check run + sticky comment + signed attestation out |
 | **J** | Evaluation & research | J01–J10 | v1.2.0 (harness); the study later | Reproducible benchmark results and paper submission |
-| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05), v1.3.0 (K06–K08, K11) | Built but for K09 (E2B self-hosted) |
+| **K** | Expansion | K01–K11 | v1.2.0 (K01–K05), v1.3.0 (K06–K08, K11), v1.4.0 (K10) | Built but for K09 (E2B self-hosted) |
 
 76 scheduled phases (A–J) plus 11 in Stage K. Stages run in order. B and C could run in
 parallel with two contributors, because B depends only on the schema (A04/A05).
@@ -789,3 +789,4 @@ Completed phases append a one-line entry here. Detail lives in `docs/phases/`.
 | Release 1.3.1 | 2026-10-21 | [#114](https://github.com/DuhItzAniket/Repro/pull/114) | A patch release with no code change: CI's timeout (#112), the Marketplace docs (#113); the first release archived on Zenodo, for a DOI |
 | K10 | 2026-10-21 | [#116](https://github.com/DuhItzAniket/Repro/pull/116) | Isolation level L5: each container in a Kata microVM with Cloud Hypervisor, under Docker (`docker_runtime = "kata"`), the level probed from the container's kernel; uid 1000's `nproc` as the process limit there (Kata's VM applies no pids limit, measured); `scripts/kata/setup.sh`, tested in WSL2 and in CI's `kata` job on GitHub's nested virtualization |
 | I04 | 2026-10-21 | [#117](https://github.com/DuhItzAniket/Repro/pull/117) | The GitHub App (ADR-0019): `repro app register` from a manifest (the key and secret straight into the data directory), `repro app serve` from a smee.io relay or a port; deliveries checked by signature and ID; a repository's pull requests run, a fork's on a write user's click; a one-repository token per run, in Docker; the card with the App's ID, its bot's comment and a Re-run button. Live trial in WSL2 at L5: 11 relayed deliveries all checked, FLAGGED in 72 s; a re-run fault found and fixed (a new check run each run) |
+| Release 1.4.0 | 2026-10-22 | [#118](https://github.com/DuhItzAniket/Repro/pull/118) | Isolation level L5 in Kata microVMs (K10) and the GitHub App (I04); published to PyPI and archived on Zenodo |
