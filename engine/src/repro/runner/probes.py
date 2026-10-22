@@ -44,8 +44,8 @@ from repro.ids import new_evidence_id
 from repro.runner.pytest import plugin_env
 from repro.runner.selection import Resolver, base_id, head_id
 from repro.runner.sides import Side
-from repro.sandbox.docker import WORK, DockerSandbox
 from repro.sandbox.process import read_head
+from repro.sandbox.remote import WORK, RemoteSandbox
 
 #: Functions probed in one run, at most, and inputs per function.
 MAX_FUNCTIONS: Final = 20
@@ -338,7 +338,7 @@ def run_probes(
     data = json.dumps(spec).encode()
     name = f"probes-{uuid.uuid4().hex[:12]}"
     sandbox = side.sandbox
-    if isinstance(sandbox, DockerSandbox):
+    if isinstance(sandbox, RemoteSandbox):
         relative = f".repro/{name}"
         out = f"{WORK}/{relative}"
         variables = plugin_env(out, seed=seed)

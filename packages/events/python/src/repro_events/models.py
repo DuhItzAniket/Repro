@@ -130,7 +130,7 @@ IsolationLevel = Literal['L0', 'L1', 'L2', 'L3', 'L4', 'L5']
 
 NetworkEnforcement = Literal['enforced', 'detected-only']
 
-SandboxBackend = Literal['process', 'docker', 'gvisor', 'kata']
+SandboxBackend = Literal['process', 'docker', 'gvisor', 'kata', 'e2b']
 
 AgentRole = Literal['read', 'build', 'review', 'gap', 'probe', 'qa']
 

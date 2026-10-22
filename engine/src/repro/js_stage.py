@@ -221,6 +221,8 @@ def _sandbox_job(
     def provision(ctx: JobContext) -> None:
         if env_image is not None:
             raise jsts.JsError(NO_ENV_IMAGE)
+        if backend == "e2b":  # K09 built E2B for Python changes
+            raise SandboxError("the E2B sandbox runs Python changes only for now (K09)")
         project = jsts.JsProject.detect(_snapshot(work, side))
         chosen = limits or Limits(timeout_s=TEST_RUN_TIMEOUT_S)
         where = _Where(side, work, state, options, chosen)

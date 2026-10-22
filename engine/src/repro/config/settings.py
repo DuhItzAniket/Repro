@@ -41,7 +41,7 @@ from repro.paths import (
 LogLevel = Literal["debug", "info", "warning", "error"]
 LogFormat = Literal["json", "text"]
 #: Which sandbox runs target code (ADR-0004): Docker when available, or as asked.
-SandboxChoice = Literal["auto", "docker", "process"]
+SandboxChoice = Literal["auto", "docker", "process", "e2b"]
 #: Which backend runs the agent stages (G04; ADR-0007, ADR-0016); ``off``: deterministic only.
 AgentsChoice = Literal["off", "claude", "groq", "openai"]
 #: ``live`` calls the model; ``record`` calls it and writes cassettes; ``replay`` only reads
@@ -73,6 +73,10 @@ class Settings(BaseModel):
     log_format: LogFormat = "json"
     concurrency: int = Field(default_factory=default_concurrency, ge=1, le=MAX_CONCURRENCY)
     sandbox: SandboxChoice = "auto"
+    #: The E2B sandbox's microVM (K09, ``sandbox = "e2b"``): its memory and CPUs. E2B itself
+    #: is reached as its SDK says, through ``E2B_API_KEY`` and ``E2B_DOMAIN`` or ``E2B_API_URL``.
+    e2b_memory_mb: int = Field(default=1024, ge=512, le=65536)
+    e2b_cpus: int = Field(default=2, ge=1, le=64)
     #: Each sandboxed test run's wall-clock limit, and the memory its processes may use (H01).
     test_timeout_s: float = Field(default=900.0, gt=0)
     memory_limit_mb: int = Field(default=4096, gt=0)

@@ -183,7 +183,7 @@
       "enum": ["enforced", "detected-only"]
     },
     "SandboxBackend": {
-      "enum": ["process", "docker", "gvisor", "kata"]
+      "enum": ["process", "docker", "gvisor", "kata", "e2b"]
     },
     "AgentRole": {
       "enum": ["read", "build", "review", "gap", "probe", "qa"]

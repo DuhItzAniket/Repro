@@ -70,6 +70,7 @@ from repro.policy import Invariant, invariants
 from repro.policy.stage import PolicyRead
 from repro.provision import (
     DockerProvisioner,
+    E2BProvisioner,
     HostProvisioner,
     ImageProvisioner,
     Project,
@@ -106,12 +107,14 @@ from repro.runner.twosided import (
     reproduce,
 )
 from repro.sandbox import DockerSandbox, Limits, ProcessSandbox, SandboxError, docker_available
+from repro.sandbox.e2b import E2BSandbox, ensure_template
 from repro.sandbox.evidence import detection_evidence
-from repro.sandbox.image import sandbox_image
+from repro.sandbox.image import DOCKERFILE, sandbox_image
 from repro.sandbox.process import HASH_SEED
+from repro.sandbox.remote import RemoteSandbox
 from repro.store import ArtifactStore, cbor
 
-Backend = Literal["auto", "docker", "process"]
+Backend = Literal["auto", "docker", "process", "e2b"]
 #: Labels of runs that are not attempts of the selected tests themselves.
 _NOT_ATTEMPTS: Final = frozenset({"head tests", "base tests on head"})
 PROVISION_TIMEOUT_S: Final = 1800.0
@@ -171,7 +174,7 @@ class RunState:
     perf_timed: list[invariants.Timed] | None = None
     perf_too_fast: list[str] = field(default_factory=list)
     #: Every container sandbox opened, provisioned or not: their volumes go with ``close``.
-    containers: list[DockerSandbox] = field(default_factory=list)
+    containers: list[RemoteSandbox] = field(default_factory=list)
     #: What the agent jobs hand on (G04).
     agents: AgentState = field(default_factory=AgentState)
 
@@ -183,6 +186,37 @@ class RunState:
 
 def use_docker(backend: Backend) -> bool:
     return backend == "docker" or (backend == "auto" and docker_available())
+
+
+#: What to do when E2B has no sandbox for a side (K09).
+E2B_FIX: Final = (
+    "Start the self-hosted E2B (docs/guide/troubleshooting.md, E2B), and set E2B_API_KEY and "
+    "E2B_DOMAIN or E2B_API_URL for it"
+)
+
+
+def _e2b_side(  # noqa: PLR0917 - a side's parts
+    ctx: JobContext,
+    side: str,
+    git: Git,
+    sha: str,
+    box_dir: Path,
+    limits: Limits,
+    state: RunState,
+    size: tuple[int, int],
+) -> E2BSandbox:
+    """A side's microVM in E2B (K09), from the template of Repro's image at ``size``; its
+    ``sandbox.ready`` emitted."""
+    memory_mb, cpus = size
+    ctx.check()
+    template = ensure_template(DOCKERFILE, memory_mb=memory_mb, cpus=cpus, log=ctx.log)
+    vm = E2BSandbox(box_dir, git, sha, template=template, limits=limits)
+    state.containers.append(vm)
+    state.platform[side] = f"e2b {template}"
+    ready = vm.ready_payload(side)
+    state.network[side] = ready["network"]
+    ctx.emit("sandbox.ready", status="ok", payload=ready)
+    return vm
 
 
 def _sandbox_job(
@@ -197,6 +231,7 @@ def _sandbox_job(
     limits: Limits | None = None,
     docker_runtime: str | None = None,
     env_image: str | None = None,
+    e2b_size: tuple[int, int] = (1024, 2),
 ) -> Job:
     def run(ctx: JobContext) -> None:
         try:
@@ -207,7 +242,9 @@ def _sandbox_job(
             ctx.emit("missing.recorded", status="warn", payload=payload)
         except SandboxError as exc:  # H01: the sandbox itself, not the project
             ctx.log(f"{side}: no sandbox: {exc}", level="warning", status="warn")
-            fix = DOCKER_FIX if use_docker(backend) else SANDBOX_FIX
+            fix = (
+                E2B_FIX if backend == "e2b" else DOCKER_FIX if use_docker(backend) else SANDBOX_FIX
+            )  # fmt: skip
             payload = environment_missing(side, f"the sandbox could not start: {reason(exc)}", fix)
             ctx.emit("missing.recorded", status="warn", payload=payload)
 
@@ -220,7 +257,12 @@ def _sandbox_job(
         provisioning = f"{side}: provisioning the environment ({project.kind})"
         if env_image is not None and not use_docker(backend):
             raise ProvisionError("sandbox_image needs the Docker sandbox (sandbox = docker)")
-        if use_docker(backend):
+        if backend == "e2b":
+            vm = _e2b_side(ctx, side, git, sha, box_dir, chosen, state, e2b_size)
+            ctx.log(provisioning)
+            env = E2BProvisioner().provision(side, project, vm)
+            state.sides[side] = Side(side, vm, env)
+        elif use_docker(backend):
             image = env_image or sandbox_image()
             ctx.check()
             container = DockerSandbox(
@@ -1000,6 +1042,7 @@ def run_jobs(
     limits: Limits | None = None,
     docker_runtime: str | None = None,
     env_image: str | None = None,
+    e2b_size: tuple[int, int] = (1024, 2),
 ) -> Sequence[Job]:
     """The run and diff stages, after the build stage's snapshots and analysis; ``artifacts``
     stores the observations (without it they stay in memory); with ``agents``, the probe writer
@@ -1019,6 +1062,7 @@ def run_jobs(
             limits=limits,
             docker_runtime=docker_runtime,
             env_image=env_image,
+            e2b_size=e2b_size,
         )
 
     return [
