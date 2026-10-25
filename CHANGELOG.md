@@ -20,6 +20,9 @@ All notable changes to this project are documented here. The format follows
 - Event schema: `e2b` is a sandbox backend. [K09]
 - The runners treat every sandbox whose snapshot is elsewhere alike (`RemoteSandbox`):
   Docker's and E2B's. [K09]
+- Both packages' PyPI pages: links to the repository, documentation, changelog, issues and
+  DOI, classifiers and keywords, and a description written for PyPI, with absolute links
+  (`engine/PYPI.md`, and repro-events' README).
 
 ### Fixed
 - A run whose process is killed (its terminal closed, the machine stopped) no longer stays
