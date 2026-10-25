@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- CI: a pull request that changes only documentation takes a fast path. `lint` and `security`
+  run, the two required `test` checks pass with their steps skipped, and the slow jobs are
+  skipped, so it finishes in minutes instead of about half an hour. A new `changes` job decides,
+  with `scripts/ci_changes.py`: anything that is built, tested or packaged, or a document a test
+  reads, runs everything, and so does any failure in that job. Every push to `main` runs
+  everything.
+
 ## [1.5.0] - 2026-10-25
 
 A second L5 sandbox, a Firecracker microVM per side in a self-hosted E2B (K09), and runs left
