@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-25
+
+A second L5 sandbox, a Firecracker microVM per side in a self-hosted E2B (K09), and runs left
+"running" by a killed process are now ended. Release record: `docs/phases/release-1.5.0.md`.
+
 ### Added
 - `sandbox = "e2b"`: each side of a run in a Firecracker microVM of a self-hosted E2B
   (Embed), at L5. Each side is sealed before any of the target's code runs:
@@ -31,6 +36,10 @@ All notable changes to this project are documented here. The format follows
   minutes old as `failed`, with no card made up for it and its event log left as it was. The
   store's schema is at version 2 (a column, `heartbeat_at`). Found when the GitHub App's run
   was cut off on 2026-10-21. [C02]
+
+### Security
+- fast-uri 3.1.9, for four advisories against 3.1.8. It is a development dependency of the
+  event schema's tests (through Ajv), not part of either package.
 
 ## [1.4.0] - 2026-10-22
 
@@ -964,7 +973,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.5.0
 [1.4.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.4.0
 [1.3.1]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.3.1
 [1.3.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.3.0
