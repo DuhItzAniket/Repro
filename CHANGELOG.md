@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- CI: a pull request that changes only documentation takes a fast path. `lint` and `security`
+  run, the two required `test` checks pass with their steps skipped, and the slow jobs are
+  skipped, so it finishes in minutes instead of about half an hour. A new `changes` job decides,
+  with `scripts/ci_changes.py`: anything that is built, tested or packaged, or a document a test
+  reads, runs everything, and so does any failure in that job. Every push to `main` runs
+  everything.
+
 ### Fixed
 - A sandbox image that does not build now says why. The error, and so the card's
   `environment_failed` detail, used to give only Docker's last line, which repeats the failing
