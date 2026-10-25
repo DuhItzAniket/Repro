@@ -14,6 +14,20 @@ All notable changes to this project are documented here. The format follows
   reads, runs everything, and so does any failure in that job. Every push to `main` runs
   everything.
 
+### Fixed
+- A sandbox image that does not build now says why. The error, and so the card's
+  `environment_failed` detail, used to give only Docker's last line, which repeats the failing
+  step's whole command and gives just its exit code. It now names the cause from the step's own
+  output: a failed download first (`W: Failed to fetch http://deb.debian.org/… Temporary
+  failure resolving 'deb.debian.org'`), else the step's first error line (apt's `E:`, Corepack's
+  `Internal Error:` or `Usage Error:`, npm's `npm error`), with the step's exit code. Long
+  hashes are shortened, and the home directory is written `~`. Docker's own line is kept as
+  the fallback, for a build that fails before any step runs. Both images are covered, Python's
+  and Node.js's (K11). Found when CI could not build the Node.js image on 2026-10-25 and the
+  error did not say which download had failed. A failed build is still not retried. It was
+  the only failed image build in the logs of 422 CI runs (13 to 25 October). apt-get and npm
+  retry their own downloads, and the provisioning jobs' deadlines allow for one build. [D03]
+
 ## [1.5.0] - 2026-10-25
 
 A second L5 sandbox, a Firecracker microVM per side in a self-hosted E2B (K09), and runs left
