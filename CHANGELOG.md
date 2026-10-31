@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-31
+
+Two fixes found on a real project: classes and packages the tests run are covered (D05), and a
+reviewer's evidence listing shows the most decisive evidence first (G03). Release record:
+`docs/phases/release-1.6.1.md`.
+
 ### Fixed
 - Classes and packages the tests do run are no longer `no_covering_test` items. Found on
   Lectris, where Repro's Action listed seven small `@dataclass(frozen=True, slots=True)`
@@ -1071,7 +1077,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.6.1
 [1.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.6.0
 [1.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.5.0
 [1.4.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.4.0
