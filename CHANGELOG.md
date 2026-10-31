@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-31
+
+The selected tests on the stage, so a real run's bunches of strands have nodes to fire from
+(B14), and Claude reviewers that always get to answer (G01). Release record:
+`docs/phases/release-1.6.0.md`.
+
 ### Added
 - The selected tests on the stage. Once a run selects its tests, the engine adds a graph node
   for each (`type: test`, its test ID) and a `covers` edge to each changed function, method or
@@ -1024,7 +1030,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.6.0
 [1.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.5.0
 [1.4.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.4.0
 [1.3.1]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.3.1
