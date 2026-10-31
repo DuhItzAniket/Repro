@@ -766,3 +766,45 @@ entry. If something turns out wrong, add a correcting entry.
   - a stronger boundary in one respect (a kernel of its own) came with a weaker one in
     another, found only because the same checks run at every level.
 
+## 2026-10-31 · fix · Claude reviewers always answer
+- **Seen in production:** Repro 1.5.0's GitHub Action, with `agents=claude` on
+  `claude-haiku-5-5`, on two pull requests of DuhItzAniket/Lectris. On #2 and on #3, three of
+  seven claims were "not judged". Each such claim had an `agent_failed` item:
+  `its reviewer ended max_turns: error_max_turns`. One of them was as plain as
+  "unicode.ligatures replaces the ligatures U+FB00 to U+FB06 with their letters".
+- **The cause:** a reviewer has four turns. The Agent SDK backend passed them to the CLI as
+  they were, so the model could spend all four on lookups and end with no answer. The
+  OpenAI-compatible backend already kept its last two turns for the answer (2026-10-19), so a
+  reviewer on Groq is always asked for one.
+- **Fixed** (`agents/sdk.py`): a call with an output schema whose lookups end
+  `error_max_turns` resumes its session for up to two more turns. It is told to answer now and
+  offered no tool but `StructuredOutput`, within what is left of its dollar budget and time.
+  Its answer is checked like any other. A Claude call's `turns` are now the model's responses:
+  the CLI's own `num_turns` gave 8 for three responses that made seven tool calls.
+- **Checked before relying on it:**
+  - the Messages API accepts a conversation whose history calls a tool the request no longer
+    offers (one live call, HTTP 200);
+  - with CLI 2.1.300 and the local stand-in API, a resumed session's result counts the usage of
+    the session it resumed, while its `max_budget_usd` counts from zero.
+- **Measured, before and after:** `repro run --pr …/Lectris/pull/3`, the same commits, Docker
+  (L3), `claude-haiku-5-5` for every role, live, one run each.
+  - Before (`run_01M68WXWWMF1D9ZQRGSJ7XF1BF`): 8 claims read, 6 judged (all supported), 2 not
+    judged (`error_max_turns`). 11 calls: the reader, 9 reviewers, QA. 31 model responses.
+    Tokens: 62 input, 208,257 cache reads, 21,110 output. $0.027.
+  - After (`run_01M68XQ97EKGMPMZ52HDP83RAW`): 8 claims read, 8 judged (6 supported, 2
+    unverifiable), no `agent_failed`. 12 calls: the reader, 10 reviewers, QA. 39 model
+    responses. Tokens: 78 input, 308,602 cache reads, 32,073 output. $0.037.
+  - Four reviewers used all four turns on lookups and answered in a fifth: C1 and C7
+    unverifiable, C3 and C4 supported. Together those four calls cost $0.016.
+  - In both runs, a reviewer whose quote was refused (`quote_mismatch`) was asked again, once:
+    one such call before, two after.
+  - Tokens are the CLI's counts per model; cache writes are in the cost, not in the counts. The
+    cost is the CLI's estimate.
+- **Not comparable claim by claim:** the reader is not deterministic, and the two runs read the
+  pull request into different claims (eight each, worded differently). #2 was not run again.
+- **For the paper:** whether a verdict exists can depend on the agent harness, not only on the
+  model. With the same four turns, one backend always asked for the answer and the other did
+  not, and there Haiku went without one on 2 of 8 claims here and 3 of 7 in production. A
+  judge's turn limit has to leave room for the judgement. A study should report how many
+  verdicts were given in a turn that asked for them.
+
