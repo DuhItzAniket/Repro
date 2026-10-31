@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Classes and packages the tests do run are no longer `no_covering_test` items. Found on
+  Lectris, where Repro's Action listed seven small `@dataclass(frozen=True, slots=True)`
+  classes that the tests construct, and an `__init__.py` holding only a docstring. Two causes:
+  - The methods dataclasses, attrs and `NamedTuple` write for a class are compiled from strings
+    (`<string>`), so they have no file and the map left them out. A class with no method of its
+    own never counted as run. The plugin now maps such a method as its class, found through its
+    first argument with `type`'s own descriptors, so none of the target's code runs. Constructing
+    the class covers it, and a change to its fields selects the tests that constructed it on
+    base (none were selected before). The map's format is now 3, so cached maps are made again.
+  - Importing `pkg.text.squash` runs `pkg/text/__init__.py` first, but the import graphs hold
+    only the edge to `pkg.text.squash`. Test selection now reaches a package from its modules'
+    importers. The blast radius shown keeps the static imports.
+
+  A class whose body is all its code (no method, lambda, decorator or `NamedTuple` base: an
+  enum's members, an exception class, a `Protocol`) runs nothing a test can be seen to run. It
+  is now treated as module-level code, selected and covered by imports. A decorated or methodful
+  class must still run some of its code. New fixture `generated`, with a dataclass nothing
+  constructs that stays a gap. [D05]
+
 ## [1.6.0] - 2026-10-31
 
 The selected tests on the stage, so a real run's bunches of strands have nodes to fire from
@@ -36,24 +56,6 @@ The selected tests on the stage, so a real run's bunches of strands have nodes t
   everything.
 
 ### Fixed
-- Classes and packages the tests do run are no longer `no_covering_test` items. Found on
-  Lectris, where Repro's Action listed seven small `@dataclass(frozen=True, slots=True)`
-  classes that the tests construct, and an `__init__.py` holding only a docstring. Two causes:
-  - The methods dataclasses, attrs and `NamedTuple` write for a class are compiled from strings
-    (`<string>`), so they have no file and the map left them out. A class with no method of its
-    own never counted as run. The plugin now maps such a method as its class, found through its
-    first argument with `type`'s own descriptors, so none of the target's code runs. Constructing
-    the class covers it, and a change to its fields selects the tests that constructed it on
-    base (none were selected before). The map's format is now 3, so cached maps are made again.
-  - Importing `pkg.text.squash` runs `pkg/text/__init__.py` first, but the import graphs hold
-    only the edge to `pkg.text.squash`. Test selection now reaches a package from its modules'
-    importers. The blast radius shown keeps the static imports.
-
-  A class whose body is all its code (no method, lambda, decorator or `NamedTuple` base: an
-  enum's members, an exception class, a `Protocol`) runs nothing a test can be seen to run. It
-  is now treated as module-level code, selected and covered by imports. A decorated or methodful
-  class must still run some of its code. New fixture `generated`, with a dataclass nothing
-  constructs that stays a gap. [D05]
 - A sandbox image that does not build now says why. The error, and so the card's
   `environment_failed` detail, used to give only Docker's last line, which repeats the failing
   step's whole command and gives just its exit code. It now names the cause from the step's own

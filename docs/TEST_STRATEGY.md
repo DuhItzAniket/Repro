@@ -78,7 +78,7 @@ first needs them; `honest-fix` exists since A07, `selection` and `untested` sinc
 E05, `probe-only` since E06, `policy-weaken` since F01, `forbidden-path` and `invariants-pass` since
 F02 (with `api-break` and `new-dep` given a base `repro.yml`), `net-call` since F03 (with
 `perf-regress` given a 20 % `perf_budget`, and `invariants-pass` a test slow enough to time).
-`generated` since the fix to D05's map of methods written for classes (after 1.5.0).
+`generated` since the fix to D05's map of methods written for classes (after 1.6.0).
 `net-call` connects to 192.0.2.1, in TEST-NET-1, which RFC 5737 reserves for documentation, so
 nothing answers it even outside a sandbox. Its host is `bytes`, so the lookup does not load
 Python's `idna` codec. That codec's first use took about 4 ms on Windows and put the test at
