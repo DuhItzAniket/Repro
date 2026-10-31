@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- An old case of a parametrized test is no longer `modified` when only other cases changed.
+  Found on Lectris PR #11, which adds four cases to one parametrized test and six to another.
+  The test functions' code changed (their `parametrize` lists), so Repro 1.6.1 made all 31 old
+  cases `modified`, each a gap item, though each case's own parameters were the same on both
+  sides. A Claude Haiku reviewer then judged the true claim "No existing test case changes"
+  contradicted, citing those items.
+  - The plugin now records, for each parametrized case, a digest of its own parameters and
+    `pytest.param` marks. It reads plain values only (exact built-in scalars, containers of
+    them, classes by name), so none of the target's code runs. Other values get no digest.
+  - A case is kept when its test's code is the same once each `parametrize` decorator's cases
+    are left out, and the case has the same ID and digest on both sides. A kept case is
+    classified like any other test (P2P, a flip, ...), is not run again in its base version,
+    and its behaviour differences are not marked `test_modified`.
+  - A case whose parameters changed, or have no digest, stays `modified`. The test's
+    `test_modified` detail now says when only its cases changed and counts them: added,
+    removed, kept, changed, not comparable.
+
+  The coverage map's format is now 4, so cached maps are made again. No event schema change:
+  the classes, statuses (ADR-0015) and payloads are as before. [D06]
+
 ## [1.6.1] - 2026-10-31
 
 Two fixes found on a real project: classes and packages the tests run are covered (D05), and a
