@@ -766,3 +766,35 @@ entry. If something turns out wrong, add a correcting entry.
   - a stronger boundary in one respect (a kernel of its own) came with a weaker one in
     another, found only because the same checks run at every level.
 
+
+## 2026-10-31 · fix · Code no file holds: written methods and packages
+- **Setup:** Repro's Action (v1.5.0) on two pull requests of Lectris, a public Python library.
+  Reproduced locally with `repro run --pr`, Docker sandbox, agents off.
+- **What the cards said:**
+  - PR #2 (readers, 245 tests): seven `no_covering_test` items, all
+    `@dataclass(frozen=True, slots=True)` classes with no method of their own. The tests
+    construct each of them through the readers' functions;
+  - PR #3 (text rules): one, `lectris.text:<module>#0`, an `__init__.py` holding only a
+    docstring. Every test module imports one of its submodules.
+- **Causes, checked on 3.12 and 3.13:**
+  - dataclasses compile the methods they write from a string. Their code's file is
+    `<string>` and their qualified name `__create_fn__.<locals>.__init__`. attrs writes
+    `<attrs generated methods m.C>`, and `NamedTuple`'s `__new__` is a `<string>` lambda. The
+    map keeps only code in the snapshot's files, so such a class never ran;
+  - `from lectris.text import punctuation` gives grimp, and Repro's `ast` reader, an edge to
+    `lectris.text.punctuation` only. Python runs `lectris/text/__init__.py` first.
+- **The fix** (map format 3): a written method is mapped as the class whose `__dict__` holds
+  it, found through its first argument, and selection reaches a package from its modules'
+  importers. With it, the same two runs give 0 missing items each (from 7 and 1). The evidence
+  is unchanged (247 and 152 items): the same tests ran.
+- **Decided at the same time:** a class whose body is all its code (an enum's members, an
+  exception class) runs nothing a test can be seen to run. Using an enum member runs no code,
+  and `Colour(1)` runs only `enum`'s. Such a class is now treated as module-level code,
+  covered by imports, as a module's own code already was.
+- **For the paper:**
+  - a per-test map that keeps only code with a file under-reports coverage of declarative
+    code: dataclasses, attrs classes and NamedTuples;
+  - `no_covering_test` counts from runs before map format 3 are inflated by such classes.
+    Coverage-gap numbers from earlier runs should be recomputed, or the inflation stated;
+  - the boundary stays explicit: a decorated class, or one with methods, must run some of its
+    code; a pydantic model's constructor is pydantic's code, invisible to the map.

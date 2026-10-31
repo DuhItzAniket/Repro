@@ -201,6 +201,29 @@ changes select by imports (and a changed `conftest.py` selects the tests below i
 symbol is covered when a selected test ran it on base or, mapped again, on head; every other
 changed symbol outside test code becomes a `no_covering_test` item.
 
+Code that runs at import, and code written at run time, as treated since map format 3:
+- **Methods written for a class.** dataclasses, attrs and `NamedTuple` compile the methods they
+  write from strings (`<string>`, `<attrs generated methods m.C>`), so those methods have no
+  file of their own. The plugin maps such a method as its class: the class whose `__dict__`
+  holds it, found through the call's first argument (the instance, or the class for
+  `__new__`) with `type`'s own descriptors, so no code of the target runs. A frozen dataclass
+  with no method in its source is covered when a selected test constructs it, and a change
+  to its fields selects the tests that constructed it on base.
+- **A module's own code** (every `__init__.py` too, one holding only a docstring included) runs
+  once per process, mostly while pytest collects, so no test's map can hold it. It selects,
+  and is covered by, the tests whose modules import it, directly or not. Importing a module
+  imports the packages it is in first, as Python does: `from pkg.text import squash` runs
+  `pkg/text/__init__.py`, though the import graphs hold only the edge to `pkg.text.squash`.
+  The blast radius shown (§9) keeps the static imports alone.
+- **A class whose body is all its code** (`symbols.body_only`: no method or lambda in it, no
+  decorator, no `NamedTuple` base, not inside a function) has nothing a test can be seen to
+  run. An enum's members are plain class attributes and `Colour(1)` runs only `enum`'s code;
+  raising an exception class runs none of the target's code. Such a class is treated as
+  module-level code: its body ran at import. A class that is decorated (an `enum.unique` enum
+  too) or has a method must have run some of its code. A pydantic model's constructor is
+  pydantic's own code: a decorated pydantic dataclass that no method of its own runs stays a
+  `no_covering_test` item.
+
 ### 4.2 Outcome classification (`diff/outcome`)
 Every selected test is classified on base vs head: **F2P** (fail→pass), **P2P**, **P2F**,
 **F2F**, **new**, **removed**, **modified** (test code differs between sides, so outcomes
