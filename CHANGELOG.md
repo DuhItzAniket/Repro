@@ -60,6 +60,20 @@ All notable changes to this project are documented here. The format follows
   error did not say which download had failed. A failed build is still not retried. It was
   the only failed image build in the logs of 422 CI runs (13 to 25 October). apt-get and npm
   retry their own downloads, and the provisioning jobs' deadlines allow for one build. [D03]
+- Claude agents that answer in a schema (reviewers among them) now always get to answer.
+  Repro 1.5.0's GitHub Action, on `claude-haiku-5-5`, left three of seven claims "not judged"
+  on each of two real pull requests. Their reviewers spent all four turns on lookups and ended
+  `error_max_turns` with no verdict. Such a call now resumes its session for up to two more
+  turns: the answer, and the CLI's retry of one off the schema. It is told to answer now and
+  offered no tool but `StructuredOutput`, under the same lockdown. The two turns stay within
+  what is left of the call's dollar budget and time. The OpenAI-compatible backend already kept
+  its last two turns for the answer. The answer is checked like any other, so an uncited
+  verdict is still refused. The extra turns show as an `agent.state` `thinking` step and count
+  in the call's turns, tokens and cost. A Claude call's `turns` are now the model's responses,
+  which `max_turns` limits, not the CLI's `num_turns` (8 for three responses that made seven
+  tool calls). Measured live on one of those pull requests, one run each: 6 of 8 claims judged
+  before, 8 of 8 after. Four reviewers answered in a fifth turn, and the run's agent cost went
+  from $0.027 to $0.037 (`docs/paper/LOG.md`). [G01]
 
 ## [1.5.0] - 2026-10-25
 

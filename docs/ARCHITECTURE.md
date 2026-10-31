@@ -707,6 +707,8 @@ directory, never a worktree**, so the PR cannot inject `CLAUDE.md`, hooks or ski
 prompt is passed as a file because of the Windows command-line length limit. `max_turns`,
 `max_budget_usd` and a wall-clock timeout are set on every call; subagent spawning is held to
 its floor (depth 1, one at a time) and no Agent tool is in context (G01, `repro.agents.lockdown`).
+A call that must answer in a schema and is still looking things up when its turns run out is
+resumed, under the same lockdown, for its answer alone (§10.5).
 The tests run the bundled CLI against a local stand-in for the Messages API, and each planted
 file is first shown to load on an unlocked CLI (`test_agents_cli.py`).
 
@@ -830,6 +832,20 @@ tools) and checks it against the schema, honours `retry-after`, and prices calls
 table (a model without a price gets no `cost.estimate`). Tests never reach a model: the conftest
 points the API at a closed loopback port, and tests that start the CLI run behind a proxy that
 fails them on any connection past loopback.
+
+**Every call with an output schema gets to answer** (fix after 1.5.0; `agents/sdk.py`,
+`agents/openai_compat.py`). The OpenAI-compatible backend keeps the last two of `max_turns` for
+the answer and its retry. On the Agent SDK backend, the model may answer through
+`StructuredOutput` in any turn, so its lookups may use every one of `max_turns`. A call still
+looking things up when they run out (`error_max_turns`) is then resumed for up to two more
+turns: the answer, and the CLI's retry of one off the schema. The resumed session is told to
+answer now, under the same lockdown, offered no tool but `StructuredOutput`, within what is
+left of the call's dollar budget and time. The step shows as an `agent.state` `thinking` that
+says so. Its turns, tokens and cost are the call's, and so the ledger's. Its answer is checked
+like any other (§10.3). Repro 1.5.0 had no such step. Haiku reviewers on real pull requests
+spent all four turns on lookups and ended with no verdict (`docs/paper/LOG.md`). A Claude
+call's `turns` are the model's responses, which `max_turns` limits. The CLI's own `num_turns`
+counts differently.
 
 Concurrency defaults to `min(12, free RAM in GiB)`
 (research/04 §1.10: about 1 GiB per SDK subprocess). The UI always shows 12 dispatch slots, with
