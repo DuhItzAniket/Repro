@@ -25,6 +25,27 @@ All notable changes to this project are documented here. The format follows
   is now treated as module-level code, selected and covered by imports. A decorated or methodful
   class must still run some of its code. New fixture `generated`, with a dataclass nothing
   constructs that stays a gap. [D05]
+- A reviewer's evidence listing shows the most decisive evidence first. Found on Lectris PR
+  #11, a correct change that adds four cases to one parametrized test and six to another. Its
+  31 old cases were `modified` (the test's code changed), passing on base and on head. Ordered
+  by type and target, they filled the 4,000 characters of `list_evidence`'s answer, and neither
+  the new cases nor the probe that showed `O.5` read as `0.5` was in it. The reviewers of the
+  two claims that say so answered "unverifiable": the card was UNVERIFIABLE.
+  - `list_evidence` now orders by `evidence.rank`: failing tests and other problems on their
+    own, then behaviour, probe and API differences, then outcome changes (fixed, new, removed,
+    flaky), then other differences, then `modified` tests that passed on every run, then what
+    says nothing changed. Given a file, symbol or test, what is about that target itself comes
+    first (a test's own cases, also when the target names one of them).
+  - Three or more alike items whose outcome did not change take one line: the first of them,
+    how many more there are, and the test whose listing shows each.
+  - A reviewer given more than ten items sees its groups in the same order, and a parametrized
+    test's cases are one group.
+
+  Run again live, once, the two reviewers answered "supported" in one turn. The card stayed
+  UNVERIFIABLE: QA judged those claims inconsistent with a negative case (`docs/paper/LOG.md`).
+  The order depends on the evidence alone, so a listing stays the same for the same evidence.
+  No committed cassette records a `list_evidence` answer or a grouped prompt, so none changed.
+  Claude and OpenAI-compatible reviewers call the same tools. [G03]
 
 ## [1.6.0] - 2026-10-31
 
