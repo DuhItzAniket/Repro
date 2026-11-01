@@ -38,6 +38,11 @@
       "semicolons": "always"
     }
   },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
   "assist": {
     "enabled": true,
     "actions": {

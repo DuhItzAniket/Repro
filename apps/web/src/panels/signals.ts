@@ -215,7 +215,7 @@ export function signalsPanel(model: CockpitModel): Panel<SignalsView> {
         ctx.fillText(s.latest, 0, top + 12);
         // Baseline: zero for PERF Δ, the bottom otherwise.
         ctx.fillStyle = COLOR.border;
-        ctx.fillRect(labelW, Math.round(yOf(s.min < 0 ? 0 : s.min)), plotW, 1);
+        ctx.fillRect(labelW, Math.round(yOf(Math.max(s.min, 0))), plotW, 1);
         for (const tick of s.ticks) {
           ctx.fillStyle = tick.flagged ? COLOR.flag : COLOR.faint;
           ctx.fillRect(Math.round(xOf(tick.t)), plotTop, 1, plotH);
