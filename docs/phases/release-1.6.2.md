@@ -10,7 +10,7 @@
 | Part | PRs | What it brought |
 |---|---|---|
 | Fix | [#140](https://github.com/DuhItzAniket/Repro/pull/140) | Each parametrized case's own parameters get a digest in the pytest plugin; a case whose test changed only in its `parametrize` lists, with the same ID and digest on both sides, is kept, not `modified`. Found on Lectris PR #11, where 31 old cases were `modified` and a reviewer contradicted the true claim that no existing case changed |
-| Docs | this release's PR | The README, the GitHub Action's guide and the PyPI page: how to turn the AI reviewers on, the three backends, choosing a model, the budget |
+| Docs | [#141](https://github.com/DuhItzAniket/Repro/pull/141) | The README, the GitHub Action's guide and the PyPI page: how to turn the AI reviewers on, the three backends, choosing a model, the budget |
 
 ## Compatibility
 - No event schema or store change. Logs written by 1.6.1 read and replay as before.
