@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-01
+
+A parametrized test's old cases are no longer `modified` when only other cases changed, and the
+README says how to turn the AI reviewers on and pick their model. Release record:
+`docs/phases/release-1.6.2.md`.
+
+### Changed
+- The README, the GitHub Action's guide and the PyPI page say how to turn the AI reviewers on,
+  with which backend (`claude`, `groq`, or any OpenAI-compatible endpoint) and model, and what
+  a run's model calls may cost. The Action's guide has a workflow for Claude and one for an
+  OpenAI-compatible endpoint.
+
 ### Fixed
 - An old case of a parametrized test is no longer `modified` when only other cases changed.
   Found on Lectris PR #11, which adds four cases to one parametrized test and six to another.
@@ -1098,7 +1110,8 @@ Stage A — Foundation. Gate record: `docs/phases/A-gate.md`.
 - ADRs 0003 (envelope versioning fields), 0004 (Docker as the default sandbox), 0007 (agent
   runtime) and 0011 (motion safety) accepted. [A02]
 
-[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/DuhItzAniket/Repro/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.6.2
 [1.6.1]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.6.1
 [1.6.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.6.0
 [1.5.0]: https://github.com/DuhItzAniket/Repro/releases/tag/v1.5.0
